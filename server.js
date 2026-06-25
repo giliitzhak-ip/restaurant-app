@@ -10,7 +10,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const PORT = 3000;
+ const PORT = process.env.PORT || 3000;
 const PUBLIC = path.join(__dirname, 'public');
 
 // ─── Database setup ───────────────────────────────────────────────────────────
