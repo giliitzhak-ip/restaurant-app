@@ -1,1 +1,886 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>הזמנה לשולחן · המסעדה</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   Design tokens — semantic palette, fluid type scale, 8pt grid
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+  --color-bg:        #FAF7F2;
+  --color-surface:   #FFFFFF;
+  --color-surface-2: #F3EEE6;
+  --color-primary:   #9A3412;
+  --color-primary-hover: #7C2D12;
+  --color-on-primary:#FFFFFF;
+  --color-accent:    #B45309;
+  --color-text:      #1C1917;
+  --color-text-2:    #57534E;
+  --color-border:    #E7E0D4;
+  --color-success:   #15803D;
+  --color-success-bg:#DCFCE7;
+  --color-error:     #B91C1C;
+  --color-error-bg:  #FEE2E2;
+  --color-warning:   #A16207;
+  --color-warning-bg:#FEF9C3;
+  --color-overlay:   rgba(28, 25, 23, .55);
 
+  --shadow-1: 0 1px 3px rgba(28,25,23,.08), 0 1px 2px rgba(28,25,23,.04);
+  --shadow-2: 0 8px 24px rgba(28,25,23,.12);
+  --shadow-3: 0 -8px 32px rgba(28,25,23,.16);
+
+  --radius-s: 8px;
+  --radius-m: 12px;
+  --radius-l: 20px;
+  --radius-full: 999px;
+
+  /* 8pt grid */
+  --sp-1: 8px;  --sp-2: 16px;  --sp-3: 24px;  --sp-4: 32px;
+  --sp-5: 40px; --sp-6: 48px;  --sp-8: 64px;
+
+  /* Fluid type scale */
+  --fs-caption: clamp(.75rem, .72rem + .15vw, .8125rem);
+  --fs-body:    clamp(.9375rem, .9rem + .2vw, 1rem);
+  --fs-h4:      clamp(1.0625rem, 1rem + .3vw, 1.1875rem);
+  --fs-h3:      clamp(1.1875rem, 1.1rem + .5vw, 1.375rem);
+  --fs-h2:      clamp(1.375rem, 1.25rem + .7vw, 1.75rem);
+  --fs-h1:      clamp(1.75rem, 1.5rem + 1.2vw, 2.375rem);
+
+  --transition: 200ms ease-in-out;
+}
+[data-theme="dark"] {
+  --color-bg:        #141110;
+  --color-surface:   #1E1A18;
+  --color-surface-2: #29231F;
+  --color-primary:   #F97316;
+  --color-primary-hover: #FB923C;
+  --color-on-primary:#1C1917;
+  --color-accent:    #FBBF24;
+  --color-text:      #F5F0EA;
+  --color-text-2:    #A8A29E;
+  --color-border:    #38302B;
+  --color-success:   #4ADE80;
+  --color-success-bg:rgba(74,222,128,.12);
+  --color-error:     #F87171;
+  --color-error-bg:  rgba(248,113,113,.12);
+  --color-warning:   #FACC15;
+  --color-warning-bg:rgba(250,204,21,.12);
+  --color-overlay:   rgba(0,0,0,.65);
+  --shadow-1: 0 1px 3px rgba(0,0,0,.4);
+  --shadow-2: 0 8px 24px rgba(0,0,0,.5);
+  --shadow-3: 0 -8px 32px rgba(0,0,0,.55);
+}
+
+/* ═══ Base ═══ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: "Heebo", "Segoe UI", "Assistant", -apple-system, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: var(--fs-body);
+  line-height: 1.6;
+  min-height: 100dvh;
+  transition: background var(--transition), color var(--transition);
+}
+button { font: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 2px; border-radius: 4px; }
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  html { scroll-behavior: auto; }
+}
+
+/* ═══ Header ═══ */
+.site-header {
+  position: sticky; top: 0; z-index: 40;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: var(--shadow-1);
+  transition: background var(--transition);
+}
+.site-header__inner {
+  max-width: 720px; margin-inline: auto;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--sp-2); padding: var(--sp-2);
+}
+.brand { display: flex; align-items: center; gap: var(--sp-1); min-width: 0; }
+.brand__logo { font-size: 1.5rem; line-height: 1; }
+.brand__name { font-size: var(--fs-h4); font-weight: 700; letter-spacing: -.01em; white-space: nowrap; }
+.header-actions { display: flex; align-items: center; gap: var(--sp-1); }
+.table-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--color-surface-2); border: 1px solid var(--color-border);
+  border-radius: var(--radius-full); padding: 6px 14px;
+  font-size: var(--fs-caption); font-weight: 600; white-space: nowrap;
+}
+.table-chip strong { color: var(--color-primary); font-size: 1.05em; }
+.theme-toggle {
+  width: 40px; height: 40px; border-radius: var(--radius-full);
+  display: grid; place-items: center; font-size: 1.125rem;
+  background: var(--color-surface-2); border: 1px solid var(--color-border);
+  transition: transform var(--transition), background var(--transition);
+}
+.theme-toggle:hover { transform: rotate(15deg) scale(1.05); }
+
+/* ═══ Category nav ═══ */
+.cat-nav {
+  position: sticky; top: 73px; z-index: 30;
+  background: var(--color-bg);
+  padding: var(--sp-1) 0;
+  transition: background var(--transition);
+}
+.cat-nav__scroll {
+  max-width: 720px; margin-inline: auto;
+  display: flex; gap: var(--sp-1);
+  overflow-x: auto; padding-inline: var(--sp-2);
+  scrollbar-width: none;
+}
+.cat-nav__scroll::-webkit-scrollbar { display: none; }
+.cat-chip {
+  flex: 0 0 auto;
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--radius-full);
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  font-size: var(--fs-caption); font-weight: 600;
+  transition: all var(--transition);
+}
+.cat-chip:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.cat-chip[aria-pressed="true"] {
+  background: var(--color-primary); color: var(--color-on-primary);
+  border-color: var(--color-primary);
+}
+
+/* ═══ Menu ═══ */
+.menu-wrap { max-width: 720px; margin-inline: auto; padding: var(--sp-2) var(--sp-2) 140px; }
+.menu-section { margin-bottom: var(--sp-4); }
+.menu-section__title {
+  font-size: var(--fs-h3); font-weight: 700; margin-bottom: var(--sp-2);
+  display: flex; align-items: center; gap: var(--sp-1);
+}
+.menu-section__title::after {
+  content: ""; flex: 1; height: 1px; background: var(--color-border);
+}
+.menu-grid { display: grid; gap: var(--sp-2); }
+@media (min-width: 600px) { .menu-grid { grid-template-columns: 1fr 1fr; } }
+
+.dish-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-m);
+  padding: var(--sp-2);
+  display: flex; flex-direction: column; gap: var(--sp-1);
+  box-shadow: var(--shadow-1);
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+  animation: card-in 300ms ease-out both;
+}
+.dish-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); border-color: var(--color-accent); }
+@keyframes card-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.dish-card__top { display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-1); }
+.dish-card__name { font-size: var(--fs-h4); font-weight: 700; }
+.dish-card__price { font-weight: 700; color: var(--color-primary); white-space: nowrap; }
+.dish-card__desc { color: var(--color-text-2); font-size: var(--fs-caption); flex: 1; }
+.dish-card__actions { display: flex; justify-content: flex-end; align-items: center; gap: var(--sp-1); min-height: 40px; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px var(--sp-2); border-radius: var(--radius-s);
+  font-weight: 600; font-size: var(--fs-body);
+  transition: all var(--transition);
+  min-height: 44px;
+}
+.btn--primary { background: var(--color-primary); color: var(--color-on-primary); }
+.btn--primary:hover { background: var(--color-primary-hover); transform: translateY(-1px); box-shadow: var(--shadow-1); }
+.btn--primary:active { transform: translateY(0); }
+.btn--primary:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+.btn--ghost { background: var(--color-surface-2); border: 1px solid var(--color-border); }
+.btn--ghost:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.btn--sm { min-height: 36px; padding: 6px 14px; font-size: var(--fs-caption); }
+
+/* Quantity stepper */
+.stepper {
+  display: inline-flex; align-items: center; gap: 2px;
+  background: var(--color-surface-2); border: 1px solid var(--color-border);
+  border-radius: var(--radius-full); padding: 2px;
+}
+.stepper__btn {
+  width: 36px; height: 36px; border-radius: var(--radius-full);
+  display: grid; place-items: center; font-size: 1.125rem; font-weight: 700;
+  transition: background var(--transition), color var(--transition);
+}
+.stepper__btn:hover { background: var(--color-primary); color: var(--color-on-primary); }
+.stepper__count { min-width: 28px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* ═══ Cart bar ═══ */
+.cart-bar {
+  position: fixed; inset-inline: 0; bottom: 0; z-index: 50;
+  padding: var(--sp-2);
+  padding-bottom: max(var(--sp-2), env(safe-area-inset-bottom));
+  pointer-events: none;
+  transform: translateY(120%);
+  transition: transform 250ms ease-in-out;
+}
+.cart-bar.is-visible { transform: translateY(0); }
+.cart-bar__btn {
+  pointer-events: auto;
+  max-width: 688px; margin-inline: auto; width: 100%;
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--color-primary); color: var(--color-on-primary);
+  border-radius: var(--radius-m); padding: var(--sp-2) var(--sp-3);
+  font-weight: 700; font-size: var(--fs-h4);
+  box-shadow: var(--shadow-2);
+  transition: background var(--transition), transform var(--transition);
+}
+.cart-bar__btn:hover { background: var(--color-primary-hover); transform: translateY(-2px); }
+.cart-bar__count {
+  background: var(--color-on-primary); color: var(--color-primary);
+  border-radius: var(--radius-full); min-width: 28px; height: 28px;
+  display: inline-grid; place-items: center; font-size: var(--fs-caption);
+  padding-inline: 8px;
+}
+
+/* ═══ Cart sheet ═══ */
+.sheet-overlay {
+  position: fixed; inset: 0; z-index: 60;
+  background: var(--color-overlay);
+  opacity: 0; pointer-events: none;
+  transition: opacity 250ms ease-in-out;
+}
+.sheet-overlay.is-open { opacity: 1; pointer-events: auto; }
+.sheet {
+  position: fixed; inset-inline: 0; bottom: 0; z-index: 70;
+  background: var(--color-surface);
+  border-radius: var(--radius-l) var(--radius-l) 0 0;
+  box-shadow: var(--shadow-3);
+  max-height: 88dvh;
+  display: flex; flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 300ms cubic-bezier(.32,.72,.24,1);
+}
+.sheet.is-open { transform: translateY(0); }
+@media (min-width: 720px) {
+  .sheet { max-width: 560px; margin-inline: auto; }
+}
+.sheet__handle {
+  width: 44px; height: 5px; border-radius: var(--radius-full);
+  background: var(--color-border); margin: var(--sp-1) auto 0;
+}
+.sheet__header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--color-border);
+}
+.sheet__title { font-size: var(--fs-h3); font-weight: 700; }
+.sheet__close {
+  width: 40px; height: 40px; border-radius: var(--radius-full);
+  display: grid; place-items: center; font-size: 1.25rem;
+  background: var(--color-surface-2);
+  transition: background var(--transition), transform var(--transition);
+}
+.sheet__close:hover { transform: rotate(90deg); }
+.sheet__body { overflow-y: auto; padding: var(--sp-2) var(--sp-3); flex: 1; }
+.sheet__footer {
+  padding: var(--sp-2) var(--sp-3);
+  padding-bottom: max(var(--sp-2), env(safe-area-inset-bottom));
+  border-top: 1px solid var(--color-border);
+  display: grid; gap: var(--sp-2);
+}
+.cart-total-row {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: var(--fs-h4); font-weight: 700;
+}
+.cart-item {
+  display: grid; gap: var(--sp-1);
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.cart-item:last-of-type { border-bottom: none; }
+.cart-item__row { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2); }
+.cart-item__name { font-weight: 600; }
+.cart-item__price { color: var(--color-text-2); font-size: var(--fs-caption); font-variant-numeric: tabular-nums; }
+.cart-item__remove {
+  color: var(--color-error); font-size: var(--fs-caption); font-weight: 600;
+  padding: 4px 8px; border-radius: var(--radius-s);
+  transition: background var(--transition);
+}
+.cart-item__remove:hover { background: var(--color-error-bg); }
+
+.field { display: grid; gap: 6px; }
+.field__label { font-size: var(--fs-caption); font-weight: 600; color: var(--color-text-2); }
+.field__input {
+  width: 100%; padding: 10px var(--sp-2);
+  background: var(--color-surface-2);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-s);
+  transition: border-color var(--transition), background var(--transition);
+}
+.field__input:focus { outline: none; border-color: var(--color-primary); background: var(--color-surface); }
+.field__input::placeholder { color: var(--color-text-2); opacity: .7; }
+textarea.field__input { resize: vertical; min-height: 64px; }
+
+/* Empty state */
+.empty-state {
+  text-align: center; padding: var(--sp-6) var(--sp-2);
+  color: var(--color-text-2);
+  display: grid; gap: var(--sp-1); justify-items: center;
+}
+.empty-state__icon { font-size: 2.5rem; }
+
+/* ═══ Tracking view ═══ */
+.tracking {
+  max-width: 560px; margin-inline: auto;
+  padding: var(--sp-4) var(--sp-2) var(--sp-8);
+  display: grid; gap: var(--sp-3);
+  animation: card-in 400ms ease-out both;
+}
+.tracking-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-l);
+  padding: var(--sp-4) var(--sp-3);
+  box-shadow: var(--shadow-1);
+  display: grid; gap: var(--sp-3); text-align: center;
+}
+.tracking-card__icon { font-size: 3rem; line-height: 1; }
+.tracking-card__title { font-size: var(--fs-h2); font-weight: 700; }
+.tracking-card__sub { color: var(--color-text-2); }
+.tracking-card__order-num { color: var(--color-primary); font-weight: 700; }
+
+.steps { display: grid; gap: 0; text-align: right; margin-top: var(--sp-1); }
+.step { display: flex; gap: var(--sp-2); position: relative; padding-bottom: var(--sp-3); }
+.step:last-child { padding-bottom: 0; }
+.step__dot {
+  width: 32px; height: 32px; flex: 0 0 32px;
+  border-radius: var(--radius-full);
+  display: grid; place-items: center;
+  background: var(--color-surface-2);
+  border: 2px solid var(--color-border);
+  font-size: .875rem;
+  transition: all var(--transition);
+  z-index: 1;
+}
+.step:not(:last-child)::before {
+  content: ""; position: absolute;
+  right: 15px; top: 32px; bottom: 0; width: 2px;
+  background: var(--color-border);
+}
+.step.is-done .step__dot { background: var(--color-success-bg); border-color: var(--color-success); color: var(--color-success); }
+.step.is-done:not(:last-child)::before { background: var(--color-success); }
+.step.is-active .step__dot {
+  background: var(--color-primary); border-color: var(--color-primary); color: var(--color-on-primary);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 40%, transparent); }
+  50% { box-shadow: 0 0 0 10px transparent; }
+}
+.step__text { display: grid; gap: 2px; padding-top: 2px; }
+.step__label { font-weight: 700; }
+.step.is-pending .step__label { color: var(--color-text-2); font-weight: 500; }
+.step__hint { font-size: var(--fs-caption); color: var(--color-text-2); }
+
+/* ═══ Toast ═══ */
+.toast-region {
+  position: fixed; top: var(--sp-2); inset-inline: 0; z-index: 100;
+  display: grid; justify-items: center; gap: var(--sp-1);
+  pointer-events: none; padding-inline: var(--sp-2);
+}
+.toast {
+  background: var(--color-text); color: var(--color-bg);
+  padding: var(--sp-1) var(--sp-3); border-radius: var(--radius-full);
+  font-size: var(--fs-caption); font-weight: 600;
+  box-shadow: var(--shadow-2);
+  animation: toast-in 250ms ease-out both;
+  display: flex; align-items: center; gap: 8px;
+}
+.toast--success { background: var(--color-success); color: #fff; }
+.toast--error { background: var(--color-error); color: #fff; }
+.toast.is-leaving { animation: toast-out 250ms ease-in both; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(-12px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes toast-out { from { opacity: 1; } to { opacity: 0; transform: translateY(-12px) scale(.96); } }
+
+/* ═══ Skeletons ═══ */
+.skeleton {
+  border-radius: var(--radius-m);
+  background: linear-gradient(100deg, var(--color-surface-2) 40%, var(--color-border) 50%, var(--color-surface-2) 60%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+  height: 116px;
+}
+@keyframes shimmer { to { background-position: -200% 0; } }
+</style>
+</head>
+<body>
+
+<a class="visually-hidden" href="#main">דלג לתוכן</a>
+
+<header class="site-header">
+  <div class="site-header__inner">
+    <div class="brand">
+      <span class="brand__logo" aria-hidden="true">🍽️</span>
+      <span class="brand__name">המסעדה</span>
+    </div>
+    <div class="header-actions">
+      <span class="table-chip" id="tableChip">שולחן <strong id="tableNum">–</strong></span>
+      <button class="theme-toggle" id="themeToggle" aria-label="החלף מצב תצוגה בהיר/כהה" aria-pressed="false">🌙</button>
+    </div>
+  </div>
+</header>
+
+<nav class="cat-nav" id="catNav" aria-label="קטגוריות תפריט" hidden>
+  <div class="cat-nav__scroll" id="catScroll" role="group"></div>
+</nav>
+
+<main id="main">
+  <!-- Menu view -->
+  <div class="menu-wrap" id="menuView">
+    <h1 class="visually-hidden">תפריט והזמנה</h1>
+    <div id="menuContent" aria-live="polite">
+      <div class="menu-grid">
+        <div class="skeleton"></div><div class="skeleton"></div>
+        <div class="skeleton"></div><div class="skeleton"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tracking view -->
+  <div class="tracking" id="trackingView" hidden>
+    <div class="tracking-card">
+      <span class="tracking-card__icon" id="trackIcon" aria-hidden="true">👨‍🍳</span>
+      <div>
+        <h1 class="tracking-card__title" id="trackTitle">ההזמנה התקבלה!</h1>
+        <p class="tracking-card__sub">הזמנה <span class="tracking-card__order-num" id="trackOrderNum">#–</span> · שולחן <span id="trackTable">–</span></p>
+      </div>
+      <ol class="steps" id="trackSteps" aria-label="שלבי ההזמנה"></ol>
+      <button class="btn btn--ghost" id="newOrderBtn" type="button">➕ הזמנה נוספת</button>
+    </div>
+  </div>
+</main>
+
+<!-- Cart bar -->
+<div class="cart-bar" id="cartBar">
+  <button class="cart-bar__btn" id="openCartBtn" type="button" aria-haspopup="dialog">
+    <span style="display:flex;align-items:center;gap:12px">
+      <span class="cart-bar__count" id="cartCount" aria-hidden="true">0</span>
+      <span>צפייה בהזמנה</span>
+    </span>
+    <span id="cartTotal" style="font-variant-numeric:tabular-nums">₪0</span>
+  </button>
+</div>
+
+<!-- Cart sheet -->
+<div class="sheet-overlay" id="sheetOverlay"></div>
+<section class="sheet" id="cartSheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div class="sheet__handle" aria-hidden="true"></div>
+  <header class="sheet__header">
+    <h2 class="sheet__title" id="sheetTitle">ההזמנה שלך</h2>
+    <button class="sheet__close" id="closeCartBtn" type="button" aria-label="סגור סל">✕</button>
+  </header>
+  <div class="sheet__body" id="cartItems"></div>
+  <footer class="sheet__footer">
+    <div class="field">
+      <label class="field__label" for="orderNotes">הערות להזמנה (אופציונלי)</label>
+      <textarea class="field__input" id="orderNotes" placeholder="אלרגיות, בקשות מיוחדות..." maxlength="300"></textarea>
+    </div>
+    <div class="cart-total-row">
+      <span>סה״כ לתשלום</span>
+      <span id="sheetTotal" style="font-variant-numeric:tabular-nums">₪0</span>
+    </div>
+    <button class="btn btn--primary" id="submitOrderBtn" type="button">שליחת הזמנה למטבח 🚀</button>
+  </footer>
+</section>
+
+<div class="toast-region" id="toastRegion" role="status" aria-live="polite"></div>
+
+<script>
+'use strict';
+(function () {
+  const $ = id => document.getElementById(id);
+  const fmt = n => '₪' + (Math.round(n * 100) / 100).toLocaleString('he-IL');
+
+  /* ─── Theme ─── */
+  const themeBtn = $('themeToggle');
+  function applyTheme(mode) {
+    document.documentElement.dataset.theme = mode;
+    themeBtn.textContent = mode === 'dark' ? '☀️' : '🌙';
+    themeBtn.setAttribute('aria-pressed', String(mode === 'dark'));
+    localStorage.setItem('theme', mode);
+  }
+  applyTheme(localStorage.getItem('theme') ||
+    (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+  themeBtn.addEventListener('click', () =>
+    applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
+
+  /* ─── Table number ─── */
+  let table = parseInt(new URLSearchParams(location.search).get('table'), 10);
+  if (!table || table < 1) {
+    const answer = parseInt(prompt('מה מספר השולחן שלך?'), 10);
+    table = (answer && answer > 0) ? answer : 1;
+  }
+  $('tableNum').textContent = table;
+  $('trackTable').textContent = table;
+
+  /* ─── State ─── */
+  let menu = [];
+  const cart = new Map();        // menu_item_id -> {item, quantity, special_request}
+  let activeCategory = 'הכל';
+  let pollTimer = null;
+  const trackKey = 'active_order_t' + table;
+
+  /* ─── Toast ─── */
+  function toast(msg, type) {
+    const el = document.createElement('div');
+    el.className = 'toast' + (type ? ' toast--' + type : '');
+    el.textContent = msg;
+    $('toastRegion').appendChild(el);
+    setTimeout(() => {
+      el.classList.add('is-leaving');
+      el.addEventListener('animationend', () => el.remove(), { once: true });
+    }, 2600);
+  }
+
+  /* ─── Menu loading & rendering ─── */
+  async function loadMenu() {
+    try {
+      const res = await fetch('/api/menu');
+      if (!res.ok) throw new Error();
+      menu = await res.json();
+      renderCategories();
+      renderMenu();
+    } catch {
+      $('menuContent').innerHTML =
+        '<div class="empty-state"><span class="empty-state__icon">📡</span>' +
+        '<p>לא ניתן לטעון את התפריט כרגע.</p>' +
+        '<button class="btn btn--ghost" onclick="location.reload()">נסו שוב</button></div>';
+    }
+  }
+
+  function categories() {
+    return [...new Set(menu.map(m => m.category))];
+  }
+
+  function renderCategories() {
+    const nav = $('catScroll');
+    nav.innerHTML = '';
+    ['הכל', ...categories()].forEach(cat => {
+      const b = document.createElement('button');
+      b.className = 'cat-chip';
+      b.type = 'button';
+      b.textContent = cat;
+      b.setAttribute('aria-pressed', String(cat === activeCategory));
+      b.addEventListener('click', () => {
+        activeCategory = cat;
+        renderCategories();
+        renderMenu();
+      });
+      nav.appendChild(b);
+    });
+    $('catNav').hidden = false;
+  }
+
+  function renderMenu() {
+    const wrap = $('menuContent');
+    wrap.innerHTML = '';
+    const cats = activeCategory === 'הכל' ? categories() : [activeCategory];
+    cats.forEach(cat => {
+      const items = menu.filter(m => m.category === cat);
+      if (!items.length) return;
+      const section = document.createElement('section');
+      section.className = 'menu-section';
+      const h = document.createElement('h2');
+      h.className = 'menu-section__title';
+      h.textContent = cat;
+      section.appendChild(h);
+      const grid = document.createElement('div');
+      grid.className = 'menu-grid';
+      items.forEach((item, i) => grid.appendChild(dishCard(item, i)));
+      section.appendChild(grid);
+      wrap.appendChild(section);
+    });
+  }
+
+  function dishCard(item, i) {
+    const card = document.createElement('article');
+    card.className = 'dish-card';
+    card.style.animationDelay = Math.min(i * 40, 300) + 'ms';
+    card.innerHTML =
+      '<div class="dish-card__top">' +
+        '<h3 class="dish-card__name"></h3>' +
+        '<span class="dish-card__price">' + fmt(item.price) + '</span>' +
+      '</div>' +
+      '<p class="dish-card__desc"></p>' +
+      '<div class="dish-card__actions"></div>';
+    card.querySelector('.dish-card__name').textContent = item.name;
+    card.querySelector('.dish-card__desc').textContent = item.description || '';
+    renderCardActions(card.querySelector('.dish-card__actions'), item);
+    return card;
+  }
+
+  function renderCardActions(box, item) {
+    box.innerHTML = '';
+    const entry = cart.get(item.id);
+    if (!entry) {
+      const add = document.createElement('button');
+      add.className = 'btn btn--primary btn--sm';
+      add.type = 'button';
+      add.textContent = '+ הוספה';
+      add.setAttribute('aria-label', 'הוסף ' + item.name + ' להזמנה');
+      add.addEventListener('click', () => {
+        cart.set(item.id, { item, quantity: 1, special_request: '' });
+        renderCardActions(box, item);
+        syncCartUI();
+        toast(item.name + ' נוסף להזמנה', 'success');
+      });
+      box.appendChild(add);
+    } else {
+      box.appendChild(stepper(item, entry, () => renderCardActions(box, item)));
+    }
+  }
+
+  function stepper(item, entry, onChange) {
+    const s = document.createElement('div');
+    s.className = 'stepper';
+    s.setAttribute('role', 'group');
+    s.setAttribute('aria-label', 'כמות עבור ' + item.name);
+
+    const minus = document.createElement('button');
+    minus.className = 'stepper__btn'; minus.type = 'button';
+    minus.textContent = '−';
+    minus.setAttribute('aria-label', 'הפחת כמות');
+
+    const count = document.createElement('span');
+    count.className = 'stepper__count';
+    count.textContent = entry.quantity;
+    count.setAttribute('aria-live', 'polite');
+
+    const plus = document.createElement('button');
+    plus.className = 'stepper__btn'; plus.type = 'button';
+    plus.textContent = '+';
+    plus.setAttribute('aria-label', 'הוסף כמות');
+
+    minus.addEventListener('click', () => {
+      entry.quantity--;
+      if (entry.quantity <= 0) cart.delete(item.id);
+      onChange(); syncCartUI();
+    });
+    plus.addEventListener('click', () => {
+      if (entry.quantity >= 20) return;
+      entry.quantity++;
+      onChange(); syncCartUI();
+    });
+
+    s.append(minus, count, plus);
+    return s;
+  }
+
+  /* ─── Cart UI ─── */
+  function cartCount() { return [...cart.values()].reduce((n, e) => n + e.quantity, 0); }
+  function cartTotal() { return [...cart.values()].reduce((n, e) => n + e.quantity * e.item.price, 0); }
+
+  function syncCartUI() {
+    const n = cartCount();
+    $('cartCount').textContent = n;
+    $('cartTotal').textContent = fmt(cartTotal());
+    $('sheetTotal').textContent = fmt(cartTotal());
+    $('cartBar').classList.toggle('is-visible', n > 0 && $('trackingView').hidden);
+    $('openCartBtn').setAttribute('aria-label',
+      'צפייה בהזמנה, ' + n + ' פריטים, סה״כ ' + fmt(cartTotal()));
+    if (isSheetOpen()) renderCartItems();
+    if (n === 0 && isSheetOpen()) closeSheet();
+  }
+
+  function renderCartItems() {
+    const box = $('cartItems');
+    box.innerHTML = '';
+    if (!cart.size) {
+      box.innerHTML = '<div class="empty-state"><span class="empty-state__icon">🛒</span><p>הסל ריק</p></div>';
+      return;
+    }
+    cart.forEach((entry, id) => {
+      const row = document.createElement('div');
+      row.className = 'cart-item';
+
+      const top = document.createElement('div');
+      top.className = 'cart-item__row';
+      const info = document.createElement('div');
+      const name = document.createElement('div');
+      name.className = 'cart-item__name';
+      name.textContent = entry.item.name;
+      const price = document.createElement('div');
+      price.className = 'cart-item__price';
+      price.textContent = fmt(entry.item.price) + ' ליחידה · ' + fmt(entry.item.price * entry.quantity);
+      info.append(name, price);
+      top.append(info, stepper(entry.item, entry, () => { renderMenu(); renderCartItems(); }));
+      row.appendChild(top);
+
+      const reqField = document.createElement('div');
+      reqField.className = 'field';
+      const input = document.createElement('input');
+      input.className = 'field__input';
+      input.type = 'text';
+      input.placeholder = 'בקשה מיוחדת למנה (למשל: בלי בצל)';
+      input.maxLength = 120;
+      input.value = entry.special_request;
+      input.setAttribute('aria-label', 'בקשה מיוחדת עבור ' + entry.item.name);
+      input.addEventListener('input', () => { entry.special_request = input.value; });
+      reqField.appendChild(input);
+      row.appendChild(reqField);
+
+      const remove = document.createElement('button');
+      remove.className = 'cart-item__remove';
+      remove.type = 'button';
+      remove.textContent = 'הסרה מההזמנה';
+      remove.addEventListener('click', () => {
+        cart.delete(id);
+        renderMenu(); renderCartItems(); syncCartUI();
+      });
+      row.appendChild(remove);
+
+      box.appendChild(row);
+    });
+  }
+
+  /* ─── Sheet open/close ─── */
+  let lastFocused = null;
+  function isSheetOpen() { return $('cartSheet').classList.contains('is-open'); }
+  function openSheet() {
+    lastFocused = document.activeElement;
+    renderCartItems();
+    $('cartSheet').classList.add('is-open');
+    $('sheetOverlay').classList.add('is-open');
+    $('closeCartBtn').focus();
+  }
+  function closeSheet() {
+    $('cartSheet').classList.remove('is-open');
+    $('sheetOverlay').classList.remove('is-open');
+    if (lastFocused) lastFocused.focus();
+  }
+  $('openCartBtn').addEventListener('click', openSheet);
+  $('closeCartBtn').addEventListener('click', closeSheet);
+  $('sheetOverlay').addEventListener('click', closeSheet);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && isSheetOpen()) closeSheet();
+  });
+
+  /* ─── Submit order ─── */
+  $('submitOrderBtn').addEventListener('click', async () => {
+    if (!cart.size) return;
+    const btn = $('submitOrderBtn');
+    btn.disabled = true;
+    btn.textContent = 'שולח...';
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table_number: table,
+          notes: $('orderNotes').value.trim(),
+          items: [...cart.values()].map(e => ({
+            menu_item_id: e.item.id,
+            quantity: e.quantity,
+            special_request: e.special_request.trim(),
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error();
+      cart.clear();
+      $('orderNotes').value = '';
+      closeSheet();
+      syncCartUI();
+      localStorage.setItem(trackKey, data.order_id);
+      showTracking(data.order_id);
+      toast('ההזמנה נשלחה למטבח! 🎉', 'success');
+    } catch {
+      toast('שליחת ההזמנה נכשלה — נסו שוב', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'שליחת הזמנה למטבח 🚀';
+    }
+  });
+
+  /* ─── Order tracking ─── */
+  const STEPS = [
+    { key: 'new',       label: 'ההזמנה נשלחה',   hint: 'ממתינה לאישור המסעדה', icon: '📨' },
+    { key: 'seen',      label: 'התקבלה במטבח',   hint: 'הצוות ראה את ההזמנה',   icon: '👀' },
+    { key: 'preparing', label: 'בהכנה',            hint: 'השפים על זה!',            icon: '👨‍🍳' },
+    { key: 'ready',     label: 'מוכנה!',           hint: 'בדרך לשולחן שלכם',       icon: '🛎️' },
+    { key: 'served',    label: 'הוגשה',            hint: 'בתיאבון! 😋',             icon: '✅' },
+  ];
+  const STEP_INDEX = { new: 0, seen: 1, preparing: 2, ready: 3, served: 4 };
+
+  function showTracking(orderId) {
+    $('menuView').hidden = true;
+    $('catNav').hidden = true;
+    $('cartBar').classList.remove('is-visible');
+    $('trackingView').hidden = false;
+    $('trackOrderNum').textContent = '#' + orderId;
+    renderSteps('new');
+    pollStatus(orderId);
+    clearInterval(pollTimer);
+    pollTimer = setInterval(() => pollStatus(orderId), 5000);
+  }
+
+  function renderSteps(status) {
+    const idx = STEP_INDEX[status] ?? 0;
+    const list = $('trackSteps');
+    list.innerHTML = '';
+    STEPS.forEach((s, i) => {
+      const li = document.createElement('li');
+      li.className = 'step ' + (i < idx ? 'is-done' : i === idx ? 'is-active' : 'is-pending');
+      li.innerHTML =
+        '<span class="step__dot">' + (i < idx ? '✓' : s.icon) + '</span>' +
+        '<span class="step__text"><span class="step__label"></span><span class="step__hint"></span></span>';
+      li.querySelector('.step__label').textContent = s.label;
+      li.querySelector('.step__hint').textContent = s.hint;
+      list.appendChild(li);
+    });
+    const current = STEPS[idx];
+    $('trackIcon').textContent = current.icon;
+    $('trackTitle').textContent = status === 'served' ? 'ההזמנה הוגשה — בתיאבון!' : current.label;
+  }
+
+  async function pollStatus(orderId) {
+    try {
+      const res = await fetch('/api/orders');
+      if (!res.ok) return;
+      const orders = await res.json();
+      const mine = orders.find(o => o.id === Number(orderId));
+      if (mine) {
+        renderSteps(mine.status);
+      } else {
+        // No longer active → served (or cancelled); show final state
+        renderSteps('served');
+        clearInterval(pollTimer);
+        localStorage.removeItem(trackKey);
+      }
+    } catch { /* transient network error — keep polling */ }
+  }
+
+  $('newOrderBtn').addEventListener('click', () => {
+    clearInterval(pollTimer);
+    localStorage.removeItem(trackKey);
+    $('trackingView').hidden = true;
+    $('menuView').hidden = false;
+    $('catNav').hidden = false;
+    syncCartUI();
+    window.scrollTo({ top: 0 });
+  });
+
+  /* ─── Init ─── */
+  loadMenu().then(() => {
+    const saved = localStorage.getItem(trackKey);
+    if (saved) showTracking(saved);
+  });
+})();
+</script>
+</body>
+</html>
