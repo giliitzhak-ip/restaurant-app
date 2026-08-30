@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>SKYLINE — Drone Cinematography</title>
+<meta name="description" content="A drone cinematography and flight simulation game: fly a camera drone over procedural landscapes and shoot the best showreel you can." />
+<link rel="stylesheet" href="styles.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚁</text></svg>" />
+</head>
+<body>
+<div id="app">
+  <canvas id="scene"></canvas>
+  <canvas id="hud"></canvas>
+
+  <div id="overlay">
+
+    <!-- ── Boot ─────────────────────────────────────────────────────────── -->
+    <section class="screen active" id="screen-boot">
+      <div class="boot-inner">
+        <div class="wordmark">
+          <span class="mark">▲</span>
+          <div>
+            <h1>SKYLINE</h1>
+            <p class="tag">Drone Cinematography &amp; Flight Simulator</p>
+          </div>
+        </div>
+        <p class="boot-copy">
+          Five procedural regions. One camera drone. Fly clean lines, read the
+          light, and bring back a showreel worth grading.
+        </p>
+        <button class="btn primary big" data-action="boot-start">Enter the hangar</button>
+        <p class="hint">Keyboard &amp; mouse or gamepad · Click the viewport in flight to capture the mouse for gimbal control</p>
+      </div>
+    </section>
+
+    <!-- ── Hangar / map select ──────────────────────────────────────────── -->
+    <section class="screen" id="screen-hangar">
+      <header class="topbar">
+        <div class="brand"><span class="mark">▲</span> SKYLINE</div>
+        <nav>
+          <button class="btn ghost" data-action="open-controls">Controls</button>
+          <button class="btn ghost" data-action="open-records">Records</button>
+          <button class="btn ghost" data-action="open-settings">Settings</button>
+        </nav>
+      </header>
+      <div class="hangar">
+        <div class="map-list" id="map-list"></div>
+        <aside class="map-detail" id="map-detail"></aside>
+      </div>
+    </section>
+
+    <!-- ── Briefing ─────────────────────────────────────────────────────── -->
+    <section class="screen" id="screen-brief">
+      <div class="brief-card" id="brief-card"></div>
+    </section>
+
+    <!-- ── Loading ──────────────────────────────────────────────────────── -->
+    <section class="screen" id="screen-loading">
+      <div class="loading">
+        <div class="spinner"></div>
+        <h2 id="loading-title">Generating terrain…</h2>
+        <p id="loading-sub" class="hint">Carving ridgelines and placing landmarks</p>
+      </div>
+    </section>
+
+    <!-- ── Pause ────────────────────────────────────────────────────────── -->
+    <section class="screen" id="screen-pause">
+      <div class="pause-card">
+        <h2>Paused</h2>
+        <p class="hint" id="pause-sub"></p>
+        <div class="row">
+          <button class="btn primary" data-action="resume">Resume flight</button>
+          <button class="btn" data-action="open-controls">Controls</button>
+          <button class="btn" data-action="open-settings">Settings</button>
+        </div>
+        <div class="row">
+          <button class="btn ghost" data-action="end-run">End run &amp; grade showreel</button>
+          <button class="btn ghost danger" data-action="abort">Abandon to hangar</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Results ──────────────────────────────────────────────────────── -->
+    <section class="screen" id="screen-results">
+      <div class="results" id="results-body"></div>
+    </section>
+
+    <!-- ── Modals ───────────────────────────────────────────────────────── -->
+    <div class="modal" id="modal-controls">
+      <div class="modal-card">
+        <h2>Flight &amp; camera controls</h2>
+        <div class="ctrl-grid" id="controls-grid"></div>
+        <button class="btn primary" data-action="close-modal">Close</button>
+      </div>
+    </div>
+
+    <div class="modal" id="modal-settings">
+      <div class="modal-card">
+        <h2>Settings</h2>
+        <div class="settings" id="settings-body"></div>
+        <button class="btn primary" data-action="close-modal">Close</button>
+      </div>
+    </div>
+
+    <div class="modal" id="modal-records">
+      <div class="modal-card wide">
+        <h2>Records</h2>
+        <div id="records-body"></div>
+        <div class="row">
+          <button class="btn ghost danger" data-action="clear-records">Clear all records</button>
+          <button class="btn primary" data-action="close-modal">Close</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="fps"></div>
+  <noscript><p class="noscript">SKYLINE needs JavaScript enabled.</p></noscript>
+</div>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

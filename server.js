@@ -87,7 +87,7 @@ function json(res, data, status) {
   res.end(payload);
 }
 
-const MIME = { '.html':'text/html','.js':'application/javascript','.css':'text/css','.json':'application/json','.png':'image/png','.ico':'image/x-icon','.svg':'image/svg+xml' };
+const MIME = { '.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.mjs':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.png':'image/png','.jpg':'image/jpeg','.ico':'image/x-icon','.svg':'image/svg+xml','.webmanifest':'application/manifest+json' };
 function serveFile(res, filePath) {
   fs.readFile(filePath, (err, data) => {
     if (err) { res.writeHead(404); res.end('Not found'); return; }
@@ -212,11 +212,14 @@ http.createServer(function(req, res) {
 
   var filePath = path.join(PUBLIC, urlPath === '/' ? 'restaurant.html' : urlPath);
   if (!filePath.startsWith(PUBLIC)) { res.writeHead(403); return res.end(); }
+  // Directory-style paths (e.g. /drone/) resolve to their index.html.
+  if (urlPath.endsWith('/')) filePath = path.join(filePath, 'index.html');
   serveFile(res, filePath);
 
 }).listen(PORT, function() {
   console.log('\n🍽️  שרת המסעדה פועל!\n');
   console.log('   📺  ממשק מסעדה  →  http://localhost:' + PORT + '/restaurant.html');
   console.log('   📱  ממשק לקוח   →  http://localhost:' + PORT + '/customer.html?table=5');
+  console.log('   🚁  SKYLINE      →  http://localhost:' + PORT + '/drone/');
   console.log('\n   (החלף ?table=5 במספר השולחן)\n');
 });
