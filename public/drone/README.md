@@ -27,6 +27,28 @@ browser's module CORS rules.
 Requires a modern browser (Chrome, Edge, Firefox, Safari 16.4+). Nothing is
 sent anywhere; settings and records live in `localStorage`.
 
+### Installing it as an app
+
+SKYLINE is a PWA: it installs to the home screen or dock, launches fullscreen
+with no browser chrome, and plays entirely offline.
+
+* **Android / Chrome / Edge** — an **Install app** button appears in the
+  hangar and on the title screen; it fires the browser's own install prompt.
+* **iPhone / iPad** — iOS gives web apps no install prompt, so the button opens
+  step-by-step instructions instead: Safari → Share → *Add to Home Screen*.
+* **Desktop Chrome / Edge** — same Install button, or the install icon in the
+  address bar.
+
+**Installation and offline play both require a secure origin.** Over
+`http://localhost` everything works; over a plain `http://192.168.x.x` LAN
+address the browser will refuse to register the service worker, and the game
+runs as an ordinary page. To install from a phone on your LAN, put the server
+behind HTTPS — a tunnel (`cloudflared tunnel --url http://localhost:3000`) is
+the quickest route.
+
+Once installed the game is fully offline: the whole shell — 30 files, no
+runtime assets — is precached on first load.
+
 ---
 
 ## Playing
@@ -142,6 +164,10 @@ battery in reserve. Losing the airframe costs you 450 points and the bonus.
 public/drone/
 ├── index.html          screens + the two canvases
 ├── styles.css          UI chrome
+├── manifest.webmanifest  app identity, icons, fullscreen + landscape
+├── sw.js               service worker: offline shell, atomic updates
+├── icons/              app icons (any + maskable) and the favicon
+├── screenshots/        install-prompt screenshot
 └── src/
     ├── main.js         state machine, loop, mission lifecycle, objectives
     ├── ui.js           hangar / briefing / pause / results / modals (DOM)
@@ -157,6 +183,7 @@ public/drone/
     ├── scoring.js      the cinematography judge and the showreel
     ├── input.js        keyboard + mouse + gamepad + touch → one control state
     ├── touch.js        on-screen sticks, camera buttons, gimbal trackpad
+    ├── pwa.js          service-worker registration, install prompt, updates
     ├── noise.js        seeded value / ridged / billow noise
     ├── math.js         vectors, damping, colour helpers
     └── storage.js      settings and records (localStorage, fails soft)
@@ -227,6 +254,26 @@ Three things change on a small screen, all driven from `resize()`:
 Browser gestures are suppressed over the game surface (`touch-action: none`,
 `overscroll-behavior: none`, pinch and double-tap zoom blocked) so a stick drag
 never scrolls or zooms the page.
+
+### Offline and updates
+
+`sw.js` precaches the shell into one versioned cache and then serves every
+shell file **cache-only**. That is deliberate: with a stale-while-revalidate
+policy a page can end up running a new `index.html` against modules that are
+still the old build. Cache-only means whatever build you loaded stays
+internally consistent for the whole session.
+
+A new build therefore lands atomically, and the only maintenance cost is one
+line: **bump `CACHE` in `sw.js` whenever a file in `SHELL` changes.** The new
+worker precaches the new shell, activates, drops the old cache and takes over;
+the page notices the takeover and reloads onto the new build.
+
+That reload is deferred while it would cost the player something — the guard
+covers flying, paused, crashing and the results screen, and the reload happens
+when they next return to the hangar. Distinguishing a real update from the
+first-ever `clients.claim()` matters here: the flag is only set when a worker
+reaches `installed` *while a controller already exists*, so a first visit never
+reload-flashes.
 
 ### Performance
 

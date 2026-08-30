@@ -1,0 +1,42 @@
+{
+  "id": "/drone/",
+  "name": "SKYLINE — Drone Cinematography",
+  "short_name": "SKYLINE",
+  "description": "Fly a camera drone over five procedural regions and bring back a showreel graded on composition, light and stability.",
+  "start_url": "./?src=pwa",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone", "minimal-ui"],
+  "orientation": "landscape",
+  "background_color": "#05070b",
+  "theme_color": "#05070b",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["games", "entertainment", "simulation"],
+  "prefer_related_applications": false,
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "screenshots": [
+    {
+      "src": "screenshots/flight-wide.jpg",
+      "sizes": "1280x720",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "Flying Aiguille Ridge at golden hour"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Fly now",
+      "short_name": "Fly",
+      "description": "Jump straight to the hangar",
+      "url": "./?src=shortcut",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

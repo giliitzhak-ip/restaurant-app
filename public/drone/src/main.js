@@ -14,6 +14,7 @@ import { HUD } from './hud.js';
 import { Input } from './input.js';
 import { UI } from './ui.js';
 import { TouchControls } from './touch.js';
+import { InstallManager, isStandalone } from './pwa.js';
 import { analyzeShot, breakdownRows, ClipRecorder, buildShowreel, gradeFor } from './scoring.js';
 import { loadSettings, saveSettings, saveRecord } from './storage.js';
 import { clamp, clamp01, formatTime, DEG } from './math.js';
@@ -67,10 +68,27 @@ class Game {
     this.fpsAvg = 60;
     this.autoQualityChecked = false;
 
+    this.install = new InstallManager(
+      (st) => {
+        document.body.classList.toggle('can-install', st.canInstall);
+        document.body.classList.toggle('installed', st.installed);
+      },
+      // Never interrupt a mission — or the results screen the player is
+      // still reading — with an app update.
+      () => this.state === 'flying' || this.state === 'crashing' ||
+        this.state === 'paused' || this.state === 'results',
+    );
+    this.install.start();
+
     this.ui = new UI({
       settings: this.settings,
       isTouch: this.isTouch,
+      standalone: isStandalone(),
       onFullscreen: () => this.toggleFullscreen(),
+      onInstall: async () => {
+        const outcome = await this.install.prompt();
+        if (outcome === 'unavailable') this.ui.openModal('install');
+      },
       onLaunch: (map, weather, time) => {
         this.pending = { map, weather, time };
         this.ui.renderBrief(map, weather, time);
@@ -202,7 +220,7 @@ class Game {
   async goFullscreen() {
     const el = document.documentElement;
     try {
-      if (!document.fullscreenElement) {
+      if (!document.fullscreenElement && !isStandalone()) {
         if (el.requestFullscreen) await el.requestFullscreen({ navigationUI: 'hide' });
         else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
       }
@@ -296,6 +314,8 @@ class Game {
 
   abort(silent) {
     this.state = 'menu';
+    // Safe point: if a new build is waiting, take it now.
+    if (this.install.updatePending && this.install.maybeReload()) return;
     this.input.enabled = false;
     this.input.exitPointerLock();
     this.recorder.reset();

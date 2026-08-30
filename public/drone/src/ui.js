@@ -10,6 +10,7 @@ import { loadRecords, clearRecords } from './storage.js';
 import { POI_INFO } from './world.js';
 import { formatTime, clamp01 } from './math.js';
 import { QUALITY } from './renderer.js';
+import { installInstructions } from './pwa.js';
 
 const CONTROLS = [
   ['Flight', [
@@ -116,6 +117,7 @@ export class UI {
         case 'close-modal': this.closeModals(); break;
         case 'clear-records': clearRecords(); this.renderRecords(); this.renderHangar(); break;
         case 'fullscreen': this.h.onFullscreen(); break;
+        case 'install': this.h.onInstall(); break;
         case 'launch': this.h.onLaunch(this.selectedMap, this.weather, this.time); break;
         case 'brief-launch': this.h.onBriefLaunch(); break;
         case 'brief-back': this.show('hangar'); break;
@@ -148,6 +150,7 @@ export class UI {
     if (name === 'controls') this.renderControls();
     if (name === 'settings') this.renderSettings();
     if (name === 'records') this.renderRecords();
+    if (name === 'install') this.renderInstall();
     for (const k in this.modals) this.modals[k].classList.toggle('open', k === name);
   }
 
@@ -435,6 +438,17 @@ export class UI {
     el.querySelectorAll('input[type=text]').forEach((inp) => {
       inp.addEventListener('change', () => this.h.onSetting(inp.dataset.set, inp.value.toUpperCase()));
     });
+  }
+
+  renderInstall() {
+    const el = document.getElementById('install-body');
+    const i = installInstructions();
+    el.innerHTML =
+      '<p class="hint" style="margin:0 0 14px">' + i.title + '</p>' +
+      '<ol class="install-steps">' +
+      i.steps.map((t) => '<li><span>' + t + '</span></li>').join('') +
+      '</ol>' +
+      '<div class="install-note">' + i.note + '</div>';
   }
 
   renderRecords() {

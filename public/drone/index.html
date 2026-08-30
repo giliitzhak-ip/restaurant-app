@@ -10,7 +10,12 @@
 <title>SKYLINE — Drone Cinematography</title>
 <meta name="description" content="A drone cinematography and flight simulation game: fly a camera drone over procedural landscapes and shoot the best showreel you can." />
 <link rel="stylesheet" href="styles.css" />
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚁</text></svg>" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<meta name="application-name" content="SKYLINE" />
+<meta name="apple-mobile-web-app-title" content="SKYLINE" />
 </head>
 <body>
 <div id="app">
@@ -72,7 +77,10 @@
           Five procedural regions. One camera drone. Fly clean lines, read the
           light, and bring back a showreel worth grading.
         </p>
-        <button class="btn primary big" data-action="boot-start">Enter the hangar</button>
+        <div class="row">
+          <button class="btn primary big" data-action="boot-start">Enter the hangar</button>
+          <button class="btn big install-only" data-action="install">Install app</button>
+        </div>
         <p class="hint">Keyboard &amp; mouse or gamepad · Click the viewport in flight to capture the mouse for gimbal control</p>
       </div>
     </section>
@@ -85,6 +93,7 @@
           <button class="btn ghost" data-action="open-controls">Controls</button>
           <button class="btn ghost" data-action="open-records">Records</button>
           <button class="btn ghost" data-action="open-settings">Settings</button>
+          <button class="btn ghost install-only" data-action="install">Install app</button>
           <button class="btn ghost fs-only" data-action="fullscreen" aria-label="Fullscreen">⛶</button>
         </nav>
       </header>
@@ -143,6 +152,14 @@
       <div class="modal-card">
         <h2>Settings</h2>
         <div class="settings" id="settings-body"></div>
+        <button class="btn primary" data-action="close-modal">Close</button>
+      </div>
+    </div>
+
+    <div class="modal" id="modal-install">
+      <div class="modal-card">
+        <h2>Install SKYLINE</h2>
+        <div id="install-body"></div>
         <button class="btn primary" data-action="close-modal">Close</button>
       </div>
     </div>
