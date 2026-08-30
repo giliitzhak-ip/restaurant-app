@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meridian Field Ops — Field Services &amp; Logistics Tycoon</title>
+<meta name="description" content="Run a field services and logistics operation: dispatch crews, manage equipment, win contracts and balance the books.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230b1220'/><path d='M20 68 L50 26 L80 68 Z' fill='none' stroke='%2322d3ee' stroke-width='9' stroke-linejoin='round'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/tailwind.css">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="h-full overflow-hidden bg-ink-950 font-sans text-slate-200 antialiased">
+
+<!-- ══ Boot / start screen ══════════════════════════════════════════════ -->
+<div id="boot" class="fixed inset-0 z-50 flex items-center justify-center bg-ink-950 px-4">
+  <div class="pointer-events-none absolute inset-0 opacity-60 bg-grid"></div>
+  <div class="relative w-full max-w-lg rounded-2xl border border-slate-800 bg-ink-900/90 p-8 shadow-2xl shadow-black/60">
+    <div class="flex items-center gap-3">
+      <svg viewBox="0 0 100 100" class="h-11 w-11"><rect width="100" height="100" rx="22" fill="#0b1220"/><path d="M20 68 L50 26 L80 68 Z" fill="none" stroke="#22d3ee" stroke-width="9" stroke-linejoin="round"/></svg>
+      <div>
+        <h1 class="text-xl font-bold tracking-tight text-slate-50">MERIDIAN FIELD OPS</h1>
+        <p class="font-mono text-[11px] uppercase tracking-[0.18em] text-cyan-400/80">Field services &amp; logistics command</p>
+      </div>
+    </div>
+
+    <p class="mt-5 text-sm leading-relaxed text-slate-400">
+      You run a field services outfit: two vans, three technicians and a phone that will not stop ringing.
+      Route crews, keep the equipment turning, sign the right contracts and grow the territory —
+      without letting the reputation, the fleet or the balance sheet fall over.
+    </p>
+
+    <label class="mt-6 block text-[11px] font-semibold uppercase tracking-wider text-slate-500">Company name</label>
+    <input id="boot-name" type="text" maxlength="34" value="Meridian Field Services"
+      class="mt-1.5 w-full rounded-lg border border-slate-700 bg-ink-850 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/40">
+
+    <div class="mt-6 flex flex-col gap-2.5">
+      <button id="boot-new" class="w-full rounded-lg bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-ink-950 transition hover:bg-cyan-400 active:scale-[0.99]">Start new operation</button>
+      <button id="boot-continue" class="hidden w-full rounded-lg border border-slate-700 bg-ink-850 px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-ink-800">Continue saved game</button>
+    </div>
+
+    <div class="mt-6 grid grid-cols-3 gap-2 border-t border-slate-800 pt-4 text-center font-mono text-[10px] uppercase tracking-wider text-slate-600">
+      <div><span class="block text-slate-400">Space</span>pause</div>
+      <div><span class="block text-slate-400">1 / 2 / 3</span>speed</div>
+      <div><span class="block text-slate-400">Ctrl+S</span>save</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Application shell ═══════════════════════════════════════════════ -->
+<div id="app" class="flex h-full flex-col opacity-0 transition-opacity duration-500">
+
+  <!-- Top command bar -->
+  <header class="z-30 flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-800 bg-ink-900/95 px-3 py-2 backdrop-blur">
+    <div class="flex items-center gap-2.5">
+      <svg viewBox="0 0 100 100" class="h-7 w-7 shrink-0"><rect width="100" height="100" rx="22" fill="#0b1220"/><path d="M20 68 L50 26 L80 68 Z" fill="none" stroke="#22d3ee" stroke-width="9" stroke-linejoin="round"/></svg>
+      <div class="leading-tight">
+        <p id="hud-company" class="max-w-[13rem] truncate text-[13px] font-semibold text-slate-100">Meridian Field Services</p>
+        <p class="font-mono text-[9.5px] uppercase tracking-[0.16em] text-cyan-500/70">Operations command</p>
+      </div>
+    </div>
+
+    <div class="hidden h-8 w-px bg-slate-800 sm:block"></div>
+
+    <!-- Live financial readout -->
+    <div class="flex flex-1 flex-wrap items-center gap-x-5 gap-y-1">
+      <div class="leading-tight">
+        <p class="font-mono text-[9px] uppercase tracking-wider text-slate-500">Cash</p>
+        <p id="hud-cash" class="font-mono text-[15px] font-bold text-emerald-300">$0</p>
+      </div>
+      <div class="leading-tight">
+        <p class="font-mono text-[9px] uppercase tracking-wider text-slate-500">Today net</p>
+        <p id="hud-net" class="font-mono text-[15px] font-bold text-slate-200">$0</p>
+      </div>
+      <div class="leading-tight">
+        <p class="font-mono text-[9px] uppercase tracking-wider text-slate-500">Tax accrued</p>
+        <p id="hud-tax" class="font-mono text-[15px] font-bold text-amber-300">$0</p>
+      </div>
+      <div class="leading-tight">
+        <p class="font-mono text-[9px] uppercase tracking-wider text-slate-500">CSAT</p>
+        <p id="hud-csat" class="font-mono text-[15px] font-bold text-sky-300">0</p>
+      </div>
+      <div class="hidden leading-tight md:block">
+        <p class="font-mono text-[9px] uppercase tracking-wider text-slate-500">Net worth</p>
+        <p id="hud-networth" class="font-mono text-[15px] font-bold text-slate-200">$0</p>
+      </div>
+    </div>
+
+    <!-- Clock + speed -->
+    <div class="flex items-center gap-3">
+      <div class="text-right leading-tight">
+        <p id="hud-clock" class="font-mono text-[15px] font-bold tabular-nums text-slate-100">06:00</p>
+        <p id="hud-date" class="font-mono text-[9px] uppercase tracking-wider text-slate-500">Y1 · Q1 · D1</p>
+      </div>
+      <div class="flex items-center gap-0.5 rounded-lg border border-slate-700 bg-ink-850 p-0.5" role="group" aria-label="Simulation speed">
+        <button data-speed="0" class="speed-btn" title="Pause (Space)">❚❚</button>
+        <button data-speed="1" class="speed-btn" title="Normal speed (1)">▶</button>
+        <button data-speed="2" class="speed-btn" title="Fast (2)">▶▶</button>
+        <button data-speed="3" class="speed-btn" title="Turbo (3)">▶▶▶</button>
+      </div>
+      <div class="flex items-center gap-1">
+        <button id="btn-save" class="hud-btn" title="Save (Ctrl+S)">Save</button>
+        <button id="btn-menu" class="hud-btn" title="Menu">☰</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main workspace -->
+  <main class="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto p-3 xl:grid-cols-12 xl:overflow-hidden">
+
+    <!-- Left: KPIs, map, log -->
+    <section class="flex min-h-0 flex-col gap-3 xl:col-span-7 2xl:col-span-8">
+
+      <div id="kpi-row" class="grid shrink-0 grid-cols-2 gap-2.5 sm:grid-cols-4"></div>
+
+      <div class="panel relative flex min-h-[22rem] flex-1 flex-col overflow-hidden xl:min-h-0">
+        <div class="flex shrink-0 items-center justify-between border-b border-slate-800 px-3 py-2">
+          <div class="flex items-center gap-2">
+            <h2 class="panel-title">Operations map</h2>
+            <span id="map-summary" class="font-mono text-[10px] text-slate-500"></span>
+          </div>
+          <div class="flex items-center gap-1">
+            <button id="map-zoom-in" class="map-btn" title="Zoom in">+</button>
+            <button id="map-zoom-out" class="map-btn" title="Zoom out">−</button>
+            <button id="map-fit" class="map-btn" title="Fit map (double-click)">⤢</button>
+          </div>
+        </div>
+        <div class="relative min-h-0 flex-1">
+          <canvas id="map" class="absolute inset-0 h-full w-full"></canvas>
+          <div id="map-tooltip" class="pointer-events-none absolute left-0 top-0 z-10 hidden max-w-[16rem] rounded-lg border border-slate-700 bg-ink-900/95 px-2.5 py-2 text-[11px] shadow-xl shadow-black/50 backdrop-blur"></div>
+          <div class="pointer-events-none absolute bottom-2 left-2 flex flex-wrap gap-x-3 gap-y-1 rounded-lg border border-slate-800/80 bg-ink-900/80 px-2.5 py-1.5 font-mono text-[9.5px] uppercase tracking-wider text-slate-400 backdrop-blur">
+            <span class="flex items-center gap-1.5"><i class="dot bg-slate-500"></i>Routine</span>
+            <span class="flex items-center gap-1.5"><i class="dot bg-amber-400"></i>Urgent</span>
+            <span class="flex items-center gap-1.5"><i class="dot bg-rose-500"></i>Emergency</span>
+            <span class="flex items-center gap-1.5"><i class="dot bg-sky-400"></i>Idle unit</span>
+            <span class="flex items-center gap-1.5"><i class="dot bg-emerald-400"></i>On site</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel flex h-44 shrink-0 flex-col overflow-hidden">
+        <div class="flex shrink-0 items-center justify-between border-b border-slate-800 px-3 py-2">
+          <h2 class="panel-title">Activity log</h2>
+          <button id="log-clear" class="font-mono text-[10px] uppercase tracking-wider text-slate-500 transition hover:text-slate-300">Clear</button>
+        </div>
+        <div id="log" class="min-h-0 flex-1 overflow-y-auto"></div>
+      </div>
+    </section>
+
+    <!-- Right: management console -->
+    <aside class="panel flex min-h-[30rem] flex-col overflow-hidden xl:col-span-5 xl:min-h-0 2xl:col-span-4">
+      <nav id="tabs" class="flex shrink-0 flex-wrap gap-0.5 border-b border-slate-800 bg-ink-900/60 px-1.5 pt-1.5" role="tablist"></nav>
+      <div id="panel" class="min-h-0 flex-1 overflow-y-auto"></div>
+    </aside>
+  </main>
+</div>
+
+<!-- Toasts -->
+<div id="toasts" class="pointer-events-none fixed right-3 top-16 z-40 flex flex-col items-end gap-2"></div>
+
+<!-- Modal host -->
+<div id="modal-root" class="pointer-events-none fixed inset-0 z-50 hidden"></div>
+
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/state.js"></script>
+<script src="js/economy.js"></script>
+<script src="js/jobs.js"></script>
+<script src="js/units.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/notifications.js"></script>
+<script src="js/map.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
