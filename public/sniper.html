@@ -28,12 +28,15 @@
     font-family:var(--sans);overflow:hidden;
     -webkit-font-smoothing:antialiased;
     user-select:none;-webkit-user-select:none;
+    overscroll-behavior:none;-webkit-tap-highlight-color:transparent;
   }
   #stage{position:fixed;inset:0}
-  canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:none}
+  canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:none;
+    touch-action:none}
   body.show-cursor canvas#cv{cursor:crosshair}
 
   /* Ambient screen treatment */
+  body.touch #grain{display:none}
   #grain{position:absolute;inset:0;pointer-events:none;opacity:.05;mix-blend-mode:overlay;
     background-image:radial-gradient(rgba(255,255,255,.7) .5px,transparent .5px);
     background-size:3px 3px}
@@ -44,6 +47,8 @@
   #overlay{position:absolute;inset:0;display:grid;place-items:center;padding:24px;
     background:radial-gradient(120% 90% at 50% 40%,rgba(4,7,6,.55),rgba(3,5,4,.93));
     backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+  body.touch #overlay{backdrop-filter:none;-webkit-backdrop-filter:none;
+    background:radial-gradient(120% 90% at 50% 40%,rgba(4,7,6,.82),rgba(3,5,4,.97))}
   #overlay[hidden]{display:none}
   .screen{display:none;width:min(780px,100%);max-height:100%;overflow:auto}
   .screen.on{display:block;animation:fadeUp .32s cubic-bezier(.2,.8,.3,1) both}
@@ -116,6 +121,75 @@
   .tag{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.2em;
     padding:4px 9px;border:1px solid var(--line);color:var(--accent-dim);text-transform:uppercase}
 
+  /* ── Touch controls ───────────────────────────────────────────────── */
+  :root{--btn:60px;--fire:88px;--pad-gap:12px;--pad-off:16px}
+  @media (max-height:420px){:root{--btn:52px;--fire:74px;--pad-gap:9px;--pad-off:10px}}
+  #pad{position:absolute;inset:0;pointer-events:none;display:none}
+  body.touch #pad{display:block}
+  #pad[hidden]{display:none!important}
+  .pad-col{position:absolute;bottom:calc(var(--pad-off) + env(safe-area-inset-bottom));
+    display:flex;flex-direction:column-reverse;gap:var(--pad-gap);align-items:center}
+  .pad-col.left{left:calc(var(--pad-off) + env(safe-area-inset-left));align-items:flex-start}
+  .pad-col.right{right:calc(var(--pad-off) + env(safe-area-inset-right));align-items:flex-end}
+
+  .tbtn{
+    pointer-events:auto;touch-action:none;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    width:var(--btn);height:var(--btn);border-radius:50%;
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--accent);background:rgba(8,14,11,.72);
+    border:1px solid var(--line-strong);
+    transition:background .12s,transform .08s,border-color .12s;
+    padding:0;
+  }
+  .tbtn small{font-size:8px;color:var(--muted);letter-spacing:.06em}
+  .tbtn:active,.tbtn.held{background:rgba(138,255,193,.24);transform:scale(.94)}
+  .tbtn.on{border-color:var(--accent);background:rgba(138,255,193,.16)}
+  .tbtn.fire{width:var(--fire);height:var(--fire);font-size:11px;letter-spacing:.2em;
+    color:var(--warn);border-color:rgba(255,194,75,.65);background:rgba(30,16,4,.5)}
+  .tbtn.fire:active{background:rgba(255,194,75,.3)}
+  .tbtn.fire.spent{color:var(--danger);border-color:rgba(255,107,107,.6)}
+  .tbtn.urgent{border-color:var(--warn);color:var(--warn);
+    animation:tpulse 1.1s ease-in-out infinite}
+  @keyframes tpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,194,75,.22)}
+    50%{box-shadow:0 0 0 9px rgba(255,194,75,0)}}
+  @media (prefers-reduced-motion:reduce){
+    .tbtn{transition:none}.tbtn.urgent{animation:none}
+    .screen.on{animation:none}#hint.on{animation:none}
+  }
+
+  /* Shorter phones in landscape: tighten the stack. */
+  @media (max-height:420px){
+    .tbtn{font-size:9px}
+    .tbtn.fire{font-size:10px}
+  }
+
+  /* Overlay panels need to scroll on a phone, and sit inside the safe area. */
+  .screen{touch-action:pan-y}
+  #overlay{padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right))
+    max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+  @media (max-width:720px),(max-height:520px){
+    .panel{padding:20px 20px 18px}
+    h1{font-size:clamp(30px,10vw,46px)}
+    .lede{font-size:13.5px;margin-top:10px}
+    .rule{margin:15px 0}
+    .cols{gap:16px}
+    .keys li{padding:4px 0;font-size:12.5px}
+    .stat{padding:10px 11px}
+    .stat .v{font-size:16px}
+    button{padding:14px 18px}
+    .actions{margin-top:16px}
+  }
+
+  /* Control lists: one for pointers, one for thumbs. */
+  .keys.for-touch{display:none}
+  body.touch .keys.for-pointer{display:none}
+  body.touch .keys.for-touch{display:block}
+  .rotate-tip{display:none}
+  @media (orientation:portrait){
+    body.touch .rotate-tip{display:inline-block;margin-top:10px}
+  }
+
   /* Pointer-lock hint */
   #hint{position:absolute;left:50%;bottom:12%;transform:translateX(-50%);
     font-family:var(--mono);font-size:11.5px;letter-spacing:.24em;text-transform:uppercase;
@@ -135,6 +209,16 @@
   <canvas id="cv"></canvas>
   <div id="grain"></div>
   <div id="edge"></div>
+  <div id="pad" hidden>
+    <div class="pad-col left">
+      <button class="tbtn" id="t-steady" aria-label="Hold breath to steady the aim">Steady</button>
+      <button class="tbtn" id="t-reload" aria-label="Reload the magazine">Reload</button>
+    </div>
+    <div class="pad-col right">
+      <button class="tbtn fire" id="t-fire" aria-label="Fire">Fire</button>
+      <button class="tbtn" id="t-scope" aria-label="Raise or lower the scope">Scope<small id="t-mag">7×</small></button>
+    </div>
+  </div>
   <div id="hint">Click to take the rifle</div>
   <div id="muted">◼ audio muted — press M</div>
 
@@ -150,7 +234,7 @@
       <div class="cols">
         <div>
           <p class="label">Controls</p>
-          <ul class="keys">
+          <ul class="keys for-pointer">
             <li><kbd>Move</kbd><b>Traverse the rifle</b></li>
             <li><kbd>LMB</kbd><b>Fire · then cycle the bolt</b></li>
             <li><kbd>RMB</kbd><b>Raise / lower the scope</b></li>
@@ -159,6 +243,15 @@
             <li><kbd>Wheel</kbd><b>Magnification 4× – 12×</b></li>
             <li><kbd>Esc</kbd><b>Pause</b> &nbsp;<kbd>M</kbd><b>Mute</b></li>
           </ul>
+          <ul class="keys for-touch">
+            <li><kbd>Drag</kbd><b>Traverse the rifle</b></li>
+            <li><kbd>Fire</kbd><b>Send it · then the bolt cycles</b></li>
+            <li><kbd>Scope</kbd><b>Raise / lower the scope</b></li>
+            <li><kbd>Pinch</kbd><b>Magnification 4× – 12×</b></li>
+            <li><kbd>Steady</kbd><b>Hold breath — steady aim</b></li>
+            <li><kbd>Reload</kbd><b>Fresh magazine</b></li>
+          </ul>
+          <span class="tag rotate-tip">Turn sideways for a wider field</span>
         </div>
         <div>
           <p class="label">Range records</p>
@@ -240,6 +333,7 @@ const CFG = {
   hipFov: 0.72,            // rad of horizontal field of view at 1×
   scopeMagMin: 4, scopeMagMax: 12, scopeMagDefault: 7,
   sens: 0.00045,           // rad per mouse pixel at 1× (scaled by 1/mag)
+  touchTrack: 1.0,         // finger-to-world tracking; 1 = the scene sticks to the thumb
 
   /* shooter */
   camH: 1.65,              // eye height above the ground plane, metres
@@ -287,6 +381,26 @@ function mulberry32(seed) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+
+/* ── Device profile ────────────────────────────────────────────────────────
+   One read of the environment, consulted by input, layout and scene density.
+   Both input styles stay live regardless: this only decides what the page
+   presents and how much it draws.                                          */
+
+/** True when the *primary* pointer is a finger. A laptop with a touchscreen
+ *  reports a fine pointer and keeps the desktop treatment; if someone touches
+ *  the screen anyway, the pad appears then (see the touchstart handler). */
+const TOUCH = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+/** Layout mode, which a first touch can switch on later. */
+let padMode = TOUCH;
+/** Phones have device pixels to spare and very little fill rate. */
+const LEAN = TOUCH || (navigator.maxTouchPoints || 0) > 0
+  || Math.min(window.screen.width || 1920, window.screen.height || 1080) < 560;
+const DETAIL_N = LEAN ? 210 : 460;
+const GRASS_N = LEAN ? 200 : 460;
+const CLOUD_N = LEAN ? 6 : 9;
+/** Particle budget per effect. */
+const fxn = count => Math.max(3, Math.round(count * (LEAN ? 0.55 : 1)));
 
 /* ── 2. Persistence ────────────────────────────────────────────────────── */
 
@@ -476,16 +590,24 @@ const Sfx = (() => {
 
 const Input = {
   keys: new Set(),
-  dx: 0, dy: 0,
+  dx: 0, dy: 0,               // pointer motion, in mouse pixels
+  tdx: 0, tdy: 0,             // finger motion, in screen pixels
   locked: false,
   wheel: 0,
-  _lastX: null, _lastY: null,
+  touchSteady: false,
 
-  get steady() { return this.keys.has('ShiftLeft') || this.keys.has('ShiftRight'); },
+  get steady() {
+    return this.touchSteady || this.keys.has('ShiftLeft') || this.keys.has('ShiftRight');
+  },
 
   consumeMotion() { const m = { x: this.dx, y: this.dy }; this.dx = 0; this.dy = 0; return m; },
+  consumeTouch() { const m = { x: this.tdx, y: this.tdy }; this.tdx = 0; this.tdy = 0; return m; },
   consumeWheel() { const w = this.wheel; this.wheel = 0; return w; },
-  clear() { this.keys.clear(); this.dx = this.dy = 0; },
+  clear() {
+    this.keys.clear();
+    this.dx = this.dy = this.tdx = this.tdy = 0;
+    this.touchSteady = false;
+  },
 };
 
 /* ── Camera, viewport and the one projection everything shares ───────────
@@ -499,19 +621,98 @@ const g2 = cv.getContext('2d', { alpha: false });
 const view = { w: 0, h: 0, dpr: 1, cx: 0, cy: 0, focal: 0, mag: 1, S: 0, scopeR: 0 };
 const cam = { yaw: 0, el: 0 };
 
+/** Reads env(safe-area-inset-*) through a probe element. */
+const insetProbe = document.createElement('div');
+insetProbe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;' +
+  'pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) ' +
+  'env(safe-area-inset-bottom) env(safe-area-inset-left)';
+document.body.appendChild(insetProbe);
+function readInsets() {
+  const cs = getComputedStyle(insetProbe);
+  return {
+    t: parseFloat(cs.paddingTop) || 0, r: parseFloat(cs.paddingRight) || 0,
+    b: parseFloat(cs.paddingBottom) || 0, l: parseFloat(cs.paddingLeft) || 0,
+  };
+}
+
+/* ── Adaptive quality ──────────────────────────────────────────────────────
+   A phone that cannot hold the frame gets fewer pixels and less clutter
+   rather than a slideshow. It steps down only — never back up — so the
+   picture settles instead of oscillating.                                  */
+const Quality = {
+  level: 0,                      // 0 full · 1 reduced · 2 minimum
+  _frames: [],
+  get dprCap()     { return this.level === 0 ? (padMode ? 1.5 : 2) : this.level === 1 ? 1.2 : 1; },
+  get detailFloor(){ return this.level === 0 ? 0.35 : this.level === 1 ? 1.8 : 3.4; },
+  get grassStep()  { return this.level >= 2 ? 3 : this.level === 1 ? 2 : 1; },
+  note(dt) {
+    if (G.state !== 'playing' || this.level >= 2) return;
+    const f = this._frames;
+    f.push(dt);
+    if (f.length < 90) return;
+    f.sort((a, b) => a - b);
+    const median = f[45];
+    f.length = 0;
+    if (median > 0.028) { this.level++; resize(); }
+  },
+};
+
+let vignette = null;
+
+/** Pre-renders the unscoped corner falloff so the frame only blits it. */
+function buildVignette() {
+  const { w, h, cx, cy } = view;
+  const q = 0.25;
+  const c = document.createElement('canvas');
+  c.width = Math.max(2, Math.round(w * q));
+  c.height = Math.max(2, Math.round(h * q));
+  const vg = c.getContext('2d');
+  const grad = vg.createRadialGradient(cx * q, cy * q, Math.min(w, h) * 0.35 * q,
+    cx * q, cy * q, Math.max(w, h) * 0.78 * q);
+  grad.addColorStop(0, 'rgba(0,0,0,0)');
+  grad.addColorStop(1, 'rgba(0,0,0,1)');
+  vg.fillStyle = grad;
+  vg.fillRect(0, 0, c.width, c.height);
+  vignette = c;
+}
+
 function resize() {
   const w = Math.max(320, cv.clientWidth || window.innerWidth);
   const h = Math.max(240, cv.clientHeight || window.innerHeight);
-  view.dpr = Math.min(window.devicePixelRatio || 1, 2);
+  view.dpr = Math.min(window.devicePixelRatio || 1, Quality.dprCap);
   view.w = w; view.h = h;
   cv.width = Math.round(w * view.dpr);
   cv.height = Math.round(h * view.dpr);
   g2.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
   view.cx = w / 2;
   view.cy = h * 0.42;
-  view.focal = w / CFG.hipFov;          // pixels per radian at 1×
+  view.focal = Math.max(w, h * 1.1) / CFG.hipFov;   // pixels per radian at 1×
   view.S = view.focal * view.mag;
-  view.scopeR = Math.min(w, h) * 0.415;
+  view.scopeR = Math.min(w * 0.46, view.cy * 0.97, (h - view.cy) * 0.97);
+
+  // The HUD is laid out in scaled units so it survives a 342 px-tall phone.
+  const k = Math.min(w, h) / 720;
+  view.hud = clamp(k, 0.6, 1.12);       // spacing
+  view.txt = clamp(k, 0.78, 1.12);      // type, floored so labels stay legible
+  const ins = readInsets();
+  const base = 24 * view.hud;
+  view.pad = { l: base + ins.l, r: base + ins.r, t: base + ins.t, b: base + ins.b };
+  view.touchUI = padMode;               // thumbs own the bottom corners
+
+  // How much of the frame the control pad claims, read from the CSS that
+  // draws it so the two can never drift apart.
+  if (padMode) {
+    const cs = getComputedStyle(document.documentElement);
+    const px = name => parseFloat(cs.getPropertyValue(name)) || 0;
+    const off = px('--pad-off') + ins.b, fire = px('--fire'), btn = px('--btn');
+    view.padH = off + fire + px('--pad-gap') + btn;
+    // Is the gap between the two thumb columns wide enough for the solution?
+    view.padGapW = w - 2 * (px('--pad-off') + fire + 10);
+  } else {
+    view.padH = 0;
+    view.padGapW = w;
+  }
+  buildVignette();
 }
 
 const PX  = th      => view.cx + (th - cam.yaw) * view.S;          // azimuth → x
@@ -540,17 +741,21 @@ const Scenery = (() => {
     return pts;
   }
 
+  const HAZE_MIX = [156, 168, 162];
   const ridges = [
-    { pts: ridge(0.0295, 0.0115, 0.0012, 0.010), fill: '#2c3a44', haze: 0.62 },
-    { pts: ridge(0.0205, 0.0085, 0.0016, 0.008), fill: '#2a3630', haze: 0.42 },
-    { pts: ridge(0.0125, 0.0055, 0.0018, 0.007), fill: '#26302a', haze: 0.24 },
-  ];
+    { pts: ridge(0.0295, 0.0115, 0.0012, 0.010), rgb: [44, 58, 68], haze: 0.62 },
+    { pts: ridge(0.0205, 0.0085, 0.0016, 0.008), rgb: [42, 54, 48], haze: 0.42 },
+    { pts: ridge(0.0125, 0.0055, 0.0018, 0.007), rgb: [38, 48, 42], haze: 0.24 },
+  ].map(layer => {
+    const c = layer.rgb.map((v, i) => Math.round(v + (HAZE_MIX[i] - v) * layer.haze));
+    return { pts: layer.pts, fill: 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')' };
+  });
 
   /* Ground clutter. Distance is drawn from a square distribution so the
      near field is not starved of detail. */
   const KINDS = ['tuft', 'tuft', 'tuft', 'rock', 'bush', 'rock', 'tree', 'boulder'];
   const details = [];
-  for (let i = 0; i < 460; i++) {
+  for (let i = 0; i < DETAIL_N; i++) {
     const u = R();
     const d = 48 + u * u * 1900;
     const kind = d > 900 ? pick(KINDS.slice(0, 6)) : KINDS[(R() * KINDS.length) | 0];
@@ -580,7 +785,7 @@ const Scenery = (() => {
   }));
 
   const clouds = [];
-  for (let i = 0; i < 9; i++) {
+  for (let i = 0; i < CLOUD_N; i++) {
     clouds.push({
       th: (R() * 2 - 1) * 0.5, ang: 0.035 + R() * 0.075,
       w: 0.03 + R() * 0.07, h: 0.006 + R() * 0.010, a: 0.05 + R() * 0.09,
@@ -604,7 +809,7 @@ const Scenery = (() => {
     });
   }
   const grass = [];
-  for (let i = 0; i < 460; i++) {
+  for (let i = 0; i < GRASS_N; i++) {
     const th = (R() * 2 - 1) * 0.56;
     grass.push({ th, h: 0.99 + R() * R() * 0.2, lean: (R() - 0.5) * 1.4, w: 0.003 + R() * 0.007 });
   }
@@ -785,7 +990,7 @@ const FX = {
   /** Dirt kicked up by a miss — a fast lick of dust plus a slow bloom. */
   dirt(th, d, h) {
     const k = clamp(d / 260, 1, 3.4);
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < fxn(16); i++) {
       const a = rand(0.15, Math.PI - 0.15), sp = rand(1.5, 7) * (1 + 200 / d);
       this.world.push(new WorldParticle({
         th0: th, d, y: Math.max(0, h),
@@ -794,7 +999,7 @@ const FX = {
         color: '110,96,72', g: 9.8, drag: 1.6,
       }));
     }
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < fxn(9); i++) {
       this.world.push(new WorldParticle({
         th0: th, d, y: Math.max(0, h),
         vx: rand(-1.4, 1.4), vy: rand(0.6, 2.6),
@@ -808,7 +1013,7 @@ const FX = {
   steel(th, d, h, zone) {
     const k = clamp(d / 260, 1, 3.4);
     const hot = zone === 'head' ? '255,236,180' : '255,214,140';
-    for (let i = 0; i < 22; i++) {
+    for (let i = 0; i < fxn(22); i++) {
       const a = rand(0, TAU), sp = rand(2, 11);
       this.world.push(new WorldParticle({
         th0: th, d, y: h, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.9 + 1,
@@ -816,7 +1021,7 @@ const FX = {
         color: hot, g: 9.8, drag: 0.9, additive: true,
       }));
     }
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < fxn(7); i++) {
       this.world.push(new WorldParticle({
         th0: th, d, y: h, vx: rand(-1, 1), vy: rand(0.2, 1.6),
         size: rand(0.08, 0.2) * k, grow: 0.5 * k, life: rand(0.4, 0.9),
@@ -830,14 +1035,14 @@ const FX = {
   muzzle() {
     const m = muzzlePoint();
     const x = m.x, y = m.y;
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < fxn(14); i++) {
       this.screen.push({
         x, y, vx: rand(-90, 90), vy: rand(-260, -70),
         r: rand(10, 34), grow: rand(28, 70), life: rand(0.25, 0.7), t: 0,
         color: '150,140,125', additive: false,
       });
     }
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < fxn(8); i++) {
       this.screen.push({
         x, y, vx: rand(-260, 260), vy: rand(-520, -140),
         r: rand(2, 6), grow: -3, life: rand(0.1, 0.28), t: 0,
@@ -1044,14 +1249,15 @@ const SUN_TH = -0.19;
 function drawSky() {
   const { w, h } = view;
   const yh = PYA(0);
-  const top = yh - h * 1.35, span = Math.max(1, yh - top);
-  const gr = g2.createLinearGradient(0, top, 0, yh);
+  const top = yh - h * 1.35;
+  const gr = g2.createLinearGradient(0, top, 0, yh);   // ramp anchored to the horizon
   gr.addColorStop(0.00, '#0d1a24');
   gr.addColorStop(0.44, '#2c434c');
   gr.addColorStop(0.80, '#657668');
   gr.addColorStop(1.00, '#9ba192');
   g2.fillStyle = gr;
-  g2.fillRect(-30, top - h, w + 60, span + h + 4);
+  const skyBottom = clamp(yh + 6, 0, h + 6);
+  if (skyBottom > 0) g2.fillRect(-30, -6, w + 60, skyBottom + 6);
 
   // Low sun burning through the haze.
   const sx = PX(SUN_TH), sy = PYA(-0.052);
@@ -1088,16 +1294,13 @@ function drawRidges() {
       const x = PX(p.th), y = PYA(-p.ang);
       if (!started) { g2.moveTo(x, y); started = true; } else g2.lineTo(x, y);
     }
-    g2.lineTo(PX(Scenery.TH_SPAN), yh + h);
-    g2.lineTo(PX(-Scenery.TH_SPAN), yh + h);
+    // The ground is painted next and covers everything below the horizon,
+    // so there is no reason to fill down to the bottom of the frame.
+    g2.lineTo(PX(Scenery.TH_SPAN), yh + 6);
+    g2.lineTo(PX(-Scenery.TH_SPAN), yh + 6);
     g2.closePath();
-    const base = layer.fill;
-    g2.fillStyle = base;
+    g2.fillStyle = layer.fill;
     g2.fill();
-    g2.globalAlpha = layer.haze;
-    g2.fillStyle = rgb(HAZE);
-    g2.fill();
-    g2.globalAlpha = 1;
   }
   // Haze band sitting on the horizon, capped so magnification cannot turn
   // it into a wall of grey.
@@ -1142,7 +1345,7 @@ function drawDetails() {
     const y = PY(it.d, 0);
     if (y < -40 || y > view.h + 60) continue;
     const s = SPX(it.size, it.d);
-    if (s < 0.35) continue;
+    if (s < Quality.detailFloor) continue;
     if (s < 1.4) {
       g2.fillStyle = rgba(hazed([48, 54, 40], it.d), 0.5);
       g2.fillRect(x, y - s, Math.max(1, s), Math.max(1, s));
@@ -1263,7 +1466,9 @@ function drawForeground() {
 
   // Grass standing proud of the crest.
   g2.strokeStyle = 'rgba(14,18,12,.95)';
-  for (const b of Scenery.grass) {
+  const step = Quality.grassStep;
+  for (let gi = 0; gi < Scenery.grass.length; gi += step) {
+    const b = Scenery.grass[gi];
     const x = PX(b.th);
     if (x < -20 || x > w + 20) continue;
     const y0 = PY(d, 0.92), y1 = PY(d, b.h);
@@ -1687,7 +1892,9 @@ function drawScope(alpha) {
   g2.strokeStyle = 'rgba(150,160,152,.16)'; g2.lineWidth = 1;
   g2.beginPath(); g2.arc(cx + ox, cy + oy, R + 0.5, 0, TAU); g2.stroke();
 
-  // Turret readouts, laid on the black.
+  // Turret readouts, laid on the black. On a phone the pad already shows
+  // magnification and the HUD shows wind, and there is no room besides.
+  if (view.touchUI) { g2.restore(); return; }
   g2.globalAlpha = alpha * 0.85;
   g2.font = '10px ' + MONO;
   g2.fillStyle = 'rgba(138,255,193,.55)';
@@ -1735,119 +1942,137 @@ const HUD_KEY = 'rgba(78,143,109,.95)';
 
 function drawHUD() {
   const { w, h } = view;
+  const U = view.hud, T = view.txt, P = view.pad, touchUI = view.touchUI;
   const scoped = G.scopeT;
-  const a = lerp(1, 0.42, scoped);
   g2.save();
-  g2.globalAlpha = a;
+  g2.globalAlpha = lerp(1, 0.42, scoped);
 
-  const pad = 26;
-
-  /* Score block */
-  txt('SCORE', pad, pad + 4, 10, HUD_KEY);
-  txt(fmt(G.score), pad, pad + 34, 30, 'rgba(223,233,227,.98)', 'left', '600');
+  /* ── Left column: score and streak ── */
+  txt('SCORE', P.l, P.t + 10 * T, 10 * T, HUD_KEY);
+  txt(fmt(G.score), P.l, P.t + 40 * T, 30 * T, 'rgba(223,233,227,.98)', 'left', '600');
   const mult = (1 + Math.min(G.streak, 10) * 0.1).toFixed(1);
-  txt('×' + mult + '  STREAK ' + G.streak, pad, pad + 52, 11, G.streak > 0 ? 'rgba(138,255,193,.9)' : HUD_DIM);
+  txt('×' + mult + '  STREAK ' + G.streak, P.l, P.t + 58 * T, 11 * T,
+    G.streak > 0 ? 'rgba(138,255,193,.9)' : HUD_DIM);
 
-  /* Wave */
-  txt('WAVE ' + G.wave, w / 2, pad + 14, 12, 'rgba(223,233,227,.85)', 'center', '600');
-  const prog = (G.neutralized % 5) / 5;
-  g2.strokeStyle = 'rgba(138,255,193,.22)'; g2.lineWidth = 2;
-  g2.beginPath(); g2.moveTo(w / 2 - 42, pad + 22); g2.lineTo(w / 2 + 42, pad + 22); g2.stroke();
+  /* ── Wave ── */
+  txt('WAVE ' + G.wave, w / 2, P.t + 14 * T, 12 * T, 'rgba(223,233,227,.85)', 'center', '600');
+  const half = 42 * U, wy = P.t + 22 * T;
+  g2.lineWidth = 2;
+  g2.strokeStyle = 'rgba(138,255,193,.22)';
+  g2.beginPath(); g2.moveTo(w / 2 - half, wy); g2.lineTo(w / 2 + half, wy); g2.stroke();
   g2.strokeStyle = 'rgba(138,255,193,.75)';
-  g2.beginPath(); g2.moveTo(w / 2 - 42, pad + 22); g2.lineTo(w / 2 - 42 + 84 * prog, pad + 22); g2.stroke();
+  g2.beginPath();
+  g2.moveTo(w / 2 - half, wy);
+  g2.lineTo(w / 2 - half + 2 * half * ((G.neutralized % 5) / 5), wy);
+  g2.stroke();
 
-  /* Wind gauge */
-  const wx = w - pad, wy = pad + 10;
-  txt('WIND', wx, wy - 6, 10, HUD_KEY, 'right');
-  const barW = 116, bx = wx - barW, by = wy + 12;
+  /* ── Wind gauge ── */
+  const wx = w - P.r;
+  txt('WIND', wx, P.t + 10 * T, 10 * T, HUD_KEY, 'right');
+  const barW = 116 * U, bx = wx - barW, by = P.t + 26 * T;
   g2.strokeStyle = 'rgba(138,255,193,.20)'; g2.lineWidth = 1;
   g2.beginPath(); g2.moveTo(bx, by); g2.lineTo(bx + barW, by);
   g2.moveTo(bx + barW / 2, by - 5); g2.lineTo(bx + barW / 2, by + 5); g2.stroke();
   const wf = clamp(G.wind.cur / 8, -1, 1);
   const wex = bx + barW / 2 + wf * (barW / 2 - 6);
+  const wsign = Math.sign(wf || 1);
   g2.strokeStyle = Math.abs(G.wind.cur) > 5 ? 'rgba(255,194,75,.95)' : 'rgba(138,255,193,.9)';
   g2.lineWidth = 2;
   g2.beginPath();
   g2.moveTo(bx + barW / 2, by); g2.lineTo(wex, by);
-  g2.lineTo(wex - Math.sign(wf || 1) * 5, by - 4);
-  g2.moveTo(wex, by); g2.lineTo(wex - Math.sign(wf || 1) * 5, by + 4);
+  g2.lineTo(wex - wsign * 5, by - 4);
+  g2.moveTo(wex, by); g2.lineTo(wex - wsign * 5, by + 4);
   g2.stroke();
-  txt(Math.abs(G.wind.cur).toFixed(1) + ' m/s ' + (G.wind.cur >= 0 ? 'RIGHT' : 'LEFT'), wx, by + 18, 11,
-    'rgba(223,233,227,.9)', 'right');
+  txt(Math.abs(G.wind.cur).toFixed(1) + ' m/s ' + (G.wind.cur >= 0 ? 'RIGHT' : 'LEFT'),
+    wx, by + 18 * T, 11 * T, 'rgba(223,233,227,.9)', 'right');
 
-  /* Ammunition */
-  const ay = h - pad - 16;
-  txt('MAGAZINE', pad, ay - 26, 10, HUD_KEY);
+  /* ── Ammunition. On a phone the bottom corners belong to the thumbs, so
+        it moves up under the score. ── */
+  const ay = touchUI ? P.t + 96 * T : h - P.b - 16 * U;
+  txt('MAGAZINE', P.l, ay - 26 * T, 10 * T, HUD_KEY);
+  const pipW = 15 * U, pipH = 14 * U;
   for (let i = 0; i < CFG.magSize; i++) {
-    const x = pad + i * 15;
-    const loaded = i < G.mag;
-    g2.fillStyle = loaded ? 'rgba(255,194,75,.92)' : 'rgba(255,194,75,.13)';
+    const x = P.l + i * pipW;
+    g2.fillStyle = i < G.mag ? 'rgba(255,194,75,.92)' : 'rgba(255,194,75,.13)';
     g2.beginPath();
-    g2.moveTo(x, ay - 12); g2.lineTo(x + 8, ay - 12);
-    g2.lineTo(x + 8, ay - 2); g2.lineTo(x + 4, ay + 2); g2.lineTo(x, ay - 2);
+    g2.moveTo(x, ay - pipH * 0.86); g2.lineTo(x + pipW * 0.53, ay - pipH * 0.86);
+    g2.lineTo(x + pipW * 0.53, ay - pipH * 0.14); g2.lineTo(x + pipW * 0.27, ay + pipH * 0.14);
+    g2.lineTo(x, ay - pipH * 0.14);
     g2.closePath(); g2.fill();
   }
-  txt('×' + G.reserve + '  RESERVE', pad + CFG.magSize * 15 + 10, ay, 11,
+  txt('×' + G.reserve + '  RESERVE', P.l + CFG.magSize * pipW + 10 * U, ay, 11 * T,
     G.reserve <= 5 ? 'rgba(255,107,107,.95)' : HUD_DIM);
 
+  const progW = 120 * U, progY = ay + 14 * U;
   if (G.reload > 0) {
     const k = 1 - G.reload / G.reloadTotal;
     g2.strokeStyle = 'rgba(138,255,193,.25)'; g2.lineWidth = 3;
-    g2.beginPath(); g2.moveTo(pad, ay + 14); g2.lineTo(pad + 120, ay + 14); g2.stroke();
+    g2.beginPath(); g2.moveTo(P.l, progY); g2.lineTo(P.l + progW, progY); g2.stroke();
     g2.strokeStyle = 'rgba(138,255,193,.95)';
-    g2.beginPath(); g2.moveTo(pad, ay + 14); g2.lineTo(pad + 120 * k, ay + 14); g2.stroke();
-    txt('RELOADING', pad + 128, ay + 18, 10, 'rgba(138,255,193,.9)');
+    g2.beginPath(); g2.moveTo(P.l, progY); g2.lineTo(P.l + progW * k, progY); g2.stroke();
+    txt('RELOADING', P.l + progW + 8 * U, progY + 4 * T, 10 * T, 'rgba(138,255,193,.9)');
   } else if (G.bolt > 0) {
     const k = 1 - G.bolt / CFG.boltTime;
     g2.strokeStyle = 'rgba(125,143,135,.22)'; g2.lineWidth = 2;
-    g2.beginPath(); g2.moveTo(pad, ay + 14); g2.lineTo(pad + 120, ay + 14); g2.stroke();
+    g2.beginPath(); g2.moveTo(P.l, progY); g2.lineTo(P.l + progW, progY); g2.stroke();
     g2.strokeStyle = 'rgba(125,143,135,.7)';
-    g2.beginPath(); g2.moveTo(pad, ay + 14); g2.lineTo(pad + 120 * k, ay + 14); g2.stroke();
-    txt('CYCLING BOLT', pad + 128, ay + 18, 10, HUD_DIM);
+    g2.beginPath(); g2.moveTo(P.l, progY); g2.lineTo(P.l + progW * k, progY); g2.stroke();
+    txt('CYCLING BOLT', P.l + progW + 8 * U, progY + 4 * T, 10 * T, HUD_DIM);
   } else if (G.mag === 0) {
     const blink = 0.55 + 0.45 * Math.sin(G.t * 8);
-    txt('RELOAD [R]', pad, ay + 18, 11, 'rgba(255,107,107,' + blink.toFixed(2) + ')');
+    txt(touchUI ? 'RELOAD' : 'RELOAD [R]', P.l, progY + 4 * T, 11 * T,
+      'rgba(255,107,107,' + blink.toFixed(2) + ')');
   }
 
-  /* Breath */
-  const bw = 116, bxr = w - pad - bw, byr = h - pad - 16;
-  txt('BREATH', w - pad, byr - 12, 10, HUD_KEY, 'right');
+  /* ── Breath ── */
+  const brW = 116 * U, brX = w - P.r - brW;
+  const brY = touchUI ? P.t + 78 * T : h - P.b - 16 * U;
+  txt('BREATH', w - P.r, brY - 12 * T, 10 * T, HUD_KEY, 'right');
   g2.fillStyle = 'rgba(138,255,193,.12)';
-  g2.fillRect(bxr, byr - 4, bw, 5);
-  const bcol = G.gasp > 0 ? 'rgba(255,107,107,.95)'
-             : G.breath < 30 ? 'rgba(255,194,75,.95)' : 'rgba(138,255,193,.9)';
-  g2.fillStyle = bcol;
-  g2.fillRect(bxr, byr - 4, bw * (G.breath / 100), 5);
-  txt(G.gasp > 0 ? 'RECOVERING' : Input.steady ? 'HOLDING' : 'HOLD [SHIFT]', w - pad, byr + 16, 10,
-    Input.steady && G.gasp <= 0 ? 'rgba(138,255,193,.9)' : HUD_DIM, 'right');
+  g2.fillRect(brX, brY - 4, brW, 5);
+  g2.fillStyle = G.gasp > 0 ? 'rgba(255,107,107,.95)'
+              : G.breath < 30 ? 'rgba(255,194,75,.95)' : 'rgba(138,255,193,.9)';
+  g2.fillRect(brX, brY - 4, brW * (G.breath / 100), 5);
+  const steadyNow = Input.steady && G.gasp <= 0;
+  txt(G.gasp > 0 ? 'RECOVERING' : Input.steady ? 'HOLDING' : touchUI ? 'HOLD [STEADY]' : 'HOLD [SHIFT]',
+    w - P.r, brY + 16 * T, 10 * T, steadyNow ? 'rgba(138,255,193,.9)' : HUD_DIM, 'right');
 
   g2.restore();
 
-  /* Firing solution — stays legible through the scope. */
+  /* ── Firing solution. Between the thumbs on a phone, so it stays clear. ── */
   const tg = G.ranged;
-  const sy = h - pad - 44;
+  // Bottom centre when the thumbs leave room for it; above the pad when not.
+  const roomy = view.padGapW >= 320;
+  const sy = roomy ? h - P.b - (touchUI ? 20 * U : 44 * U)
+                   : h - view.padH - 18 * U;
+  const solW = (roomy && touchUI ? view.padGapW : w - P.l - P.r) - 8;
   g2.save();
   g2.globalAlpha = lerp(0.75, 1, scoped) * (0.35 + 0.65 * G.rangedFade);
   if (tg) {
-    const t = flightTime(tg.d);
+    const tof = flightTime(tg.d);
     const drop = dropAngle(tg.d) * 1000;
     const wind = windAngle(tg.d, G.wind.cur) * 1000;
-    const lead = tg.angularSpeed * t * 1000;
+    const lead = tg.angularSpeed * tof * 1000;
     const parts = [
       'RNG ' + Math.round(tg.d) + ' m',
-      'TOF ' + t.toFixed(2) + ' s',
+      'TOF ' + tof.toFixed(2) + ' s',
       'DROP ' + (drop >= 0 ? '↑' : '↓') + Math.abs(drop).toFixed(1),
       'WIND ' + (wind >= 0 ? '▶' : '◀') + Math.abs(wind).toFixed(1),
     ];
     if (Math.abs(lead) > 0.05) parts.push('LEAD ' + (lead >= 0 ? '▶' : '◀') + Math.abs(lead).toFixed(1));
-    txt(parts.join('   ·   '), view.cx, sy, 11.5, 'rgba(255,194,75,.92)', 'center');
-    txt('MIL HOLDS', view.cx, sy + 14, 9, 'rgba(255,194,75,.45)', 'center');
+    // A narrow screen cannot hold the full line; drop the least critical field.
+    const line = parts.join('   ·   ');
+    g2.font = '400 ' + (11.5 * T) + 'px ' + MONO;
+    const compact = g2.measureText(line).width > solW;
+    txt(compact ? parts.filter((_, i) => i !== 1).join('  ·  ') : line,
+      view.cx, sy, 11.5 * T, 'rgba(255,194,75,.92)', 'center');
+    txt('MIL HOLDS', view.cx, sy + 13 * T, 9 * T, 'rgba(255,194,75,.45)', 'center');
   } else {
-    txt('NO TARGET RANGED', view.cx, sy, 11, 'rgba(125,143,135,.55)', 'center');
+    txt('NO TARGET RANGED', view.cx, sy, 11 * T, 'rgba(125,143,135,.55)', 'center');
   }
   g2.restore();
 
-  /* Off-screen target cues while magnified. */
+  /* ── Off-screen target cues while magnified. ── */
   if (scoped > 0.4) {
     g2.save();
     g2.globalAlpha = (scoped - 0.4) / 0.6 * 0.8;
@@ -1867,12 +2092,11 @@ function drawHUD() {
     g2.restore();
   }
 
-  /* Toast */
+  /* ── Toast ── */
   if (G.toast.t > 0) {
-    const k = Math.min(1, G.toast.t / 0.35);
     g2.save();
-    g2.globalAlpha = k;
-    txt(G.toast.text, view.cx, view.h * 0.30, 13, 'rgba(255,194,75,.95)', 'center', '600');
+    g2.globalAlpha = Math.min(1, G.toast.t / 0.35);
+    txt(G.toast.text, view.cx, view.h * 0.30, 13 * T, 'rgba(255,194,75,.95)', 'center', '600');
     g2.restore();
   }
 }
@@ -1908,10 +2132,15 @@ function updateOptics(dt) {
 
 function updateAim() {
   const m = Input.consumeMotion();
+  const t = Input.consumeTouch();
   const fine = Input.steady && G.breath > 0 && G.gasp <= 0 ? 0.45 : 1;
   const sens = CFG.sens / Math.max(1, G.magCur) * fine;
-  G.aim.yaw = clamp(G.aim.yaw + m.x * sens, -CFG.yawLimit, CFG.yawLimit);
-  G.aim.el = clamp(G.aim.el - m.y * sens, CFG.elMin, CFG.elMax);
+  // At 1× the entire traverse arc is only a couple of hundred pixels wide, so
+  // one-to-one tracking would saturate on the first flick. Damp it until
+  // there is enough magnification for the scene to be worth following exactly.
+  const track = CFG.touchTrack * fine * Math.min(1, G.magCur / 3) / view.S;
+  G.aim.yaw = clamp(G.aim.yaw + m.x * sens + t.x * track, -CFG.yawLimit, CFG.yawLimit);
+  G.aim.el = clamp(G.aim.el - m.y * sens - t.y * track, CFG.elMin, CFG.elMax);
 
   const wheel = Input.consumeWheel();
   if (wheel) {
@@ -2098,14 +2327,10 @@ function render() {
   if (G.state === 'playing' || G.state === 'paused') drawHUD();
 
   // Corner vignette when shooting from the shoulder.
-  if (G.scopeT < 0.5) {
-    const strength = 0.45 * (1 - G.scopeT * 2);
-    const vg = g2.createRadialGradient(view.cx, view.cy, Math.min(w, h) * 0.35,
-      view.cx, view.cy, Math.max(w, h) * 0.78);
-    vg.addColorStop(0, 'rgba(0,0,0,0)');
-    vg.addColorStop(1, 'rgba(0,0,0,' + strength.toFixed(3) + ')');
-    g2.fillStyle = vg;
-    g2.fillRect(0, 0, w, h);
+  if (G.scopeT < 0.5 && vignette) {
+    g2.globalAlpha = 0.45 * (1 - G.scopeT * 2);
+    g2.drawImage(vignette, 0, 0, w, h);
+    g2.globalAlpha = 1;
   }
 }
 
@@ -2118,6 +2343,8 @@ function frame(ts) {
   if (G.state === 'playing') update(dt);
   else if (G.state !== 'paused') updateIdle(dt);
   render();
+  syncPad();
+  Quality.note(dt);
 }
 
 /* ── 11. Shell: screens, buttons, input plumbing ───────────────────────── */
@@ -2127,6 +2354,7 @@ const el = id => document.getElementById(id);
 function showScreen(name) {
   ['menu', 'pause', 'over'].forEach(n => el('scr-' + n).classList.toggle('on', n === name));
   el('overlay').hidden = !name;
+  el('pad').hidden = !padMode || !!name;
   document.body.classList.toggle('show-cursor', !!name);
 }
 
@@ -2225,7 +2453,7 @@ function quitToMenu() {
 }
 
 /* Pointer lock ---------------------------------------------------------- */
-let lockUnavailable = !document.documentElement.requestPointerLock;
+let lockUnavailable = TOUCH || !document.documentElement.requestPointerLock;
 let lockFailures = 0;
 let lockPrimed = false;
 
@@ -2254,7 +2482,8 @@ document.addEventListener('pointerlockchange', () => {
 document.addEventListener('pointerlockerror', noteLockFailure);
 
 function updateHint() {
-  el('hint').classList.toggle('on', G.state === 'playing' && !Input.locked && !lockUnavailable);
+  el('hint').classList.toggle('on',
+    !padMode && G.state === 'playing' && !Input.locked && !lockUnavailable);
 }
 
 /* Mouse ----------------------------------------------------------------- */
@@ -2292,6 +2521,123 @@ cv.addEventListener('wheel', e => {
   e.preventDefault();
   Input.wheel += e.deltaY;
 }, { passive: false });
+
+/* Touch ----------------------------------------------------------------- */
+let aimTouch = null;        // identifier of the finger currently traversing
+let aimX = 0, aimY = 0;
+let pinch = null;           // { span, mag } captured at the start of the gesture
+
+const spanOf = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+
+function beginAim(t) { aimTouch = t.identifier; aimX = t.clientX; aimY = t.clientY; }
+
+/** A finger on a device we read as pointer-driven: switch to the pad layout. */
+function adoptTouchLayout() {
+  if (padMode) return;
+  padMode = true;
+  document.body.classList.add('touch');
+  lockUnavailable = true;
+  if (document.pointerLockElement) document.exitPointerLock();
+  el('pad').hidden = G.state !== 'playing';
+  resize();
+}
+
+cv.addEventListener('touchstart', e => {
+  Sfx.ensure();
+  adoptTouchLayout();
+  if (G.state !== 'playing') return;
+  e.preventDefault();
+  if (e.touches.length >= 2) {
+    pinch = { span: spanOf(e.touches[0], e.touches[1]), mag: G.scopeMag };
+    aimTouch = null;
+    return;
+  }
+  beginAim(e.changedTouches[0]);
+}, { passive: false });
+
+cv.addEventListener('touchmove', e => {
+  if (G.state !== 'playing') return;
+  e.preventDefault();
+
+  if (pinch && e.touches.length >= 2) {
+    const span = spanOf(e.touches[0], e.touches[1]);
+    if (pinch.span > 20) {
+      const next = clamp(Math.round(pinch.mag * (span / pinch.span) * 2) / 2,
+        CFG.scopeMagMin, CFG.scopeMagMax);
+      if (next !== G.scopeMag) {
+        if (!G.scoped && next > pinch.mag) toggleScope();   // pinching out raises the glass
+        G.scopeMag = next;
+        Sfx.click(0, 3200, 0.06, 0.02);
+      }
+    }
+    return;
+  }
+
+  for (const t of Array.from(e.changedTouches)) {
+    if (t.identifier !== aimTouch) continue;
+    Input.tdx += t.clientX - aimX;
+    Input.tdy += t.clientY - aimY;
+    aimX = t.clientX; aimY = t.clientY;
+  }
+}, { passive: false });
+
+function endTouch(e) {
+  if (pinch && e.touches.length < 2) {
+    pinch = null;
+    const prefs = Store.prefs(); prefs.mag = G.scopeMag; Store.savePrefs(prefs);
+    // Hand traversal back to whichever finger is still down, without a jump.
+    if (e.touches.length === 1) beginAim(e.touches[0]); else aimTouch = null;
+    return;
+  }
+  for (const t of Array.from(e.changedTouches)) {
+    if (t.identifier === aimTouch) aimTouch = null;
+  }
+}
+cv.addEventListener('touchend', endTouch);
+cv.addEventListener('touchcancel', endTouch);
+
+/* Control pad ----------------------------------------------------------- */
+function onPress(id, press, release) {
+  const btn = el(id);
+  btn.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    Sfx.ensure();
+    if (release) btn.classList.add('held');
+    press();
+  });
+  const up = () => { if (release) { btn.classList.remove('held'); release(); } };
+  btn.addEventListener('pointerup', up);
+  btn.addEventListener('pointercancel', up);
+  btn.addEventListener('pointerleave', up);
+  btn.addEventListener('contextmenu', e => e.preventDefault());
+}
+
+onPress('t-fire', fire);
+onPress('t-scope', () => { if (G.state === 'playing') toggleScope(); });
+onPress('t-reload', startReload);
+onPress('t-steady', () => { Input.touchSteady = true; }, () => { Input.touchSteady = false; });
+
+/** Keeps the pad's state readable at a glance, writing only on change. */
+const padState = { scoped: null, mag: null, spent: null, urgent: null };
+function syncPad() {
+  if (!padMode) return;
+  if (padState.scoped !== G.scoped) {
+    padState.scoped = G.scoped;
+    el('t-scope').classList.toggle('on', G.scoped);
+  }
+  const magLabel = G.scopeMag.toFixed(G.scopeMag % 1 ? 1 : 0) + '×';
+  if (padState.mag !== magLabel) { padState.mag = magLabel; el('t-mag').textContent = magLabel; }
+  const spent = G.mag === 0;
+  if (padState.spent !== spent) {
+    padState.spent = spent;
+    el('t-fire').classList.toggle('spent', spent);
+  }
+  const urgent = G.mag === 0 && G.reserve > 0 && G.reload === 0;
+  if (padState.urgent !== urgent) {
+    padState.urgent = urgent;
+    el('t-reload').classList.toggle('urgent', urgent);
+  }
+}
 
 function toggleScope() {
   G.scoped = !G.scoped;
@@ -2341,7 +2687,10 @@ el('btn-again').addEventListener('click', startGame);
 el('btn-menu').addEventListener('click', quitToMenu);
 
 /* Boot ------------------------------------------------------------------ */
-window.addEventListener('resize', () => { resize(); });
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 120));
+if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
+document.body.classList.toggle('touch', TOUCH);
 resize();
 view.S = view.focal;
 el('muted').classList.toggle('on', Sfx.muted);
