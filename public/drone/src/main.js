@@ -13,6 +13,7 @@ import { Renderer, QUALITY } from './renderer.js';
 import { HUD } from './hud.js';
 import { Input } from './input.js';
 import { UI } from './ui.js';
+import { TouchControls } from './touch.js';
 import { analyzeShot, breakdownRows, ClipRecorder, buildShowreel, gradeFor } from './scoring.js';
 import { loadSettings, saveSettings, saveRecord } from './storage.js';
 import { clamp, clamp01, formatTime, DEG } from './math.js';
@@ -27,6 +28,13 @@ class Game {
     this.fpsEl = document.getElementById('fps');
 
     this.settings = loadSettings();
+    this.isTouch = TouchControls.isTouchDevice();
+    // First run on a phone: assume a small GPU budget and no mouse.
+    if (this.settings.quality === undefined || this.settings.firstRun !== false) {
+      if (this.isTouch) this.settings.quality = window.innerWidth < 900 ? 'low' : 'medium';
+      this.settings.firstRun = false;
+      saveSettings(this.settings);
+    }
     this.renderer = new Renderer(this.sceneCanvas);
     this.renderer.setQuality(this.settings.quality);
     this.hud = new HUD();
@@ -37,6 +45,13 @@ class Game {
     this.input.sensitivity = this.settings.sensitivity;
     this.input.invertY = this.settings.invertY;
     this.input.attach();
+
+    this.touchLayer = document.getElementById('touch');
+    this.touch = new TouchControls(this.touchLayer, this.input, {
+      onPause: () => this.pause(),
+    });
+    this.input.touch = this.touch;
+    this.rotateEl = document.getElementById('rotate');
     this.recorder = new ClipRecorder();
 
     this.state = 'menu';
@@ -54,6 +69,8 @@ class Game {
 
     this.ui = new UI({
       settings: this.settings,
+      isTouch: this.isTouch,
+      onFullscreen: () => this.toggleFullscreen(),
       onLaunch: (map, weather, time) => {
         this.pending = { map, weather, time };
         this.ui.renderBrief(map, weather, time);
@@ -66,13 +83,30 @@ class Game {
     });
 
     window.addEventListener('resize', () => this.resize());
+    window.addEventListener('orientationchange', () => setTimeout(() => this.resize(), 120));
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => this.resize());
+    }
+    document.addEventListener('fullscreenchange', () => setTimeout(() => this.resize(), 60));
+    if (document.fullscreenEnabled || document.documentElement.webkitRequestFullscreen) {
+      document.body.classList.add('can-fullscreen');
+    }
+    // Block iOS pinch-zoom and double-tap zoom over the game surface.
+    for (const ev of ['gesturestart', 'gesturechange']) {
+      document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
+    }
+    document.addEventListener('dblclick', (e) => {
+      if (this.state === 'flying') e.preventDefault();
+    }, { passive: false });
     document.addEventListener('pointerlockchange', () => {
-      if (this.state === 'flying' && !document.pointerLockElement && !this.ui.modalOpen) {
+      if (this.state === 'flying' && !document.pointerLockElement &&
+          !this.ui.modalOpen && !this.isTouch) {
         this.pause();
       }
     });
     this.sceneCanvas.addEventListener('click', () => {
-      if (this.state === 'flying') this.input.requestPointerLock();
+      // Pointer lock is a mouse concept; on touch the trackpad layer handles it.
+      if (this.state === 'flying' && !this.isTouch) this.input.requestPointerLock();
     });
 
     // Debug hook: `__skyline` exposes live game state in the console.
@@ -92,6 +126,28 @@ class Game {
     if (key === 'invertY') this.input.invertY = value;
     if (key === 'guides') this.hud.guides = value;
     if (key === 'grain') this.grain = value;
+    if (key === 'touchControls') this.resize();
+  }
+
+  /** Read the display's safe-area insets through a CSS probe element. */
+  _readInsets() {
+    let probe = this._insetProbe;
+    if (!probe) {
+      probe = document.createElement('div');
+      probe.style.cssText =
+        'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;pointer-events:none;' +
+        'padding-top:env(safe-area-inset-top,0px);padding-right:env(safe-area-inset-right,0px);' +
+        'padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px)';
+      document.body.appendChild(probe);
+      this._insetProbe = probe;
+    }
+    const cs = getComputedStyle(probe);
+    return {
+      t: parseFloat(cs.paddingTop) || 0,
+      r: parseFloat(cs.paddingRight) || 0,
+      b: parseFloat(cs.paddingBottom) || 0,
+      l: parseFloat(cs.paddingLeft) || 0,
+    };
   }
 
   resize() {
@@ -106,11 +162,60 @@ class Game {
     this.camera.resize(w, h);
     this.camera.buildBasis();
     this.viewW = w; this.viewH = h;
+
+    // Instrument layout: drop to the phone HUD when there is not enough room
+    // for the full panel set.
+    this.hud.inset = this._readInsets();
+    this.hud.compact = w < 820 || h < 560;
+    const showTouch = this.touchEnabled();
+    this.hud.reserve.l = showTouch ? 58 : 0;
+    this.hud.reserve.r = showTouch ? 66 : 0;
+    this.portrait = this.isTouch && h > w;
+    this._syncOverlays();
+  }
+
+  /** Whether the on-screen sticks should be driving the aircraft. */
+  touchEnabled() {
+    const mode = this.settings.touchControls || 'auto';
+    if (mode === 'off') return false;
+    if (mode === 'on') return true;
+    return this.isTouch;
+  }
+
+  _syncOverlays() {
+    const flying = this.state === 'flying';
+    this.touch.setVisible(flying && this.touchEnabled() && !this.portrait);
+    if (this.rotateEl) this.rotateEl.hidden = !this.portrait;
   }
 
   // ── Mission lifecycle ────────────────────────────────────────────────────
+  toggleFullscreen() {
+    if (document.fullscreenElement) {
+      if (document.exitFullscreen) document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    } else {
+      this.goFullscreen();
+    }
+  }
+
+  /** Best-effort fullscreen + landscape lock; both may be refused. */
+  async goFullscreen() {
+    const el = document.documentElement;
+    try {
+      if (!document.fullscreenElement) {
+        if (el.requestFullscreen) await el.requestFullscreen({ navigationUI: 'hide' });
+        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      }
+    } catch (e) { /* refused — the game still works windowed */ }
+    try {
+      if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape');
+    } catch (e) { /* not permitted on this platform */ }
+    setTimeout(() => this.resize(), 150);
+  }
+
   startMission() {
     const { map, weather, time } = this.pending;
+    if (this.touchEnabled()) this.goFullscreen();
     this.ui.showLoading('Generating ' + map.name + '…',
       'Carving ridgelines, placing landmarks and baking the map');
     // Let the loading screen paint before the synchronous world build.
@@ -157,8 +262,13 @@ class Game {
     this.ui.hideAll();
     this.state = 'flying';
     this.input.enabled = true;
-    this.input.requestPointerLock();
-    this.hud.toast('Cleared for takeoff', 'Hold W to lift off · click for mouse control', '#8affc1', 5);
+    if (!this.isTouch) this.input.requestPointerLock();
+    this._syncOverlays();
+    this.hud.toast('Cleared for takeoff',
+      this.touchEnabled()
+        ? 'Push the left stick up · drag the screen to aim'
+        : 'Hold W to lift off · click for mouse control',
+      '#8affc1', 5);
     this.hud.toast(map.name + ' · ' + weather.name + ' · ' + time.name, null, '#7fd4ff', 4.4);
     // eslint-disable-next-line no-console
     console.info('[skyline] world built in ' + Math.round(performance.now() - t0) + ' ms');
@@ -169,6 +279,7 @@ class Game {
     this.state = 'paused';
     this.input.enabled = false;
     this.input.exitPointerLock();
+    this._syncOverlays();
     this.session.elapsed = this.elapsed;
     this.session.batteryLeft = this.drone.battery;
     this.ui.showPause(this.session);
@@ -179,7 +290,8 @@ class Game {
     this.state = 'flying';
     this.input.enabled = true;
     this.ui.hideAll();
-    this.input.requestPointerLock();
+    if (!this.isTouch) this.input.requestPointerLock();
+    this._syncOverlays();
   }
 
   abort(silent) {
@@ -187,6 +299,7 @@ class Game {
     this.input.enabled = false;
     this.input.exitPointerLock();
     this.recorder.reset();
+    this._syncOverlays();
     if (!silent) this.ui.show('hangar');
   }
 
@@ -199,6 +312,7 @@ class Game {
     this.state = 'results';
     this.input.enabled = false;
     this.input.exitPointerLock();
+    this._syncOverlays();
 
     const s = this.session;
     s.elapsed = this.elapsed;
@@ -224,7 +338,10 @@ class Game {
   // ── Capture ──────────────────────────────────────────────────────────────
   capturePhoto() {
     if (this.photoCooldown > 0 || !this.drone.armed) {
-      if (!this.drone.armed) this.hud.toast('Take off first', 'Hold W to lift off', '#ffd76a', 2);
+      if (!this.drone.armed) {
+        this.hud.toast('Take off first',
+          this.touchEnabled() ? 'Push the left stick up' : 'Hold W to lift off', '#ffd76a', 2);
+      }
       return;
     }
     this.photoCooldown = 0.55;
@@ -272,6 +389,7 @@ class Game {
   toggleRecord() {
     if (this.recorder.recording) {
       const clip = this.recorder.stop(this.buildState());
+      this.touch.syncRecording(false);
       if (clip) {
         this.session.clips.push(clip);
         this.hud.toast('Clip banked · ' + clip.score + ' pts',
@@ -287,6 +405,7 @@ class Game {
         return;
       }
       this.recorder.start(this.buildState());
+      this.touch.syncRecording(true);
       this.hud.toast('Recording', 'Fly it smooth — jerk costs points', '#ff9a9a', 2.2);
     }
   }
@@ -359,6 +478,12 @@ class Game {
         case 'guides': this.hud.guides = !this.hud.guides; this.applySetting('guides', this.hud.guides); break;
         case 'hud': this.hud.show = !this.hud.show; this.applySetting('hud', this.hud.show); break;
         case 'levelGimbal': this.input.levelGimbal(); break;
+        case 'flightMode': {
+          this.input.touchMode = (this.input.touchMode + 1) % 3;
+          const names = ['CINE', 'NORMAL', 'SPORT'];
+          this.hud.toast('Flight mode · ' + names[this.input.touchMode], null, '#7fd4ff', 1.6);
+          break;
+        }
         case 'pause': this.pause(); break;
         case 'endRun':
           if (this.drone.landed && this.drone.distanceHome < 30) this.endMission('Landed at home');
@@ -448,7 +573,11 @@ class Game {
     if (this.drone.landed && this.drone.armed === false && this.elapsed > 6 &&
         this.drone.distanceHome < 30 && !this._homePrompt) {
       this._homePrompt = true;
-      this.hud.toast('Home pad — press ENTER to grade the showreel', null, '#8affc1', 6);
+      this.hud.toast(
+        this.touchEnabled()
+          ? 'Home pad — pause and end the run to grade the showreel'
+          : 'Home pad — press ENTER to grade the showreel',
+        null, '#8affc1', 6);
     }
     if (this.drone.distanceHome > 40) this._homePrompt = false;
   }

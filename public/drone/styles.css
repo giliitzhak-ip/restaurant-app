@@ -125,7 +125,7 @@ html, body {
 }
 .map-list { overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 6px; }
 .map-card {
-  position: relative; text-align: left; padding: 18px 20px; border-radius: var(--radius);
+  position: relative; text-align: left; display: block; padding: 18px 20px; border-radius: var(--radius);
   border: 1px solid var(--line); background: var(--panel); cursor: pointer;
   color: var(--ink); font-family: var(--sans);
   transition: border-color 0.16s, transform 0.12s, background 0.16s;
@@ -317,3 +317,257 @@ input[type=range] { width: 160px; accent-color: var(--accent); }
 }
 #fps.on { display: block; }
 .noscript { position: absolute; inset: 0; display: grid; place-items: center; }
+
+/* ══ Mobile ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+}
+
+/* Kill browser gestures over the game surface: no scroll, no rubber-band,
+   no double-tap zoom, no long-press callout. */
+html, body {
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+}
+#app, #scene, #hud, .touch { touch-action: none; }
+.touch, .tbtn, .tzone, .touch-pad {
+  -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* The fullscreen button only makes sense where the API exists. */
+.fs-only { display: none; }
+body.can-fullscreen .fs-only { display: inline-flex; }
+
+/* ── On-screen flight controls ────────────────────────────────────────── */
+.touch { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
+.touch[hidden] { display: none; }
+
+/* Gimbal trackpad: the whole surface, under every other control. */
+.touch-pad { position: absolute; inset: 0; pointer-events: auto; }
+
+/* Stick catch areas, inset from the edges so the button columns stay clear. */
+.tzone {
+  position: absolute; bottom: 0; height: 58%; width: 34%;
+  pointer-events: auto;
+}
+.tzone.left { left: calc(var(--safe-l) + 58px); }
+.tzone.right { right: calc(var(--safe-r) + 66px); }
+
+.tbase {
+  position: absolute; width: 108px; height: 108px; margin: -54px 0 0 -54px;
+  border-radius: 50%; border: 1.5px solid rgba(170, 210, 240, 0.30);
+  background: radial-gradient(circle, rgba(10, 18, 28, 0.42), rgba(10, 18, 28, 0.18));
+  backdrop-filter: blur(3px);
+  opacity: 0; transition: opacity 0.14s;
+  left: 50%; top: 60%;
+}
+.tbase.on { opacity: 1; }
+.tbase .knob {
+  position: absolute; left: 50%; top: 50%;
+  width: 46px; height: 46px; border-radius: 50%;
+  background: rgba(160, 215, 250, 0.34);
+  border: 1.5px solid rgba(190, 230, 255, 0.7);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.45);
+}
+.tstick-hint {
+  position: absolute; bottom: calc(var(--safe-b) + 8px);
+  font: 600 9px/1 var(--mono); letter-spacing: 0.14em;
+  color: rgba(206, 222, 238, 0.30); pointer-events: none;
+}
+.tstick-hint.left { left: calc(var(--safe-l) + 74px); }
+.tstick-hint.right { right: calc(var(--safe-r) + 82px); }
+
+/* Edge button columns. */
+.tcol {
+  position: absolute; top: 0; bottom: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 11px; pointer-events: none;
+}
+.tcol.left { left: 0; width: calc(var(--safe-l) + 58px); padding-left: var(--safe-l); }
+.tcol.right { right: 0; width: calc(var(--safe-r) + 66px); padding-right: var(--safe-r); }
+
+.tbtn {
+  pointer-events: auto; appearance: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  border: 1.5px solid rgba(170, 210, 240, 0.34);
+  background: rgba(10, 17, 26, 0.55);
+  backdrop-filter: blur(6px);
+  color: var(--ink); font: 700 11px var(--sans); letter-spacing: 0.06em;
+  width: 44px; height: 44px;
+  transition: transform 0.08s, background 0.12s, border-color 0.12s;
+}
+.tbtn.down { transform: scale(0.9); background: rgba(127, 212, 255, 0.28); }
+.tbtn.sm { width: 38px; height: 38px; font-size: 10px; }
+.tbtn.shutter {
+  width: 62px; height: 62px;
+  border-width: 3px; border-color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.14);
+}
+.tbtn.shutter::after {
+  content: ''; width: 42px; height: 42px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+}
+.tbtn.shutter.down::after { background: var(--accent); }
+.tbtn.rec i {
+  width: 16px; height: 16px; border-radius: 50%; background: #ff5f5f;
+  transition: border-radius 0.15s, width 0.15s, height 0.15s;
+}
+.tbtn.rec.active { border-color: #ff5f5f; background: rgba(255, 60, 60, 0.24); }
+.tbtn.rec.active i { border-radius: 3px; width: 14px; height: 14px; }
+.tbtn.pause {
+  position: absolute; top: calc(var(--safe-t) + 8px); right: calc(var(--safe-r) + 10px);
+  width: 38px; height: 38px; font-size: 11px;
+}
+/* ── Rotate-to-landscape gate ─────────────────────────────────────────── */
+.rotate {
+  position: absolute; inset: 0; z-index: 60;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg); text-align: center; padding: 30px;
+}
+.rotate[hidden] { display: none; }
+.rotate h2 { margin: 22px 0 8px; font-size: 19px; }
+.rotate p { margin: 0; color: var(--dim); font-size: 13px; max-width: 30ch; line-height: 1.7; }
+.rotate .phone {
+  width: 56px; height: 92px; margin: 0 auto; border-radius: 10px;
+  border: 2px solid var(--accent);
+  animation: tilt 2.2s ease-in-out infinite;
+}
+@keyframes tilt {
+  0%, 40% { transform: rotate(0deg); }
+  60%, 100% { transform: rotate(-90deg); }
+}
+
+/* ── Responsive UI chrome ─────────────────────────────────────────────── */
+@media (max-width: 760px), (max-height: 560px) {
+  .topbar { padding: 10px calc(14px + var(--safe-r)) 10px calc(14px + var(--safe-l)); }
+  .topbar nav { gap: 6px; }
+  .btn { padding: 9px 13px; font-size: 12px; }
+  .btn.big { padding: 12px 20px; font-size: 14px; }
+  .brand { font-size: 12px; }
+
+  .hangar {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 14px calc(14px + var(--safe-r)) calc(14px + var(--safe-b)) calc(14px + var(--safe-l));
+    overflow-y: auto;
+  }
+  .map-list { overflow: visible; gap: 8px; }
+  .map-card { padding: 12px 14px; }
+  .map-card h3 { font-size: 15px; }
+  .map-card .meta { margin-top: 8px; font-size: 10px; gap: 10px; }
+  .map-detail { overflow: visible; padding: 18px; }
+  .map-detail h2 { font-size: 21px; }
+  .map-detail p.brief { font-size: 12.5px; line-height: 1.65; }
+  .field { margin-top: 16px; }
+  .chip { padding: 7px 11px; font-size: 11.5px; }
+
+  .boot-inner { padding: 24px calc(20px + var(--safe-l)); }
+  .wordmark h1 { font-size: 32px; letter-spacing: 0.16em; }
+  .wordmark .mark { font-size: 26px; }
+  .boot-copy { font-size: 13.5px; margin-bottom: 20px; }
+
+  .brief-card { padding: 20px; border-radius: 14px; max-height: 92vh; }
+  .brief-card h2 { font-size: 21px; }
+  .brief-head { gap: 12px; }
+  .obj-list li { padding: 9px 0; font-size: 12.5px; gap: 10px; }
+  .brief-tips ul { font-size: 12px; }
+
+  .pause-card { padding: 20px; gap: 10px; }
+  .modal-card { padding: 20px; border-radius: 14px; }
+  .ctrl-grid { grid-template-columns: 1fr; gap: 16px; }
+  .settings .set-row { flex-wrap: wrap; gap: 10px; padding: 11px 0; }
+  input[type=range] { width: 130px; }
+
+  .results { padding: 20px calc(14px + var(--safe-r)) 40px calc(14px + var(--safe-l)); }
+  .res-total, .res-grade { font-size: 40px; }
+  .res-cols { grid-template-columns: 1fr; gap: 14px; margin-top: 20px; }
+  .res-panel { padding: 16px; }
+  .gallery { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .rec-table { font-size: 11px; }
+  .rec-table th, .rec-table td { padding: 6px; }
+}
+
+/* Very short landscape phones: the map list becomes a horizontal rail. */
+@media (max-height: 460px) and (orientation: landscape) {
+  .hangar { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); }
+  .map-list {
+    flex-direction: row; overflow-x: auto; overflow-y: hidden;
+    align-items: stretch; padding-bottom: 6px;
+  }
+  .map-card { min-width: 190px; }
+  .map-card .meta { flex-direction: column; gap: 3px; }
+  .map-detail { overflow-y: auto; }
+  .hangar { overflow: hidden; }
+}
+
+/* Landscape phones are wide but very short — tighten the whole type scale so
+   the hangar and the briefing fit without a scroll marathon. */
+@media (max-height: 470px) and (orientation: landscape) {
+  .topbar { padding: 6px calc(14px + var(--safe-r)) 6px calc(14px + var(--safe-l)); }
+  .brand { font-size: 11px; }
+  .btn { padding: 7px 11px; font-size: 11px; }
+  .btn.big { padding: 10px 16px; font-size: 13px; }
+
+  .map-card { min-width: 168px; padding: 10px 12px; }
+  .map-card h3 { font-size: 13.5px; }
+  .map-card .sub { display: none; }
+  .map-card .meta { font-size: 9.5px; margin-top: 6px; }
+
+  .map-detail { padding: 14px 16px; }
+  .map-detail h2 { font-size: 17px; }
+  .map-detail .sub { font-size: 9.5px; }
+  .map-detail p.brief { font-size: 11.5px; line-height: 1.55; margin: 6px 0 0; }
+  .field { margin-top: 12px; }
+  .field > label { font-size: 9px; margin-bottom: 6px; }
+  .chip { padding: 5px 9px; font-size: 10.5px; gap: 5px; }
+  .cond-note { font-size: 10.5px; min-height: 0; margin-top: 7px; }
+  .stat-row { margin-top: 12px; gap: 14px; }
+  .stat .v { font-size: 14px; }
+  .stat .k { font-size: 9px; }
+  .lm { font-size: 10px; padding: 4px 7px; gap: 5px; }
+  /* Keep Launch reachable without scrolling to the bottom of the panel. */
+  .launch {
+    position: sticky; bottom: -14px; margin-top: 12px;
+    padding: 10px 0 4px;
+    background: linear-gradient(180deg, rgba(12, 18, 27, 0), rgba(12, 18, 27, 0.96) 32%);
+  }
+
+  .boot-inner { padding: 16px calc(20px + var(--safe-l)); }
+  .wordmark { margin-bottom: 14px; gap: 12px; }
+  .wordmark h1 { font-size: 26px; }
+  .wordmark .mark { font-size: 22px; }
+  .tag { font-size: 10px; }
+  .boot-copy { font-size: 12px; line-height: 1.6; margin-bottom: 16px; }
+  #screen-boot .hint { margin-top: 10px; font-size: 11px; }
+
+  .brief-card { padding: 16px 18px; max-height: 94vh; }
+  .brief-card h2 { font-size: 19px; }
+  .brief-card p.brief { font-size: 11.5px; line-height: 1.55; }
+  .pill { padding: 5px 10px; font-size: 10px; }
+  .obj-list { margin-top: 12px; }
+  .obj-list li { padding: 7px 0; font-size: 11.5px; }
+  .brief-tips { margin-top: 12px; padding: 10px 12px; }
+  .brief-tips ul { font-size: 11px; line-height: 1.6; }
+
+  .pause-card { padding: 16px; gap: 8px; }
+  .pause-card h2 { font-size: 19px; }
+  .modal-card { padding: 16px 18px; max-height: 92vh; }
+  .modal-card h2 { margin-bottom: 12px; font-size: 17px; }
+  .ctrl-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .ctrl-grid .kv { font-size: 11px; padding: 4px 0; }
+
+  .results { padding: 14px calc(14px + var(--safe-r)) 30px calc(14px + var(--safe-l)); }
+  .res-total, .res-grade { font-size: 32px; }
+  .res-panel { padding: 14px; }
+  .score-line { font-size: 12px; padding: 7px 0; }
+  .gallery { grid-template-columns: repeat(3, 1fr); gap: 7px; }
+}

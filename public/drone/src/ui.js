@@ -44,6 +44,29 @@ const CONTROLS = [
   ]],
 ];
 
+const TOUCH_CONTROLS = [
+  ['Sticks', [
+    ['Left stick', 'Throttle up/down, yaw left/right'],
+    ['Right stick', 'Pitch forward/back, roll left/right'],
+    ['Drag screen', 'Gimbal pitch and pan'],
+    ['MODE', 'Cycle cine → normal → sport'],
+  ]],
+  ['Camera', [
+    ['Shutter', 'Take the photograph'],
+    ['●', 'Start / stop recording a clip'],
+    ['CAM', 'Cycle FPV → Chase → Gimbal'],
+    ['＋ / －', 'Lens: 14 mm → 120 mm'],
+    ['⊹', 'Re-level the gimbal'],
+    ['◎', 'Minimap range'],
+    ['❚❚', 'Pause'],
+  ]],
+  ['Tips', [
+    ['Landscape', 'Rotate the device — the game needs the width'],
+    ['Fullscreen', 'Launching goes fullscreen so the browser bars get out of the way'],
+    ['Smooth', 'Small stick movements score far better than big ones'],
+  ]],
+];
+
 const TIPS = [
   'Golden hour and blue hour multiply every score. Midday is the hard mode.',
   'Put your subject on a third, keep the horizon off centre, and hold the roll level.',
@@ -69,6 +92,13 @@ export class UI {
       this.modals[el.id.replace('modal-', '')] = el;
     }
     this.current = 'boot';
+    if (this.h.isTouch) {
+      const hint = document.querySelector('#screen-boot .hint');
+      if (hint) {
+        hint.textContent =
+          'Touch controls · Rotate to landscape · Launching goes fullscreen';
+      }
+    }
     this._bind();
     this.renderHangar();
   }
@@ -85,6 +115,7 @@ export class UI {
         case 'open-records': this.openModal('records'); break;
         case 'close-modal': this.closeModals(); break;
         case 'clear-records': clearRecords(); this.renderRecords(); this.renderHangar(); break;
+        case 'fullscreen': this.h.onFullscreen(); break;
         case 'launch': this.h.onLaunch(this.selectedMap, this.weather, this.time); break;
         case 'brief-launch': this.h.onBriefLaunch(); break;
         case 'brief-back': this.show('hangar'); break;
@@ -340,7 +371,8 @@ export class UI {
   // ── Modals ───────────────────────────────────────────────────────────────
   renderControls() {
     const el = document.getElementById('controls-grid');
-    el.innerHTML = CONTROLS.map(([title, rows]) =>
+    const set = this.h.isTouch ? TOUCH_CONTROLS.concat(CONTROLS.slice(0, 2)) : CONTROLS;
+    el.innerHTML = set.map(([title, rows]) =>
       '<div><h4>' + title + '</h4><dl>' +
       rows.map(([k, v]) => '<div class="kv"><kbd>' + k + '</kbd><span>' + v + '</span></div>').join('') +
       '</dl></div>').join('');
@@ -359,6 +391,11 @@ export class UI {
       '<div class="set-row"><div><div class="k">Render quality</div>' +
       '<div class="d">Terrain detail, draw distance and vegetation density</div></div>' +
       seg('quality', Object.keys(QUALITY).map((q) => [q, QUALITY[q].label]), s.quality) + '</div>' +
+
+      '<div class="set-row"><div><div class="k">On-screen controls</div>' +
+      '<div class="d">Virtual sticks and camera buttons for touchscreens</div></div>' +
+      seg('touchControls', [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']],
+        s.touchControls || 'auto') + '</div>' +
 
       '<div class="set-row"><div><div class="k">Gimbal sensitivity</div>' +
       '<div class="d">Mouse travel per degree of gimbal movement</div></div>' +

@@ -67,6 +67,13 @@ export class HUD {
     this.show = true;
     this.guides = true;
     this._compass = 0;
+
+    /** Compact layout for phones: fewer instruments, bigger touch clearance. */
+    this.compact = false;
+    /** Display safe-area insets (notches, home indicators). */
+    this.inset = { t: 0, r: 0, b: 0, l: 0 };
+    /** Screen edges reserved by the on-screen button columns. */
+    this.reserve = { l: 0, r: 0 };
   }
 
   toast(text, sub, color = '#8fd7ff', ttl = 3.4) {
@@ -164,17 +171,134 @@ export class HUD {
     if (this.guides) this._guides(ctx, s, w, h);
     this._horizon(ctx, s, w, h);
     this._compassTape(ctx, s, w, h);
-    this._altitudeTape(ctx, s, w, h);
-    this._speedTape(ctx, s, w, h);
-    this._battery(ctx, s, w, h);
-    this._cameraStrip(ctx, s, w, h);
-    this._compositionMeter(ctx, s, w, h);
-    this._objectives(ctx, s, w, h);
-    this._minimap(ctx, s, w, h);
+
+    if (this.compact) {
+      this._compactPanels(ctx, s, w, h);
+    } else {
+      // On a tablet the edge button columns still need clearance.
+      const L = this.inset.l + this.reserve.l + 26;
+      const R = w - this.inset.r - this.reserve.r - 26;
+      const T = this.inset.t + 20;
+      const B = h - this.inset.b - 26;
+      this._altitudeTape(ctx, s, L, h);
+      this._speedTape(ctx, s, R - 54, h);
+      const bw = 178;
+      this._battery(ctx, s, R - bw, T, bw);
+      this._cameraStrip(ctx, s, L, B - 62);
+      this._compositionMeter(ctx, s, w / 2 - 130, B - 74, 260, 74);
+      this._objectives(ctx, s, L, T);
+      const ms = 176;
+      this._minimap(ctx, s, R - ms, B - ms, ms);
+      this._photoCard(ctx, s, L, B - 62 - 14);
+    }
+
     this._toasts(ctx, s, w, h);
-    this._photoCard(ctx, s, w, h);
     if (s.recorder && s.recorder.recording) this._recBadge(ctx, s, w, h);
     this._warnings(ctx, s, w, h);
+  }
+
+  // ── Compact (phone) layout ───────────────────────────────────────────────
+  /** A single-line instrument pill. */
+  _pill(ctx, x, y, w, h, cells, accent) {
+    panel(ctx, x, y, w, h, 6, 0.42);
+    let cx = x + 9;
+    for (const c of cells) {
+      if (c.k) {
+        ctx.font = '600 8px ' + SANS;
+        ctx.fillStyle = FAINT;
+        ctx.fillText(c.k, cx, y + h / 2 + 3.5);
+        cx += ctx.measureText(c.k).width + 5;
+      }
+      ctx.font = '700 ' + (c.size || 11) + 'px ' + (c.mono === false ? SANS : MONO);
+      ctx.fillStyle = c.color || INK;
+      ctx.fillText(c.v, cx, y + h / 2 + 4);
+      cx += ctx.measureText(c.v).width + (c.gap || 12);
+    }
+    if (accent) {
+      ctx.fillStyle = accent;
+      ctx.fillRect(x, y + 5, 2, h - 10);
+    }
+    return cx - x;
+  }
+
+  _compactPanels(ctx, s, w, h) {
+    const d = s.drone, cam = s.camera, atm = s.atmosphere, sess = s.session;
+    const L = this.inset.l + this.reserve.l + 10;
+    const R = w - this.inset.r - this.reserve.r - 10;
+    const T = this.inset.t + 8;
+    const B = h - this.inset.b - 8;
+    const PH = 24;
+
+    // Mission + clock + objective progress
+    const done = sess ? sess.objectives.filter((o) => o.done).length : 0;
+    const total = sess ? sess.objectives.length : 0;
+    this._pill(ctx, L, T, 186, PH, [
+      { v: s.world.def.name.toUpperCase().slice(0, 14), size: 9, mono: false, gap: 10 },
+      { v: formatTime(s.elapsed), size: 10, gap: 10 },
+      { v: done + '/' + total, size: 10, color: done === total && total ? '#8affc1' : DIM },
+    ], s.world.def.accent);
+
+    // Camera state
+    this._pill(ctx, L, T + PH + 5, 186, PH, [
+      { v: CAMERA_LABELS[cam.mode], size: 9, mono: false, color: '#8fd7ff', gap: 9 },
+      { v: cam.focal + 'mm', size: 10, gap: 9 },
+      { v: d.mode.label, size: 9, mono: false, color: DIM, gap: 9 },
+      { v: Math.round(d.gimbalPitch / DEG) + '°', size: 10, color: DIM },
+    ]);
+
+    // Telemetry
+    const vs = d.verticalSpeed;
+    this._pill(ctx, L, T + (PH + 5) * 2, 200, PH, [
+      { k: 'ALT', v: Math.round(d.altitude), size: 10, gap: 8 },
+      { k: 'AGL', v: Math.round(d.agl), size: 10, color: d.agl < 15 ? '#ffb45e' : INK, gap: 8 },
+      { k: 'GS', v: d.speed.toFixed(1), size: 10, gap: 8 },
+      { k: 'V/S', v: (vs >= 0 ? '+' : '') + vs.toFixed(1), size: 10,
+        color: Math.abs(vs) > 4 ? '#ffd76a' : INK },
+    ]);
+
+    // Battery, right aligned
+    const bw = 132;
+    this._battery(ctx, s, R - bw, T, bw, true);
+
+    // Minimap under the battery
+    const ms = Math.min(116, Math.max(84, h * 0.30));
+    this._minimap(ctx, s, R - ms, T + 34, ms);
+
+    // Composition meter, centred between the sticks
+    const cw = Math.min(228, w * 0.34);
+    this._compositionMeter(ctx, s, w / 2 - cw / 2, B - 44, cw, 44);
+
+    this._photoCardCompact(ctx, s, L, T + (PH + 5) * 3 + 4);
+
+    // Wind, tucked under the minimap
+    const ws = Math.hypot(d.wind.x, d.wind.z);
+    this._pill(ctx, R - 84, T + 40 + ms, 84, 20, [
+      { k: 'WIND', v: ws.toFixed(1), size: 10, color: ws > 9 ? '#ffb45e' : INK },
+    ]);
+  }
+
+  _photoCardCompact(ctx, s, x, y) {
+    const p = this.lastPhoto;
+    if (!p || this.photoCardT > 4) return;
+    const a = this.photoCardT < 0.25 ? this.photoCardT / 0.25 : clamp01((4 - this.photoCardT) / 0.7);
+    const cw = 132, ch = cw * 0.5625 + 20;
+    ctx.save();
+    ctx.globalAlpha = a;
+    panel(ctx, x, y, cw, ch, 7, 0.6);
+    if (p.thumb) {
+      ctx.save();
+      roundRect(ctx, x + 5, y + 5, cw - 10, (cw - 10) * 0.5625, 4);
+      ctx.clip();
+      ctx.drawImage(p.thumb, x + 5, y + 5, cw - 10, (cw - 10) * 0.5625);
+      ctx.restore();
+    }
+    ctx.font = '800 12px ' + SANS;
+    ctx.fillStyle = p.grade.color;
+    ctx.fillText(p.grade.grade, x + 7, y + ch - 6);
+    ctx.font = '700 11px ' + MONO;
+    ctx.fillStyle = INK;
+    ctx.fillText('+' + p.score, x + 22, y + ch - 6);
+    ctx.restore();
   }
 
   // ── Framing guides ───────────────────────────────────────────────────────
@@ -184,19 +308,23 @@ export class HUD {
     ctx.lineWidth = 1;
     ctx.beginPath();
     for (let i = 1; i < 3; i++) {
-      ctx.moveTo((w * i) / 3, h * 0.12);
-      ctx.lineTo((w * i) / 3, h * 0.88);
-      ctx.moveTo(w * 0.1, (h * i) / 3);
-      ctx.lineTo(w * 0.9, (h * i) / 3);
+      ctx.moveTo((w * i) / 3, h * 0.14);
+      ctx.lineTo((w * i) / 3, h * 0.86);
+      ctx.moveTo(w * 0.12, (h * i) / 3);
+      ctx.lineTo(w * 0.88, (h * i) / 3);
     }
     ctx.stroke();
 
-    // Corner safe-area brackets
-    const m = 22, len = 26;
+    // Corner safe-area brackets, kept clear of notches and button columns.
+    const len = this.compact ? 18 : 26;
+    const mx0 = this.inset.l + this.reserve.l + (this.compact ? 8 : 22);
+    const mx1 = w - this.inset.r - this.reserve.r - (this.compact ? 8 : 22);
+    const my0 = this.inset.t + (this.compact ? 8 : 22);
+    const my1 = h - this.inset.b - (this.compact ? 8 : 22);
     ctx.strokeStyle = 'rgba(255,255,255,0.3)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    const corners = [[m, m, 1, 1], [w - m, m, -1, 1], [m, h - m, 1, -1], [w - m, h - m, -1, -1]];
+    const corners = [[mx0, my0, 1, 1], [mx1, my0, -1, 1], [mx0, my1, 1, -1], [mx1, my1, -1, -1]];
     for (const [x, y, dx, dy] of corners) {
       ctx.moveTo(x + dx * len, y);
       ctx.lineTo(x, y);
@@ -210,7 +338,7 @@ export class HUD {
   _horizon(ctx, s, w, h) {
     const cam = s.camera;
     const cx = w / 2, cy = h / 2;
-    const span = Math.min(w * 0.30, 300);
+    const span = this.compact ? Math.min(w * 0.22, 190) : Math.min(w * 0.30, 300);
     const pitchPx = cam.scale;
 
     ctx.save();
@@ -304,8 +432,8 @@ export class HUD {
   // ── Compass ──────────────────────────────────────────────────────────────
   _compassTape(ctx, s, w, h) {
     const drone = s.drone, cam = s.camera;
-    const cx = w / 2, y = 34;
-    const tw = Math.min(400, w * 0.42);
+    const cx = w / 2, y = this.inset.t + (this.compact ? 26 : 34);
+    const tw = this.compact ? Math.min(230, w * 0.28) : Math.min(400, w * 0.42);
     const heading = ((cam.yaw / DEG) % 360 + 360) % 360;
     const pxPerDeg = tw / 90;
 
@@ -424,9 +552,9 @@ export class HUD {
     label(ctx, unit, x + wdt / 2 - 8, y - 6, 9, DIM);
   }
 
-  _altitudeTape(ctx, s, w, h) {
+  _altitudeTape(ctx, s, x, h) {
     const d = s.drone;
-    const x = 26, hgt = Math.min(260, h * 0.42);
+    const hgt = Math.min(260, h * 0.42);
     const y = h / 2 - hgt / 2;
     this._tape(ctx, x, y, hgt, d.altitude, 10, 'ALT m', {
       side: 'left', range: 140, color: 'rgba(140,230,255,0.95)',
@@ -454,10 +582,10 @@ export class HUD {
     ctx.restore();
   }
 
-  _speedTape(ctx, s, w, h) {
+  _speedTape(ctx, s, x, h) {
     const d = s.drone;
     const hgt = Math.min(260, h * 0.42);
-    const x = w - 26 - 54, y = h / 2 - hgt / 2;
+    const y = h / 2 - hgt / 2;
     this._tape(ctx, x, y, hgt, d.speed, 5, 'GS m/s', {
       side: 'right', range: 46, color: 'rgba(140,230,255,0.95)',
     });
@@ -481,15 +609,33 @@ export class HUD {
   }
 
   // ── Battery ──────────────────────────────────────────────────────────────
-  _battery(ctx, s, w, h) {
+  _battery(ctx, s, x, y, bw, compact) {
     const d = s.drone;
-    const bw = 178, bh = 54;
-    const x = w - bw - 26, y = 20;
-    panel(ctx, x, y, bw, bh, 8, 0.36);
+    const bh = compact ? 24 : 54;
+    panel(ctx, x, y, bw, bh, 6, 0.4);
 
     const pct = d.battery;
     const col = pct > 0.45 ? '#7de8a4' : pct > 0.2 ? '#ffd76a' : '#ff7a7a';
     const pulse = pct < 0.2 ? 0.6 + 0.4 * Math.sin(this.recPulse * 6) : 1;
+    const secs = (d.battery * d.batterySeconds) /
+      Math.max(0.4, d.mode.drain * (0.8 + d.rotorLoad));
+
+    if (compact) {
+      // Bar, percentage and remaining time on one line.
+      const gx = x + 9, gy = y + 9, gw = bw * 0.34, gh = 7;
+      ctx.save();
+      ctx.globalAlpha = pulse;
+      roundRect(ctx, gx, gy, gw, gh, 3.5);
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      ctx.fill();
+      roundRect(ctx, gx, gy, Math.max(2, gw * pct), gh, 3.5);
+      ctx.fillStyle = col;
+      ctx.fill();
+      ctx.restore();
+      mono(ctx, Math.round(pct * 100) + '%', gx + gw + 8, y + 16, 11, col);
+      mono(ctx, formatTime(secs), x + bw - 9, y + 16, 10, DIM, 'right');
+      return;
+    }
 
     label(ctx, 'BATTERY', x + 12, y + 17, 9, DIM);
     mono(ctx, Math.round(pct * 100) + '%', x + bw - 12, y + 18, 13, col, 'right');
@@ -513,17 +659,16 @@ export class HUD {
     ctx.stroke();
     ctx.restore();
 
-    const secs = (d.battery * d.batterySeconds) / Math.max(0.4, d.mode.drain * (0.8 + d.rotorLoad));
     label(ctx, formatTime(secs) + ' left', x + 12, y + 48, 9, DIM);
+    ctx.textAlign = 'right';
     label(ctx, Math.round(d.distanceHome) + ' m home', x + bw - 12, y + 48, 9, DIM);
     ctx.textAlign = 'left';
   }
 
   // ── Camera strip ─────────────────────────────────────────────────────────
-  _cameraStrip(ctx, s, w, h) {
+  _cameraStrip(ctx, s, x, y) {
     const cam = s.camera, d = s.drone, atm = s.atmosphere;
     const bw = 250, bh = 62;
-    const x = 26, y = h - bh - 26;
     panel(ctx, x, y, bw, bh, 8, 0.36);
 
     label(ctx, 'CAMERA', x + 12, y + 16, 9, DIM);
@@ -558,52 +703,66 @@ export class HUD {
   }
 
   // ── Live composition meter ───────────────────────────────────────────────
-  _compositionMeter(ctx, s, w, h) {
+  _compositionMeter(ctx, s, x, y, bw, bh) {
     const shot = s.shot;
     if (!shot) return;
-    const bw = 260, bh = 74;
-    const x = w / 2 - bw / 2, y = h - bh - 26;
-    panel(ctx, x, y, bw, bh, 8, 0.36);
+    panel(ctx, x, y, bw, bh, 8, 0.4);
+    const tight = bh < 62;
 
     const g = shot.grade;
-    label(ctx, 'COMPOSITION', x + 12, y + 16, 9, DIM);
-    ctx.font = '800 15px ' + SANS;
+    if (!tight) label(ctx, 'COMPOSITION', x + 12, y + 16, 9, DIM);
+    ctx.font = '800 ' + (tight ? 13 : 15) + 'px ' + SANS;
     ctx.fillStyle = g.color;
-    ctx.textAlign = 'right';
-    ctx.fillText(g.grade + '  ' + shot.score, x + bw - 12, y + 18);
+    ctx.textAlign = tight ? 'left' : 'right';
+    const head = g.grade + '  ' + shot.score;
+    ctx.fillText(head, tight ? x + 10 : x + bw - 12, y + (tight ? 16 : 18));
     ctx.textAlign = 'left';
+    if (tight) {
+      // No room for a caption row, so the subject rides beside the score.
+      const hw = ctx.measureText(head).width;
+      ctx.font = '500 8px ' + SANS;
+      ctx.fillStyle = DIM;
+      const note = shot.subjectNote || '';
+      const room = bw - hw - 26;
+      const maxC = Math.max(4, Math.floor(room / 4.2));
+      ctx.fillText(note.length > maxC ? note.slice(0, maxC - 1) + '…' : note,
+        x + 14 + hw, y + 15);
+    }
 
-    // Six mini bars
     const rows = breakdownRows(shot);
-    const gw = (bw - 24) / rows.length - 5;
-    let bx = x + 12;
+    const pad = tight ? 10 : 12;
+    const gw = (bw - pad * 2) / rows.length - 4;
+    const bhh = tight ? 15 : 22;
+    const by = tight ? y + 21 : y + 26;
+    let bx = x + pad;
     for (const r of rows) {
       const v = clamp01(r.value);
-      const bhh = 22;
-      const by = y + 26;
       ctx.fillStyle = 'rgba(255,255,255,0.09)';
       ctx.fillRect(bx, by, gw, bhh);
       const col = v > 0.75 ? '#8affc1' : v > 0.5 ? '#7fd4ff' : v > 0.3 ? '#ffd76a' : '#ff8f8f';
       ctx.fillStyle = col;
       ctx.fillRect(bx, by + bhh * (1 - v), gw, bhh * v);
-      ctx.font = '600 7px ' + SANS;
-      ctx.fillStyle = FAINT;
-      ctx.fillText(r.label.slice(0, 5).toUpperCase(), bx, by + bhh + 9);
-      bx += gw + 5;
+      if (!tight) {
+        ctx.font = '600 7px ' + SANS;
+        ctx.fillStyle = FAINT;
+        ctx.fillText(r.label.slice(0, 5).toUpperCase(), bx, by + bhh + 8);
+      }
+      bx += gw + 4;
     }
-    ctx.font = '500 9px ' + SANS;
-    ctx.fillStyle = DIM;
-    const note = shot.subjectNote || '';
-    ctx.fillText(note.length > 42 ? note.slice(0, 41) + '…' : note, x + 12, y + bh - 5);
+    if (!tight) {
+      ctx.font = '500 9px ' + SANS;
+      ctx.fillStyle = DIM;
+      const note = shot.subjectNote || '';
+      ctx.fillText(note.length > 42 ? note.slice(0, 41) + '…' : note, x + pad, y + bh - 5);
+    }
   }
 
   // ── Objectives ───────────────────────────────────────────────────────────
-  _objectives(ctx, s, w, h) {
+  _objectives(ctx, s, x, y) {
     const sess = s.session;
     if (!sess) return;
     const rows = sess.objectives;
     const bw = 268, bh = 30 + rows.length * 17;
-    const x = 26, y = 20;
     panel(ctx, x, y, bw, bh, 8, 0.34);
     ctx.font = '700 10px ' + SANS;
     ctx.fillStyle = INK;
@@ -622,16 +781,14 @@ export class HUD {
       ctx.fillStyle = o.done ? 'rgba(138,255,193,0.85)' : 'rgba(210,226,240,0.72)';
       let t = o.text;
       if (o.progressText) t += '  ' + o.progressText;
-      ctx.fillText(t.length > 40 ? t.slice(0, 39) + '…' : t, x + 28, yy + 8);
+      ctx.fillText(t.length > 44 ? t.slice(0, 43) + '…' : t, x + 28, yy + 8);
       yy += 17;
     }
   }
 
   // ── Minimap ──────────────────────────────────────────────────────────────
-  _minimap(ctx, s, w, h) {
+  _minimap(ctx, s, x, y, size) {
     if (!this.minimap) return;
-    const size = 176;
-    const x = w - size - 26, y = h - size - 26;
     const d = s.drone;
     const zoom = this.zoomLevels[this.zoomIndex];
     const meta = this.minimapMeta;
@@ -746,16 +903,16 @@ export class HUD {
     ctx.stroke();
     ctx.font = '600 8px ' + MONO;
     ctx.fillStyle = FAINT;
-    ctx.fillText((zoom / 1000).toFixed(1) + ' km  ·  TAB', x + 8, y + size - 7);
+    ctx.fillText((zoom / 1000).toFixed(1) + ' km', x + 7, y + size - 6);
     ctx.restore();
   }
 
   // ── Notifications ────────────────────────────────────────────────────────
   _toasts(ctx, s, w, h) {
-    let y = 92;
+    let y = this.inset.t + (this.compact ? 82 : 92);
     for (const t of this.toasts) {
       const a = t.t < 0.25 ? t.t / 0.25 : clamp01((t.ttl - t.t) / 0.6);
-      const tw = 300;
+      const tw = this.compact ? Math.min(268, w * 0.42) : 300;
       ctx.save();
       ctx.globalAlpha = a;
       panel(ctx, w / 2 - tw / 2, y, tw, t.sub ? 44 : 30, 8, 0.5);
@@ -774,13 +931,13 @@ export class HUD {
     }
   }
 
-  _photoCard(ctx, s, w, h) {
+  _photoCard(ctx, s, x, bottom) {
     const p = this.lastPhoto;
     if (!p || this.photoCardT > 5.5) return;
     const a = this.photoCardT < 0.3 ? this.photoCardT / 0.3
       : clamp01((5.5 - this.photoCardT) / 0.8);
-    const cw = 216, ch = 168;
-    const x = 26, y = h - 26 - 62 - 14 - ch;
+    const cw = 216, ch = 212;
+    const y = bottom - ch;
     ctx.save();
     ctx.globalAlpha = a;
     panel(ctx, x, y, cw, ch, 10, 0.62);
@@ -831,7 +988,9 @@ export class HUD {
     ctx.lineWidth = 3;
     ctx.strokeRect(1.5, 1.5, w - 3, h - 3);
 
-    const bw = 148, x = w / 2 - bw / 2, y = 62;
+    const bw = this.compact ? 128 : 148;
+    const x = w / 2 - bw / 2;
+    const y = this.inset.t + (this.compact ? 50 : 62);
     panel(ctx, x, y, bw, 26, 6, 0.5);
     ctx.fillStyle = 'rgba(255,80,80,' + pulse.toFixed(3) + ')';
     ctx.beginPath();
@@ -843,10 +1002,11 @@ export class HUD {
     mono(ctx, formatTime(dur), x + bw - 12, y + 17, 12, INK, 'right');
     // Live smoothness bar
     const sm = rec.liveSmooth;
+    const sbw = this.compact ? 30 : 44;
     ctx.fillStyle = 'rgba(255,255,255,0.12)';
-    ctx.fillRect(x + 60, y + 9, 44, 7);
+    ctx.fillRect(x + 58, y + 9, sbw, 7);
     ctx.fillStyle = sm > 0.75 ? '#8affc1' : sm > 0.5 ? '#ffd76a' : '#ff8f8f';
-    ctx.fillRect(x + 60, y + 9, 44 * clamp01(sm), 7);
+    ctx.fillRect(x + 58, y + 9, sbw * clamp01(sm), 7);
     ctx.restore();
   }
 
@@ -860,7 +1020,7 @@ export class HUD {
     if (ws > 12) msgs.push(['HIGH WIND ' + ws.toFixed(0) + ' M/S', '#ffb45e']);
     if (!msgs.length) return;
     const pulse = 0.6 + 0.4 * Math.sin(this.recPulse * 5);
-    let y = h / 2 + 96;
+    let y = h / 2 + (this.compact ? 60 : 96);
     ctx.save();
     ctx.textAlign = 'center';
     for (const [m, c] of msgs) {

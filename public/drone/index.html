@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="theme-color" content="#05070b" />
 <title>SKYLINE — Drone Cinematography</title>
 <meta name="description" content="A drone cinematography and flight simulation game: fly a camera drone over procedural landscapes and shoot the best showreel you can." />
 <link rel="stylesheet" href="styles.css" />
@@ -12,6 +16,45 @@
 <div id="app">
   <canvas id="scene"></canvas>
   <canvas id="hud"></canvas>
+
+  <!-- ── On-screen flight controls (touch devices) ────────────────────── -->
+  <div id="touch" class="touch" hidden>
+    <div class="touch-pad" id="touch-pad"></div>
+
+    <div class="tzone left" id="tzone-l">
+      <div class="tbase" id="tbase-l"><div class="knob"></div></div>
+    </div>
+    <div class="tzone right" id="tzone-r">
+      <div class="tbase" id="tbase-r"><div class="knob"></div></div>
+    </div>
+
+    <div class="tstick-hint left">ALT · YAW</div>
+    <div class="tstick-hint right">PITCH · ROLL</div>
+
+    <div class="tcol left">
+      <button class="tbtn sm" data-touch="zoomIn" aria-label="Zoom in">＋</button>
+      <button class="tbtn sm" data-touch="zoomOut" aria-label="Zoom out">－</button>
+      <button class="tbtn sm" data-touch="flightMode" aria-label="Flight mode">MODE</button>
+      <button class="tbtn sm" data-touch="levelGimbal" aria-label="Level gimbal">⊹</button>
+    </div>
+
+    <div class="tcol right">
+      <button class="tbtn sm" data-touch="minimap" aria-label="Minimap range">◎</button>
+      <button class="tbtn cam" data-touch="camera" aria-label="Camera mode">CAM</button>
+      <button class="tbtn rec" data-touch="record" aria-label="Record"><i></i></button>
+      <button class="tbtn shutter" data-touch="photo" aria-label="Take photo"></button>
+    </div>
+
+    <button class="tbtn pause" data-touch="pause" aria-label="Pause">❚❚</button>
+  </div>
+
+  <div id="rotate" class="rotate" hidden>
+    <div class="rotate-inner">
+      <div class="phone"></div>
+      <h2>Rotate your device</h2>
+      <p>SKYLINE flies in landscape. Turn the phone sideways to take off.</p>
+    </div>
+  </div>
 
   <div id="overlay">
 
@@ -42,6 +85,7 @@
           <button class="btn ghost" data-action="open-controls">Controls</button>
           <button class="btn ghost" data-action="open-records">Records</button>
           <button class="btn ghost" data-action="open-settings">Settings</button>
+          <button class="btn ghost fs-only" data-action="fullscreen" aria-label="Fullscreen">⛶</button>
         </nav>
       </header>
       <div class="hangar">

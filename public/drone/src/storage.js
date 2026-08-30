@@ -9,6 +9,8 @@ const SCORES_KEY = 'skyline.records.v1';
 
 const DEFAULT_SETTINGS = {
   quality: 'medium',
+  touchControls: 'auto',
+  firstRun: true,
   invertY: false,
   sensitivity: 1,
   guides: true,

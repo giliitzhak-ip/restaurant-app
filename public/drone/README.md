@@ -75,6 +75,32 @@ on the home pad.
 Left stick throttle/yaw, right stick pitch/roll, triggers gimbal pitch,
 A/B/X photo/record/camera, L3/R3 sport/cine, Start pause.
 
+### Touch
+
+On a phone or tablet the game switches to on-screen controls automatically
+(Settings → On-screen controls forces this on or off).
+
+| Control | Action |
+| --- | --- |
+| Left stick | Throttle up/down, yaw left/right |
+| Right stick | Pitch forward/back, roll left/right |
+| Drag anywhere | Gimbal pitch and pan |
+| Shutter | Take the photograph |
+| ● | Start / stop recording a clip |
+| CAM | Cycle FPV → Chase → Gimbal |
+| ＋ / － | Lens: 14 mm → 120 mm |
+| MODE | Cycle cine → normal → sport |
+| ⊹ / ◎ / ❚❚ | Level gimbal / minimap range / pause |
+
+Both sticks float: they appear wherever your thumb lands inside the bottom
+corner zones rather than at a fixed spot, and the origin follows your thumb if
+you drag past the rail.
+
+The game is landscape-only — a portrait phone gets a rotate prompt instead of a
+squeezed HUD. Launching a mission requests fullscreen and a landscape
+orientation lock; both are best-effort and the game still works if the browser
+refuses either (iPhone Safari refuses both).
+
 ---
 
 ## How a shot is scored
@@ -129,7 +155,8 @@ public/drone/
     ├── biomes.js       map / weather / time-of-day data
     ├── atmosphere.js   sun, sky, fog, auto-exposure
     ├── scoring.js      the cinematography judge and the showreel
-    ├── input.js        keyboard + mouse + gamepad → one control state
+    ├── input.js        keyboard + mouse + gamepad + touch → one control state
+    ├── touch.js        on-screen sticks, camera buttons, gimbal trackpad
     ├── noise.js        seeded value / ridged / billow noise
     ├── math.js         vectors, damping, colour helpers
     └── storage.js      settings and records (localStorage, fails soft)
@@ -179,12 +206,35 @@ Notes on the parts that are easy to get wrong:
   only the colour tells you the hour. Without it, sunset renders as mud and
   blue hour renders as black.
 
+### Mobile
+
+Three things change on a small screen, all driven from `resize()`:
+
+* **Layout.** Below 820×560 the HUD switches to a compact instrument set —
+  three single-line pills (mission, camera, telemetry), a compact battery
+  readout, a smaller minimap and a tight composition meter — instead of the
+  full tape-and-panel layout. The tapes are the first thing to go; they need
+  vertical room that a landscape phone does not have.
+* **Clearance.** The on-screen button columns reserve 58 px on the left and
+  66 px on the right, and display safe-area insets (notches, home indicators)
+  are read from a CSS `env()` probe. Both are fed to the HUD so no instrument
+  is ever drawn under a control or a notch — this applies to the full layout
+  too, so a tablet keeps its tapes but shifts them inboard.
+* **Budget.** A touch device on a narrow screen defaults to Low quality with
+  the device-pixel-ratio capped at 1.0, which is what keeps a phone GPU
+  filling ~500 quads a frame at a sensible resolution.
+
+Browser gestures are suppressed over the game surface (`touch-action: none`,
+`overscroll-behavior: none`, pinch and double-tap zoom blocked) so a stick drag
+never scrolls or zooms the page.
+
 ### Performance
 
-Roughly 900–1300 draw items per frame at High. Quality presets change the LOD
-ring size and count, vegetation budget and device-pixel-ratio cap; the game
-also drops one quality step automatically if the first six seconds of a flight
-average under 32 fps. Press `F` for the live counter.
+Roughly 900–1300 draw items per frame at High, ~500 at Low. Quality presets
+change the LOD ring size and count, vegetation budget, cloud budget and
+device-pixel-ratio cap; the game also drops one quality step automatically if
+the first six seconds of a flight average under 32 fps. Press `F` for the live
+counter.
 
 ### Determinism
 

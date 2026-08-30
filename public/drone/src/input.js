@@ -49,6 +49,12 @@ export class Input {
     };
     this._targets = { throttle: 0, pitch: 0, roll: 0, yaw: 0 };
 
+    /** Set by main when on-screen controls are driving the aircraft. */
+    this.touch = null;
+    this.usingTouch = false;
+    /** Touch pilots pick a flight mode from a button: 0 cine, 1 normal, 2 sport. */
+    this.touchMode = 1;
+
     this._onKeyDown = this._onKeyDown.bind(this);
     this._onKeyUp = this._onKeyUp.bind(this);
     this._onMouseMove = this._onMouseMove.bind(this);
@@ -134,11 +140,17 @@ export class Input {
   _onMouseMove(e) {
     if (!this.enabled) return;
     if (!this.pointerLocked && !this.dragging) return;
-    const s = 0.0022 * this.sensitivity;
-    const dy = this.invertY ? -e.movementY : e.movementY;
-    this.state.gimbalPitch = clamp(this.state.gimbalPitch - dy * s, -100 * DEG, 32 * DEG);
-    this.state.gimbalYaw = clamp(this.state.gimbalYaw + e.movementX * s * 0.85, -75 * DEG, 75 * DEG);
+    this.applyGimbalDelta(e.movementX, e.movementY, 1);
     this.usingGamepad = false;
+  }
+
+  /** Shared by the mouse and the touch trackpad. */
+  applyGimbalDelta(dx, dy, gain) {
+    if (!this.enabled) return;
+    const s = 0.0022 * this.sensitivity * (gain || 1);
+    const y = this.invertY ? -dy : dy;
+    this.state.gimbalPitch = clamp(this.state.gimbalPitch - y * s, -100 * DEG, 32 * DEG);
+    this.state.gimbalYaw = clamp(this.state.gimbalYaw + dx * s * 0.85, -75 * DEG, 75 * DEG);
   }
 
   _onWheel(e) {
@@ -203,7 +215,16 @@ export class Input {
       this._padButtons(pad);
     }
 
-    if (!this.usingGamepad) {
+    // ── On-screen sticks ──────────────────────────────────────────────────
+    const touching = this.touch && this.touch.visible;
+    if (touching) {
+      this.touch.apply(t);
+      s.cine = this.touchMode === 0;
+      s.sport = this.touchMode === 2;
+      if (this.touch.engaged) { this.usingTouch = true; this.usingGamepad = false; }
+    }
+
+    if (!this.usingGamepad && !touching) {
       const k = (code) => (this.keys.has(code) ? 1 : 0);
       t.throttle = k('KeyW') - k('KeyS');
       t.yaw = k('KeyD') - k('KeyA');
@@ -220,8 +241,9 @@ export class Input {
       t.throttle = t.pitch = t.roll = t.yaw = 0;
     }
 
-    // Ramp toward the stick target so keyboard input still produces smooth arcs.
-    const rate = this.usingGamepad ? 12 : 3.4;
+    // Ramp toward the stick target so keyboard input still produces smooth
+    // arcs; analogue sources are already smooth and pass through faster.
+    const rate = (this.usingGamepad || touching) ? 12 : 3.4;
     s.throttle = approach(s.throttle, t.throttle, rate * dt);
     s.pitch = approach(s.pitch, t.pitch, rate * dt);
     s.roll = approach(s.roll, t.roll, rate * dt);
