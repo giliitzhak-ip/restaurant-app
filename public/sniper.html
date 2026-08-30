@@ -1,0 +1,2356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>LONGSHOT — Precision Marksman Range</title>
+<style>
+  /* ── Design tokens ────────────────────────────────────────────────── */
+  :root{
+    --bg:#070a09;
+    --panel:rgba(8,12,11,.90);
+    --line:rgba(138,255,193,.20);
+    --line-strong:rgba(138,255,193,.45);
+    --accent:#8affc1;
+    --accent-dim:#4e8f6d;
+    --warn:#ffc24b;
+    --danger:#ff6b6b;
+    --text:#dfe9e3;
+    --muted:#7d8f87;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--text);
+    font-family:var(--sans);overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+    user-select:none;-webkit-user-select:none;
+  }
+  #stage{position:fixed;inset:0}
+  canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:none}
+  body.show-cursor canvas#cv{cursor:crosshair}
+
+  /* Ambient screen treatment */
+  #grain{position:absolute;inset:0;pointer-events:none;opacity:.05;mix-blend-mode:overlay;
+    background-image:radial-gradient(rgba(255,255,255,.7) .5px,transparent .5px);
+    background-size:3px 3px}
+  #edge{position:absolute;inset:0;pointer-events:none;
+    box-shadow:inset 0 0 220px rgba(0,0,0,.75)}
+
+  /* ── Overlay screens ─────────────────────────────────────────────── */
+  #overlay{position:absolute;inset:0;display:grid;place-items:center;padding:24px;
+    background:radial-gradient(120% 90% at 50% 40%,rgba(4,7,6,.55),rgba(3,5,4,.93));
+    backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+  #overlay[hidden]{display:none}
+  .screen{display:none;width:min(780px,100%);max-height:100%;overflow:auto}
+  .screen.on{display:block;animation:fadeUp .32s cubic-bezier(.2,.8,.3,1) both}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+  .panel{position:relative;background:var(--panel);border:1px solid var(--line);
+    padding:30px 32px 26px;border-radius:2px;
+    box-shadow:0 30px 90px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.03)}
+  /* corner ticks */
+  .panel::before,.panel::after{content:"";position:absolute;width:16px;height:16px;
+    border:1px solid var(--line-strong);pointer-events:none}
+  .panel::before{top:-1px;left:-1px;border-right:0;border-bottom:0}
+  .panel::after{bottom:-1px;right:-1px;border-left:0;border-top:0}
+
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.34em;color:var(--accent-dim);
+    text-transform:uppercase;margin:0 0 10px}
+  h1{margin:0;font-size:clamp(38px,7vw,64px);line-height:.94;letter-spacing:-.03em;font-weight:800}
+  h1 .thin{font-weight:200;color:var(--muted)}
+  h2{margin:0 0 4px;font-size:26px;letter-spacing:-.01em;font-weight:700}
+  .lede{margin:14px 0 0;color:var(--muted);font-size:14.5px;line-height:1.6;max-width:56ch}
+
+  .rule{height:1px;background:linear-gradient(90deg,var(--line-strong),transparent);margin:22px 0}
+
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:26px}
+  @media (max-width:640px){.cols{grid-template-columns:1fr;gap:18px}}
+
+  .label{font-family:var(--mono);font-size:10.5px;letter-spacing:.22em;color:var(--accent-dim);
+    text-transform:uppercase;margin:0 0 10px}
+
+  .keys{list-style:none;margin:0;padding:0;font-size:13.5px}
+  .keys li{display:flex;align-items:center;gap:10px;padding:5px 0;color:var(--muted)}
+  .keys li b{color:var(--text);font-weight:500}
+  kbd{font-family:var(--mono);font-size:11px;background:rgba(138,255,193,.08);
+    border:1px solid var(--line);border-bottom-color:rgba(0,0,0,.5);
+    padding:3px 7px;border-radius:3px;color:var(--accent);min-width:26px;text-align:center;
+    display:inline-block}
+
+  table.scores{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px}
+  table.scores td{padding:5px 0;border-bottom:1px solid rgba(138,255,193,.08);color:var(--muted)}
+  table.scores tr:last-child td{border-bottom:0}
+  table.scores td.rank{width:26px;color:var(--accent-dim)}
+  table.scores td.val{text-align:right;color:var(--text)}
+  table.scores tr.new td{color:var(--accent)}
+  table.scores tr.new td.rank{color:var(--accent)}
+  .empty{font-family:var(--mono);font-size:12px;color:var(--muted);opacity:.6}
+
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);
+    border:1px solid var(--line);margin:20px 0 0}
+  .stat{background:var(--panel);padding:13px 14px}
+  .stat .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;color:var(--accent-dim);
+    text-transform:uppercase}
+  .stat .v{font-family:var(--mono);font-size:19px;margin-top:5px;color:var(--text)}
+  .stat .v small{font-size:11px;color:var(--muted)}
+
+  .bigscore{font-family:var(--mono);font-size:clamp(44px,9vw,72px);line-height:1;
+    letter-spacing:-.02em;color:var(--accent);text-shadow:0 0 28px rgba(138,255,193,.28)}
+
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
+  button{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;
+    background:transparent;color:var(--text);border:1px solid var(--line-strong);
+    padding:13px 22px;border-radius:2px;cursor:pointer;transition:.16s ease;position:relative}
+  button:hover{background:rgba(138,255,193,.09);color:var(--accent);
+    box-shadow:0 0 22px rgba(138,255,193,.13)}
+  button:active{transform:translateY(1px)}
+  button.primary{background:rgba(138,255,193,.13);border-color:var(--accent);color:var(--accent)}
+  button.primary:hover{background:rgba(138,255,193,.22)}
+  button.ghost{border-color:var(--line);color:var(--muted)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  .tag{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.2em;
+    padding:4px 9px;border:1px solid var(--line);color:var(--accent-dim);text-transform:uppercase}
+
+  /* Pointer-lock hint */
+  #hint{position:absolute;left:50%;bottom:12%;transform:translateX(-50%);
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.24em;text-transform:uppercase;
+    color:var(--accent);background:rgba(5,8,7,.8);border:1px solid var(--line-strong);
+    padding:11px 20px;pointer-events:none;opacity:0;transition:opacity .25s}
+  #hint.on{opacity:1;animation:pulse 2.2s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:.55}50%{opacity:1}}
+
+  #muted{position:absolute;right:16px;top:14px;font-family:var(--mono);font-size:10px;
+    letter-spacing:.2em;color:var(--warn);opacity:0;transition:opacity .2s;pointer-events:none}
+  #muted.on{opacity:.85}
+  noscript{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--mono)}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv"></canvas>
+  <div id="grain"></div>
+  <div id="edge"></div>
+  <div id="hint">Click to take the rifle</div>
+  <div id="muted">◼ audio muted — press M</div>
+
+  <div id="overlay">
+    <!-- ── START MENU ─────────────────────────────────────────────── -->
+    <section class="screen on panel" id="scr-menu">
+      <p class="eyebrow">Marksmanship Trainer · Range 04</p>
+      <h1>LONG<span class="thin">SHOT</span></h1>
+      <p class="lede">Steel silhouettes from 180 to 900 metres. The bullet takes time to
+        arrive and the wind owns it the whole way. Range the target, hold for drop and
+        drift, steady the breath, and send it.</p>
+      <div class="rule"></div>
+      <div class="cols">
+        <div>
+          <p class="label">Controls</p>
+          <ul class="keys">
+            <li><kbd>Move</kbd><b>Traverse the rifle</b></li>
+            <li><kbd>LMB</kbd><b>Fire · then cycle the bolt</b></li>
+            <li><kbd>RMB</kbd><b>Raise / lower the scope</b></li>
+            <li><kbd>Shift</kbd><b>Hold breath — steady aim</b></li>
+            <li><kbd>R</kbd><b>Reload magazine</b></li>
+            <li><kbd>Wheel</kbd><b>Magnification 4× – 12×</b></li>
+            <li><kbd>Esc</kbd><b>Pause</b> &nbsp;<kbd>M</kbd><b>Mute</b></li>
+          </ul>
+        </div>
+        <div>
+          <p class="label">Range records</p>
+          <div id="menu-scores"><p class="empty">No qualifying scores logged.</p></div>
+          <p class="label" style="margin-top:22px">Scoring</p>
+          <ul class="keys">
+            <li><b>Head</b><span>300 · body 150 · limb 60</span></li>
+            <li><b>Distance</b><span>up to ×4 at 900 m</span></li>
+            <li><b>Streak</b><span>up to ×2 · hits earn rounds</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="primary" id="btn-start">Take the shot ▸</button>
+        <span class="tag" id="menu-best">Best —</span>
+      </div>
+    </section>
+
+    <!-- ── PAUSE ──────────────────────────────────────────────────── -->
+    <section class="screen panel" id="scr-pause">
+      <p class="eyebrow">Range hold</p>
+      <h2>Weapon safe</h2>
+      <p class="lede">The clock and the wind are stopped. Resume when you are ready on the gun.</p>
+      <div class="stats" id="pause-stats"></div>
+      <div class="actions">
+        <button class="primary" id="btn-resume">Resume ▸</button>
+        <button id="btn-restart">Restart</button>
+        <button class="ghost" id="btn-quit">Quit to menu</button>
+      </div>
+    </section>
+
+    <!-- ── GAME OVER ──────────────────────────────────────────────── -->
+    <section class="screen panel" id="scr-over">
+      <p class="eyebrow" id="over-eyebrow">Range complete · out of ammunition</p>
+      <div class="cols" style="align-items:start">
+        <div>
+          <h2 style="margin-bottom:12px">Score card</h2>
+          <div class="bigscore" id="over-score">0</div>
+          <div class="stats" id="over-stats"></div>
+        </div>
+        <div>
+          <p class="label">Range records</p>
+          <div id="over-scores"></div>
+          <p class="lede" style="font-size:13px;margin-top:16px" id="over-note"></p>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="primary" id="btn-again">Run it again ▸</button>
+        <button class="ghost" id="btn-menu">Menu</button>
+      </div>
+    </section>
+  </div>
+</div>
+<noscript>This trainer needs JavaScript enabled.</noscript>
+<script>
+"use strict";
+/* ═══════════════════════════════════════════════════════════════════════════
+   LONGSHOT — a precision marksman range.
+   Single file, zero dependencies, HTML5 canvas + Web Audio.
+
+   The scene is a true perspective projection driven by a rotating camera:
+   every object lives at an azimuth th (radians), a distance d (metres) and a
+   height h (metres above the ground plane). One projection function places
+   all of it — terrain, targets, particles, the bullet — so parallax, scale
+   and the ballistic solution all agree with each other.
+
+   Sections:
+     1. Config + math        5. Scenery (procedural, seeded)
+     2. Persistence          6. Targets
+     3. Audio engine         7. Ballistics + bullets
+     4. Input                8. Particles / feedback
+                             9. Renderer  10. Game loop  11. UI shell
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Config + math ──────────────────────────────────────────────────── */
+
+const CFG = {
+  /* optics */
+  hipFov: 0.72,            // rad of horizontal field of view at 1×
+  scopeMagMin: 4, scopeMagMax: 12, scopeMagDefault: 7,
+  sens: 0.00045,           // rad per mouse pixel at 1× (scaled by 1/mag)
+
+  /* shooter */
+  camH: 1.65,              // eye height above the ground plane, metres
+  yawLimit: 0.115,         // traverse limits, rad
+  elMin: -0.0112, elMax: 0.0062,
+
+  /* ballistics */
+  g: 9.81,                 // m/s²
+  v: 760,                  // muzzle velocity, m/s
+  zeroRange: 300,          // m — where the line of sight and trajectory cross
+  windC: 0.9,              // lateral acceleration per m/s of wind
+  soundSpeed: 343,         // m/s — impact audio arrives late, as it should
+
+  /* weapon handling */
+  magSize: 5,
+  startReserve: 25,
+  boltTime: 0.82,          // s to cycle the bolt between shots
+  reloadTime: 2.05,
+
+  /* range */
+  maxTargets: 5,
+  targetH: 1.78,           // silhouette height at scale 1, metres
+
+  /* scoring */
+  zoneScore: { head: 300, body: 150, limb: 60 },
+  zoneAmmo:  { head: 2,   body: 1,   limb: 0  },
+};
+
+const TAU = Math.PI * 2;
+const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const lerp  = (a, b, t) => a + (b - a) * t;
+const rand  = (a, b) => a + Math.random() * (b - a);
+const pick  = a => a[(Math.random() * a.length) | 0];
+const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+/** Frame-rate independent exponential approach. */
+const approach = (cur, target, rate, dt) => lerp(cur, target, 1 - Math.exp(-rate * dt));
+const fmt = n => Math.round(n).toLocaleString('en-US');
+
+/** Deterministic PRNG so the terrain is identical every frame and every visit. */
+function mulberry32(seed) {
+  return function () {
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/* ── 2. Persistence ────────────────────────────────────────────────────── */
+
+const Store = {
+  SCORES: 'longshot.scores.v1',
+  PREFS:  'longshot.prefs.v1',
+  _read(key, fallback) {
+    try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
+    catch { return fallback; }
+  },
+  _write(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* private mode */ }
+  },
+  scores() {
+    const list = this._read(this.SCORES, []);
+    return Array.isArray(list) ? list.filter(e => e && typeof e.score === 'number') : [];
+  },
+  /** Inserts a run, keeps the top 8, and reports where it landed (-1 = didn't). */
+  addScore(entry) {
+    const list = this.scores();
+    list.push(entry);
+    list.sort((a, b) => b.score - a.score);
+    const top = list.slice(0, 8);
+    this._write(this.SCORES, top);
+    return { list: top, rank: top.indexOf(entry) };
+  },
+  best() { const s = this.scores(); return s.length ? s[0].score : 0; },
+  prefs() { return Object.assign({ muted: false, mag: CFG.scopeMagDefault }, this._read(this.PREFS, {})); },
+  savePrefs(p) { this._write(this.PREFS, p); },
+};
+
+/* ── 3. Audio engine ───────────────────────────────────────────────────────
+   Everything is synthesised: no samples, no network. A shot is a noise body
+   under a filter sweep, a high crack, a low thump and two filtered echoes
+   returning off the valley walls.                                          */
+
+const Sfx = (() => {
+  let ctx = null, master = null, noiseBuf = null;
+  let windSrc = null, windGain = null, windFilter = null;
+  let muted = Store.prefs().muted;
+
+  function makeNoise(seconds) {
+    const len = Math.floor(ctx.sampleRate * seconds);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < len; i++) {
+      const white = Math.random() * 2 - 1;
+      last = (last + 0.02 * white) / 1.02;   // brown-ish: more body, less hiss
+      data[i] = white * 0.7 + last * 3.2;
+    }
+    return buf;
+  }
+
+  function init() {
+    if (ctx) return true;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return false;
+    ctx = new AC();
+    master = ctx.createGain();
+    master.gain.value = muted ? 0 : 0.85;
+    master.connect(ctx.destination);
+    noiseBuf = makeNoise(2.5);
+
+    // Continuous wind bed, driven from the game loop.
+    windSrc = ctx.createBufferSource();
+    windSrc.buffer = noiseBuf; windSrc.loop = true;
+    windFilter = ctx.createBiquadFilter();
+    windFilter.type = 'lowpass'; windFilter.frequency.value = 420; windFilter.Q.value = 0.6;
+    windGain = ctx.createGain(); windGain.gain.value = 0;
+    windSrc.connect(windFilter).connect(windGain).connect(master);
+    windSrc.start();
+    return true;
+  }
+
+  function resume() { if (ctx && ctx.state === 'suspended') ctx.resume(); }
+
+  /** A gated slice of the noise buffer through one filter. */
+  function noise(t0, dur, filterType, freq, q, peak, attack = 0.001) {
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuf;
+    src.playbackRate.value = 0.8 + Math.random() * 0.4;
+    const f = ctx.createBiquadFilter();
+    f.type = filterType; f.frequency.value = freq; f.Q.value = q;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(peak, t0 + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(f).connect(g).connect(master);
+    src.start(t0, Math.random() * 1.5, dur + 0.05);
+    src.stop(t0 + dur + 0.05);
+    return f;
+  }
+
+  function tone(t0, freq, dur, peak, type = 'sine', endFreq = null) {
+    const o = ctx.createOscillator();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, t0);
+    if (endFreq) o.frequency.exponentialRampToValueAtTime(endFreq, t0 + dur);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(peak, t0 + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g).connect(master);
+    o.start(t0); o.stop(t0 + dur + 0.02);
+  }
+
+  const api = {
+    ensure() { if (init()) resume(); },
+    get muted() { return muted; },
+    toggleMute() {
+      muted = !muted;
+      if (master) master.gain.setTargetAtTime(muted ? 0 : 0.85, ctx.currentTime, 0.02);
+      const p = Store.prefs(); p.muted = muted; Store.savePrefs(p);
+      return muted;
+    },
+
+    /** Rifle report: body, crack, thump, plus two valley returns. */
+    shot() {
+      if (!ctx) return;
+      const t = ctx.currentTime;
+      const body = noise(t, 0.34, 'lowpass', 1600, 0.9, 0.95);
+      body.frequency.setValueAtTime(1800, t);
+      body.frequency.exponentialRampToValueAtTime(180, t + 0.3);
+      noise(t, 0.055, 'bandpass', 3400, 1.1, 0.55);          // supersonic crack
+      tone(t, 92, 0.26, 0.7, 'sine', 42);                    // chest thump
+      noise(t + 0.26, 0.42, 'lowpass', 900, 0.8, 0.14);      // first return
+      noise(t + 0.62, 0.55, 'lowpass', 520, 0.8, 0.07);      // second, farther
+    },
+
+    /** Steel impact — arrives late by the speed of sound, pitched by zone. */
+    impact(distance, zone) {
+      if (!ctx) return;
+      const t = ctx.currentTime + Math.min(3, distance / CFG.soundSpeed);
+      const base = zone === 'head' ? 1750 : zone === 'body' ? 1180 : 880;
+      const gain = zone === 'limb' ? 0.20 : 0.28;
+      noise(t, 0.05, 'bandpass', base * 1.6, 2.0, gain * 0.9);
+      tone(t, base, 0.55, gain, 'sine');
+      tone(t + 0.004, base * 1.51, 0.42, gain * 0.6, 'sine');
+      tone(t + 0.008, base * 2.37, 0.3, gain * 0.32, 'sine');
+    },
+
+    /** Miss — a dull dirt slap, also delayed by range. */
+    dirt(distance) {
+      if (!ctx) return;
+      const t = ctx.currentTime + Math.min(3, distance / CFG.soundSpeed);
+      noise(t, 0.2, 'lowpass', 620, 0.7, 0.2);
+      tone(t, 120, 0.16, 0.12, 'sine', 60);
+    },
+
+    /** Metallic click family: bolt cycle, magazine, dry fire. */
+    click(delay = 0, freq = 2200, peak = 0.3, dur = 0.05) {
+      if (!ctx) return;
+      const t = ctx.currentTime + delay;
+      noise(t, dur, 'bandpass', freq, 3.5, peak);
+      tone(t, freq * 0.55, dur * 1.4, peak * 0.35, 'square');
+    },
+    bolt() { this.click(0.34, 1500, 0.20, 0.06); this.click(0.58, 2600, 0.22, 0.05); },
+    reload() {
+      this.click(0.00, 900,  0.24, 0.09);   // magazine released
+      this.click(0.55, 1250, 0.22, 0.08);   // fresh magazine seated
+      this.click(1.35, 2400, 0.28, 0.05);   // bolt forward
+      this.click(1.55, 1800, 0.24, 0.06);   // locked
+    },
+    dry() { this.click(0, 3000, 0.18, 0.035); },
+    blip(freq = 660, peak = 0.14) { if (ctx) tone(ctx.currentTime, freq, 0.09, peak, 'triangle'); },
+    chord(freqs, peak = 0.13) {
+      if (!ctx) return;
+      freqs.forEach((f, i) => tone(ctx.currentTime + i * 0.06, f, 0.4, peak, 'triangle'));
+    },
+
+    /** Wind bed follows the live wind value. */
+    setWind(speed, scoped) {
+      if (!ctx || !windGain) return;
+      const g = 0.015 + Math.min(1, Math.abs(speed) / 9) * (scoped ? 0.14 : 0.08);
+      windGain.gain.setTargetAtTime(g, ctx.currentTime, 0.35);
+      windFilter.frequency.setTargetAtTime(300 + Math.abs(speed) * 95, ctx.currentTime, 0.5);
+    },
+    hushWind() { if (windGain) windGain.gain.setTargetAtTime(0.004, ctx.currentTime, 0.2); },
+  };
+  return api;
+})();
+
+/* ── 4. Input ──────────────────────────────────────────────────────────────
+   Aim is integrated from relative mouse movement, so it works identically
+   with or without pointer lock; lock simply removes the desktop boundary.  */
+
+const Input = {
+  keys: new Set(),
+  dx: 0, dy: 0,
+  locked: false,
+  wheel: 0,
+  _lastX: null, _lastY: null,
+
+  get steady() { return this.keys.has('ShiftLeft') || this.keys.has('ShiftRight'); },
+
+  consumeMotion() { const m = { x: this.dx, y: this.dy }; this.dx = 0; this.dy = 0; return m; },
+  consumeWheel() { const w = this.wheel; this.wheel = 0; return w; },
+  clear() { this.keys.clear(); this.dx = this.dy = 0; },
+};
+
+/* ── Camera, viewport and the one projection everything shares ───────────
+   A point in the world is (th, d, h): azimuth in radians, distance in
+   metres, height above the ground plane in metres. The camera only rotates,
+   never translates, which is exactly what a rifle on a bipod does.        */
+
+const cv = document.getElementById('cv');
+const g2 = cv.getContext('2d', { alpha: false });
+
+const view = { w: 0, h: 0, dpr: 1, cx: 0, cy: 0, focal: 0, mag: 1, S: 0, scopeR: 0 };
+const cam = { yaw: 0, el: 0 };
+
+function resize() {
+  const w = Math.max(320, cv.clientWidth || window.innerWidth);
+  const h = Math.max(240, cv.clientHeight || window.innerHeight);
+  view.dpr = Math.min(window.devicePixelRatio || 1, 2);
+  view.w = w; view.h = h;
+  cv.width = Math.round(w * view.dpr);
+  cv.height = Math.round(h * view.dpr);
+  g2.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
+  view.cx = w / 2;
+  view.cy = h * 0.42;
+  view.focal = w / CFG.hipFov;          // pixels per radian at 1×
+  view.S = view.focal * view.mag;
+  view.scopeR = Math.min(w, h) * 0.415;
+}
+
+const PX  = th      => view.cx + (th - cam.yaw) * view.S;          // azimuth → x
+const PY  = (d, h)  => view.cy + ((CFG.camH - h) / d + cam.el) * view.S;  // → y
+const PYA = angle   => view.cy + (angle + cam.el) * view.S;        // angle below sight line → y
+const SPX = (m, d)  => (m / d) * view.S;                           // metres → pixels at range d
+const MRAD = () => view.S / 1000;                                  // pixels per milliradian
+
+/* ── 5. Scenery — procedural, seeded, therefore rock steady ─────────────── */
+
+const Scenery = (() => {
+  const R = mulberry32(20260830);
+  const TH_SPAN = 0.46;
+
+  /** Ridge lines live in angle space: they are effectively at infinity. */
+  function ridge(baseAng, amp, roughness, step) {
+    const pts = [];
+    const p1 = R() * TAU, p2 = R() * TAU, p3 = R() * TAU;
+    for (let th = -TH_SPAN; th <= TH_SPAN; th += step) {
+      const n = Math.sin(th * 14 + p1) * 0.55
+              + Math.sin(th * 33 + p2) * 0.3
+              + Math.sin(th * 71 + p3) * 0.15;
+      const jag = (R() - 0.5) * roughness;
+      pts.push({ th, ang: baseAng + n * amp + jag });
+    }
+    return pts;
+  }
+
+  const ridges = [
+    { pts: ridge(0.0295, 0.0115, 0.0012, 0.010), fill: '#2c3a44', haze: 0.62 },
+    { pts: ridge(0.0205, 0.0085, 0.0016, 0.008), fill: '#2a3630', haze: 0.42 },
+    { pts: ridge(0.0125, 0.0055, 0.0018, 0.007), fill: '#26302a', haze: 0.24 },
+  ];
+
+  /* Ground clutter. Distance is drawn from a square distribution so the
+     near field is not starved of detail. */
+  const KINDS = ['tuft', 'tuft', 'tuft', 'rock', 'bush', 'rock', 'tree', 'boulder'];
+  const details = [];
+  for (let i = 0; i < 460; i++) {
+    const u = R();
+    const d = 48 + u * u * 1900;
+    const kind = d > 900 ? pick(KINDS.slice(0, 6)) : KINDS[(R() * KINDS.length) | 0];
+    details.push({
+      th: (R() * 2 - 1) * TH_SPAN,
+      d,
+      kind,
+      size: kind === 'tree' ? rand(3.2, 6.0)
+          : kind === 'boulder' ? rand(0.9, 2.1)
+          : kind === 'bush' ? rand(0.5, 1.1)
+          : kind === 'rock' ? rand(0.18, 0.45)
+          : rand(0.12, 0.34),
+      seed: R() * 1000,
+      tone: R(),
+    });
+  }
+  details.sort((a, b) => b.d - a.d);   // painter's algorithm, far first
+
+  /* Range furniture: wind flags and distance placards down the lanes. */
+  const flags = [];
+  [180, 320, 480, 650, 820].forEach((d, i) => {
+    flags.push({ d, th: (i % 2 ? 1 : -1) * (0.052 + i * 0.011), h: 2.1 });
+    flags.push({ d, th: (i % 2 ? -1 : 1) * (0.078 + i * 0.006), h: 1.9 });
+  });
+  const placards = [200, 400, 600, 800].map((d, i) => ({
+    d, th: (i % 2 ? -1 : 1) * 0.099, label: String(d),
+  }));
+
+  const clouds = [];
+  for (let i = 0; i < 9; i++) {
+    clouds.push({
+      th: (R() * 2 - 1) * 0.5, ang: 0.035 + R() * 0.075,
+      w: 0.03 + R() * 0.07, h: 0.006 + R() * 0.010, a: 0.05 + R() * 0.09,
+    });
+  }
+
+  /* Lens imperfections — a few specks of dust on the ocular. */
+  const dust = [];
+  for (let i = 0; i < 22; i++) {
+    dust.push({ a: R() * TAU, r: Math.sqrt(R()) * 0.93, s: 0.4 + R() * 2.4, o: 0.03 + R() * 0.09 });
+  }
+
+  /* The parapet the rifle rests on: an undulating crest plus grass. */
+  const FG_D = 6;
+  const crest = [];
+  for (let th = -0.56; th <= 0.56; th += 0.006) {
+    crest.push({
+      th,
+      h: 0.96 + Math.sin(th * 21 + 1.1) * 0.05 + Math.sin(th * 57 + 4.2) * 0.028
+             + Math.sin(th * 133 + 2.7) * 0.012,
+    });
+  }
+  const grass = [];
+  for (let i = 0; i < 460; i++) {
+    const th = (R() * 2 - 1) * 0.56;
+    grass.push({ th, h: 0.99 + R() * R() * 0.2, lean: (R() - 0.5) * 1.4, w: 0.003 + R() * 0.007 });
+  }
+
+  return { ridges, details, flags, placards, clouds, dust, TH_SPAN, FG_D, crest, grass };
+})();
+
+/* ── 6. Targets ────────────────────────────────────────────────────────────
+   Steel silhouettes on powered carriers. Zones are defined in metres in the
+   target's own frame; the same numbers drive both the drawing and the hit
+   test, so what you see is precisely what you can hit.                     */
+
+const ZONES = {
+  head:   { cx: 0, cy: 1.585, r: 0.115 },
+  torso:  { x0: -0.255, x1: 0.255, y0: 0.70, y1: 1.455 },
+  neck:   { x0: -0.125, x1: 0.125, y0: 1.455, y1: 1.475 },
+  armL:   { x0: -0.445, x1: -0.255, y0: 0.95, y1: 1.44 },
+  armR:   { x0: 0.255,  x1: 0.445, y0: 0.95, y1: 1.44 },
+  legL:   { x0: -0.215, x1: -0.022, y0: 0.0, y1: 0.70 },
+  legR:   { x0: 0.022,  x1: 0.215, y0: 0.0, y1: 0.70 },
+};
+const inRect = (x, y, r) => x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1;
+
+let TARGET_ID = 0;
+
+class Target {
+  constructor(opts) {
+    this.id = ++TARGET_ID;
+    this.d = opts.d;
+    this.th = opts.th;
+    this.vLat = opts.vLat;             // m/s across the range
+    this.scale = opts.scale;
+    this.life = opts.life;
+    this.age = 0;
+    this.state = 'rising';             // rising → up → falling/retracting → dead
+    this.anim = 0;
+    this.fall = 0;
+    this.flash = 0;
+    this.hitZone = null;
+    this.dead = false;
+    this.wobble = Math.random() * TAU;
+  }
+
+  get angularSpeed() { return this.vLat / this.d; }
+  get exposed() { return this.state === 'rising' || this.state === 'up'; }
+
+  update(dt) {
+    this.age += dt;
+    if (this.state === 'rising') {
+      this.anim = Math.min(1, this.anim + dt / 0.45);
+      if (this.anim >= 1) this.state = 'up';
+    } else if (this.state === 'up') {
+      this.th += this.angularSpeed * dt;
+      const limit = Scenery.TH_SPAN * 0.29;
+      if (this.th > limit || this.th < -limit) this.vLat = -this.vLat;
+      if (this.age > this.life) { this.state = 'retracting'; this.anim = 1; }
+    } else if (this.state === 'retracting') {
+      this.anim -= dt / 0.5;
+      if (this.anim <= 0) this.dead = true;
+    } else if (this.state === 'falling') {
+      this.fall = Math.min(1, this.fall + dt / 0.7);
+      if (this.fall >= 1 && this.age > this.killedAt + 1.1) this.dead = true;
+    }
+    if (this.flash > 0) this.flash = Math.max(0, this.flash - dt * 3.4);
+  }
+
+  knockDown(zone) {
+    this.state = 'falling';
+    this.killedAt = this.age;
+    this.hitZone = zone;
+    this.flash = 1;
+  }
+
+  /** Which zone, if any, does an impact at (dx, h) metres land in? */
+  zoneAt(dx, h) {
+    const s = this.scale;
+    const x = dx / s, y = h / s;
+    if (y < -0.02 || y > 1.78) return null;
+    const hd = Math.hypot(x - ZONES.head.cx, y - ZONES.head.cy);
+    if (hd <= ZONES.head.r) return 'head';
+    if (inRect(x, y, ZONES.torso) || inRect(x, y, ZONES.neck)) return 'body';
+    if (inRect(x, y, ZONES.armL) || inRect(x, y, ZONES.armR)) return 'limb';
+    if (inRect(x, y, ZONES.legL) || inRect(x, y, ZONES.legR)) return 'limb';
+    return null;
+  }
+}
+
+/** Difficulty curve: later waves push targets out, speed them up, shrink them. */
+function spawnTarget(wave) {
+  const w = Math.min(wave, 12);
+  const near = 190 + w * 22;
+  const far  = Math.min(900, 340 + w * 62);
+  const d = rand(near, far);
+  const moverChance = clamp(0.28 + w * 0.07, 0, 0.85);
+  const moving = Math.random() < moverChance;
+  const speed = moving ? rand(1.0, 1.6 + w * 0.28) * (Math.random() < 0.5 ? -1 : 1) : 0;
+  return new Target({
+    d,
+    th: rand(-1, 1) * Scenery.TH_SPAN * 0.24,
+    vLat: speed,
+    scale: rand(0.88, 1.04) * (1 - Math.min(0.12, w * 0.012)),
+    life: rand(7.5, 12.5) - Math.min(4, w * 0.35),
+  });
+}
+
+/* ── 7. Ballistics ─────────────────────────────────────────────────────────
+   Constant velocity down range, gravity in the vertical, a quadratic lateral
+   push from the wind. Zeroed at CFG.zeroRange, which is where the launch
+   angle compensation comes from. Everything below returns radians, so it
+   drops straight into the projection and onto the reticle.                 */
+
+const V2 = CFG.v * CFG.v;
+const ZERO_COMP = 0.5 * CFG.g * CFG.zeroRange / V2;      // rad of built-in elevation
+
+/** Holdover required at range d (rad). Negative inside the zero distance. */
+const dropAngle = d => 0.5 * CFG.g * d / V2 - ZERO_COMP;
+/** Lateral deflection at range d for a given wind (rad). */
+const windAngle = (d, wind) => 0.5 * CFG.windC * wind * d / V2;
+/** Time of flight to range d. */
+const flightTime = d => d / CFG.v;
+/** Where a shot launched at elevation e0 meets the ground. */
+function groundRange(e0) {
+  return (e0 + Math.sqrt(e0 * e0 + 2 * CFG.g * CFG.camH / V2)) * V2 / CFG.g;
+}
+
+class Bullet {
+  constructor(yaw, el, wind) {
+    this.yaw = yaw;
+    this.e0 = el + ZERO_COMP;          // launch elevation above horizontal
+    this.wind = wind;
+    this.t = 0;
+    this.lastD = 0;
+    this.groundD = Math.min(2400, groundRange(this.e0));
+    this.done = false;
+    this.trail = [];
+  }
+  /** Azimuth of the bullet once it has flown d metres. */
+  azimuthAt(d) { return this.yaw + windAngle(d, this.wind); }
+  /** Angle below the sight line — the term the projection wants. */
+  depressionAt(d) { return -this.e0 + 0.5 * CFG.g * d / V2; }
+  /** Height above the ground plane at range d. */
+  heightAt(d) { return CFG.camH + this.e0 * d - 0.5 * CFG.g * d * d / V2; }
+}
+
+/* ── 8. Feedback: particles, markers, floating score ───────────────────── */
+
+/** Anchored to a point on the range, so they hold still as the rifle pans. */
+class WorldParticle {
+  constructor(o) {
+    this.th0 = o.th0; this.d = o.d;
+    this.x = o.x || 0; this.y = o.y || 0;          // metres, target-local
+    this.vx = o.vx || 0; this.vy = o.vy || 0;
+    this.g = o.g == null ? 9.8 : o.g;
+    this.drag = o.drag == null ? 1.2 : o.drag;
+    this.size = o.size; this.grow = o.grow || 0;
+    this.life = o.life; this.t = 0;
+    this.color = o.color; this.kind = o.kind || 'dot';
+    this.additive = !!o.additive;
+  }
+  update(dt) {
+    this.t += dt;
+    const k = Math.exp(-this.drag * dt);
+    this.vx *= k; this.vy *= k;
+    this.vy -= this.g * dt;
+    this.x += this.vx * dt; this.y += this.vy * dt;
+    this.size += this.grow * dt;
+    if (this.y < 0 && this.g > 0) { this.y = 0; this.vy *= -0.25; this.vx *= 0.6; }
+    return this.t < this.life;
+  }
+}
+
+const FX = {
+  world: [],
+  screen: [],
+  floats: [],
+  markers: [],
+
+  /** Dirt kicked up by a miss — a fast lick of dust plus a slow bloom. */
+  dirt(th, d, h) {
+    const k = clamp(d / 260, 1, 3.4);
+    for (let i = 0; i < 16; i++) {
+      const a = rand(0.15, Math.PI - 0.15), sp = rand(1.5, 7) * (1 + 200 / d);
+      this.world.push(new WorldParticle({
+        th0: th, d, y: Math.max(0, h),
+        vx: Math.cos(a) * sp * (Math.random() < 0.5 ? -1 : 1), vy: Math.sin(a) * sp,
+        size: rand(0.05, 0.16) * k, grow: rand(0.1, 0.3) * k, life: rand(0.5, 1.2),
+        color: '110,96,72', g: 9.8, drag: 1.6,
+      }));
+    }
+    for (let i = 0; i < 9; i++) {
+      this.world.push(new WorldParticle({
+        th0: th, d, y: Math.max(0, h),
+        vx: rand(-1.4, 1.4), vy: rand(0.6, 2.6),
+        size: rand(0.22, 0.55) * k, grow: rand(0.5, 1.1) * k, life: rand(0.9, 1.8),
+        color: '134,120,96', g: -0.4, drag: 2.2,
+      }));
+    }
+  },
+
+  /** Steel strike — sparks, a shock ring and a puff of paint dust. */
+  steel(th, d, h, zone) {
+    const k = clamp(d / 260, 1, 3.4);
+    const hot = zone === 'head' ? '255,236,180' : '255,214,140';
+    for (let i = 0; i < 22; i++) {
+      const a = rand(0, TAU), sp = rand(2, 11);
+      this.world.push(new WorldParticle({
+        th0: th, d, y: h, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.9 + 1,
+        size: rand(0.015, 0.05) * k, life: rand(0.25, 0.7),
+        color: hot, g: 9.8, drag: 0.9, additive: true,
+      }));
+    }
+    for (let i = 0; i < 7; i++) {
+      this.world.push(new WorldParticle({
+        th0: th, d, y: h, vx: rand(-1, 1), vy: rand(0.2, 1.6),
+        size: rand(0.08, 0.2) * k, grow: 0.5 * k, life: rand(0.4, 0.9),
+        color: '210,205,190', g: 1.2, drag: 2.4,
+      }));
+    }
+    this.markers.push({ th0: th, d, y: h, t: 0, life: 0.42, zone });
+  },
+
+  /** Muzzle blast lives in screen space — it is a metre from the eye. */
+  muzzle() {
+    const m = muzzlePoint();
+    const x = m.x, y = m.y;
+    for (let i = 0; i < 14; i++) {
+      this.screen.push({
+        x, y, vx: rand(-90, 90), vy: rand(-260, -70),
+        r: rand(10, 34), grow: rand(28, 70), life: rand(0.25, 0.7), t: 0,
+        color: '150,140,125', additive: false,
+      });
+    }
+    for (let i = 0; i < 8; i++) {
+      this.screen.push({
+        x, y, vx: rand(-260, 260), vy: rand(-520, -140),
+        r: rand(2, 6), grow: -3, life: rand(0.1, 0.28), t: 0,
+        color: '255,206,120', additive: true,
+      });
+    }
+  },
+
+  float(th, d, h, text, color, size, dy) {
+    this.floats.push({ th0: th, d, y: h, text, color, size: size || 15, dy: dy || 0, t: 0, life: 1.5 });
+  },
+
+  update(dt) {
+    for (let i = this.world.length - 1; i >= 0; i--)
+      if (!this.world[i].update(dt)) this.world.splice(i, 1);
+    for (let i = this.screen.length - 1; i >= 0; i--) {
+      const p = this.screen[i];
+      p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt;
+      p.vx *= 0.94; p.vy = p.vy * 0.94 + 40 * dt;
+      p.r = Math.max(0.5, p.r + p.grow * dt);
+      if (p.t >= p.life) this.screen.splice(i, 1);
+    }
+    for (let i = this.floats.length - 1; i >= 0; i--) {
+      const f = this.floats[i]; f.t += dt;
+      if (f.t >= f.life) this.floats.splice(i, 1);
+    }
+    for (let i = this.markers.length - 1; i >= 0; i--) {
+      const m = this.markers[i]; m.t += dt;
+      if (m.t >= m.life) this.markers.splice(i, 1);
+    }
+  },
+
+  clear() { this.world.length = 0; this.screen.length = 0; this.floats.length = 0; this.markers.length = 0; },
+};
+
+/* ── Game state ────────────────────────────────────────────────────────── */
+
+const G = {
+  state: 'menu',                  // menu | playing | paused | over
+  t: 0, runTime: 0,
+
+  score: 0, shots: 0, hits: 0, streak: 0, bestStreak: 0,
+  longest: 0, neutralized: 0, wave: 1, headshots: 0,
+
+  mag: CFG.magSize, reserve: CFG.startReserve,
+  bolt: 0, reload: 0, reloadTotal: 0,
+
+  aim: { yaw: 0, el: -0.0022 },
+  sway: { t: 0, dyaw: 0, del: 0, vyaw: 0, vel: 0, yawOut: 0, elOut: 0 },
+  breath: 100, gasp: 0,
+  recoil: { el: 0, vel: 0, yaw: 0, yawVel: 0 },
+
+  scoped: false, scopeMag: Store.prefs().mag, magCur: 1, scopeT: 0,
+  wind: { cur: 0, target: 0, timer: 0 },
+
+  targets: [], bullets: [],
+  spawnTimer: 0,
+  shake: 0, flash: 0, overDelay: 0,
+  ranged: null, rangedFade: 0,
+  toast: { text: '', t: 0 },
+};
+
+function toast(text, dur = 1.6) { G.toast.text = text; G.toast.t = dur; }
+
+function resetRun() {
+  G.t = 0; G.runTime = 0;
+  G.score = 0; G.shots = 0; G.hits = 0; G.streak = 0; G.bestStreak = 0;
+  G.longest = 0; G.neutralized = 0; G.wave = 1; G.headshots = 0;
+  G.mag = CFG.magSize; G.reserve = CFG.startReserve;
+  G.bolt = 0; G.reload = 0;
+  G.aim.yaw = 0; G.aim.el = -0.0022;
+  G.sway.t = 0; G.sway.dyaw = G.sway.del = G.sway.vyaw = G.sway.vel = 0;
+  G.sway.yawOut = G.sway.elOut = 0;
+  G.breath = 100; G.gasp = 0;
+  G.recoil.el = G.recoil.vel = G.recoil.yaw = G.recoil.yawVel = 0;
+  G.scoped = false; G.magCur = 1; G.scopeT = 0;
+  G.wind.cur = rand(-2, 2); G.wind.target = G.wind.cur; G.wind.timer = 5;
+  G.targets.length = 0; G.bullets.length = 0;
+  G.spawnTimer = 0.4; G.shake = 0; G.flash = 0; G.overDelay = 0;
+  G.ranged = null; G.rangedFade = 0; G.toast.t = 0;
+  FX.clear();
+  for (let i = 0; i < 2; i++) G.targets.push(spawnTarget(1));
+}
+
+const totalAmmo = () => G.mag + G.reserve;
+
+/* ── Weapon handling ───────────────────────────────────────────────────── */
+
+function fire() {
+  if (G.state !== 'playing' || G.reload > 0 || G.bolt > 0) return;
+  if (G.mag <= 0) { Sfx.dry(); toast('MAGAZINE EMPTY — PRESS R', 1.2); return; }
+
+  G.mag--; G.shots++; G.bolt = CFG.boltTime;
+  G.bullets.push(new Bullet(cam.yaw, cam.el, G.wind.cur));
+
+  // Recoil: an impulse into a damped spring, so the sight picture settles.
+  G.recoil.vel += 0.075;
+  G.recoil.yawVel += rand(-0.022, 0.022);
+  G.shake = Math.min(1.5, G.shake + 1.1);
+  G.flash = 1;
+  G.breath = Math.max(0, G.breath - 6);
+  FX.muzzle();
+  Sfx.shot();
+  Sfx.bolt();
+  if (G.mag === 0) toast('EMPTY — RELOAD [R]', 2.0);
+}
+
+function startReload() {
+  if (G.state !== 'playing' || G.reload > 0) return;
+  if (G.mag >= CFG.magSize) { Sfx.blip(420, 0.08); return; }
+  if (G.reserve <= 0) { Sfx.dry(); toast('NO ROUNDS REMAINING', 1.4); return; }
+  G.reload = CFG.reloadTime; G.reloadTotal = CFG.reloadTime;
+  G.bolt = 0;
+  Sfx.reload();
+}
+
+function finishReload() {
+  const need = CFG.magSize - G.mag;
+  const take = Math.min(need, G.reserve);
+  G.mag += take; G.reserve -= take;
+}
+
+/* ── Hit resolution and scoring ────────────────────────────────────────── */
+
+function scoreFor(target, zone) {
+  const base = CFG.zoneScore[zone];
+  const distMult = 1 + Math.max(0, target.d - 150) / 250;
+  const streakMult = 1 + Math.min(G.streak, 10) * 0.1;
+  const moveMult = Math.abs(target.vLat) > 0.05 ? 1.25 : 1;
+  return Math.round(base * distMult * streakMult * moveMult);
+}
+
+function registerHit(target, zone, dx, h) {
+  const points = scoreFor(target, zone);
+  G.score += points;
+  G.hits++; G.streak++;
+  G.bestStreak = Math.max(G.bestStreak, G.streak);
+  G.longest = Math.max(G.longest, target.d);
+  if (zone === 'head') G.headshots++;
+
+  const th = target.th + dx / target.d;
+  FX.steel(th, target.d, h, zone);
+  Sfx.impact(target.d, zone);
+
+  const label = zone === 'head' ? 'HEADSHOT' : zone === 'limb' ? 'LIMB' : 'CENTRE';
+  const col = zone === 'head' ? '255,222,140' : zone === 'limb' ? '190,205,196' : '138,255,193';
+  FX.float(th, target.d, h, '+' + fmt(points), col, zone === 'head' ? 20 : 17, -18);
+  FX.float(th, target.d, h, label + ' · ' + Math.round(target.d) + ' m', col, 11, 0);
+
+  const reward = CFG.zoneAmmo[zone];
+  if (reward > 0) { G.reserve = Math.min(60, G.reserve + reward); }
+  if (G.streak > 0 && G.streak % 5 === 0) {
+    G.reserve = Math.min(60, G.reserve + 2);
+    toast('STREAK ×' + G.streak + ' — +2 ROUNDS', 1.6);
+    Sfx.chord([740, 988, 1319], 0.1);
+  }
+
+  target.knockDown(zone);
+  G.neutralized++;
+  const nextWave = 1 + Math.floor(G.neutralized / 5);
+  if (nextWave > G.wave) {
+    G.wave = nextWave;
+    toast('WAVE ' + G.wave + ' — TARGETS PUSHED BACK', 2.0);
+    Sfx.chord([523, 659, 784], 0.09);
+  }
+}
+
+function registerMiss(bullet) {
+  G.streak = 0;
+  const d = bullet.groundD;
+  if (d < 2200) {
+    FX.dirt(bullet.azimuthAt(d), d, 0);
+    Sfx.dirt(d);
+  }
+}
+
+/** Advances one bullet, testing every target plane it crosses this frame. */
+function stepBullet(b, dt) {
+  b.t += dt;
+  const d = CFG.v * b.t;
+
+  for (const tg of G.targets) {
+    if (!tg.exposed || tg.d <= b.lastD || tg.d > d) continue;
+    const dx = (b.azimuthAt(tg.d) - tg.th) * tg.d;
+    const h = b.heightAt(tg.d);
+    const zone = tg.zoneAt(dx, h);
+    if (zone) { registerHit(tg, zone, dx, h); b.done = true; return; }
+  }
+
+  if (d >= b.groundD) { registerMiss(b); b.done = true; return; }
+  if (b.t > 4) { G.streak = 0; b.done = true; return; }
+  b.lastD = d;
+}
+
+/* ── 9. Renderer ───────────────────────────────────────────────────────── */
+
+const mix = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
+const rgb  = c => 'rgb(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ')';
+const rgba = (c, a) => 'rgba(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ',' + a + ')';
+const HAZE = [156, 168, 162];
+const hazed = (c, d) => mix(c, HAZE, clamp(d / 1900, 0, 0.84));
+const SUN_TH = -0.19;
+
+function drawSky() {
+  const { w, h } = view;
+  const yh = PYA(0);
+  const top = yh - h * 1.35, span = Math.max(1, yh - top);
+  const gr = g2.createLinearGradient(0, top, 0, yh);
+  gr.addColorStop(0.00, '#0d1a24');
+  gr.addColorStop(0.44, '#2c434c');
+  gr.addColorStop(0.80, '#657668');
+  gr.addColorStop(1.00, '#9ba192');
+  g2.fillStyle = gr;
+  g2.fillRect(-30, top - h, w + 60, span + h + 4);
+
+  // Low sun burning through the haze.
+  const sx = PX(SUN_TH), sy = PYA(-0.052);
+  const rad = Math.max(60, 0.075 * view.S);
+  const sg = g2.createRadialGradient(sx, sy, 0, sx, sy, rad);
+  sg.addColorStop(0, 'rgba(255,236,196,.55)');
+  sg.addColorStop(0.35, 'rgba(255,214,150,.16)');
+  sg.addColorStop(1, 'rgba(255,200,140,0)');
+  g2.fillStyle = sg;
+  g2.fillRect(sx - rad, sy - rad, rad * 2, rad * 2);
+
+  for (const c of Scenery.clouds) {
+    const x = PX(c.th), y = PYA(-c.ang);
+    const rw = c.w * view.S, rh = c.h * view.S;
+    if (x + rw < -20 || x - rw > w + 20 || y + rh < -20) continue;
+    const cg = g2.createRadialGradient(x, y, 0, x, y, rw);
+    cg.addColorStop(0, 'rgba(228,232,224,' + c.a + ')');
+    cg.addColorStop(1, 'rgba(228,232,224,0)');
+    g2.save();
+    g2.translate(x, y); g2.scale(1, Math.max(0.05, rh / rw)); g2.translate(-x, -y);
+    g2.fillStyle = cg;
+    g2.beginPath(); g2.arc(x, y, rw, 0, TAU); g2.fill();
+    g2.restore();
+  }
+}
+
+function drawRidges() {
+  const { w, h } = view;
+  const yh = PYA(0);
+  for (const layer of Scenery.ridges) {
+    g2.beginPath();
+    let started = false;
+    for (const p of layer.pts) {
+      const x = PX(p.th), y = PYA(-p.ang);
+      if (!started) { g2.moveTo(x, y); started = true; } else g2.lineTo(x, y);
+    }
+    g2.lineTo(PX(Scenery.TH_SPAN), yh + h);
+    g2.lineTo(PX(-Scenery.TH_SPAN), yh + h);
+    g2.closePath();
+    const base = layer.fill;
+    g2.fillStyle = base;
+    g2.fill();
+    g2.globalAlpha = layer.haze;
+    g2.fillStyle = rgb(HAZE);
+    g2.fill();
+    g2.globalAlpha = 1;
+  }
+  // Haze band sitting on the horizon, capped so magnification cannot turn
+  // it into a wall of grey.
+  const band = clamp(0.03 * view.S, 26, h * 0.22);
+  const hz = g2.createLinearGradient(0, yh - band, 0, yh);
+  hz.addColorStop(0, 'rgba(178,185,166,0)');
+  hz.addColorStop(1, 'rgba(190,196,176,.42)');
+  g2.fillStyle = hz;
+  g2.fillRect(-30, yh - band, w + 60, band + 2);
+}
+
+const GROUND_FAR = [116, 124, 108], GROUND_NEAR = [50, 56, 37];
+const GROUND_BANDS = 34;
+
+/** Painted far to near in geometric distance steps, so the colour ramp is a
+ *  function of range rather than of screen height. */
+function drawGround() {
+  const { w, h } = view;
+  let prevY = PYA(0);
+  for (let i = 1; i <= GROUND_BANDS; i++) {
+    const t = i / GROUND_BANDS;
+    const d = 2600 * Math.pow(16 / 2600, t);
+    const y = PY(d, 0);
+    if (y > -60 && prevY < h + 60) {
+      g2.fillStyle = rgb(mix(GROUND_FAR, GROUND_NEAR, Math.pow(t, 0.82)));
+      g2.fillRect(-30, prevY - 0.5, w + 60, Math.max(1, y - prevY) + 1.2);
+    }
+    prevY = y;
+    if (prevY > h + 60) break;
+  }
+  if (prevY < h + 60) {
+    g2.fillStyle = rgb(GROUND_NEAR);
+    g2.fillRect(-30, prevY - 0.5, w + 60, h + 60 - prevY);
+  }
+}
+
+function drawDetails() {
+  const { w } = view;
+  for (const it of Scenery.details) {
+    const x = PX(it.th);
+    if (x < -60 || x > w + 60) continue;
+    const y = PY(it.d, 0);
+    if (y < -40 || y > view.h + 60) continue;
+    const s = SPX(it.size, it.d);
+    if (s < 0.35) continue;
+    if (s < 1.4) {
+      g2.fillStyle = rgba(hazed([48, 54, 40], it.d), 0.5);
+      g2.fillRect(x, y - s, Math.max(1, s), Math.max(1, s));
+      continue;
+    }
+    const dark = hazed([38, 44, 32], it.d);
+    switch (it.kind) {
+      case 'tuft': {
+        g2.strokeStyle = rgba(hazed([76, 84, 52], it.d), 0.85);
+        g2.lineWidth = Math.max(0.5, s * 0.12);
+        g2.beginPath();
+        for (let i = -2; i <= 2; i++) {
+          g2.moveTo(x, y);
+          g2.lineTo(x + i * s * 0.22 + Math.sin(it.seed + i) * s * 0.1, y - s * (0.7 + 0.3 * Math.cos(it.seed + i)));
+        }
+        g2.stroke();
+        break;
+      }
+      case 'rock':
+      case 'boulder': {
+        const c = hazed(it.kind === 'boulder' ? [96, 96, 88] : [86, 86, 78], it.d);
+        g2.fillStyle = rgb(c);
+        g2.beginPath(); g2.ellipse(x, y - s * 0.38, s * 0.6, s * 0.42, it.seed % 1, 0, TAU); g2.fill();
+        g2.fillStyle = rgba(mix(c, [255, 250, 235], 0.3), 0.7);
+        g2.beginPath(); g2.ellipse(x - s * 0.12, y - s * 0.52, s * 0.32, s * 0.18, it.seed % 1, 0, TAU); g2.fill();
+        break;
+      }
+      case 'bush': {
+        g2.fillStyle = rgba(hazed([54, 66, 42], it.d), 0.95);
+        for (let i = 0; i < 3; i++) {
+          g2.beginPath();
+          g2.arc(x + (i - 1) * s * 0.34, y - s * (0.32 + 0.1 * i), s * 0.38, 0, TAU);
+          g2.fill();
+        }
+        break;
+      }
+      case 'tree': {
+        g2.strokeStyle = rgb(dark);
+        g2.lineWidth = Math.max(0.7, s * 0.075);
+        g2.beginPath();
+        g2.moveTo(x, y); g2.lineTo(x + s * 0.05, y - s);
+        g2.moveTo(x + s * 0.04, y - s * 0.72); g2.lineTo(x - s * 0.22, y - s * 0.95);
+        g2.moveTo(x + s * 0.045, y - s * 0.79); g2.lineTo(x + s * 0.26, y - s * 1.0);
+        g2.stroke();
+        g2.fillStyle = rgba(hazed([46, 56, 38], it.d), 0.7);
+        for (let i = 0; i < 4; i++) {
+          const a = it.seed + i * 1.9;
+          g2.beginPath();
+          g2.ellipse(x + s * (0.05 + Math.cos(a) * 0.24), y - s * (0.92 + Math.sin(a) * 0.13),
+            s * 0.13, s * 0.085, a, 0, TAU);
+          g2.fill();
+        }
+        break;
+      }
+    }
+  }
+}
+
+function drawFlags(time) {
+  const wind = G.wind.cur;
+  const dir = wind >= 0 ? 1 : -1;
+  const strength = clamp(Math.abs(wind) / 7, 0, 1);
+  for (const f of Scenery.flags) {
+    const x = PX(f.th);
+    if (x < -40 || x > view.w + 40) continue;
+    const base = PY(f.d, 0), top = PY(f.d, f.h);
+    const u = SPX(1, f.d);
+    if (u < 0.6) continue;
+    const c = hazed([70, 74, 66], f.d);
+    g2.strokeStyle = rgb(c);
+    g2.lineWidth = Math.max(0.7, u * 0.035);
+    g2.beginPath(); g2.moveTo(x, base); g2.lineTo(x, top); g2.stroke();
+
+    const len = u * (0.22 + 0.5 * strength);
+    const droop = u * 0.42 * (1 - strength);
+    const flutter = Math.sin(time * (2.6 + strength * 5) + f.d) * u * 0.09 * strength;
+    g2.fillStyle = rgba(hazed([196, 84, 56], f.d), 0.95);
+    g2.beginPath();
+    g2.moveTo(x, top);
+    g2.lineTo(x + dir * len, top + droop + flutter);
+    g2.lineTo(x + dir * len * 0.72, top + droop + flutter + u * 0.26);
+    g2.lineTo(x, top + u * 0.3);
+    g2.closePath(); g2.fill();
+  }
+}
+
+function drawPlacards() {
+  for (const p of Scenery.placards) {
+    const x = PX(p.th);
+    if (x < -60 || x > view.w + 60) continue;
+    const u = SPX(1, p.d);
+    if (u < 1.2) continue;
+    const base = PY(p.d, 0), top = PY(p.d, 1.5);
+    g2.strokeStyle = rgba(hazed([64, 68, 60], p.d), 0.9);
+    g2.lineWidth = Math.max(0.6, u * 0.03);
+    g2.beginPath(); g2.moveTo(x, base); g2.lineTo(x, top); g2.stroke();
+    const bw = u * 0.66, bh = u * 0.42;
+    g2.fillStyle = rgba(hazed([224, 224, 214], p.d), 0.94);
+    g2.fillRect(x - bw / 2, top - bh * 0.1, bw, bh);
+    if (bh > 7) {
+      g2.fillStyle = 'rgba(20,24,20,.85)';
+      g2.font = '600 ' + (bh * 0.62).toFixed(1) + 'px ' + MONO;
+      g2.textAlign = 'center'; g2.textBaseline = 'middle';
+      g2.fillText(p.label, x, top + bh * 0.42);
+    }
+  }
+}
+
+const MONO = 'ui-monospace,SFMono-Regular,Menlo,Consolas,monospace';
+
+/** The near lip of the firing position — always the closest thing in frame. */
+function drawForeground() {
+  const { w, h } = view;
+  const d = Scenery.FG_D;
+  const yTop = PY(d, 1.22);
+  if (yTop > h + 20) return;              // magnified past it entirely
+  const u = SPX(1, d);
+
+  // Grass standing proud of the crest.
+  g2.strokeStyle = 'rgba(14,18,12,.95)';
+  for (const b of Scenery.grass) {
+    const x = PX(b.th);
+    if (x < -20 || x > w + 20) continue;
+    const y0 = PY(d, 0.92), y1 = PY(d, b.h);
+    if (y0 < -20) continue;
+    g2.lineWidth = Math.max(0.7, b.w * u);
+    g2.beginPath();
+    g2.moveTo(x, y0);
+    g2.quadraticCurveTo(x + b.lean * u * 0.02, (y0 + y1) / 2, x + b.lean * u * 0.06, y1);
+    g2.stroke();
+  }
+
+  g2.beginPath();
+  let started = false;
+  for (const c of Scenery.crest) {
+    const x = PX(c.th), y = PY(d, c.h);
+    if (!started) { g2.moveTo(x, y); started = true; } else g2.lineTo(x, y);
+  }
+  g2.lineTo(w + 40, h + 40);
+  g2.lineTo(-40, h + 40);
+  g2.closePath();
+  const fg = g2.createLinearGradient(0, PY(d, 1.04), 0, h);
+  fg.addColorStop(0, '#151a12');
+  fg.addColorStop(1, '#080b07');
+  g2.fillStyle = fg;
+  g2.fill();
+  g2.strokeStyle = 'rgba(150,160,130,.10)';
+  g2.lineWidth = 1;
+  g2.stroke();
+}
+
+/** One steel silhouette, drawn in metres and transformed into place. */
+function drawTarget(tg) {
+  const x = PX(tg.th);
+  const u = SPX(tg.scale, tg.d);              // pixels per (unscaled) metre
+  if (u <= 0) return;
+  const height = 1.78 * u;
+  if (x < -height - 40 || x > view.w + height + 40) return;
+  const base = PY(tg.d, 0);
+  if (base < -80 || base > view.h + 120) return;
+
+  const alpha = tg.state === 'falling' ? clamp(1.15 - tg.fall, 0, 1) : 1;
+  if (alpha <= 0.02) return;
+
+  g2.save();
+  g2.globalAlpha = alpha;
+
+  // Ground shadow anchors the plate to the range floor.
+  if (u > 1.5) {
+    g2.fillStyle = 'rgba(12,16,10,.35)';
+    g2.beginPath();
+    g2.ellipse(x, base + u * 0.03, u * 0.44, Math.max(0.6, u * 0.09), 0, 0, TAU);
+    g2.fill();
+  }
+  // Carrier rail under the plate.
+  if (u > 2) {
+    g2.fillStyle = rgba(hazed([40, 44, 40], tg.d * 0.6), 0.92);
+    g2.fillRect(x - u * 0.42, base - u * 0.05, u * 0.84, Math.max(1, u * 0.09));
+  }
+
+  // Rising out of the pit: clip everything below the ground line.
+  const rising = tg.state === 'rising' || tg.state === 'retracting';
+  if (rising) {
+    g2.beginPath();
+    g2.rect(x - height, base - height * 1.2, height * 2, height * 1.2);
+    g2.clip();
+  }
+  g2.translate(x, base + (rising ? (1 - tg.anim) * height : 0));
+  if (tg.state === 'falling') g2.rotate(tg.fall * 1.42);
+  g2.scale(u, -u);                            // metres, y up
+
+  const steel = hazed([34, 39, 45], tg.d * 0.5);
+  const edge  = hazed([224, 134, 48], tg.d * 0.45);
+
+  g2.beginPath();
+  const R = ZONES;
+  g2.rect(R.legL.x0, R.legL.y0, R.legL.x1 - R.legL.x0, R.legL.y1 - R.legL.y0);
+  g2.rect(R.legR.x0, R.legR.y0, R.legR.x1 - R.legR.x0, R.legR.y1 - R.legR.y0);
+  g2.rect(R.armL.x0, R.armL.y0, R.armL.x1 - R.armL.x0, R.armL.y1 - R.armL.y0);
+  g2.rect(R.armR.x0, R.armR.y0, R.armR.x1 - R.armR.x0, R.armR.y1 - R.armR.y0);
+  g2.rect(R.torso.x0, R.torso.y0, R.torso.x1 - R.torso.x0, R.torso.y1 - R.torso.y0);
+  g2.rect(R.neck.x0, R.neck.y0 - 0.01, R.neck.x1 - R.neck.x0, R.neck.y1 - R.neck.y0 + 0.02);
+  g2.moveTo(R.head.cx + R.head.r, R.head.cy);
+  g2.arc(R.head.cx, R.head.cy, R.head.r, 0, TAU);
+  g2.fillStyle = rgb(steel);
+  g2.fill();
+
+  if (u > 2) {
+    // Hot rim: the single strongest cue that something is standing out there.
+    g2.lineWidth = clamp(1.6 / u, 0.018, 0.06);
+    g2.strokeStyle = rgba(edge, 0.92);
+    g2.stroke();
+  }
+  if (u > 11) {
+    // Scoring detail only resolves through glass.
+    g2.lineWidth = 0.018;
+    g2.strokeStyle = 'rgba(236,238,230,.5)';
+    g2.beginPath();
+    g2.rect(R.torso.x0 + 0.055, R.torso.y0 + 0.07, (R.torso.x1 - R.torso.x0) - 0.11, (R.torso.y1 - R.torso.y0) - 0.14);
+    g2.stroke();
+    g2.beginPath(); g2.arc(R.head.cx, R.head.cy, R.head.r * 0.6, 0, TAU); g2.stroke();
+    g2.lineWidth = 0.012;
+    g2.strokeStyle = 'rgba(255,255,255,.3)';
+    g2.beginPath();
+    g2.moveTo(-0.055, R.torso.y0 + 0.42); g2.lineTo(0.055, R.torso.y0 + 0.42);
+    g2.moveTo(0, R.torso.y0 + 0.365); g2.lineTo(0, R.torso.y0 + 0.475);
+    g2.stroke();
+  }
+  if (tg.flash > 0) {
+    g2.globalAlpha = alpha * tg.flash * 0.9;
+    g2.fillStyle = '#fff';
+    g2.fill();
+  }
+  g2.restore();
+}
+
+function drawTargets() {
+  const list = G.targets.slice().sort((a, b) => b.d - a.d);
+  for (const tg of list) drawTarget(tg);
+}
+
+function drawWorldParticles() {
+  for (const p of FX.world) {
+    const th = p.th0 + p.x / p.d;
+    const x = PX(th);
+    if (x < -30 || x > view.w + 30) continue;
+    const y = PY(p.d, p.y);
+    const r = Math.max(0.4, SPX(p.size, p.d));
+    const k = 1 - p.t / p.life;
+    const a = p.kind === 'dot' ? k * k : k;
+    if (p.additive) g2.globalCompositeOperation = 'lighter';
+    g2.fillStyle = 'rgba(' + p.color + ',' + (a * 0.85).toFixed(3) + ')';
+    g2.beginPath(); g2.arc(x, y, r, 0, TAU); g2.fill();
+    if (p.additive) g2.globalCompositeOperation = 'source-over';
+  }
+}
+
+/** Tracer: the round is drawn where it actually is, with a short vapour trail. */
+function drawBullets() {
+  g2.globalCompositeOperation = 'lighter';
+  for (const b of G.bullets) {
+    const dNow = CFG.v * b.t;
+    if (dNow < 2) continue;
+    const steps = 7, span = Math.min(dNow, CFG.v * 0.16);
+    g2.beginPath();
+    for (let i = 0; i <= steps; i++) {
+      const d = Math.max(1, dNow - span * (i / steps));
+      const x = PX(b.azimuthAt(d)), y = PYA(b.depressionAt(d));
+      if (i === 0) g2.moveTo(x, y); else g2.lineTo(x, y);
+    }
+    g2.strokeStyle = 'rgba(255,214,150,.30)';
+    g2.lineWidth = Math.max(1, 0.9 * Math.min(3, view.mag / 3));
+    g2.stroke();
+
+    const x = PX(b.azimuthAt(dNow)), y = PYA(b.depressionAt(dNow));
+    const r = Math.max(1, 1.3 * Math.min(2.6, view.mag / 3.2));
+    const gr = g2.createRadialGradient(x, y, 0, x, y, r * 3);
+    gr.addColorStop(0, 'rgba(255,238,196,.7)');
+    gr.addColorStop(1, 'rgba(255,190,110,0)');
+    g2.fillStyle = gr;
+    g2.beginPath(); g2.arc(x, y, r * 3, 0, TAU); g2.fill();
+  }
+  g2.globalCompositeOperation = 'source-over';
+}
+
+function drawMarkers() {
+  for (const m of FX.markers) {
+    const x = PX(m.th0), y = PY(m.d, m.y);
+    const k = m.t / m.life;
+    const s = lerp(5, 26, easeOutCubic(k));
+    const a = 1 - k;
+    g2.strokeStyle = m.zone === 'head' ? 'rgba(255,222,140,' + a + ')'
+                   : m.zone === 'limb' ? 'rgba(200,214,206,' + a + ')'
+                   : 'rgba(138,255,193,' + a + ')';
+    g2.lineWidth = 2;
+    g2.beginPath();
+    for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+      g2.moveTo(x + sx * s * 0.32, y + sy * s * 0.32);
+      g2.lineTo(x + sx * s, y + sy * s);
+    }
+    g2.stroke();
+  }
+}
+
+function drawFloats() {
+  g2.textAlign = 'center'; g2.textBaseline = 'middle';
+  for (const f of FX.floats) {
+    const k = f.t / f.life;
+    const x = PX(f.th0), y = PY(f.d, f.y) + f.dy - 30 * easeOutCubic(k);
+    if (x < -80 || x > view.w + 80) continue;
+    const a = k < 0.12 ? k / 0.12 : 1 - Math.pow((k - 0.12) / 0.88, 2);
+    g2.font = '600 ' + f.size + 'px ' + MONO;
+    g2.fillStyle = 'rgba(0,0,0,' + (a * 0.45) + ')';
+    g2.fillText(f.text, x + 1, y + 1);
+    g2.fillStyle = 'rgba(' + f.color + ',' + a.toFixed(3) + ')';
+    g2.fillText(f.text, x, y);
+  }
+}
+
+function drawScreenParticles() {
+  for (const p of FX.screen) {
+    const k = 1 - p.t / p.life;
+    if (p.additive) g2.globalCompositeOperation = 'lighter';
+    g2.fillStyle = 'rgba(' + p.color + ',' + (k * (p.additive ? 0.8 : 0.22)).toFixed(3) + ')';
+    g2.beginPath(); g2.arc(p.x, p.y, p.r, 0, TAU); g2.fill();
+    if (p.additive) g2.globalCompositeOperation = 'source-over';
+  }
+}
+
+/** Muzzle position in screen space: just proud of the parapet crest. */
+function muzzlePoint() {
+  return { x: view.cx + view.w * 0.15, y: PY(Scenery.FG_D, 1.06) - view.h * 0.06 };
+}
+
+/** The rifle resting on the lip, seen from behind the ocular. Silhouetted,
+ *  and gone the moment the eye goes to the glass. */
+function drawRifle(alpha) {
+  if (alpha <= 0.01) return;
+  const { w, h } = view;
+  const m = muzzlePoint();
+  if (m.y > h + 40) return;
+  const bx = m.x + w * 0.30, by = m.y + h * 0.52;
+  const ang = Math.atan2(by - m.y, bx - m.x);
+  const nx = -Math.sin(ang), ny = Math.cos(ang);
+  const t0 = h * 0.016, t1 = h * 0.062;
+
+  g2.save();
+  g2.globalAlpha = alpha;
+
+  // Bipod leg planted on the crest.
+  g2.strokeStyle = '#101409';
+  g2.lineWidth = Math.max(2.5, h * 0.007);
+  g2.beginPath();
+  g2.moveTo(m.x + (bx - m.x) * 0.17, m.y + (by - m.y) * 0.17);
+  g2.lineTo(m.x + (bx - m.x) * 0.02, m.y + h * 0.11);
+  g2.stroke();
+
+  // Barrel and receiver as one tapered body, a shade off the berm so the
+  // profile separates instead of merging into it.
+  const body = g2.createLinearGradient(m.x, m.y, bx, by);
+  body.addColorStop(0, '#1b2016');
+  body.addColorStop(0.45, '#12160f');
+  body.addColorStop(1, '#0a0d08');
+  g2.beginPath();
+  g2.moveTo(m.x + nx * t0, m.y + ny * t0);
+  g2.lineTo(bx + nx * t1, by + ny * t1);
+  g2.lineTo(bx - nx * t1, by - ny * t1);
+  g2.lineTo(m.x - nx * t0, m.y - ny * t0);
+  g2.closePath();
+  g2.fillStyle = body;
+  g2.fill();
+
+  // Muzzle brake: the one piece of shape that says 'rifle' at a glance.
+  const bl = h * 0.055, bt = t0 * 1.5;
+  const ux = Math.cos(ang), uy = Math.sin(ang);
+  g2.beginPath();
+  g2.moveTo(m.x + nx * bt, m.y + ny * bt);
+  g2.lineTo(m.x + ux * bl + nx * bt, m.y + uy * bl + ny * bt);
+  g2.lineTo(m.x + ux * bl - nx * bt, m.y + uy * bl - ny * bt);
+  g2.lineTo(m.x - nx * bt, m.y - ny * bt);
+  g2.closePath();
+  g2.fillStyle = '#171c13';
+  g2.fill();
+
+  // Specular line along the top edge.
+  g2.strokeStyle = 'rgba(178,190,168,.22)';
+  g2.lineWidth = 1.2;
+  g2.beginPath();
+  g2.moveTo(m.x - nx * bt, m.y - ny * bt);
+  g2.lineTo(bx - nx * t1 * 0.85, by - ny * t1 * 0.85);
+  g2.stroke();
+  g2.restore();
+}
+
+/* ── Optics overlay ────────────────────────────────────────────────────── */
+
+const BDC_RANGES = [400, 500, 600, 700, 800, 900];
+
+function drawReticle(cx, cy, R, alpha) {
+  const mrad = MRAD();
+  const gap = Math.max(5, R * 0.022);
+  g2.save();
+  g2.globalAlpha = alpha;
+  g2.lineCap = 'butt';
+
+  // Duplex posts: heavy outside, hair thin in the middle.
+  g2.strokeStyle = 'rgba(6,10,8,.92)';
+  g2.lineWidth = Math.max(2.4, R * 0.014);
+  g2.beginPath();
+  g2.moveTo(cx - R, cy); g2.lineTo(cx - R * 0.58, cy);
+  g2.moveTo(cx + R * 0.58, cy); g2.lineTo(cx + R, cy);
+  g2.moveTo(cx, cy - R); g2.lineTo(cx, cy - R * 0.58);
+  g2.moveTo(cx, cy + R * 0.58); g2.lineTo(cx, cy + R);
+  g2.stroke();
+
+  g2.strokeStyle = 'rgba(8,12,10,.88)';
+  g2.lineWidth = 1;
+  g2.beginPath();
+  g2.moveTo(cx - R * 0.6, cy); g2.lineTo(cx - gap, cy);
+  g2.moveTo(cx + gap, cy); g2.lineTo(cx + R * 0.6, cy);
+  g2.moveTo(cx, cy - R * 0.6); g2.lineTo(cx, cy - gap);
+  g2.moveTo(cx, cy + gap); g2.lineTo(cx, cy + R * 0.6);
+  g2.stroke();
+
+  // Milliradian ladder.
+  g2.strokeStyle = 'rgba(8,12,10,.8)';
+  g2.lineWidth = 1;
+  g2.beginPath();
+  for (let i = 1; i <= 14; i++) {
+    const off = i * mrad;
+    if (off > R * 0.58) break;
+    const len = (i % 5 === 0) ? 7 : 3.5;
+    g2.moveTo(cx - off, cy - len); g2.lineTo(cx - off, cy + len);
+    g2.moveTo(cx + off, cy - len); g2.lineTo(cx + off, cy + len);
+    g2.moveTo(cx - len, cy - off); g2.lineTo(cx + len, cy - off);
+    g2.moveTo(cx - len, cy + off); g2.lineTo(cx + len, cy + off);
+  }
+  g2.stroke();
+
+  // Bullet-drop compensation marks, derived from the same ballistics the
+  // bullet flies. Put the target on the mark for its range.
+  g2.font = '9px ' + MONO;
+  g2.textAlign = 'left'; g2.textBaseline = 'middle';
+  for (const d of BDC_RANGES) {
+    const y = cy + dropAngle(d) * view.S;
+    if (y - cy > R * 0.62 || y - cy < 4) continue;
+    const halfW = d % 200 === 0 ? 9 : 6;
+    g2.strokeStyle = 'rgba(8,12,10,.85)';
+    g2.beginPath(); g2.moveTo(cx - halfW, y); g2.lineTo(cx + halfW, y); g2.stroke();
+    if (view.mag >= 5 && d % 100 === 0) {
+      g2.fillStyle = 'rgba(10,16,12,.7)';
+      g2.fillText(String(d / 100), cx + halfW + 4, y);
+    }
+  }
+
+  // Centre aiming dot.
+  g2.fillStyle = 'rgba(6,10,8,.95)';
+  g2.beginPath(); g2.arc(cx, cy, 1.15, 0, TAU); g2.fill();
+  g2.restore();
+}
+
+/** The computed hold for whatever is being ranged, painted onto the glass. */
+function drawSolutionMark(cx, cy, alpha) {
+  const tg = G.ranged;
+  if (!tg || G.rangedFade < 0.25) return;
+  const t = flightTime(tg.d);
+  const dx = (windAngle(tg.d, G.wind.cur) - tg.angularSpeed * t) * view.S;
+  const dy = dropAngle(tg.d) * view.S;
+  const x = cx + dx, y = cy + dy;
+  const a = alpha * G.rangedFade * 0.9;
+  g2.save();
+  g2.globalAlpha = a;
+  g2.strokeStyle = 'rgba(255,194,75,.95)';
+  g2.lineWidth = 1.1;
+  g2.beginPath(); g2.arc(x, y, 6, 0, TAU); g2.stroke();
+  g2.beginPath();
+  g2.moveTo(x - 11, y); g2.lineTo(x - 7, y);
+  g2.moveTo(x + 7, y); g2.lineTo(x + 11, y);
+  g2.moveTo(x, y - 11); g2.lineTo(x, y - 7);
+  g2.moveTo(x, y + 7); g2.lineTo(x, y + 11);
+  g2.stroke();
+  g2.globalAlpha = a * 0.35;
+  g2.setLineDash([2, 3]);
+  g2.beginPath(); g2.moveTo(cx, cy); g2.lineTo(x, y); g2.stroke();
+  g2.restore();
+}
+
+function drawScope(alpha) {
+  const { w, h, cx, cy } = view;
+  const R = view.scopeR * lerp(1.45, 1, easeOutCubic(alpha));
+  // Eye relief: the black crescent shifts as the rifle moves under you.
+  const ox = clamp(-G.sway.yawOut * view.S * 0.06, -R * 0.09, R * 0.09);
+  const oy = clamp(-G.sway.elOut * view.S * 0.06 + G.recoil.el * view.S * 0.05, -R * 0.09, R * 0.09);
+
+  g2.save();
+  g2.globalAlpha = alpha;
+
+  // Everything outside the tube.
+  g2.beginPath();
+  g2.rect(-4, -4, w + 8, h + 8);
+  g2.arc(cx + ox, cy + oy, R, 0, TAU, true);
+  g2.fillStyle = 'rgba(2,4,3,.986)';
+  g2.fill();
+
+  g2.save();
+  g2.beginPath(); g2.arc(cx + ox, cy + oy, R, 0, TAU); g2.clip();
+
+  // Glass: cool tint, edge vignette, a whisper of chromatic fringing.
+  const vg = g2.createRadialGradient(cx + ox, cy + oy, R * 0.42, cx + ox, cy + oy, R * 1.02);
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(0.72, 'rgba(6,12,10,.30)');
+  vg.addColorStop(1, 'rgba(2,4,3,.92)');
+  g2.fillStyle = vg;
+  g2.fillRect(cx + ox - R, cy + oy - R, R * 2, R * 2);
+
+  g2.globalCompositeOperation = 'lighter';
+  g2.strokeStyle = 'rgba(90,150,255,.10)';
+  g2.lineWidth = 3;
+  g2.beginPath(); g2.arc(cx + ox, cy + oy, R * 0.985, 0, TAU); g2.stroke();
+  g2.strokeStyle = 'rgba(255,190,120,.07)';
+  g2.beginPath(); g2.arc(cx + ox, cy + oy, R * 0.945, 0, TAU); g2.stroke();
+  g2.globalCompositeOperation = 'source-over';
+
+  for (const s of Scenery.dust) {
+    g2.fillStyle = 'rgba(180,190,180,' + s.o + ')';
+    g2.beginPath();
+    g2.arc(cx + Math.cos(s.a) * s.r * R, cy + Math.sin(s.a) * s.r * R, s.s, 0, TAU);
+    g2.fill();
+  }
+
+  drawReticle(cx, cy, R, 0.95);
+  drawSolutionMark(cx, cy, 1);
+  g2.restore();
+
+  // Bezel.
+  const bez = g2.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
+  bez.addColorStop(0, 'rgba(96,102,98,.55)');
+  bez.addColorStop(0.5, 'rgba(26,30,28,.5)');
+  bez.addColorStop(1, 'rgba(78,84,80,.45)');
+  g2.strokeStyle = bez; g2.lineWidth = 8;
+  g2.beginPath(); g2.arc(cx + ox, cy + oy, R + 4, 0, TAU); g2.stroke();
+  g2.strokeStyle = 'rgba(150,160,152,.16)'; g2.lineWidth = 1;
+  g2.beginPath(); g2.arc(cx + ox, cy + oy, R + 0.5, 0, TAU); g2.stroke();
+
+  // Turret readouts, laid on the black.
+  g2.globalAlpha = alpha * 0.85;
+  g2.font = '10px ' + MONO;
+  g2.fillStyle = 'rgba(138,255,193,.55)';
+  g2.textAlign = 'center'; g2.textBaseline = 'alphabetic';
+  const ty = cy - R - 16;
+  if (ty > 14) g2.fillText('ELEV  ZERO ' + CFG.zeroRange + ' m', cx, ty);
+  if (cy + R < h - 16) {
+    g2.fillText(view.mag.toFixed(1) + '×   ·   WIND ' + Math.abs(G.wind.cur).toFixed(1) +
+      ' m/s ' + (G.wind.cur >= 0 ? '▶' : '◀'), cx, h - 12);
+  }
+  g2.restore();
+}
+
+function drawHipReticle(alpha) {
+  const { cx, cy } = view;
+  g2.save();
+  g2.globalAlpha = alpha * 0.9;
+  g2.strokeStyle = 'rgba(214,232,222,.8)';
+  g2.lineWidth = 1.2;
+  const spread = 9 + G.shake * 14 + (Input.steady ? 0 : 3);
+  g2.beginPath();
+  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+    g2.moveTo(cx + dx * spread, cy + dy * spread);
+    g2.lineTo(cx + dx * (spread + 9), cy + dy * (spread + 9));
+  }
+  g2.stroke();
+  g2.strokeStyle = 'rgba(138,255,193,.35)';
+  g2.beginPath(); g2.arc(cx, cy, spread + 15, 0, TAU); g2.stroke();
+  g2.fillStyle = 'rgba(255,255,255,.85)';
+  g2.beginPath(); g2.arc(cx, cy, 1.3, 0, TAU); g2.fill();
+  g2.restore();
+}
+
+/* ── Head-up display ───────────────────────────────────────────────────── */
+
+function txt(s, x, y, size, color, align = 'left', weight = '400') {
+  g2.font = weight + ' ' + size + 'px ' + MONO;
+  g2.textAlign = align; g2.textBaseline = 'alphabetic';
+  g2.fillStyle = color;
+  g2.fillText(s, x, y);
+}
+
+const HUD_DIM = 'rgba(125,143,135,.9)';
+const HUD_KEY = 'rgba(78,143,109,.95)';
+
+function drawHUD() {
+  const { w, h } = view;
+  const scoped = G.scopeT;
+  const a = lerp(1, 0.42, scoped);
+  g2.save();
+  g2.globalAlpha = a;
+
+  const pad = 26;
+
+  /* Score block */
+  txt('SCORE', pad, pad + 4, 10, HUD_KEY);
+  txt(fmt(G.score), pad, pad + 34, 30, 'rgba(223,233,227,.98)', 'left', '600');
+  const mult = (1 + Math.min(G.streak, 10) * 0.1).toFixed(1);
+  txt('×' + mult + '  STREAK ' + G.streak, pad, pad + 52, 11, G.streak > 0 ? 'rgba(138,255,193,.9)' : HUD_DIM);
+
+  /* Wave */
+  txt('WAVE ' + G.wave, w / 2, pad + 14, 12, 'rgba(223,233,227,.85)', 'center', '600');
+  const prog = (G.neutralized % 5) / 5;
+  g2.strokeStyle = 'rgba(138,255,193,.22)'; g2.lineWidth = 2;
+  g2.beginPath(); g2.moveTo(w / 2 - 42, pad + 22); g2.lineTo(w / 2 + 42, pad + 22); g2.stroke();
+  g2.strokeStyle = 'rgba(138,255,193,.75)';
+  g2.beginPath(); g2.moveTo(w / 2 - 42, pad + 22); g2.lineTo(w / 2 - 42 + 84 * prog, pad + 22); g2.stroke();
+
+  /* Wind gauge */
+  const wx = w - pad, wy = pad + 10;
+  txt('WIND', wx, wy - 6, 10, HUD_KEY, 'right');
+  const barW = 116, bx = wx - barW, by = wy + 12;
+  g2.strokeStyle = 'rgba(138,255,193,.20)'; g2.lineWidth = 1;
+  g2.beginPath(); g2.moveTo(bx, by); g2.lineTo(bx + barW, by);
+  g2.moveTo(bx + barW / 2, by - 5); g2.lineTo(bx + barW / 2, by + 5); g2.stroke();
+  const wf = clamp(G.wind.cur / 8, -1, 1);
+  const wex = bx + barW / 2 + wf * (barW / 2 - 6);
+  g2.strokeStyle = Math.abs(G.wind.cur) > 5 ? 'rgba(255,194,75,.95)' : 'rgba(138,255,193,.9)';
+  g2.lineWidth = 2;
+  g2.beginPath();
+  g2.moveTo(bx + barW / 2, by); g2.lineTo(wex, by);
+  g2.lineTo(wex - Math.sign(wf || 1) * 5, by - 4);
+  g2.moveTo(wex, by); g2.lineTo(wex - Math.sign(wf || 1) * 5, by + 4);
+  g2.stroke();
+  txt(Math.abs(G.wind.cur).toFixed(1) + ' m/s ' + (G.wind.cur >= 0 ? 'RIGHT' : 'LEFT'), wx, by + 18, 11,
+    'rgba(223,233,227,.9)', 'right');
+
+  /* Ammunition */
+  const ay = h - pad - 16;
+  txt('MAGAZINE', pad, ay - 26, 10, HUD_KEY);
+  for (let i = 0; i < CFG.magSize; i++) {
+    const x = pad + i * 15;
+    const loaded = i < G.mag;
+    g2.fillStyle = loaded ? 'rgba(255,194,75,.92)' : 'rgba(255,194,75,.13)';
+    g2.beginPath();
+    g2.moveTo(x, ay - 12); g2.lineTo(x + 8, ay - 12);
+    g2.lineTo(x + 8, ay - 2); g2.lineTo(x + 4, ay + 2); g2.lineTo(x, ay - 2);
+    g2.closePath(); g2.fill();
+  }
+  txt('×' + G.reserve + '  RESERVE', pad + CFG.magSize * 15 + 10, ay, 11,
+    G.reserve <= 5 ? 'rgba(255,107,107,.95)' : HUD_DIM);
+
+  if (G.reload > 0) {
+    const k = 1 - G.reload / G.reloadTotal;
+    g2.strokeStyle = 'rgba(138,255,193,.25)'; g2.lineWidth = 3;
+    g2.beginPath(); g2.moveTo(pad, ay + 14); g2.lineTo(pad + 120, ay + 14); g2.stroke();
+    g2.strokeStyle = 'rgba(138,255,193,.95)';
+    g2.beginPath(); g2.moveTo(pad, ay + 14); g2.lineTo(pad + 120 * k, ay + 14); g2.stroke();
+    txt('RELOADING', pad + 128, ay + 18, 10, 'rgba(138,255,193,.9)');
+  } else if (G.bolt > 0) {
+    const k = 1 - G.bolt / CFG.boltTime;
+    g2.strokeStyle = 'rgba(125,143,135,.22)'; g2.lineWidth = 2;
+    g2.beginPath(); g2.moveTo(pad, ay + 14); g2.lineTo(pad + 120, ay + 14); g2.stroke();
+    g2.strokeStyle = 'rgba(125,143,135,.7)';
+    g2.beginPath(); g2.moveTo(pad, ay + 14); g2.lineTo(pad + 120 * k, ay + 14); g2.stroke();
+    txt('CYCLING BOLT', pad + 128, ay + 18, 10, HUD_DIM);
+  } else if (G.mag === 0) {
+    const blink = 0.55 + 0.45 * Math.sin(G.t * 8);
+    txt('RELOAD [R]', pad, ay + 18, 11, 'rgba(255,107,107,' + blink.toFixed(2) + ')');
+  }
+
+  /* Breath */
+  const bw = 116, bxr = w - pad - bw, byr = h - pad - 16;
+  txt('BREATH', w - pad, byr - 12, 10, HUD_KEY, 'right');
+  g2.fillStyle = 'rgba(138,255,193,.12)';
+  g2.fillRect(bxr, byr - 4, bw, 5);
+  const bcol = G.gasp > 0 ? 'rgba(255,107,107,.95)'
+             : G.breath < 30 ? 'rgba(255,194,75,.95)' : 'rgba(138,255,193,.9)';
+  g2.fillStyle = bcol;
+  g2.fillRect(bxr, byr - 4, bw * (G.breath / 100), 5);
+  txt(G.gasp > 0 ? 'RECOVERING' : Input.steady ? 'HOLDING' : 'HOLD [SHIFT]', w - pad, byr + 16, 10,
+    Input.steady && G.gasp <= 0 ? 'rgba(138,255,193,.9)' : HUD_DIM, 'right');
+
+  g2.restore();
+
+  /* Firing solution — stays legible through the scope. */
+  const tg = G.ranged;
+  const sy = h - pad - 44;
+  g2.save();
+  g2.globalAlpha = lerp(0.75, 1, scoped) * (0.35 + 0.65 * G.rangedFade);
+  if (tg) {
+    const t = flightTime(tg.d);
+    const drop = dropAngle(tg.d) * 1000;
+    const wind = windAngle(tg.d, G.wind.cur) * 1000;
+    const lead = tg.angularSpeed * t * 1000;
+    const parts = [
+      'RNG ' + Math.round(tg.d) + ' m',
+      'TOF ' + t.toFixed(2) + ' s',
+      'DROP ' + (drop >= 0 ? '↑' : '↓') + Math.abs(drop).toFixed(1),
+      'WIND ' + (wind >= 0 ? '▶' : '◀') + Math.abs(wind).toFixed(1),
+    ];
+    if (Math.abs(lead) > 0.05) parts.push('LEAD ' + (lead >= 0 ? '▶' : '◀') + Math.abs(lead).toFixed(1));
+    txt(parts.join('   ·   '), view.cx, sy, 11.5, 'rgba(255,194,75,.92)', 'center');
+    txt('MIL HOLDS', view.cx, sy + 14, 9, 'rgba(255,194,75,.45)', 'center');
+  } else {
+    txt('NO TARGET RANGED', view.cx, sy, 11, 'rgba(125,143,135,.55)', 'center');
+  }
+  g2.restore();
+
+  /* Off-screen target cues while magnified. */
+  if (scoped > 0.4) {
+    g2.save();
+    g2.globalAlpha = (scoped - 0.4) / 0.6 * 0.8;
+    for (const t2 of G.targets) {
+      if (!t2.exposed) continue;
+      const x = PX(t2.th);
+      const margin = view.scopeR * 0.9;
+      if (x > view.cx - margin && x < view.cx + margin) continue;
+      const side = x < view.cx ? -1 : 1;
+      const ex = view.cx + side * (view.scopeR * 0.72);
+      const ey = clamp(PY(t2.d, 0.9), view.cy - view.scopeR * 0.6, view.cy + view.scopeR * 0.6);
+      g2.strokeStyle = 'rgba(255,194,75,.8)'; g2.lineWidth = 2;
+      g2.beginPath();
+      g2.moveTo(ex, ey - 7); g2.lineTo(ex + side * 8, ey); g2.lineTo(ex, ey + 7);
+      g2.stroke();
+    }
+    g2.restore();
+  }
+
+  /* Toast */
+  if (G.toast.t > 0) {
+    const k = Math.min(1, G.toast.t / 0.35);
+    g2.save();
+    g2.globalAlpha = k;
+    txt(G.toast.text, view.cx, view.h * 0.30, 13, 'rgba(255,194,75,.95)', 'center', '600');
+    g2.restore();
+  }
+}
+
+function drawMuzzleFlash() {
+  if (G.flash <= 0.01) return;
+  const k = G.flash * (1 - G.scopeT * 0.55);
+  const m = muzzlePoint();
+  const x = m.x, y = m.y;
+  const r = view.w * 0.17 * (0.5 + k * 0.5);
+  g2.save();
+  g2.globalCompositeOperation = 'lighter';
+  const gr = g2.createRadialGradient(x, y, 0, x, y, r);
+  gr.addColorStop(0, 'rgba(255,228,170,' + (0.5 * k) + ')');
+  gr.addColorStop(0.4, 'rgba(255,178,90,' + (0.18 * k) + ')');
+  gr.addColorStop(1, 'rgba(255,150,60,0)');
+  g2.fillStyle = gr;
+  g2.fillRect(x - r, y - r, r * 2, r * 2);
+  g2.fillStyle = 'rgba(255,240,210,' + (0.05 * k) + ')';
+  g2.fillRect(0, 0, view.w, view.h);
+  g2.restore();
+}
+
+/* ── 10. Simulation ────────────────────────────────────────────────────── */
+
+function updateOptics(dt) {
+  const target = G.scoped ? G.scopeMag : 1;
+  G.magCur = Math.exp(approach(Math.log(G.magCur), Math.log(target), 14, dt));
+  G.scopeT = approach(G.scopeT, G.scoped ? 1 : 0, 13, dt);
+  view.mag = G.magCur;
+  view.S = view.focal * view.mag;
+}
+
+function updateAim() {
+  const m = Input.consumeMotion();
+  const fine = Input.steady && G.breath > 0 && G.gasp <= 0 ? 0.45 : 1;
+  const sens = CFG.sens / Math.max(1, G.magCur) * fine;
+  G.aim.yaw = clamp(G.aim.yaw + m.x * sens, -CFG.yawLimit, CFG.yawLimit);
+  G.aim.el = clamp(G.aim.el - m.y * sens, CFG.elMin, CFG.elMax);
+
+  const wheel = Input.consumeWheel();
+  if (wheel) {
+    const next = clamp(G.scopeMag - Math.sign(wheel) * 0.5, CFG.scopeMagMin, CFG.scopeMagMax);
+    if (next !== G.scopeMag) {
+      G.scopeMag = next;
+      const p = Store.prefs(); p.mag = next; Store.savePrefs(p);
+      Sfx.click(0, 3200, 0.08, 0.02);
+      if (!G.scoped) toast('SCOPE SET TO ' + next.toFixed(1) + '×', 1.0);
+    }
+  }
+}
+
+function updateSway(dt) {
+  const s = G.sway;
+  s.t += dt;
+  const wantSteady = Input.steady;
+  if (wantSteady && G.breath > 0 && G.gasp <= 0) {
+    G.breath = Math.max(0, G.breath - dt * (100 / 4.2));
+    if (G.breath <= 0) { G.gasp = 1.6; toast('OUT OF BREATH', 1.0); }
+  } else {
+    G.breath = Math.min(100, G.breath + dt * (100 / 6.4));
+  }
+  if (G.gasp > 0) G.gasp = Math.max(0, G.gasp - dt);
+
+  const holding = wantSteady && G.breath > 0 && G.gasp <= 0;
+  let amp = holding ? 0.13 : 1;
+  if (G.gasp > 0) amp *= 2.0;
+  amp *= 0.78 + 0.22 * Math.min(1, G.magCur / 8);   // glass reveals the wobble
+
+  const t = s.t;
+  const yaw = 0.00118 * (0.62 * Math.sin(t * TAU * 0.37) + 0.38 * Math.sin(t * TAU * 0.83 + 1.7));
+  const el = 0.00098 * (0.58 * Math.sin(t * TAU * 0.24 + 0.6) + 0.42 * Math.sin(t * TAU * 0.61 + 2.2));
+
+  // A slow, damped random walk keeps it from ever feeling like a loop.
+  s.vyaw = (s.vyaw + rand(-1, 1) * dt * 0.0016) * Math.exp(-dt * 2.0);
+  s.vel = (s.vel + rand(-1, 1) * dt * 0.0013) * Math.exp(-dt * 2.0);
+  s.dyaw = (s.dyaw + s.vyaw * dt) * Math.exp(-dt * 1.1);
+  s.del = (s.del + s.vel * dt) * Math.exp(-dt * 1.1);
+
+  s.yawOut = (yaw + s.dyaw) * amp;
+  s.elOut = (el + s.del) * amp;
+}
+
+function updateRecoil(dt) {
+  const r = G.recoil;
+  r.vel += (-95 * r.el - 13 * r.vel) * dt;
+  r.el += r.vel * dt;
+  r.yawVel += (-115 * r.yaw - 15 * r.yawVel) * dt;
+  r.yaw += r.yawVel * dt;
+}
+
+function updateWind(dt) {
+  const wd = G.wind;
+  wd.timer -= dt;
+  if (wd.timer <= 0) {
+    const maxW = Math.min(8, 2.4 + G.wave * 0.55);
+    wd.target = rand(-maxW, maxW);
+    wd.timer = rand(6, 13);
+  }
+  wd.cur = approach(wd.cur, wd.target, 0.4, dt);
+  Sfx.setWind(wd.cur, G.scoped);
+}
+
+function updateSpawns(dt) {
+  for (let i = G.targets.length - 1; i >= 0; i--) {
+    if (G.targets[i].dead) {
+      if (G.ranged === G.targets[i]) G.ranged = null;
+      G.targets.splice(i, 1);
+    }
+  }
+  let alive = 0;
+  for (const t of G.targets) if (t.exposed) alive++;
+  const maxAlive = clamp(2 + Math.floor(G.wave / 2), 2, CFG.maxTargets);
+  G.spawnTimer -= dt;
+  if (alive < maxAlive && G.spawnTimer <= 0) {
+    G.targets.push(spawnTarget(G.wave));
+    G.spawnTimer = Math.max(0.7, rand(1.4, 2.8) - G.wave * 0.08);
+  }
+}
+
+/** Laser ranging: whatever sits closest to the sight line gets a solution. */
+function updateRanged(dt) {
+  let best = null, bestR = Infinity;
+  const limit = G.scoped ? view.scopeR * 0.55 : 150;
+  for (const t of G.targets) {
+    if (!t.exposed) continue;
+    const dx = PX(t.th) - view.cx, dy = PY(t.d, 0.95) - view.cy;
+    const r = Math.hypot(dx, dy);
+    if (r < limit && r < bestR) { bestR = r; best = t; }
+  }
+  if (best && best !== G.ranged) { G.rangedFade = 0; Sfx.blip(1180, 0.05); }
+  G.ranged = best;
+  G.rangedFade = approach(G.rangedFade, best ? 1 : 0, 7, dt);
+}
+
+function update(dt) {
+  G.t += dt; G.runTime += dt;
+  updateOptics(dt);
+  updateAim();
+  updateSway(dt);
+  updateRecoil(dt);
+
+  cam.yaw = clamp(G.aim.yaw + G.sway.yawOut + G.recoil.yaw, -0.16, 0.16);
+  cam.el = clamp(G.aim.el + G.sway.elOut + G.recoil.el, -0.02, 0.02);
+
+  updateWind(dt);
+  for (const t of G.targets) t.update(dt);
+  updateSpawns(dt);
+
+  for (let i = G.bullets.length - 1; i >= 0; i--) {
+    const b = G.bullets[i];
+    stepBullet(b, dt);
+    if (b.done) G.bullets.splice(i, 1);
+  }
+
+  if (G.reload > 0) {
+    G.reload -= dt;
+    if (G.reload <= 0) { G.reload = 0; finishReload(); }
+  } else if (G.bolt > 0) {
+    G.bolt = Math.max(0, G.bolt - dt);
+  }
+
+  updateRanged(dt);
+  FX.update(dt);
+
+  G.shake = Math.max(0, G.shake - dt * 3.4);
+  G.flash = Math.max(0, G.flash - dt * 7);
+  if (G.toast.t > 0) G.toast.t -= dt;
+
+  // Out of ammunition, nothing in the air: the run is over.
+  if (totalAmmo() === 0 && G.bullets.length === 0 && G.reload === 0) {
+    G.overDelay += dt;
+    if (G.overDelay > 1.3) endRun();
+  } else {
+    G.overDelay = 0;
+  }
+}
+
+/** Menu backdrop: the range keeps living behind the panel. */
+function updateIdle(dt) {
+  G.t += dt;
+  updateOptics(dt);
+  cam.yaw = Math.sin(G.t * 0.075) * 0.075;
+  cam.el = -0.0026 + Math.sin(G.t * 0.05) * 0.0012;
+  updateWind(dt);
+  for (const t of G.targets) t.update(dt);
+  updateSpawns(dt);
+  FX.update(dt);
+}
+
+/* ── Frame ─────────────────────────────────────────────────────────────── */
+
+function render() {
+  const { w, h } = view;
+  g2.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
+
+  const sh = G.shake;
+  g2.save();
+  if (sh > 0.002) g2.translate(rand(-1, 1) * sh * 7, rand(-1, 1) * sh * 5);
+  drawSky();
+  drawRidges();
+  drawGround();
+  drawDetails();
+  drawFlags(G.t);
+  drawPlacards();
+  drawTargets();
+  drawWorldParticles();
+  drawBullets();
+  drawMarkers();
+  drawForeground();
+  drawFloats();
+  g2.restore();
+
+  g2.save();
+  if (sh > 0.002) g2.translate(rand(-1, 1) * sh * 2, rand(-1, 1) * sh * 1.5);
+  drawRifle(clamp(1 - G.scopeT * 1.7, 0, 1));
+  drawScreenParticles();
+  drawMuzzleFlash();
+  if (G.scopeT < 0.99) drawHipReticle(1 - G.scopeT);
+  if (G.scopeT > 0.01) drawScope(G.scopeT);
+  g2.restore();
+
+  if (G.state === 'playing' || G.state === 'paused') drawHUD();
+
+  // Corner vignette when shooting from the shoulder.
+  if (G.scopeT < 0.5) {
+    const strength = 0.45 * (1 - G.scopeT * 2);
+    const vg = g2.createRadialGradient(view.cx, view.cy, Math.min(w, h) * 0.35,
+      view.cx, view.cy, Math.max(w, h) * 0.78);
+    vg.addColorStop(0, 'rgba(0,0,0,0)');
+    vg.addColorStop(1, 'rgba(0,0,0,' + strength.toFixed(3) + ')');
+    g2.fillStyle = vg;
+    g2.fillRect(0, 0, w, h);
+  }
+}
+
+let lastTs = 0;
+function frame(ts) {
+  requestAnimationFrame(frame);
+  const now = ts / 1000;
+  const dt = lastTs ? Math.min(0.05, now - lastTs) : 0.016;
+  lastTs = now;
+  if (G.state === 'playing') update(dt);
+  else if (G.state !== 'paused') updateIdle(dt);
+  render();
+}
+
+/* ── 11. Shell: screens, buttons, input plumbing ───────────────────────── */
+
+const el = id => document.getElementById(id);
+
+function showScreen(name) {
+  ['menu', 'pause', 'over'].forEach(n => el('scr-' + n).classList.toggle('on', n === name));
+  el('overlay').hidden = !name;
+  document.body.classList.toggle('show-cursor', !!name);
+}
+
+function scoreTable(list, highlight) {
+  if (!list.length) return '<p class="empty">No qualifying scores logged.</p>';
+  return '<table class="scores">' + list.map((e, i) =>
+    '<tr class="' + (i === highlight ? 'new' : '') + '">' +
+    '<td class="rank">' + String(i + 1).padStart(2, '0') + '</td>' +
+    '<td>' + new Date(e.date).toLocaleDateString() + '</td>' +
+    '<td>' + e.acc + '% · W' + e.wave + '</td>' +
+    '<td class="val">' + fmt(e.score) + '</td></tr>').join('') + '</table>';
+}
+
+function statBlocks(items) {
+  return items.map(i => '<div class="stat"><div class="k">' + i[0] + '</div><div class="v">' + i[1] + '</div></div>').join('');
+}
+
+function refreshMenu() {
+  const list = Store.scores();
+  el('menu-scores').innerHTML = scoreTable(list, -1);
+  el('menu-best').textContent = list.length ? 'Best ' + fmt(list[0].score) : 'Best —';
+}
+
+function startGame() {
+  Sfx.ensure();
+  resetRun();
+  G.state = 'playing';
+  lockPrimed = false;
+  showScreen(null);
+  requestLock();
+  Sfx.chord([392, 523, 659], 0.09);
+}
+
+function pauseGame() {
+  if (G.state !== 'playing') return;
+  G.state = 'paused';
+  Input.clear();
+  Sfx.hushWind();
+  const acc = G.shots ? Math.round(G.hits / G.shots * 100) : 0;
+  el('pause-stats').innerHTML = statBlocks([
+    ['Score', fmt(G.score)],
+    ['Accuracy', acc + '<small>%</small>'],
+    ['Rounds left', totalAmmo()],
+  ]);
+  showScreen('pause');
+  if (document.pointerLockElement) document.exitPointerLock();
+}
+
+function resumeGame() {
+  if (G.state !== 'paused') return;
+  G.state = 'playing';
+  showScreen(null);
+  requestLock();
+}
+
+function endRun() {
+  if (G.state === 'over') return;
+  G.state = 'over';
+  G.scoped = false;                 // drop the glass so the range shows behind the card
+  if (document.pointerLockElement) document.exitPointerLock();
+  Sfx.hushWind();
+  Sfx.chord([440, 349, 262], 0.11);
+
+  const acc = G.shots ? Math.round(G.hits / G.shots * 100) : 0;
+  const entry = {
+    score: G.score, acc, hits: G.hits, shots: G.shots, wave: G.wave,
+    longest: Math.round(G.longest), streak: G.bestStreak, date: Date.now(),
+  };
+  const { list, rank } = Store.addScore(entry);
+
+  el('over-score').textContent = fmt(G.score);
+  el('over-stats').innerHTML = statBlocks([
+    ['Accuracy', acc + '<small>%</small>'],
+    ['Hits', G.hits + '<small>/' + G.shots + '</small>'],
+    ['Headshots', G.headshots],
+    ['Best streak', G.bestStreak],
+    ['Longest hit', Math.round(G.longest) + '<small>m</small>'],
+    ['Wave', G.wave],
+  ]);
+  el('over-scores').innerHTML = scoreTable(list, rank);
+  el('over-note').textContent = rank === 0
+    ? 'New range record. That one goes on the board.'
+    : rank > 0 ? 'Logged at position ' + (rank + 1) + '.'
+    : 'Short of the board this time — the top eight are listed above.';
+  el('over-eyebrow').textContent = 'Range complete · ' +
+    (G.shots === 0 ? 'no rounds fired' : 'out of ammunition');
+  showScreen('over');
+  refreshMenu();
+}
+
+function quitToMenu() {
+  G.state = 'menu';
+  resetRun();
+  showScreen('menu');
+  refreshMenu();
+}
+
+/* Pointer lock ---------------------------------------------------------- */
+let lockUnavailable = !document.documentElement.requestPointerLock;
+let lockFailures = 0;
+let lockPrimed = false;
+
+/** Browsers refuse the lock for a beat after Escape, and refuse it outright
+ *  in a sandboxed frame. Stop asking after a couple of refusals — the game
+ *  plays fine unlocked, since aim is integrated from relative movement. */
+function noteLockFailure() {
+  if (++lockFailures >= 2) lockUnavailable = true;
+  updateHint();
+}
+
+function requestLock() {
+  if (lockUnavailable || !cv.requestPointerLock) return;
+  try {
+    const promise = cv.requestPointerLock();
+    if (promise && typeof promise.catch === 'function') promise.catch(noteLockFailure);
+  } catch { noteLockFailure(); }
+}
+
+document.addEventListener('pointerlockchange', () => {
+  Input.locked = document.pointerLockElement === cv;
+  if (Input.locked) lockFailures = 0;
+  updateHint();
+  if (!Input.locked && G.state === 'playing' && !lockUnavailable) pauseGame();
+});
+document.addEventListener('pointerlockerror', noteLockFailure);
+
+function updateHint() {
+  el('hint').classList.toggle('on', G.state === 'playing' && !Input.locked && !lockUnavailable);
+}
+
+/* Mouse ----------------------------------------------------------------- */
+let lastMx = null, lastMy = null;
+
+cv.addEventListener('mousemove', e => {
+  let dx = e.movementX, dy = e.movementY;
+  if (dx == null || dy == null) {
+    dx = lastMx == null ? 0 : e.clientX - lastMx;
+    dy = lastMy == null ? 0 : e.clientY - lastMy;
+  }
+  lastMx = e.clientX; lastMy = e.clientY;
+  Input.dx += dx; Input.dy += dy;
+});
+
+cv.addEventListener('mousedown', e => {
+  e.preventDefault();
+  Sfx.ensure();
+  if (G.state !== 'playing') return;
+  if (e.button === 2) { toggleScope(); return; }
+  if (e.button !== 0) return;
+  if (!Input.locked && !lockUnavailable) {
+    requestLock();
+    // Only the very first click of a run is spent taking the rifle, and only
+    // where the lock has never been refused — otherwise no click is ever dead.
+    if (!lockPrimed && lockFailures === 0) { lockPrimed = true; return; }
+  }
+  fire();
+});
+
+cv.addEventListener('contextmenu', e => e.preventDefault());
+
+cv.addEventListener('wheel', e => {
+  if (G.state !== 'playing') return;
+  e.preventDefault();
+  Input.wheel += e.deltaY;
+}, { passive: false });
+
+function toggleScope() {
+  G.scoped = !G.scoped;
+  Sfx.click(0, G.scoped ? 1900 : 1400, 0.14, 0.045);
+}
+
+/* Keyboard -------------------------------------------------------------- */
+window.addEventListener('keydown', e => {
+  const code = e.code;
+  if (['Space', 'ShiftLeft', 'ShiftRight', 'KeyR', 'ArrowUp', 'ArrowDown'].includes(code)) e.preventDefault();
+  if (e.repeat) { Input.keys.add(code); return; }
+  Input.keys.add(code);
+
+  switch (code) {
+    case 'KeyR': startReload(); break;
+    case 'KeyF': if (G.state === 'playing') toggleScope(); break;
+    case 'KeyM': {
+      const m = Sfx.toggleMute();
+      el('muted').classList.toggle('on', m);
+      break;
+    }
+    case 'KeyP':
+    case 'Escape':
+      if (G.state === 'playing') pauseGame();
+      else if (G.state === 'paused') resumeGame();
+      break;
+    case 'Space':
+    case 'Enter':
+      if (document.activeElement && document.activeElement.tagName === 'BUTTON') break;
+      if (G.state === 'menu') startGame();
+      else if (G.state === 'over') startGame();
+      else if (G.state === 'paused') resumeGame();
+      break;
+    default: break;
+  }
+});
+window.addEventListener('keyup', e => Input.keys.delete(e.code));
+window.addEventListener('blur', () => { Input.clear(); if (G.state === 'playing') pauseGame(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && G.state === 'playing') pauseGame(); });
+
+/* Buttons --------------------------------------------------------------- */
+el('btn-start').addEventListener('click', startGame);
+el('btn-resume').addEventListener('click', resumeGame);
+el('btn-restart').addEventListener('click', startGame);
+el('btn-quit').addEventListener('click', quitToMenu);
+el('btn-again').addEventListener('click', startGame);
+el('btn-menu').addEventListener('click', quitToMenu);
+
+/* Boot ------------------------------------------------------------------ */
+window.addEventListener('resize', () => { resize(); });
+resize();
+view.S = view.focal;
+el('muted').classList.toggle('on', Sfx.muted);
+resetRun();
+G.state = 'menu';
+showScreen('menu');
+refreshMenu();
+setInterval(updateHint, 400);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
