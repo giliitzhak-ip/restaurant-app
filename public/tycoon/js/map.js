@@ -13,7 +13,11 @@
   var canvas = null, ctx = null;
   var view = { scale: 1, x: 0, y: 0, minScale: 0.4, maxScale: 3.2 };
   var size = { w: 0, h: 0, dpr: 1 };
-  var pointer = { x: 0, y: 0, inside: false, dragging: false, moved: false, lastX: 0, lastY: 0 };
+  var TAP_SLOP = 7;                    // px of travel still counted as a tap
+  var pointer = { x: 0, y: 0, inside: false, dragging: false, moved: false,
+                  lastX: 0, lastY: 0, downX: 0, downY: 0, touch: false };
+  var active = {};                     // live pointer ids → position, for pinch
+  var pinch = { dist: 0, mid: { x: 0, y: 0 } };
   var hover = null;
   var selection = { jobId: null, unitId: null };
   var state = null;
@@ -28,10 +32,13 @@
     ctx = canvas.getContext('2d');
     Map.tooltip = tooltipEl;
 
-    canvas.addEventListener('mousemove', onMove);
-    canvas.addEventListener('mouseleave', onLeave);
-    canvas.addEventListener('mousedown', onDown);
-    window.addEventListener('mouseup', onUp);
+    // Pointer events cover mouse, pen and touch with one code path; the
+    // pointer map underneath adds two-finger pinch zoom on touch screens.
+    canvas.addEventListener('pointerdown', onDown);
+    canvas.addEventListener('pointermove', onMove);
+    canvas.addEventListener('pointerup', onUp);
+    canvas.addEventListener('pointercancel', onUp);
+    canvas.addEventListener('pointerleave', onLeave);
     canvas.addEventListener('wheel', onWheel, { passive: false });
     canvas.addEventListener('click', onClick);
     canvas.addEventListener('dblclick', function () { Map.fit(); });
@@ -95,13 +102,27 @@
     pointer.x = e.clientX - rect.left;
     pointer.y = e.clientY - rect.top;
     pointer.inside = true;
+    pointer.touch = e.pointerType !== 'mouse';
+
+    if (active[e.pointerId]) {
+      active[e.pointerId].x = pointer.x;
+      active[e.pointerId].y = pointer.y;
+    }
+
+    var ids = Object.keys(active);
+    if (ids.length >= 2) {                       // pinch beats pan
+      pinchMove(active[ids[0]], active[ids[1]]);
+      pointer.moved = true;
+      return;
+    }
 
     if (pointer.dragging) {
       view.x += pointer.x - pointer.lastX;
       view.y += pointer.y - pointer.lastY;
       pointer.lastX = pointer.x;
       pointer.lastY = pointer.y;
-      pointer.moved = true;
+      // A finger never lands perfectly still: a few pixels is still a tap.
+      if (U.dist(pointer.x, pointer.y, pointer.downX, pointer.downY) > TAP_SLOP) pointer.moved = true;
       clampView();
       canvas.style.cursor = 'grabbing';
       return;
@@ -111,23 +132,64 @@
     updateTooltip();
   }
 
-  function onLeave() {
+  /** Scale around the midpoint of two fingers, and pan with their drift. */
+  function pinchMove(a, b) {
+    var dist = U.dist(a.x, a.y, b.x, b.y);
+    var mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    if (pinch.dist) {
+      var before = toWorld(mid.x, mid.y);
+      view.scale = U.clamp(view.scale * (dist / pinch.dist), view.minScale, view.maxScale);
+      var after = toWorld(mid.x, mid.y);
+      view.x += (after.x - before.x) * view.scale;
+      view.y += (after.y - before.y) * view.scale;
+      view.x += mid.x - pinch.mid.x;
+      view.y += mid.y - pinch.mid.y;
+      clampView();
+    }
+    pinch.dist = dist;
+    pinch.mid = mid;
+  }
+
+  function onLeave(e) {
+    if (e && active[e.pointerId]) return;        // still dragging, just left the box
     pointer.inside = false;
     hover = null;
     updateTooltip();
   }
 
   function onDown(e) {
+    var rect = canvas.getBoundingClientRect();
+    var x = e.clientX - rect.left, y = e.clientY - rect.top;
+    active[e.pointerId] = { x: x, y: y };
+    if (canvas.setPointerCapture) {
+      try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    }
+
+    if (Object.keys(active).length >= 2) {
+      pinch.dist = 0;                            // recalibrate on the next move
+      pointer.dragging = false;
+      return;
+    }
+
     pointer.dragging = true;
     pointer.moved = false;
-    var rect = canvas.getBoundingClientRect();
-    pointer.lastX = e.clientX - rect.left;
-    pointer.lastY = e.clientY - rect.top;
+    pointer.touch = e.pointerType !== 'mouse';
+    pointer.x = pointer.lastX = pointer.downX = x;
+    pointer.y = pointer.lastY = pointer.downY = y;
   }
 
-  function onUp() {
+  function onUp(e) {
+    if (e) {
+      delete active[e.pointerId];
+      if (canvas.releasePointerCapture && canvas.hasPointerCapture && canvas.hasPointerCapture(e.pointerId)) {
+        try { canvas.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      }
+    }
+    if (Object.keys(active).length < 2) pinch.dist = 0;
     pointer.dragging = false;
     if (canvas) canvas.style.cursor = hover ? 'pointer' : 'grab';
+    // A touch tap leaves no hover state, so drop the tooltip with the finger.
+    if (pointer.touch) { hover = null; updateTooltip(); }
   }
 
   function onWheel(e) {
@@ -143,8 +205,13 @@
     clampView();
   }
 
-  function onClick() {
+  function onClick(e) {
     if (pointer.moved) return;              // a drag is not a click
+    if (e) {
+      var rect = canvas.getBoundingClientRect();
+      pointer.x = e.clientX - rect.left;
+      pointer.y = e.clientY - rect.top;
+    }
     var hit = hitTest(pointer.x, pointer.y);
     if (!hit) { Map.emit('select', null); return; }
     Map.emit('select', hit);

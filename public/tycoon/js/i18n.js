@@ -25,8 +25,8 @@
   var DICT = { en: {}, he: {} };
 
   /* ── Shell / boot ──────────────────────────────────────────────────────── */
-  DICT.en['app.title'] = 'Meridian Field Ops — Field Services & Logistics Tycoon';
-  DICT.he['app.title'] = 'מרידיאן פילד אופס — סימולטור ניהול שירותי שטח ולוגיסטיקה';
+  DICT.en['app.title'] = 'Meridian Field Ops';
+  DICT.he['app.title'] = 'מרידיאן פילד אופס';
   DICT.en['app.desc'] = 'Run a field services and logistics operation: dispatch crews, manage equipment, win contracts and balance the books.';
   DICT.he['app.desc'] = 'נהלו חברת שירותי שטח ולוגיסטיקה: שגרו צוותים, נהלו ציוד, זכו בחוזים ואזנו את התקציב.';
   DICT.en['boot.sub'] = 'Field services & logistics command';
@@ -916,6 +916,36 @@
   DICT.he['err.offerWithdrawn'] = 'ההצעה בוטלה';
   DICT.en['err.csatTooLow'] = 'CSAT below client threshold';
   DICT.he['err.csatTooLow'] = 'שביעות הרצון נמוכה מדרישת הלקוח';
+
+  /* ── Save transfer ─────────────────────────────────────────────────────── */
+  DICT.en['xfer.exportTitle'] = 'Export save';
+  DICT.he['xfer.exportTitle'] = 'ייצוא שמירה';
+  DICT.en['xfer.exportBody'] = 'Copy this text somewhere safe, or download it as a file. Paste it back under Import to restore the operation on any device.';
+  DICT.he['xfer.exportBody'] = 'העתיקו את הטקסט למקום בטוח, או הורידו אותו כקובץ. הדביקו אותו בחזרה תחת ייבוא כדי לשחזר את המשחק בכל מכשיר.';
+  DICT.en['xfer.exportBodyCopy'] = 'Copy this text and keep it somewhere safe. Paste it back under Import to restore the operation on any device.';
+  DICT.he['xfer.exportBodyCopy'] = 'העתיקו את הטקסט ושמרו אותו במקום בטוח. הדביקו אותו בחזרה תחת ייבוא כדי לשחזר את המשחק בכל מכשיר.';
+  DICT.en['xfer.importTitle'] = 'Import save';
+  DICT.he['xfer.importTitle'] = 'ייבוא שמירה';
+  DICT.en['xfer.importBody'] = 'Paste a save you exported earlier, or choose a save file.';
+  DICT.he['xfer.importBody'] = 'הדביקו שמירה שייצאתם קודם, או בחרו קובץ שמירה.';
+  DICT.en['xfer.copy'] = 'Copy';
+  DICT.he['xfer.copy'] = 'העתקה';
+  DICT.en['xfer.copied'] = 'Copied to the clipboard';
+  DICT.he['xfer.copied'] = 'הועתק ללוח';
+  DICT.en['xfer.copyFailed'] = 'Could not reach the clipboard — select the text and copy it manually.';
+  DICT.he['xfer.copyFailed'] = 'לא ניתן לגשת ללוח — סמנו את הטקסט והעתיקו ידנית.';
+  DICT.en['xfer.download'] = 'Download file';
+  DICT.he['xfer.download'] = 'הורדת קובץ';
+  DICT.en['xfer.chooseFile'] = 'Choose file';
+  DICT.he['xfer.chooseFile'] = 'בחירת קובץ';
+  DICT.en['xfer.load'] = 'Restore';
+  DICT.he['xfer.load'] = 'שחזור';
+  DICT.en['xfer.placeholder'] = 'Paste save text here';
+  DICT.he['xfer.placeholder'] = 'הדביקו כאן את טקסט השמירה';
+  DICT.en['xfer.empty'] = 'Nothing to restore — paste a save first.';
+  DICT.he['xfer.empty'] = 'אין מה לשחזר — הדביקו שמירה תחילה.';
+  DICT.en['xfer.downloadBlocked'] = 'This viewer blocks downloads. Use Copy instead.';
+  DICT.he['xfer.downloadBlocked'] = 'הצפייה הזו חוסמת הורדות. השתמשו בהעתקה במקום.';
 
   /* ── Runtime ───────────────────────────────────────────────────────────── */
 

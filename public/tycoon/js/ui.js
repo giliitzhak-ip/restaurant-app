@@ -1219,8 +1219,29 @@
 
       case 'menu-save': UI.closeModal(); UI.emit('save'); return;
       case 'menu-load': UI.closeModal(); UI.emit('load'); return;
-      case 'menu-export': UI.closeModal(); UI.emit('export'); return;
-      case 'menu-import': UI.closeModal(); UI.emit('import'); return;
+      case 'menu-export': UI.emit('export'); return;
+      case 'menu-import': UI.emit('import'); return;
+
+      case 'transfer-copy':
+        copyTransfer();
+        return;
+
+      case 'transfer-download':
+        UI.emit('download', transferPayload);
+        return;
+
+      case 'transfer-file':
+        UI.emit('pick-file');
+        return;
+
+      case 'transfer-load': {
+        var box = document.getElementById('transfer-text');
+        var text = box ? box.value.trim() : '';
+        if (!text) { toast('warn', T('act.notPossible'), T('xfer.empty')); return; }
+        UI.closeModal();
+        UI.emit('import-json', text);
+        return;
+      }
       case 'menu-reset':
         UI.closeModal();
         confirmModal(T('menu.resetTitle'), T('menu.resetBody'), function () { UI.emit('reset'); });
@@ -1240,6 +1261,30 @@
     }
 
     UI.render(true);
+  }
+
+  /** Clipboard API where available, selection copy where it is not. */
+  function copyTransfer() {
+    var box = document.getElementById('transfer-text');
+    var done = function () { toast('ok', T('act.done'), T('xfer.copied')); };
+    var failed = function () { toast('warn', T('act.notPossible'), T('xfer.copyFailed')); };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(transferPayload).then(done, function () { legacyCopy(box, done, failed); });
+    } else {
+      legacyCopy(box, done, failed);
+    }
+  }
+
+  function legacyCopy(box, done, failed) {
+    if (!box) { failed(); return; }
+    box.removeAttribute('readonly');
+    box.focus();
+    box.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+    box.setAttribute('readonly', 'readonly');
+    if (ok) done(); else failed();
   }
 
   function readAmount(id) {
@@ -1322,6 +1367,49 @@
         '<p class="mt-3 text-center font-mono text-[9.5px] uppercase tracking-wider text-slate-600">' +
           U.escape(T('modal.eventFooter')) + '</p>' +
       '</div>', { dismissible: false });
+  };
+
+  var transferPayload = '';
+
+  /**
+   * Embedded viewers (the artifact host among them) never grant a page
+   * permission to save a file, and the attempt fails silently. Where that is
+   * the case the file route is simply not offered — copy-and-paste is.
+   */
+  var canDownload = (function () {
+    try { return window.self === window.top; } catch (err) { return false; }
+  })();
+
+  /**
+   * Save transfer as text rather than only as a file: some hosts (the artifact
+   * viewer among them) never grant a page download permission, and a button
+   * that silently does nothing is worse than no button.
+   */
+  UI.showTransfer = function (mode, json) {
+    transferPayload = json || '';
+    var isExport = mode === 'export';
+    UI.modal(
+      '<div class="p-5">' +
+        '<h3 class="text-[15px] font-semibold text-slate-100">' +
+          U.escape(T(isExport ? 'xfer.exportTitle' : 'xfer.importTitle')) + '</h3>' +
+        '<p class="mt-2 text-[12px] leading-relaxed text-slate-400">' +
+          U.escape(T(isExport ? (canDownload ? 'xfer.exportBody' : 'xfer.exportBodyCopy') : 'xfer.importBody')) + '</p>' +
+        '<textarea id="transfer-text" dir="ltr" spellcheck="false"' +
+          (isExport ? ' readonly' : ' placeholder="' + U.escape(T('xfer.placeholder')) + '"') +
+          ' class="mt-3 h-32 w-full resize-none rounded-lg border border-slate-700 bg-ink-850 p-2 font-mono text-[10px] leading-snug text-slate-300 outline-none focus:border-cyan-500">' +
+          U.escape(isExport ? transferPayload : '') + '</textarea>' +
+        '<div class="mt-4 flex flex-wrap justify-end gap-2">' +
+          '<button class="btn btn-ghost" data-act="modal-close">' + U.escape(T('modal.cancel')) + '</button>' +
+          (isExport
+            ? (canDownload ? '<button class="btn btn-ghost" data-act="transfer-download">' + U.escape(T('xfer.download')) + '</button>' : '') +
+              '<button class="btn btn-primary" data-act="transfer-copy">' + U.escape(T('xfer.copy')) + '</button>'
+            : '<button class="btn btn-ghost" data-act="transfer-file">' + U.escape(T('xfer.chooseFile')) + '</button>' +
+              '<button class="btn btn-primary" data-act="transfer-load">' + U.escape(T('xfer.load')) + '</button>') +
+        '</div>' +
+      '</div>');
+
+    var box = document.getElementById('transfer-text');
+    if (box && isExport) { box.focus(); box.select(); }
   };
 
   UI.showMenu = function () {

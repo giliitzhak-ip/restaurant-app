@@ -34,7 +34,7 @@
     var style = STYLES[opts.kind] || STYLES.info;
 
     var el = document.createElement('div');
-    el.className = 'toast pointer-events-auto w-80 rounded-lg border border-slate-700/70 border-s-4 ' +
+    el.className = 'toast pointer-events-auto w-full rounded-lg border border-slate-700/70 border-s-4 sm:w-80 ' +
       style.accent + ' bg-slate-900/95 shadow-xl shadow-black/40 backdrop-blur px-3.5 py-2.5';
     el.innerHTML =
       '<div class="flex items-start gap-2.5">' +

@@ -25,6 +25,9 @@ body { overscroll-behavior: none; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.8); background-clip: content-box; }
 * { scrollbar-width: thin; scrollbar-color: rgba(71, 85, 105, 0.6) transparent; }
 
+/* The map owns its own gestures — the page must not pan or zoom under it. */
+#map { touch-action: none; }
+
 /* ── Structure ──────────────────────────────────────────────────────────── */
 .panel {
   background: var(--panel);
@@ -247,3 +250,22 @@ select.field:focus, input.field:focus { border-color: rgb(6 182 212); }
 
 /* The canvas keeps its own left-to-right coordinate space. */
 [dir="rtl"] #map { direction: ltr; }
+
+/* ══ Small screens / touch ════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  .btn { padding: 0.4rem 0.7rem; font-size: 12px; min-height: 30px; }
+  .tab { padding: 0.5rem 0.6rem; font-size: 12px; }
+  .chip { font-size: 10px; padding: 0.1rem 0.45rem; }
+  .hud-btn { padding: 0.35rem 0.5rem; font-size: 11px; min-height: 28px; }
+  .speed-btn { min-width: 2rem; padding: 0.35rem 0.4rem; font-size: 11px; }
+  .map-btn { height: 1.9rem; width: 1.9rem; font-size: 13px; }
+  select.field, input.field { padding: 0.35rem 0.5rem; font-size: 12px; min-height: 30px; }
+  .panel-title { font-size: 11px; }
+  #log > div { padding-top: 0.35rem; padding-bottom: 0.35rem; font-size: 12px; }
+}
+
+/* Coarse pointers need room to hit things even on a large phone or tablet. */
+@media (pointer: coarse) {
+  .btn, .tab, select.field { min-height: 32px; }
+  .toast-close { padding: 0.4rem; }
+}

@@ -1,0 +1,3 @@
+# The embed fragment is generated on demand for hosts that supply their own
+# document skeleton; only the standalone page is committed.
+meridian-fieldops.fragment.html

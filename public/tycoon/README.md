@@ -24,6 +24,21 @@ npm start          # from the repo root
 # then browse to http://localhost:3000/tycoon/index.html
 ```
 
+### Single-file build
+
+`dist/meridian-fieldops.html` is the whole game — markup, styles and all
+thirteen scripts — inlined into one file with no external references beyond the
+optional web fonts. Mail it, drop it on a USB stick, or host it anywhere that
+serves static files. Regenerate it after any change:
+
+```sh
+node build/bundle.js               # dist/meridian-fieldops.html
+node build/bundle.js --fragment    # for hosts that supply their own <head>/<body>
+```
+
+The fragment form omits the document skeleton and restates the `html`/`body`
+styling as CSS, for embedding in a page you do not control.
+
 ## Controls
 
 | Input | Action |
@@ -33,6 +48,7 @@ npm start          # from the repo root
 | `Ctrl`+`S` | Save |
 | `Esc` | Close a dialog |
 | Drag / wheel / double-click | Pan / zoom / fit the map |
+| Drag / pinch / tap | The same, on a touch screen |
 
 The header's language button (`EN` / `עב`) switches language at any time, as
 does the language row in the operations menu (☰).
@@ -156,10 +172,25 @@ Inter and JetBrains Mono are requested from Google Fonts as a progressive
 enhancement; if that request is blocked the system font stacks take over and
 nothing else changes.
 
+## Phones and tablets
+
+The dashboard is a twelve-column command centre on wide screens and a scrolling
+column of full-width blocks below `xl`. The map takes pointer events rather than
+mouse events, so panning, tapping a call and two-finger pinch zoom all work on a
+touch screen, and it claims its own gestures (`touch-action: none`) so the page
+does not scroll out from under a drag. Tap targets grow on coarse pointers, and
+toasts move to the bottom of a phone screen where the thumb is.
+
 ## Saving
 
 The game autosaves at the close of each in-game day to LocalStorage (key
-`meridian.fieldops.save.v1`) and on tab close. Saves can be exported to and
-imported from a JSON file via the menu (☰). Loading a save always resumes
+`meridian.fieldops.save.v1`) and on tab close. Loading a save always resumes
 paused, and saves written by older versions are merged over a fresh state so
 new fields fill in rather than breaking the load.
+
+Export and import work as **text**, not only as a file: the menu (☰) opens a
+dialog with the save string and a Copy button, and Import takes pasted text or a
+file. Embedded viewers never grant a page permission to save a file — a plain
+download link there silently does nothing — so the file route is offered only
+where the page can actually deliver it, and copy-and-paste carries a save
+between devices everywhere else.

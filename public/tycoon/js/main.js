@@ -131,9 +131,12 @@
       window.location.reload();
     });
 
-    UI.on('export', function () {
+    UI.on('export', function () { UI.showTransfer('export', S.serialize(state)); });
+    UI.on('import', function () { UI.showTransfer('import'); });
+
+    UI.on('download', function (payload) {
       try {
-        var blob = new Blob([S.serialize(state)], { type: 'application/json' });
+        var blob = new Blob([payload], { type: 'application/json' });
         var a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = 'meridian-fieldops-' + U.calendar(state.time.minutes).label.replace(/[^\w]+/g, '-') + '.json';
@@ -142,11 +145,12 @@
         setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
         Notify.toast({ kind: 'ok', title: T('save.exported'), msg: T('save.exportedMsg') });
       } catch (err) {
-        Notify.toast({ kind: 'danger', title: T('save.exportFailed'), msg: String(err.message || err) });
+        // Sandboxed hosts refuse page-initiated downloads; the copy path still works.
+        Notify.toast({ kind: 'warn', title: T('save.exportFailed'), msg: T('xfer.downloadBlocked') });
       }
     });
 
-    UI.on('import', function () {
+    UI.on('pick-file', function () {
       var input = document.createElement('input');
       input.type = 'file';
       input.accept = 'application/json,.json';
@@ -155,18 +159,26 @@
         if (!file) return;
         var reader = new FileReader();
         reader.onload = function () {
-          try {
-            var loaded = S.hydrate(JSON.parse(String(reader.result)));
-            swapState(loaded);
-            Notify.toast({ kind: 'ok', title: T('save.imported'), msg: T('save.importedMsg') });
-          } catch (err) {
-            Notify.toast({ kind: 'danger', title: T('save.importFailed'), msg: T('save.importFailedMsg') });
-          }
+          var box = document.getElementById('transfer-text');
+          if (box) box.value = String(reader.result);
+          else applyImport(String(reader.result));
         };
         reader.readAsText(file);
       });
       input.click();
     });
+
+    UI.on('import-json', applyImport);
+  }
+
+  function applyImport(text) {
+    try {
+      var loaded = S.hydrate(JSON.parse(text));
+      swapState(loaded);
+      Notify.toast({ kind: 'ok', title: T('save.imported'), msg: T('save.importedMsg') });
+    } catch (err) {
+      Notify.toast({ kind: 'danger', title: T('save.importFailed'), msg: T('save.importFailedMsg') });
+    }
   }
 
   function swapState(next) {
