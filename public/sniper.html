@@ -2229,10 +2229,11 @@ let lockUnavailable = !document.documentElement.requestPointerLock;
 let lockFailures = 0;
 let lockPrimed = false;
 
-/** Browsers refuse the lock for a beat after Escape; only give up for good
- *  once it has failed repeatedly. The game plays fine unlocked either way. */
+/** Browsers refuse the lock for a beat after Escape, and refuse it outright
+ *  in a sandboxed frame. Stop asking after a couple of refusals — the game
+ *  plays fine unlocked, since aim is integrated from relative movement. */
 function noteLockFailure() {
-  if (++lockFailures >= 3) lockUnavailable = true;
+  if (++lockFailures >= 2) lockUnavailable = true;
   updateHint();
 }
 
@@ -2277,8 +2278,9 @@ cv.addEventListener('mousedown', e => {
   if (e.button !== 0) return;
   if (!Input.locked && !lockUnavailable) {
     requestLock();
-    // Only the very first click of a run is spent taking the rifle.
-    if (!lockPrimed) { lockPrimed = true; return; }
+    // Only the very first click of a run is spent taking the rifle, and only
+    // where the lock has never been refused — otherwise no click is ever dead.
+    if (!lockPrimed && lockFailures === 0) { lockPrimed = true; return; }
   }
   fire();
 });
