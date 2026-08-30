@@ -56,6 +56,13 @@ does the language row in the operations menu (☰).
 Click a call or a unit on the map to select it; the console jumps to the
 matching panel.
 
+## Learning it
+
+A new game opens on a short "How this works" panel with the clock held: what
+the company is, the three-step loop, and the three things to watch. Dismissing
+it starts the first day. The `?` button in the header reopens it at any time,
+and each KPI tile carries a one-line explanation of the number it shows.
+
 ## The loop
 
 **Time.** One tick is two in-game minutes; at normal speed a day takes about 70

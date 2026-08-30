@@ -106,6 +106,7 @@
     document.getElementById('log-clear').addEventListener('click', function () { Notify.clearLog(); });
     document.getElementById('btn-save').addEventListener('click', function () { UI.emit('save'); });
     document.getElementById('btn-menu').addEventListener('click', function () { UI.showMenu(); });
+    document.getElementById('btn-help').addEventListener('click', function () { UI.showGuide(false); });
 
     return UI;
   };
@@ -201,6 +202,7 @@
         label: T('kpi.net7'), value: U.moneyShort(last7.profit),
         tone: last7.profit >= 0 ? 'text-emerald-300' : 'text-rose-400',
         sub: T('kpi.net7.sub', { rev: U.moneyShort(last7.revenue), exp: U.moneyShort(last7.expense) }),
+        hint: T('kpi.net7.hint'),
         spark: history.slice(-14).map(function (d) { return d.profit; }),
         sparkColor: last7.profit >= 0 ? '#4ade80' : '#fb7185'
       },
@@ -208,24 +210,27 @@
         label: T('kpi.calls'), value: String(pending.length),
         tone: pending.length > state.fleet.length * 2 ? 'text-amber-300' : 'text-slate-100',
         sub: T('kpi.calls.sub', { active: active.length, free: available, total: state.fleet.length }),
+        hint: T('kpi.calls.hint'),
         bar: { value: available, max: Math.max(1, state.fleet.length), color: '#38bdf8' }
       },
       {
         label: T('kpi.load'), value: (demand / Math.max(0.1, capacity) * 100).toFixed(0) + '%',
         tone: demand > capacity * 1.15 ? 'text-rose-400' : demand > capacity * 0.85 ? 'text-amber-300' : 'text-emerald-300',
         sub: T('kpi.load.sub', { demand: demand.toFixed(1), capacity: capacity.toFixed(1) }),
+        hint: T('kpi.load.hint'),
         bar: { value: demand, max: Math.max(demand, capacity), color: demand > capacity ? '#fb7185' : '#34d399' }
       },
       {
         label: T('kpi.rep'), value: state.ops.csat.toFixed(0),
         tone: state.ops.csat >= 75 ? 'text-emerald-300' : state.ops.csat >= 50 ? 'text-sky-300' : 'text-rose-400',
         sub: T('kpi.rep.sub', { done: state.stats.jobsDone, lost: state.stats.jobsExpired, streak: state.ops.streak }),
+        hint: T('kpi.rep.hint'),
         bar: { value: state.ops.csat, max: 100, color: healthColor(state.ops.csat / 100) }
       }
     ];
 
     els['kpi-row'].innerHTML = tiles.map(function (t, i) {
-      return '<div class="panel px-3 py-2">' +
+      return '<div class="panel px-3 py-2" title="' + U.escape(t.hint || '') + '">' +
         '<p class="font-mono text-[9px] uppercase tracking-wider text-slate-500">' + U.escape(t.label) + '</p>' +
         '<p class="mt-0.5 font-mono text-lg font-bold leading-none ' + t.tone + '">' + t.value + '</p>' +
         (t.spark ? '<canvas class="mt-1.5 h-5 w-full" data-spark="' + i + '"></canvas>'
@@ -1219,6 +1224,16 @@
 
       case 'menu-save': UI.closeModal(); UI.emit('save'); return;
       case 'menu-load': UI.closeModal(); UI.emit('load'); return;
+      case 'guide-start':
+        UI.closeModal();
+        UI.emit('guide-done');
+        return;
+
+      case 'menu-guide':
+        UI.closeModal();
+        UI.showGuide(false);
+        return;
+
       case 'menu-export': UI.emit('export'); return;
       case 'menu-import': UI.emit('import'); return;
 
@@ -1369,6 +1384,45 @@
       '</div>', { dismissible: false });
   };
 
+  /**
+   * First-run explainer. Reachable afterwards from the ? button, because a
+   * player who steps away for a week needs the same three sentences again.
+   * Guide copy is authored in the dictionary and carries its own <b> emphasis,
+   * so it is inserted as markup rather than escaped.
+   */
+  UI.showGuide = function (firstRun) {
+    var step = function (n, key) {
+      return '<li class="flex gap-2.5">' +
+        '<span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-cyan-500/15 font-mono text-[10px] font-bold text-cyan-300">' + n + '</span>' +
+        '<span class="text-[12px] leading-relaxed text-slate-300">' + T(key) + '</span></li>';
+    };
+    var watch = function (key) {
+      return '<li class="flex gap-2.5">' +
+        '<span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400"></span>' +
+        '<span class="text-[12px] leading-relaxed text-slate-300">' + T(key) + '</span></li>';
+    };
+
+    UI.modal(
+      '<div class="max-h-[85vh] overflow-y-auto p-5">' +
+        '<h3 class="text-[16px] font-semibold text-slate-100">' + U.escape(T('guide.title')) + '</h3>' +
+        '<p class="mt-2 text-[12.5px] leading-relaxed text-slate-400">' + U.escape(T('guide.what')) + '</p>' +
+
+        '<h4 class="mt-4 panel-title">' + U.escape(T('guide.loop')) + '</h4>' +
+        '<ol class="mt-2 space-y-2">' + step(1, 'guide.step1') + step(2, 'guide.step2') + step(3, 'guide.step3') + '</ol>' +
+
+        '<h4 class="mt-4 panel-title">' + U.escape(T('guide.watch')) + '</h4>' +
+        '<ul class="mt-2 space-y-2">' + watch('guide.watch1') + watch('guide.watch2') + watch('guide.watch3') + '</ul>' +
+
+        '<p class="mt-4 rounded-lg border border-cyan-500/25 bg-cyan-500/5 px-3 py-2.5 text-[12px] leading-relaxed text-slate-300">' +
+          T('guide.tip') + '</p>' +
+
+        '<div class="mt-5 flex justify-end">' +
+          '<button class="btn btn-primary" data-act="' + (firstRun ? 'guide-start' : 'modal-close') + '">' +
+            U.escape(T(firstRun ? 'guide.start' : 'guide.close')) + '</button>' +
+        '</div>' +
+      '</div>', { dismissible: !firstRun });
+  };
+
   var transferPayload = '';
 
   /**
@@ -1417,6 +1471,7 @@
       '<div class="p-5">' +
         '<h3 class="text-[15px] font-semibold text-slate-100">' + U.escape(T('menu.title')) + '</h3>' +
         '<div class="mt-4 space-y-1.5">' +
+          menuRow('menu-guide', T('guide.reopen'), T('guide.what').slice(0, 64) + '…') +
           menuRow('menu-save', T('menu.save'), T('menu.saveSub')) +
           menuRow('menu-load', T('menu.load'), T('menu.loadSub')) +
           menuRow('menu-export', T('menu.export'), T('menu.exportSub')) +

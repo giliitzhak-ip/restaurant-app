@@ -65,11 +65,13 @@
     wireLanguage();
 
     Engine.start();
-    Engine.setSpeed(isNew ? 1 : 0);
+    Engine.setSpeed(0);
 
     if (isNew) {
+      // A new operation opens on the explainer with the clock held; its button
+      // starts the first day. A restored game skips straight back in.
       Notify.log({ kind: 'ok', msg: T('log.opened', { company: state.company.name, money: U.money(state.finance.cash) }) });
-      Notify.toast({ kind: 'info', title: T('boot.welcome'), msg: T('boot.welcomeMsg') });
+      UI.showGuide(true);
     } else {
       Notify.toast({ kind: 'info', title: T('boot.restored'), msg: T('boot.restoredMsg') });
     }
@@ -129,6 +131,11 @@
     UI.on('reset', function () {
       S.clearSave();
       window.location.reload();
+    });
+
+    UI.on('guide-done', function () {
+      Engine.setSpeed(1);
+      Notify.toast({ kind: 'info', title: T('boot.welcome'), msg: T('boot.welcomeMsg') });
     });
 
     UI.on('export', function () { UI.showTransfer('export', S.serialize(state)); });

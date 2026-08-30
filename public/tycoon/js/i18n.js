@@ -947,6 +947,44 @@
   DICT.en['xfer.downloadBlocked'] = 'This viewer blocks downloads. Use Copy instead.';
   DICT.he['xfer.downloadBlocked'] = 'הצפייה הזו חוסמת הורדות. השתמשו בהעתקה במקום.';
 
+  /* ── First-run guide ───────────────────────────────────────────────────── */
+  DICT.en['guide.title'] = 'How this works';
+  DICT.he['guide.title'] = 'איך זה עובד';
+  DICT.en['guide.what'] = 'You run a field services company: technicians who drive out to fix things for clients — air conditioning, electrical panels, leaks. The goal is to earn money and grow the company.';
+  DICT.he['guide.what'] = 'אתם מנהלים חברת שירותי שטח: טכנאים שנוסעים לתקן דברים אצל לקוחות — מיזוג, לוחות חשמל, נזילות. המטרה היא להרוויח כסף ולהגדיל את החברה.';
+  DICT.en['guide.loop'] = 'The loop';
+  DICT.he['guide.loop'] = 'לולאת המשחק';
+  DICT.en['guide.step1'] = '<b>Calls come in</b> on the board to the side. Each one shows what it pays and an SLA clock counting down.';
+  DICT.he['guide.step1'] = '<b>קריאות נכנסות</b> ללוח שבצד. לכל אחת מוצג כמה היא משלמת ושעון SLA שרץ לאחור.';
+  DICT.en['guide.step2'] = '<b>You dispatch a unit.</b> Press Dispatch, pick a crew — it drives across the map, works on site, and you get paid.';
+  DICT.he['guide.step2'] = '<b>אתם משגרים יחידה.</b> לוחצים שיגור, בוחרים צוות — הוא נוסע על המפה, עובד באתר, ואתם מקבלים תשלום.';
+  DICT.en['guide.step3'] = '<b>Each day closes</b> with wages, fuel and maintenance coming out. What is left over is your profit.';
+  DICT.he['guide.step3'] = '<b>כל יום נסגר</b> בתשלום שכר, דלק ותחזוקה. מה שנשאר הוא הרווח שלכם.';
+  DICT.en['guide.watch'] = 'Three things to watch';
+  DICT.he['guide.watch'] = 'שלושה דברים לשמור עליהם';
+  DICT.en['guide.watch1'] = '<b>The SLA clock.</b> A call you do not dispatch in time goes to a competitor.';
+  DICT.he['guide.watch1'] = '<b>שעון ה‑SLA.</b> קריאה שלא תשגרו בזמן תעבור למתחרה.';
+  DICT.en['guide.watch2'] = '<b>Fuel and vehicle condition</b>, on the Fleet tab. A worn-out van fails jobs.';
+  DICT.he['guide.watch2'] = '<b>דלק ומצב הרכבים</b>, בטאב הצי. רכב מוזנח מכשיל עבודות.';
+  DICT.en['guide.watch3'] = '<b>Reputation.</b> It sets how much the next calls are worth, so it compounds.';
+  DICT.he['guide.watch3'] = '<b>מוניטין.</b> הוא קובע כמה שוות הקריאות הבאות, ולכן הוא מצטבר.';
+  DICT.en['guide.tip'] = 'Feeling busy? Turn on <b>Auto-dispatch</b> on the Dispatch tab, run a day or two at speed, and watch the machine work on its own.';
+  DICT.he['guide.tip'] = 'מרגיש עמוס? הדליקו <b>שיגור אוטומטי</b> בטאב השיגור, הריצו יום‑יומיים במהירות, וראו את המכונה עובדת לבד.';
+  DICT.en['guide.start'] = 'Start the day';
+  DICT.he['guide.start'] = 'להתחיל את היום';
+  DICT.en['guide.close'] = 'Got it';
+  DICT.he['guide.close'] = 'הבנתי';
+  DICT.en['guide.reopen'] = 'How to play';
+  DICT.he['guide.reopen'] = 'איך משחקים';
+  DICT.en['kpi.net7.hint'] = 'Revenue minus every cost over the last seven days. This is the number that says whether the company works.';
+  DICT.he['kpi.net7.hint'] = 'הכנסות פחות כל העלויות בשבעת הימים האחרונים. זה המספר שאומר אם החברה עובדת.';
+  DICT.en['kpi.calls.hint'] = 'Calls waiting on the board right now, and how many crews are free to take them.';
+  DICT.he['kpi.calls.hint'] = 'קריאות שממתינות בלוח כרגע, וכמה צוותים פנויים לקחת אותן.';
+  DICT.en['kpi.load.hint'] = 'Incoming work against what your fleet can actually finish in a day. Above 100% means calls will be lost.';
+  DICT.he['kpi.load.hint'] = 'העבודה הנכנסת מול מה שהצי שלכם באמת מסוגל לסיים ביום. מעל 100% אומר שקריאות ילכו לאיבוד.';
+  DICT.en['kpi.rep.hint'] = 'Customer satisfaction, 0 to 100. It rises with on-time quality work and sets what future calls are worth.';
+  DICT.he['kpi.rep.hint'] = 'שביעות רצון הלקוחות, 0 עד 100. עולה עם עבודה טובה בזמן וקובעת כמה שוות הקריאות הבאות.';
+
   /* ── Runtime ───────────────────────────────────────────────────────────── */
 
   I.lang = function () { return current; };
