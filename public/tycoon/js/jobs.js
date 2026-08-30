@@ -6,6 +6,7 @@
   'use strict';
 
   var C = FST.Config, U = FST.Utils, S = FST.State, E = FST.Economy;
+  var T = FST.I18n;
   var J = {};
 
   /* Statuses from which a unit can accept a new assignment. */
@@ -89,7 +90,7 @@
       typeId: type.id,
       label: type.label,
       sector: type.sector,
-      client: contract ? contract.client : U.pick(C.CLIENTS),
+      client: contract ? contract.client : U.pick(S.pool('CLIENTS')),
       contractId: contract ? contract.id : null,
       territory: terr.id,
       x: Math.round(pos.x), y: Math.round(pos.y),
@@ -181,11 +182,11 @@
       var fuelNeeded = distance * spec.burn;
 
       var blockers = [];
-      if (missing.length) blockers.push('Missing ' + missing.map(capLabel).join(', '));
-      if (!crew.length) blockers.push('No crew assigned');
+      if (missing.length) blockers.push(T.t('block.missing', { caps: missing.map(capLabel).join(', ') }));
+      if (!crew.length) blockers.push(T.t('block.noCrew'));
       if (DISPATCHABLE.indexOf(unit.status) === -1) blockers.push(statusLabel(unit.status));
-      if (fuelNeeded > unit.fuel) blockers.push('Not enough fuel');
-      if (unit.condition <= 12) blockers.push('Condition critical');
+      if (fuelNeeded > unit.fuel) blockers.push(T.t('block.noFuel'));
+      if (unit.condition <= 12) blockers.push(T.t('block.condition'));
 
       var skillMargin = skill - job.skill;
       var slack = job.deadline - state.time.minutes - eta - job.duration;
@@ -228,21 +229,26 @@
     return crew.reduce(function (t, p) { return t + p.fatigue; }, 0) / crew.length;
   }
 
-  function capLabel(id) { return (C.CAPABILITIES[id] || { label: id }).label; }
+  function capLabel(id) { return T.f(C.CAPABILITIES[id], 'label') || id; }
   J.capLabel = capLabel;
 
-  function statusLabel(status) {
-    return { idle: 'Available', enroute: 'En route', onsite: 'On site', returning: 'Returning',
-      offshift: 'Off shift', shop: 'In workshop' }[status] || status;
-  }
+  /** Job, contract and priority names resolved in the active language. */
+  J.jobLabel = function (job) { return T.f(S.jobType(job.typeId), 'label') || job.label; };
+  J.priorityLabel = function (id) { return T.t('prio.' + id); };
+  J.contractLabel = function (contract) {
+    var tier = C.CONTRACT_TIERS.filter(function (t) { return t.id === contract.tier; })[0];
+    return T.f(tier, 'label') || contract.label;
+  };
+
+  function statusLabel(status) { return T.t('status.' + status); }
   J.statusLabel = statusLabel;
 
   /** Commit a unit to a job. */
   J.dispatch = function (state, jobId, unitId) {
     var job = S.jobById(state, jobId);
     var unit = S.unitById(state, unitId);
-    if (!job || !unit) return { ok: false, reason: 'Unknown job or unit' };
-    if (job.status !== 'pending') return { ok: false, reason: 'Call already dispatched' };
+    if (!job || !unit) return { ok: false, reason: 'err.unknownJobUnit' };
+    if (job.status !== 'pending') return { ok: false, reason: 'err.alreadyDispatched' };
 
     var evals = J.evaluate(state, job);
     var ev = evals.filter(function (e) { return e.unit.id === unitId; })[0];
@@ -287,7 +293,7 @@
   /** Cancel an in-flight assignment and send the unit home. */
   J.recall = function (state, unitId) {
     var unit = S.unitById(state, unitId);
-    if (!unit) return { ok: false, reason: 'Unknown unit' };
+    if (!unit) return { ok: false, reason: 'err.unknownUnit' };
     var job = unit.jobId ? S.jobById(state, unit.jobId) : null;
     if (job && (job.status === 'assigned' || job.status === 'active')) {
       job.status = 'pending';
@@ -439,7 +445,7 @@
       id: U.uid('c'),
       tier: tier.id,
       label: tier.label,
-      client: U.pick(C.CLIENTS),
+      client: U.pick(S.pool('CLIENTS')),
       sector: sector,
       territory: terrId,
       term: tier.term,
@@ -460,8 +466,8 @@
 
   J.signContract = function (state, offerId) {
     var offer = state.offers.contracts.filter(function (c) { return c.id === offerId; })[0];
-    if (!offer) return { ok: false, reason: 'Offer withdrawn' };
-    if (state.ops.csat < offer.minCsat) return { ok: false, reason: 'CSAT below client threshold' };
+    if (!offer) return { ok: false, reason: 'err.offerWithdrawn' };
+    if (state.ops.csat < offer.minCsat) return { ok: false, reason: 'err.csatTooLow' };
     offer.active = true;
     offer.startedOn = state.time.day;
     offer.endsOn = state.time.day + offer.term;
@@ -472,7 +478,7 @@
 
   J.cancelContract = function (state, contractId) {
     var contract = J.contractById(state, contractId);
-    if (!contract) return { ok: false, reason: 'Unknown contract' };
+    if (!contract) return { ok: false, reason: 'err.unknownContract' };
     var fee = Math.round(contract.penalty * 2.2);
     E.spend(state, fee, 'penalties');
     state.ops.csat = U.clamp(state.ops.csat - 4, 0, 100);

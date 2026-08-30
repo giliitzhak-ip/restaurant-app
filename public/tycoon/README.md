@@ -2,7 +2,8 @@
 
 A field services and logistics management tycoon, built as a standalone web
 application with HTML5, Tailwind CSS and vanilla JavaScript. No framework, no
-build step to play, no network calls at runtime.
+build step to play, no network calls at runtime. Fully bilingual: **English and
+Hebrew**, with proper right-to-left layout.
 
 You inherit two vans, three technicians and a phone that will not stop ringing.
 Route crews against distance, skill and equipment; keep vehicles fuelled and
@@ -32,6 +33,9 @@ npm start          # from the repo root
 | `Ctrl`+`S` | Save |
 | `Esc` | Close a dialog |
 | Drag / wheel / double-click | Pan / zoom / fit the map |
+
+The header's language button (`EN` / `עב`) switches language at any time, as
+does the language row in the operations menu (☰).
 
 Click a call or a unit on the map to select it; the console jumps to the
 matching panel.
@@ -78,6 +82,7 @@ testable under Node; presentation modules never mutate game rules.
 | --- | --- |
 | `js/config.js` | All balance data: catalogues, sectors, milestones, events |
 | `js/utils.js` | Seeded RNG, maths, formatting, pub/sub, throttle |
+| `js/i18n.js` | English/Hebrew dictionary, interpolation, direction handling |
 | `js/state.js` | Entity factories, derived queries, LocalStorage persistence |
 | `js/economy.js` | Ledger, daily settlement, quarterly tax, credit, purchases |
 | `js/jobs.js` | Call generation, dispatch scoring, resolution, contracts |
@@ -94,13 +99,44 @@ economy was tuned:
 
 ```js
 global.window = {}; global.localStorage = { getItem: () => null, setItem: () => {} };
-['config','utils','state','economy','jobs','units','engine']
+['config','utils','i18n','state','economy','jobs','units','engine']
   .forEach(f => require('./js/' + f + '.js'));
 const { State, Engine } = window.FST;
 const s = State.create('Sim');
 Engine.init(s);
 for (let i = 0; i < 30 * 720; i++) Engine._step(2);   // 30 in-game days
 ```
+
+## Languages
+
+The game ships in English and Hebrew and picks a starting language from the
+browser, remembering the choice in LocalStorage (`meridian.fieldops.lang`).
+
+Two mechanisms cover the two kinds of text:
+
+- **Interface strings** live in `js/i18n.js` as a flat key/value table per
+  language, read through `I18n.t('key', { placeholders })`. Static markup carries
+  `data-i18n`, `data-i18n-title` or `data-i18n-value` attributes and is refilled
+  on every language change.
+- **Game data** — vehicles, tools, job types, territories, milestones, events —
+  keeps its translations beside the English text in `js/config.js` as `_he`
+  suffixed fields (`name` / `name_he`), read through `I18n.f(obj, 'name')`. One
+  catalogue, no parallel copies to drift apart.
+
+Switching language re-renders everything currently on screen. Names already
+generated — technicians, clients — stay as they were written, because a person's
+name is not a translatable string; a game started in Hebrew generates Hebrew
+personnel and client names from the pools in `config.js`.
+
+Hebrew sets `dir="rtl"` on the document, which mirrors the whole interface
+through logical CSS properties (`border-s-*`, `text-start`, `end-3`). The map
+canvas deliberately does **not** mirror — geography does not flip — and numbers
+stay left-to-right inside Hebrew sentences via `unicode-bidi: plaintext`, with a
+`U+200F` mark on the few strings that open with a Latin unit callsign.
+
+To add a language: add its entry to `I18n.LANGUAGES`, add a `DICT.<lang>` column
+in `js/i18n.js`, and add `_<lang>` fields to the catalogues in `js/config.js`.
+Anything left untranslated falls back to English rather than breaking.
 
 ## Styling
 

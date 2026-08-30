@@ -8,6 +8,13 @@
   var C = FST.Config, U = FST.Utils;
   var S = {};
 
+  /** Name pool for the active language, falling back to the English list. */
+  function pool(key) {
+    var lang = FST.I18n ? FST.I18n.lang() : 'en';
+    return (lang !== 'en' && C[key + '_' + lang]) || C[key];
+  }
+  S.pool = pool;
+
   /* ── Entity factories ──────────────────────────────────────────────────── */
 
   S.makePerson = function (roleId) {
@@ -15,7 +22,7 @@
     var skill = U.randInt(role.skill[0], role.skill[1]);
     return {
       id: U.uid('p'),
-      name: U.pick(C.FIRST_NAMES) + ' ' + U.pick(C.LAST_NAMES),
+      name: U.pick(pool('FIRST_NAMES')) + ' ' + U.pick(pool('LAST_NAMES')),
       role: role.id,
       roleLabel: role.label,
       skill: skill,

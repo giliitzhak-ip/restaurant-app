@@ -157,9 +157,9 @@
 
   E.buyVehicle = function (state, vehicleId) {
     var spec = S.vehicle(vehicleId);
-    if (!spec) return { ok: false, reason: 'Unknown vehicle' };
-    if (!S.isUnlocked(state, spec.unlock)) return { ok: false, reason: 'Not yet unlocked' };
-    if (!E.canAfford(state, spec.price)) return { ok: false, reason: 'Insufficient cash' };
+    if (!spec) return { ok: false, reason: 'err.unknownVehicle' };
+    if (!S.isUnlocked(state, spec.unlock)) return { ok: false, reason: 'err.locked' };
+    if (!E.canAfford(state, spec.price)) return { ok: false, reason: 'err.cash' };
 
     var used = state.fleet.map(function (u) { return u.callsign; });
     var free = C.CALLSIGNS.filter(function (c) { return used.indexOf(c) === -1; });
@@ -174,8 +174,8 @@
 
   E.sellVehicle = function (state, unitId) {
     var unit = S.unitById(state, unitId);
-    if (!unit) return { ok: false, reason: 'Unknown unit' };
-    if (unit.status !== 'idle' && unit.status !== 'offshift') return { ok: false, reason: 'Unit is on a job' };
+    if (!unit) return { ok: false, reason: 'err.unknownUnit' };
+    if (unit.status !== 'idle' && unit.status !== 'offshift') return { ok: false, reason: 'err.unitOnJob' };
     var spec = S.vehicle(unit.vehicle);
     var value = Math.round(spec.price * 0.48 * (unit.condition / 100));
 
@@ -188,9 +188,9 @@
 
   E.buyTool = function (state, toolId) {
     var spec = S.tool(toolId);
-    if (!spec) return { ok: false, reason: 'Unknown equipment' };
-    if (!S.isUnlocked(state, spec.unlock)) return { ok: false, reason: 'Not yet unlocked' };
-    if (!E.canAfford(state, spec.price)) return { ok: false, reason: 'Insufficient cash' };
+    if (!spec) return { ok: false, reason: 'err.unknownTool' };
+    if (!S.isUnlocked(state, spec.unlock)) return { ok: false, reason: 'err.locked' };
+    if (!E.canAfford(state, spec.price)) return { ok: false, reason: 'err.cash' };
     E.spend(state, spec.price, 'capex');
     var tool = S.makeTool(toolId);
     tool.boughtOn = state.time.day;
@@ -200,7 +200,7 @@
 
   E.sellTool = function (state, toolId) {
     var tool = S.toolById(state, toolId);
-    if (!tool) return { ok: false, reason: 'Unknown equipment' };
+    if (!tool) return { ok: false, reason: 'err.unknownTool' };
     var value = Math.round(S.tool(tool.type).price * 0.45);
     state.tools = state.tools.filter(function (t) { return t.id !== toolId; });
     E.earn(state, value, 'other');
@@ -209,9 +209,9 @@
 
   E.hire = function (state, candidateId) {
     var cand = state.offers.candidates.filter(function (p) { return p.id === candidateId; })[0];
-    if (!cand) return { ok: false, reason: 'Candidate no longer available' };
-    if (state.staff.length >= S.staffCap(state)) return { ok: false, reason: 'Headcount cap reached' };
-    if (!E.canAfford(state, cand.hireFee)) return { ok: false, reason: 'Cannot cover the placement fee' };
+    if (!cand) return { ok: false, reason: 'err.candidateGone' };
+    if (state.staff.length >= S.staffCap(state)) return { ok: false, reason: 'err.headcount' };
+    if (!E.canAfford(state, cand.hireFee)) return { ok: false, reason: 'err.placementFee' };
     E.spend(state, cand.hireFee, 'training');
     cand.hiredOn = state.time.day;
     state.staff.push(cand);
@@ -221,10 +221,10 @@
 
   E.fire = function (state, personId) {
     var person = S.personById(state, personId);
-    if (!person) return { ok: false, reason: 'Unknown employee' };
+    if (!person) return { ok: false, reason: 'err.unknownPerson' };
     var unit = person.unitId ? S.unitById(state, person.unitId) : null;
     if (unit && unit.status !== 'idle' && unit.status !== 'offshift') {
-      return { ok: false, reason: 'Crew member is deployed' };
+      return { ok: false, reason: 'err.deployed' };
     }
     var severance = Math.round(person.wage * 6);
     E.spend(state, severance, 'payroll');
@@ -237,17 +237,17 @@
 
   E.train = function (state, personId, days) {
     var person = S.personById(state, personId);
-    if (!person) return { ok: false, reason: 'Unknown employee' };
-    if (person.training) return { ok: false, reason: 'Already in training' };
+    if (!person) return { ok: false, reason: 'err.unknownPerson' };
+    if (person.training) return { ok: false, reason: 'err.inTraining' };
     var unit = person.unitId ? S.unitById(state, person.unitId) : null;
     if (unit && unit.status !== 'idle' && unit.status !== 'offshift') {
-      return { ok: false, reason: 'Crew member is deployed' };
+      return { ok: false, reason: 'err.deployed' };
     }
     days = days || 3;
     // Diminishing returns: the higher the skill, the slower the climb.
     var gain = Math.round(days * U.lerp(4.2, 1.3, U.clamp(person.skill / 100, 0, 1)));
     var cost = Math.round(gain * C.ECONOMY.TRAINING_COST_PER_POINT);
-    if (!E.canAfford(state, cost)) return { ok: false, reason: 'Insufficient cash' };
+    if (!E.canAfford(state, cost)) return { ok: false, reason: 'err.cash' };
     E.spend(state, cost, 'training');
     S.assignCrew(state, personId, null);
     person.training = { days: days, remaining: days, gain: gain, cost: cost };
@@ -256,12 +256,12 @@
 
   E.refuel = function (state, unitId) {
     var unit = S.unitById(state, unitId);
-    if (!unit) return { ok: false, reason: 'Unknown unit' };
+    if (!unit) return { ok: false, reason: 'err.unknownUnit' };
     var spec = S.vehicle(unit.vehicle);
     var litres = spec.fuelCap - unit.fuel;
-    if (litres <= 0.5) return { ok: false, reason: 'Tank is full' };
+    if (litres <= 0.5) return { ok: false, reason: 'err.tankFull' };
     var cost = Math.round(litres * E.fuelPrice(state));
-    if (!E.canAfford(state, cost)) return { ok: false, reason: 'Insufficient cash' };
+    if (!E.canAfford(state, cost)) return { ok: false, reason: 'err.cash' };
     E.spend(state, cost, 'fuel');
     unit.fuel = spec.fuelCap;
     state.stats.fuelUsed += litres;
@@ -270,13 +270,13 @@
 
   E.serviceUnit = function (state, unitId) {
     var unit = S.unitById(state, unitId);
-    if (!unit) return { ok: false, reason: 'Unknown unit' };
-    if (unit.status !== 'idle' && unit.status !== 'offshift') return { ok: false, reason: 'Unit is deployed' };
+    if (!unit) return { ok: false, reason: 'err.unknownUnit' };
+    if (unit.status !== 'idle' && unit.status !== 'offshift') return { ok: false, reason: 'err.unitDeployed' };
     var points = 100 - unit.condition;
-    if (points < 1) return { ok: false, reason: 'Unit is in top condition' };
+    if (points < 1) return { ok: false, reason: 'err.topCondition' };
     var spec = S.vehicle(unit.vehicle);
     var cost = Math.round(points * C.ECONOMY.REPAIR_COST_PER_POINT * (0.7 + spec.tier * 0.35));
-    if (!E.canAfford(state, cost)) return { ok: false, reason: 'Insufficient cash' };
+    if (!E.canAfford(state, cost)) return { ok: false, reason: 'err.cash' };
     E.spend(state, cost, 'maintenance');
     unit.condition = 100;
     unit.status = 'shop';
@@ -286,10 +286,10 @@
 
   E.buyTerritory = function (state, territoryId) {
     var terr = S.territory(territoryId);
-    if (!terr) return { ok: false, reason: 'Unknown territory' };
-    if (state.territories.indexOf(territoryId) !== -1) return { ok: false, reason: 'Already licensed' };
-    if (!S.isUnlocked(state, terr.unlock)) return { ok: false, reason: 'Milestone required' };
-    if (!E.canAfford(state, terr.price)) return { ok: false, reason: 'Insufficient cash' };
+    if (!terr) return { ok: false, reason: 'err.unknownTerritory' };
+    if (state.territories.indexOf(territoryId) !== -1) return { ok: false, reason: 'err.alreadyLicensed' };
+    if (!S.isUnlocked(state, terr.unlock)) return { ok: false, reason: 'err.milestoneRequired' };
+    if (!E.canAfford(state, terr.price)) return { ok: false, reason: 'err.cash' };
     E.spend(state, terr.price, 'capex');
     state.territories.push(territoryId);
     return { ok: true, territory: terr };

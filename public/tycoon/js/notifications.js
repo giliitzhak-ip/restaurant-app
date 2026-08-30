@@ -4,7 +4,7 @@
 (function (FST) {
   'use strict';
 
-  var U = FST.Utils;
+  var U = FST.Utils, T = FST.I18n;
   var N = {};
 
   var stack = null, logEl = null, state = null;
@@ -12,10 +12,10 @@
   var MAX_LOG = 220;
 
   var STYLES = {
-    ok: { accent: 'border-l-emerald-400', icon: '✓', tone: 'text-emerald-300' },
-    info: { accent: 'border-l-sky-400', icon: 'i', tone: 'text-sky-300' },
-    warn: { accent: 'border-l-amber-400', icon: '!', tone: 'text-amber-300' },
-    danger: { accent: 'border-l-rose-500', icon: '⚠', tone: 'text-rose-300' }
+    ok: { accent: 'border-s-emerald-400', icon: '✓', tone: 'text-emerald-300' },
+    info: { accent: 'border-s-sky-400', icon: 'i', tone: 'text-sky-300' },
+    warn: { accent: 'border-s-amber-400', icon: '!', tone: 'text-amber-300' },
+    danger: { accent: 'border-s-rose-500', icon: '⚠', tone: 'text-rose-300' }
   };
 
   N.init = function (stackEl, logContainer, gameState) {
@@ -34,7 +34,7 @@
     var style = STYLES[opts.kind] || STYLES.info;
 
     var el = document.createElement('div');
-    el.className = 'toast pointer-events-auto w-80 rounded-lg border border-slate-700/70 border-l-4 ' +
+    el.className = 'toast pointer-events-auto w-80 rounded-lg border border-slate-700/70 border-s-4 ' +
       style.accent + ' bg-slate-900/95 shadow-xl shadow-black/40 backdrop-blur px-3.5 py-2.5';
     el.innerHTML =
       '<div class="flex items-start gap-2.5">' +
@@ -43,7 +43,7 @@
           '<p class="text-[12px] font-semibold text-slate-100">' + U.escape(opts.title || '') + '</p>' +
           '<p class="mt-0.5 text-[11px] leading-snug text-slate-400">' + U.escape(opts.msg || '') + '</p>' +
         '</div>' +
-        '<button class="toast-close -mr-1 -mt-1 rounded p-1 text-slate-500 transition hover:text-slate-200" aria-label="Dismiss">×</button>' +
+        '<button class="toast-close -me-1 -mt-1 rounded p-1 text-slate-500 transition hover:text-slate-200" aria-label="Dismiss">×</button>' +
       '</div>';
 
     el.querySelector('.toast-close').addEventListener('click', function () { dismiss(el); });
@@ -84,7 +84,7 @@
     if (!logEl || !state) return;
     var rows = state.log.slice(-90).reverse();
     if (!rows.length) {
-      logEl.innerHTML = '<p class="px-3 py-6 text-center text-[11px] text-slate-600">Operations log is empty. Press play to begin the day.</p>';
+      logEl.innerHTML = '<p class="px-3 py-6 text-center text-[11px] text-slate-600">' + U.escape(T.t('log.empty')) + '</p>';
       return;
     }
     logEl.innerHTML = rows.map(function (row) {

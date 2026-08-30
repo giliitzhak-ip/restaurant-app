@@ -6,6 +6,7 @@
   'use strict';
 
   var C = FST.Config, U = FST.Utils, S = FST.State, E = FST.Economy, J = FST.Jobs;
+  var T = FST.I18n;
   var Units = {};
 
   var WEAR_PER_UNIT = 0.03;       // condition points lost per map unit x vehicle wear
@@ -96,7 +97,7 @@
       var cost = Math.round(litres * E.fuelPrice(state) * 2.1);
       E.spend(state, cost, 'fuel');
       unit.fuel = litres;
-      events.push({ kind: 'danger', msg: unit.callsign + ' ran dry — emergency fuel delivery ' + U.money(cost) });
+      events.push({ kind: 'danger', msg: T.t('log.dryTank', { unit: unit.callsign, money: U.money(cost) }) });
     }
 
     if (unit.pathIndex >= unit.path.length) {
@@ -106,7 +107,7 @@
           job.status = 'active';
           job.startedAt = state.time.minutes;
           unit.status = 'onsite';
-          events.push({ kind: 'info', msg: unit.callsign + ' on site — ' + job.label + ' for ' + job.client });
+          events.push({ kind: 'info', msg: T.t('log.onsite', { unit: unit.callsign, job: J.jobLabel(job), client: job.client }) });
         } else {
           unit.jobId = null;
           unit.path = J.route(unit, C.HQ);
@@ -168,7 +169,7 @@
       E.spend(state, parts, 'maintenance');
       events.push({
         kind: 'warn',
-        msg: unit.callsign + ': scope change at ' + job.client + ' (+' + U.duration(extra) + ', ' + U.money(parts) + ' parts)'
+        msg: T.t('log.scope', { unit: unit.callsign, client: job.client, time: U.duration(extra), money: U.money(parts) })
       });
     }
 
@@ -223,11 +224,11 @@
         unit.shopDays -= 1;
         if (unit.shopDays <= 0) {
           unit.status = 'idle';
-          events.push({ kind: 'ok', msg: unit.callsign + ' released from the workshop at 100% condition' });
+          events.push({ kind: 'ok', msg: T.t('log.released', { unit: unit.callsign }) });
         }
       }
       if (unit.condition < 35 && unit.status !== 'shop') {
-        events.push({ kind: 'warn', msg: unit.callsign + ' condition critical (' + Math.round(unit.condition) + '%) — service it' });
+        events.push({ kind: 'warn', msg: T.t('log.critical', { unit: unit.callsign, n: Math.round(unit.condition) }) });
       }
     });
 
@@ -239,7 +240,7 @@
           p.morale = U.clamp(p.morale + 6, 0, 100);
           // A better technician expects a better wage.
           p.wage = Math.round(p.wage * (1 + p.training.gain / 190));
-          events.push({ kind: 'ok', msg: p.name + ' completed training — skill now ' + Math.round(p.skill) });
+          events.push({ kind: 'ok', msg: T.t('log.trained', { name: p.name, n: Math.round(p.skill) }) });
           p.training = null;
         }
       }
@@ -250,7 +251,7 @@
         p.morale = U.clamp(p.morale - 0.8, 0, 100);   // benched crew get restless
       }
       if (p.morale < 25 && U.chance(0.12)) {
-        events.push({ kind: 'danger', msg: p.name + ' is threatening to resign (morale ' + Math.round(p.morale) + ')' });
+        events.push({ kind: 'danger', msg: T.t('log.resigning', { name: p.name, n: Math.round(p.morale) }) });
       }
     });
 

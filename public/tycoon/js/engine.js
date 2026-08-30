@@ -6,7 +6,7 @@
   'use strict';
 
   var C = FST.Config, U = FST.Utils, S = FST.State,
-      E = FST.Economy, J = FST.Jobs, Units = FST.Units;
+      E = FST.Economy, J = FST.Jobs, Units = FST.Units, T = FST.I18n;
 
   var Engine = U.emitter();
   var state = null;
@@ -98,7 +98,7 @@
     if (state.ops.autoDispatch) {
       var assigned = J.autoDispatch(state);
       assigned.forEach(function (a) {
-        Engine.emit('log', { kind: 'info', msg: 'Auto-dispatch: ' + a.unit.callsign + ' → ' + a.job.label });
+        Engine.emit('log', { kind: 'info', msg: T.t('log.autoDispatch', { unit: a.unit.callsign, job: J.jobLabel(a.job) }) });
       });
     }
 
@@ -112,23 +112,29 @@
       if (r.failed) {
         Engine.emit('toast', {
           kind: 'danger',
-          title: 'Job failed',
-          msg: r.unit.callsign + ' could not close ' + r.job.label + ' for ' + r.job.client +
-            '. Remediation ' + U.money(r.remediation) + ', CSAT ' + r.csatDelta.toFixed(1) + '.'
+          title: T.t('ev.jobFailed'),
+          msg: T.t('ev.jobFailedMsg', {
+            unit: r.unit.callsign, job: J.jobLabel(r.job), client: r.job.client,
+            money: U.money(r.remediation), csat: r.csatDelta.toFixed(1)
+          })
         });
       } else {
         Engine.emit('toast', {
           kind: r.late ? 'warn' : 'ok',
-          title: r.late ? 'Completed late' : 'Job complete',
-          msg: r.unit.callsign + ' closed ' + r.job.label + ' — ' + U.money(r.payout) +
-            ' at ' + Math.round(r.quality * 100) + '% quality.'
+          title: T.t(r.late ? 'ev.jobLate' : 'ev.jobDone'),
+          msg: T.t('ev.jobDoneMsg', {
+            unit: r.unit.callsign, job: J.jobLabel(r.job),
+            money: U.money(r.payout), quality: Math.round(r.quality * 100)
+          })
         });
       }
       Engine.emit('job:resolved', r);
       Engine.emit('log', {
         kind: r.failed ? 'danger' : (r.late ? 'warn' : 'ok'),
-        msg: (r.failed ? 'FAILED · ' : 'CLOSED · ') + r.job.label + ' (' + r.job.client + ') · ' +
-          (r.failed ? '−' + U.money(r.remediation) : U.money(r.payout))
+        msg: T.t(r.failed ? 'log.failed' : 'log.closed', {
+          job: J.jobLabel(r.job), client: r.job.client,
+          money: U.money(r.failed ? r.remediation : r.payout)
+        })
       });
     } else {
       Engine.emit('log', evt);
@@ -172,17 +178,25 @@
     if (job.priority === 'emergency') {
       Engine.emit('toast', {
         kind: 'danger',
-        title: 'EMERGENCY CALL',
-        msg: job.label + ' — ' + job.client + ' · ' + U.money(job.value) +
-          ' · respond within ' + U.duration(job.deadline - state.time.minutes)
+        title: T.t('ev.emergency'),
+        msg: T.t('ev.emergencyMsg', {
+          job: J.jobLabel(job), client: job.client, money: U.money(job.value),
+          time: U.duration(job.deadline - state.time.minutes)
+        })
       });
       if (state.time.speed > 2) Engine.setSpeed(1);
     } else if (job.priority === 'urgent') {
-      Engine.emit('toast', { kind: 'warn', title: 'Urgent request', msg: job.label + ' — ' + job.client + ' · ' + U.money(job.value) });
+      Engine.emit('toast', {
+        kind: 'warn', title: T.t('ev.urgent'),
+        msg: T.t('ev.urgentMsg', { job: J.jobLabel(job), client: job.client, money: U.money(job.value) })
+      });
     }
     Engine.emit('log', {
       kind: job.priority === 'emergency' ? 'danger' : 'info',
-      msg: 'NEW ' + prio.label + ' · ' + job.label + ' · ' + job.client + ' · ' + U.money(job.value)
+      msg: T.t('log.new', {
+        priority: J.priorityLabel(job.priority), job: J.jobLabel(job),
+        client: job.client, money: U.money(job.value)
+      })
     });
   }
 
@@ -193,13 +207,17 @@
         var res = J.expire(state, job);
         Engine.emit('log', {
           kind: res.breach ? 'danger' : 'warn',
-          msg: (res.breach ? 'SLA BREACH · ' : 'LOST · ') + job.label + ' (' + job.client + ') · ' +
-            U.moneyShort(job.value) + ' forgone · CSAT ' + res.delta.toFixed(1)
+          msg: T.t(res.breach ? 'log.breach' : 'log.lost', {
+            job: J.jobLabel(job), client: job.client,
+            money: U.moneyShort(job.value), csat: res.delta.toFixed(1)
+          })
         });
         if (res.breach || job.priority === 'emergency') {
           Engine.emit('toast', {
-            kind: 'danger', title: res.breach ? 'SLA breach' : 'Emergency missed',
-            msg: job.client + ' went to a competitor' + (res.fee ? ' · ' + U.money(res.fee) + ' penalty' : '') + '.'
+            kind: 'danger', title: T.t(res.breach ? 'ev.breach' : 'ev.missedEmergency'),
+            msg: res.fee
+              ? T.t('ev.missedMsgFee', { client: job.client, money: U.money(res.fee) })
+              : T.t('ev.missedMsg', { client: job.client })
           });
         }
       }
@@ -234,8 +252,10 @@
 
     Engine.emit('log', {
       kind: record.profit >= 0 ? 'ok' : 'warn',
-      msg: 'DAY ' + (prevDay + 1) + ' CLOSE · rev ' + U.moneyShort(record.revenue) +
-        ' · exp ' + U.moneyShort(record.expense) + ' · net ' + U.moneyShort(record.profit)
+      msg: T.t('log.dayClose', {
+        day: prevDay + 1, rev: U.moneyShort(record.revenue),
+        exp: U.moneyShort(record.expense), net: U.moneyShort(record.profit)
+      })
     });
 
     if (state.finance.cash < 0) handleInsolvency();
@@ -251,10 +271,11 @@
       if (tax.due > 0) {
         Engine.emit('toast', {
           kind: tax.borrowed > 0 ? 'warn' : 'info',
-          title: 'Quarterly tax settled',
-          msg: U.money(tax.paid) + ' paid' + (tax.borrowed > 0 ? ' · ' + U.money(tax.borrowed) + ' drawn on credit' : '')
+          title: T.t('ev.taxTitle'),
+          msg: T.t('ev.taxMsg', { money: U.money(tax.paid) }) +
+            (tax.borrowed > 0 ? T.t('ev.taxBorrowed', { money: U.money(tax.borrowed) }) : '')
         });
-        Engine.emit('log', { kind: 'warn', msg: 'TAX · ' + U.money(tax.paid) + ' remitted for the quarter' });
+        Engine.emit('log', { kind: 'warn', msg: T.t('log.tax', { money: U.money(tax.paid) }) });
       }
       Engine.emit('quarter', cal);
     }
@@ -280,14 +301,17 @@
     var ending = state.contracts.filter(function (c) { return c.active && state.time.day >= c.endsOn; });
     ending.forEach(function (c) {
       state.contracts = state.contracts.filter(function (x) { return x.id !== c.id; });
-      Engine.emit('log', { kind: 'info', msg: 'CONTRACT ENDED · ' + c.client + ' · earned ' + U.moneyShort(c.earned) });
+      Engine.emit('log', { kind: 'info', msg: T.t('log.contractEnded', { client: c.client, money: U.moneyShort(c.earned) }) });
       if (c.breaches <= 1 && state.ops.csat >= c.minCsat) {
         var renewal = J.makeContractOffer(state, c.tier);
         if (renewal) {
           renewal.client = c.client;
           renewal.retainer = Math.round(renewal.retainer * 1.12);
           state.offers.contracts.push(renewal);
-          Engine.emit('toast', { kind: 'ok', title: 'Renewal offered', msg: c.client + ' wants to extend at ' + U.money(renewal.retainer) + '/day.' });
+          Engine.emit('toast', {
+            kind: 'ok', title: T.t('ev.renewal'),
+            msg: T.t('ev.renewalMsg', { client: c.client, money: U.money(renewal.retainer) })
+          });
         }
       }
     });
@@ -296,7 +320,10 @@
     state.contracts.filter(function (c) { return c.active && c.breaches >= 5; }).forEach(function (c) {
       state.contracts = state.contracts.filter(function (x) { return x.id !== c.id; });
       state.ops.csat = U.clamp(state.ops.csat - 6, 0, 100);
-      Engine.emit('toast', { kind: 'danger', title: 'Contract terminated', msg: c.client + ' has ended the agreement over repeated SLA breaches.' });
+      Engine.emit('toast', {
+        kind: 'danger', title: T.t('ev.terminated'),
+        msg: T.t('ev.terminatedMsg', { client: c.client })
+      });
     });
   }
 
@@ -309,7 +336,10 @@
       if (offer) {
         state.offers.contracts.push(offer);
         state.lastContractDay = state.time.day;
-        Engine.emit('toast', { kind: 'info', title: 'Contract offer', msg: offer.client + ' · ' + offer.label + ' · ' + U.money(offer.retainer) + '/day retainer' });
+        Engine.emit('toast', {
+          kind: 'info', title: T.t('ev.offer'),
+          msg: T.t('ev.offerMsg', { client: offer.client, label: J.contractLabel(offer), money: U.money(offer.retainer) })
+        });
       }
     }
   }
@@ -318,12 +348,12 @@
     var shortfall = -state.finance.cash;
     var drawn = E.borrow(state, shortfall);
     if (drawn >= shortfall - 1) {
-      Engine.emit('toast', { kind: 'warn', title: 'Credit line drawn', msg: U.money(drawn) + ' automatically drawn to cover the shortfall.' });
-    } else {
       Engine.emit('toast', {
-        kind: 'danger', title: 'INSOLVENT',
-        msg: 'Cash and credit are exhausted. Sell assets or cut costs immediately.'
+        kind: 'warn', title: T.t('ev.creditAuto'),
+        msg: T.t('ev.creditAutoMsg', { money: U.money(drawn) })
       });
+    } else {
+      Engine.emit('toast', { kind: 'danger', title: T.t('ev.insolvent'), msg: T.t('ev.insolventMsg') });
       Engine.setSpeed(0);
       Engine.emit('insolvent', state);
     }
@@ -338,8 +368,10 @@
       if (g.have >= g.need) {
         state.milestones.push(m.id);
         Engine.emit('milestone', m);
-        Engine.emit('toast', { kind: 'ok', title: 'Milestone: ' + m.name, msg: m.reward });
-        Engine.emit('log', { kind: 'ok', msg: 'MILESTONE · ' + m.name + ' · ' + m.reward });
+        Engine.emit('toast', {
+          kind: 'ok', title: T.t('ev.milestone', { name: T.f(m, 'name') }), msg: T.f(m, 'reward')
+        });
+        Engine.emit('log', { kind: 'ok', msg: T.t('log.milestone', { name: T.f(m, 'name'), reward: T.f(m, 'reward') }) });
       }
     });
   }
@@ -373,15 +405,18 @@
     if (!option) return;
 
     if (option.cost && !E.canAfford(state, option.cost)) {
-      Engine.emit('toast', { kind: 'danger', title: 'Declined', msg: 'Insufficient cash — the default outcome applies.' });
+      Engine.emit('toast', { kind: 'danger', title: T.t('out.declined'), msg: T.t('out.declinedMsg') });
       option = evt.options[evt.options.length - 1];
     } else if (option.cost) {
       E.spend(state, option.cost, 'overhead');
     }
 
     var outcome = applyEffect(option.effect);
-    Engine.emit('log', { kind: outcome.kind || 'info', msg: 'EVENT · ' + evt.title + ' · ' + outcome.msg });
-    Engine.emit('toast', { kind: outcome.kind || 'info', title: evt.title, msg: outcome.msg });
+    Engine.emit('log', {
+      kind: outcome.kind || 'info',
+      msg: T.t('log.event', { title: T.f(evt, 'title'), outcome: outcome.msg })
+    });
+    Engine.emit('toast', { kind: outcome.kind || 'info', title: T.f(evt, 'title'), msg: outcome.msg });
     Engine.emit('event:resolved', { event: evt, option: option, outcome: outcome });
     Engine.setSpeed(state.time.lastSpeed || 1);
   };
@@ -391,15 +426,15 @@
     switch (effect) {
       case 'fuel_absorb':
         state.finance.fuelPriceMod = { mult: 1.18, until: state.time.minutes + 14 * 1440 };
-        return { msg: 'Fuel is 18% dearer for the next two weeks.', kind: 'warn' };
+        return { msg: T.t('out.fuelAbsorb'), kind: 'warn' };
 
       case 'fuel_hedge':
         state.finance.fuelPriceMod = { mult: 0.88, until: state.time.minutes + 30 * 1440 };
-        return { msg: 'Forward purchase locked in — fuel 12% below market for 30 days.', kind: 'ok' };
+        return { msg: T.t('out.fuelHedge'), kind: 'ok' };
 
       case 'poach_pay':
         state.staff.forEach(function (p) { p.morale = U.clamp(p.morale + 12, 0, 100); });
-        return { msg: 'Retention bonus paid. Crew morale is up across the board.', kind: 'ok' };
+        return { msg: T.t('out.poachPay'), kind: 'ok' };
 
       case 'poach_lose':
         var best = state.staff.slice().sort(function (a, b) { return b.skill - a.skill; })[0];
@@ -407,9 +442,9 @@
           S.assignCrew(state, best.id, null);
           state.staff = state.staff.filter(function (p) { return p.id !== best.id; });
           state.staff.forEach(function (p) { p.morale = U.clamp(p.morale - 7, 0, 100); });
-          return { msg: best.name + ' has left for a competitor.', kind: 'danger' };
+          return { msg: T.t('out.poachLose', { name: best.name }), kind: 'danger' };
         }
-        return { msg: 'The approach came to nothing.', kind: 'info' };
+        return { msg: T.t('out.poachNone'), kind: 'info' };
 
       case 'storm_surge':
         for (i = 0; i < 3; i++) {
@@ -417,23 +452,23 @@
           if (j) Engine.emit('job:new', j);
         }
         state.staff.forEach(function (p) { p.fatigue = U.clamp(p.fatigue + 10, 0, 100); });
-        return { msg: 'Three emergency calls inbound at 1.5x value. Crews are on overtime.', kind: 'warn' };
+        return { msg: T.t('out.stormSurge'), kind: 'warn' };
 
       case 'storm_pass':
         state.ops.csat = U.clamp(state.ops.csat - 1.5, 0, 100);
-        return { msg: 'Two callers went elsewhere. Minor reputation cost.', kind: 'info' };
+        return { msg: T.t('out.stormPass'), kind: 'info' };
 
       case 'audit_pass':
         state.ops.csat = U.clamp(state.ops.csat + 6, 0, 100);
-        return { msg: 'Clean audit. Reputation +6.', kind: 'ok' };
+        return { msg: T.t('out.auditPass'), kind: 'ok' };
 
       case 'audit_risk':
         if (U.chance(0.45)) {
           E.spend(state, 28000, 'penalties');
           state.ops.csat = U.clamp(state.ops.csat - 4, 0, 100);
-          return { msg: 'Findings issued. ' + U.money(28000) + ' fine and a reputation hit.', kind: 'danger' };
+          return { msg: T.t('out.auditFine', { money: U.money(28000) }), kind: 'danger' };
         }
-        return { msg: 'The audit passed without findings. Lucky.', kind: 'ok' };
+        return { msg: T.t('out.auditLucky'), kind: 'ok' };
 
       case 'break_fix':
         var worst = pickWorstUnit();
@@ -442,28 +477,28 @@
           worst.status = 'shop';
           worst.shopDays = 1;
           if (worst.jobId) J.recall(state, worst.id);
-          return { msg: worst.callsign + ' is in the workshop for the day, condition restored.', kind: 'info' };
+          return { msg: T.t('out.breakFix', { unit: worst.callsign }), kind: 'info' };
         }
-        return { msg: 'No unit required attention.', kind: 'info' };
+        return { msg: T.t('out.noUnit'), kind: 'info' };
 
       case 'break_patch':
         var patched = pickWorstUnit();
         if (patched) {
           patched.condition = U.clamp(patched.condition - 22, 0, 100);
-          return { msg: patched.callsign + ' stays in service at ' + Math.round(patched.condition) + '% condition.', kind: 'warn' };
+          return { msg: T.t('out.breakPatch', { unit: patched.callsign, n: Math.round(patched.condition) }), kind: 'warn' };
         }
-        return { msg: 'No unit required attention.', kind: 'info' };
+        return { msg: T.t('out.noUnit'), kind: 'info' };
 
       case 'auction_buy':
         var affordable = C.TOOLS.filter(function (t) {
           return S.isUnlocked(state, t.unlock) && E.canAfford(state, t.price * 0.55);
         });
-        if (!affordable.length) return { msg: 'Nothing in the lot was within reach.', kind: 'warn' };
+        if (!affordable.length) return { msg: T.t('out.auctionNone'), kind: 'warn' };
         var pickTool = U.pick(affordable);
         E.spend(state, Math.round(pickTool.price * 0.55), 'capex');
         var tool = S.makeTool(pickTool.id);
         state.tools.push(tool);
-        return { msg: 'Acquired a ' + pickTool.name + ' for ' + U.money(pickTool.price * 0.55) + '.', kind: 'ok' };
+        return { msg: T.t('out.auctionBuy', { tool: T.f(pickTool, 'name'), money: U.money(pickTool.price * 0.55) }), kind: 'ok' };
 
       case 'ref_bid':
         var premium = J.makeContractOffer(state, 'regional') || J.makeContractOffer(state);
@@ -471,28 +506,28 @@
           premium.retainer = Math.round(premium.retainer * 1.3);
           premium.mult = U.round(premium.mult * 1.08, 3);
           state.offers.contracts.push(premium);
-          return { msg: 'Premium proposal accepted for review — see the Contracts board.', kind: 'ok' };
+          return { msg: T.t('out.refBid'), kind: 'ok' };
         }
-        return { msg: 'The opportunity fell through.', kind: 'warn' };
+        return { msg: T.t('out.refFell'), kind: 'warn' };
 
       case 'ref_std':
         var std = J.makeContractOffer(state, 'local');
         if (std) {
           state.offers.contracts.push(std);
-          return { msg: 'A standard agreement is on the Contracts board.', kind: 'info' };
+          return { msg: T.t('out.refStd'), kind: 'info' };
         }
-        return { msg: 'No agreement materialised.', kind: 'info' };
+        return { msg: T.t('out.refNone'), kind: 'info' };
 
       case 'ins_full':
         S.setModifier(state, 'wear_reduction', 0.25, 30);
-        return { msg: 'Comprehensive cover in force. Vehicle wear reduced 25% for 30 days.', kind: 'ok' };
+        return { msg: T.t('out.insFull'), kind: 'ok' };
 
       case 'ins_min':
         S.setModifier(state, 'wear_reduction', -0.15, 30);
-        return { msg: 'Premium saved, but wear runs 15% higher for 30 days.', kind: 'warn' };
+        return { msg: T.t('out.insMin'), kind: 'warn' };
 
       default:
-        return { msg: 'No action taken.', kind: 'info' };
+        return { msg: T.t('out.none'), kind: 'info' };
     }
   }
 

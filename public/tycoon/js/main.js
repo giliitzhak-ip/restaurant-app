@@ -7,6 +7,7 @@
 
   var C = FST.Config, U = FST.Utils, S = FST.State,
       Engine = FST.Engine, UI = FST.UI, Map = FST.Map, Notify = FST.Notify;
+  var I18n = FST.I18n, T = FST.I18n.t;
 
   var state = null;
   var uiRefresh = 0;
@@ -17,16 +18,20 @@
     var nameEl = document.getElementById('boot-name');
     var continueBtn = document.getElementById('boot-continue');
 
+    I18n.init();
+    buildLanguagePicker();
+    nameEl.addEventListener('input', function () { nameEl.dataset.touched = '1'; });
+
     if (S.hasSave()) continueBtn.classList.remove('hidden');
 
     document.getElementById('boot-new').addEventListener('click', function () {
-      startGame(S.create((nameEl.value || '').trim() || 'Meridian Field Services'), true);
+      startGame(S.create((nameEl.value || '').trim() || T('boot.company.default')), true);
     });
 
     continueBtn.addEventListener('click', function () {
       var loaded = S.load();
       if (!loaded) {
-        Notify.toast({ kind: 'danger', title: 'Load failed', msg: 'The saved game could not be read.' });
+        Notify.toast({ kind: 'danger', title: T('save.loadFailed'), msg: T('save.loadFailedMsg') });
         return;
       }
       startGame(loaded, false);
@@ -57,18 +62,16 @@
     wireEngine();
     wireUI();
     wireKeyboard();
+    wireLanguage();
 
     Engine.start();
     Engine.setSpeed(isNew ? 1 : 0);
 
     if (isNew) {
-      Notify.log({ kind: 'ok', msg: 'OPERATION OPENED · ' + state.company.name + ' · ' + U.money(state.finance.cash) + ' starting capital' });
-      Notify.toast({
-        kind: 'info', title: 'Welcome to the floor',
-        msg: 'Two units, three technicians and an empty board. Calls will start coming in — dispatch them before the SLA runs out.'
-      });
+      Notify.log({ kind: 'ok', msg: T('log.opened', { company: state.company.name, money: U.money(state.finance.cash) }) });
+      Notify.toast({ kind: 'info', title: T('boot.welcome'), msg: T('boot.welcomeMsg') });
     } else {
-      Notify.toast({ kind: 'info', title: 'Operation restored', msg: 'Resumed and paused. Press Space to start the clock.' });
+      Notify.toast({ kind: 'info', title: T('boot.restored'), msg: T('boot.restoredMsg') });
     }
   }
 
@@ -100,7 +103,7 @@
     Engine.on('insolvent', function () { UI.showInsolvency(); });
 
     Engine.on('saved', function (info) {
-      if (!info.auto) Notify.toast({ kind: 'ok', title: 'Saved', msg: 'Operation written to browser storage.' });
+      if (!info.auto) Notify.toast({ kind: 'ok', title: T('save.ok'), msg: T('save.okMsg') });
     });
   }
 
@@ -112,15 +115,15 @@
     UI.on('event-choice', function (index) { Engine.resolveEvent(index); });
 
     UI.on('save', function () {
-      if (S.save(state)) Notify.toast({ kind: 'ok', title: 'Saved', msg: 'Operation written to browser storage.' });
-      else Notify.toast({ kind: 'danger', title: 'Save failed', msg: 'Browser storage rejected the write.' });
+      if (S.save(state)) Notify.toast({ kind: 'ok', title: T('save.ok'), msg: T('save.okMsg') });
+      else Notify.toast({ kind: 'danger', title: T('save.failed'), msg: T('save.failedMsg') });
     });
 
     UI.on('load', function () {
       var loaded = S.load();
-      if (!loaded) { Notify.toast({ kind: 'danger', title: 'No save found', msg: 'Nothing to restore.' }); return; }
+      if (!loaded) { Notify.toast({ kind: 'danger', title: T('save.none'), msg: T('save.noneMsg') }); return; }
       swapState(loaded);
-      Notify.toast({ kind: 'ok', title: 'Loaded', msg: 'Saved operation restored and paused.' });
+      Notify.toast({ kind: 'ok', title: T('save.loaded'), msg: T('save.loadedMsg') });
     });
 
     UI.on('reset', function () {
@@ -137,9 +140,9 @@
         document.body.appendChild(a);
         a.click();
         setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-        Notify.toast({ kind: 'ok', title: 'Exported', msg: 'Save file downloaded.' });
+        Notify.toast({ kind: 'ok', title: T('save.exported'), msg: T('save.exportedMsg') });
       } catch (err) {
-        Notify.toast({ kind: 'danger', title: 'Export failed', msg: String(err.message || err) });
+        Notify.toast({ kind: 'danger', title: T('save.exportFailed'), msg: String(err.message || err) });
       }
     });
 
@@ -155,9 +158,9 @@
           try {
             var loaded = S.hydrate(JSON.parse(String(reader.result)));
             swapState(loaded);
-            Notify.toast({ kind: 'ok', title: 'Imported', msg: 'Save file loaded and paused.' });
+            Notify.toast({ kind: 'ok', title: T('save.imported'), msg: T('save.importedMsg') });
           } catch (err) {
-            Notify.toast({ kind: 'danger', title: 'Import failed', msg: 'That file is not a valid save.' });
+            Notify.toast({ kind: 'danger', title: T('save.importFailed'), msg: T('save.importFailedMsg') });
           }
         };
         reader.readAsText(file);
@@ -173,6 +176,48 @@
     Notify.setState(state);
     Map.setState(state);
     UI.setState(state);
+  }
+
+  /* ── Language ──────────────────────────────────────────────────────────── */
+
+  function buildLanguagePicker() {
+    var host = document.getElementById('boot-lang');
+    if (!host) return;
+    host.innerHTML = I18n.LANGUAGES.map(function (lang) {
+      return '<button class="speed-btn" data-lang="' + lang.id + '" aria-pressed="' +
+        (I18n.lang() === lang.id) + '">' + lang.label + '</button>';
+    }).join('');
+    host.querySelectorAll('[data-lang]').forEach(function (btn) {
+      btn.addEventListener('click', function () { I18n.setLang(btn.dataset.lang); });
+    });
+  }
+
+  function wireLanguage() {
+    var btn = document.getElementById('btn-lang');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        var ids = I18n.LANGUAGES.map(function (l) { return l.id; });
+        I18n.setLang(ids[(ids.indexOf(I18n.lang()) + 1) % ids.length]);
+      });
+    }
+    I18n.on('change', function () {
+      buildLanguagePicker();
+      syncLanguageButton();
+      if (state) {
+        Notify.renderLog();
+        UI.retranslate();
+      }
+    });
+    syncLanguageButton();
+  }
+
+  /** The header button shows the language you would switch *to*. */
+  function syncLanguageButton() {
+    var btn = document.getElementById('btn-lang');
+    if (!btn) return;
+    var ids = I18n.LANGUAGES.map(function (l) { return l.id; });
+    var next = I18n.LANGUAGES[(ids.indexOf(I18n.lang()) + 1) % ids.length];
+    btn.textContent = next.label;
   }
 
   /* ── Keyboard ──────────────────────────────────────────────────────────── */

@@ -7,6 +7,7 @@
   'use strict';
 
   var C = FST.Config, U = FST.Utils, S = FST.State, J = FST.Jobs, Charts = FST.Charts;
+  var T = FST.I18n;
 
   var Map = U.emitter();
   var canvas = null, ctx = null;
@@ -178,20 +179,24 @@
       var job = hover.job;
       var prio = C.PRIORITIES[job.priority];
       var left = job.deadline - state.time.minutes;
-      html = '<div class="font-semibold text-slate-100">' + U.escape(job.label) + '</div>' +
+      html = '<div class="font-semibold text-slate-100">' + U.escape(J.jobLabel(job)) + '</div>' +
         '<div class="text-slate-400">' + U.escape(job.client) + '</div>' +
-        '<div class="mt-1 flex items-center gap-2"><span style="color:' + prio.color + '">' + prio.label + '</span>' +
+        '<div class="mt-1 flex items-center gap-2"><span style="color:' + prio.color + '">' +
+          U.escape(J.priorityLabel(job.priority)) + '</span>' +
         '<span class="text-emerald-300">' + U.money(job.value) + '</span></div>' +
-        '<div class="text-slate-400">' + (job.status === 'pending'
-          ? (left > 0 ? 'SLA in ' + U.duration(left) : 'SLA expired')
-          : U.titleCase(job.status) + ' · ' + Math.round((job.progress || 0) * 100) + '%') + '</div>' +
-        '<div class="text-slate-500">Needs ' + job.caps.map(J.capLabel).join(', ') + '</div>';
+        '<div class="text-slate-400">' + U.escape(job.status === 'pending'
+          ? (left > 0 ? T.t('map.tip.slaIn', { time: U.duration(left) }) : T.t('map.tip.slaExpired'))
+          : T.t('map.tip.progress', { status: J.statusLabel(job.status === 'active' ? 'onsite' : 'enroute'),
+              pct: Math.round((job.progress || 0) * 100) })) + '</div>' +
+        '<div class="text-slate-500">' + U.escape(T.t('map.tip.needs', { caps: job.caps.map(J.capLabel).join(', ') })) + '</div>';
     } else {
       var unit = hover.unit;
       var spec = S.vehicle(unit.vehicle);
-      html = '<div class="font-semibold text-slate-100">' + U.escape(unit.callsign) + ' · ' + U.escape(spec.name) + '</div>' +
-        '<div class="text-slate-400">' + J.statusLabel(unit.status) + ' · crew ' + unit.crew.length + '/' + spec.crew + '</div>' +
-        '<div class="text-slate-400">Fuel ' + Math.round(unit.fuel / spec.fuelCap * 100) + '% · Condition ' + Math.round(unit.condition) + '%</div>';
+      html = '<div class="font-semibold text-slate-100">' + U.escape(unit.callsign) + ' · ' + U.escape(T.f(spec, 'name')) + '</div>' +
+        '<div class="text-slate-400">' + U.escape(T.t('map.tip.crew',
+          { status: J.statusLabel(unit.status), a: unit.crew.length, b: spec.crew })) + '</div>' +
+        '<div class="text-slate-400">' + U.escape(T.t('map.tip.fuelCond',
+          { fuel: Math.round(unit.fuel / spec.fuelCap * 100), cond: Math.round(unit.condition) })) + '</div>';
     }
     el.innerHTML = html;
     el.classList.remove('hidden');
@@ -281,11 +286,12 @@
       ctx.fillStyle = owned ? 'rgba(165,243,252,0.82)' : 'rgba(148,163,184,0.6)';
       ctx.font = (owned ? '600 ' : '') + (13 / view.scale) + 'px ui-sans-serif, system-ui, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(terr.name.toUpperCase(), terr.x, terr.y - terr.r + 22 / view.scale);
+      ctx.fillText(T.f(terr, 'name').toUpperCase(), terr.x, terr.y - terr.r + 22 / view.scale);
       if (!owned) {
         ctx.fillStyle = 'rgba(148,163,184,0.5)';
         ctx.font = (11 / view.scale) + 'px ui-monospace, monospace';
-        ctx.fillText(unlocked ? U.money(terr.price) + ' licence' : 'LOCKED', terr.x, terr.y - terr.r + 38 / view.scale);
+        ctx.fillText(unlocked ? T.t('map.licence', { price: U.money(terr.price) }) : T.t('map.locked'),
+          terr.x, terr.y - terr.r + 38 / view.scale);
       }
       ctx.restore();
     });
@@ -405,7 +411,7 @@
     ctx.fillStyle = 'rgba(165,243,252,0.9)';
     ctx.font = '600 ' + (11 / view.scale) + 'px ui-monospace, monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('DEPOT', C.HQ.x, C.HQ.y + r + 14 / view.scale);
+    ctx.fillText(T.t('map.depot'), C.HQ.x, C.HQ.y + r + 14 / view.scale);
     ctx.restore();
   }
 
