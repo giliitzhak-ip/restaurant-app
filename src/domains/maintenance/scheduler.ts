@@ -85,7 +85,8 @@ export function startMaintenanceScheduler(): void {
       const did =
         result.expiredOffers + result.shiftsEnded + result.escalated.length +
         result.lapsedProviders + result.expiryWarnings + result.purgedDocumentFiles +
-        result.purgedRateLimits;
+        result.purgedRateLimits + result.deliveriesSent + result.deliveriesFailed +
+        result.deliveriesAbandoned;
       if (did > 0 || result.failures.length > 0) {
         logOperation({
           operation: 'maintenance.tick',
@@ -99,6 +100,9 @@ export function startMaintenanceScheduler(): void {
             expiryWarnings: result.expiryWarnings,
             purgedDocumentFiles: result.purgedDocumentFiles,
             purgedRateLimits: result.purgedRateLimits,
+            deliveriesSent: result.deliveriesSent,
+            deliveriesFailed: result.deliveriesFailed,
+            deliveriesAbandoned: result.deliveriesAbandoned,
             failures: result.failures.join(',') || null,
           },
         });

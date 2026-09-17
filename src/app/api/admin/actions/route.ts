@@ -11,6 +11,7 @@ import {
   type DocumentKind,
 } from '@/domains/documents';
 import { runDispatchWave } from '@/domains/matching/dispatch';
+import { queueDelivery } from '@/domains/notifications';
 import { logOperation, newRequestId } from '@/lib/logger';
 
 const bodySchema = z.discriminatedUnion('action', [
@@ -163,13 +164,19 @@ export async function POST(request: Request) {
       payload: Record<string, unknown>,
     ) => {
       try {
-        await withSystem((db) =>
-          db.query(
+        await withSystem(async (db) => {
+          const notification = await db.one<{ id: string }>(
             `insert into notifications (user_id, job_id, kind, title, body, payload)
-             values ($1, null, $2, $3, $4, $5::jsonb)`,
+             values ($1, null, $2, $3, $4, $5::jsonb)
+             returning id`,
             [providerId, kind, title, text, JSON.stringify(payload)],
-          ),
-        );
+          );
+          // An approval or a refusal decides whether somebody can work. Not
+          // something to discover by opening the app on the off chance.
+          if (notification) {
+            await queueDelivery(db, { notificationId: notification.id, userId: providerId });
+          }
+        });
       } catch (error) {
         logOperation({
           requestId, userId: admin.id, operation: 'admin.notify', result: 'error',

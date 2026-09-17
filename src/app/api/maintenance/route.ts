@@ -61,6 +61,8 @@ export async function POST(request: Request) {
         expiryWarnings: result.expiryWarnings,
         purgedDocumentFiles: result.purgedDocumentFiles,
         purgedRateLimits: result.purgedRateLimits,
+        deliveriesSent: result.deliveriesSent,
+        deliveriesAbandoned: result.deliveriesAbandoned,
         failures: result.failures.join(',') || null,
       },
     });

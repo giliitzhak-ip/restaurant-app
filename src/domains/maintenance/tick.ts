@@ -1,6 +1,7 @@
 import { withSystem } from '@/lib/db';
 import { expireAndEscalate } from '@/domains/matching/dispatch';
 import { DOCUMENT_KINDS, type DocumentKind } from '@/domains/documents';
+import { drainOutbox, queueDelivery } from '@/domains/notifications';
 import { logOperation } from '@/lib/logger';
 
 /**
@@ -24,6 +25,10 @@ export interface MaintenanceResult {
   purgedDocumentFiles: number;
   /** Closed rate-limit windows dropped. */
   purgedRateLimits: number;
+  /** Out-of-app notifications attempted, and how they went. */
+  deliveriesSent: number;
+  deliveriesFailed: number;
+  deliveriesAbandoned: number;
   /** Steps that threw, by name. Empty on a clean tick. */
   failures: string[];
 }
@@ -43,6 +48,9 @@ export async function runMaintenanceTick(): Promise<MaintenanceResult> {
     expiryWarnings: 0,
     purgedDocumentFiles: 0,
     purgedRateLimits: 0,
+    deliveriesSent: 0,
+    deliveriesFailed: 0,
+    deliveriesAbandoned: 0,
     failures: [],
   };
 
@@ -69,6 +77,15 @@ export async function runMaintenanceTick(): Promise<MaintenanceResult> {
     result.expiredOffers = dispatch.expiredOffers;
     result.shiftsEnded = dispatch.shiftsEnded;
     result.escalated = dispatch.escalated;
+  });
+
+  /* Straight after dispatch, because this is how a provider who is not
+     looking at the screen finds out an offer exists at all. */
+  await step('notify.drain', async () => {
+    const drained = await drainOutbox();
+    result.deliveriesSent = drained.sent;
+    result.deliveriesFailed = drained.failed;
+    result.deliveriesAbandoned = drained.abandoned;
   });
 
   await step('documents.lapsed', async () => {
@@ -130,9 +147,10 @@ async function suspendLapsedProviders(): Promise<number> {
         .map((kind) => DOCUMENT_KINDS[kind as DocumentKind] ?? kind)
         .join(', ');
 
-      await db.query(
+      const notification = await db.one<{ id: string }>(
         `insert into notifications (user_id, job_id, kind, title, body, payload)
-         values ($1, null, 'document.expired', $2, $3, $4::jsonb)`,
+         values ($1, null, 'document.expired', $2, $3, $4::jsonb)
+         returning id`,
         [
           row.provider_id,
           'תוקף המסמכים פג',
@@ -141,6 +159,11 @@ async function suspendLapsedProviders(): Promise<number> {
           JSON.stringify({ kinds: row.kinds }),
         ],
       );
+      // Losing verification is not something to learn about by opening the app
+      // and wondering where the work went.
+      if (notification) {
+        await queueDelivery(db, { notificationId: notification.id, userId: row.provider_id });
+      }
 
       logOperation({
         providerId: row.provider_id,
@@ -169,9 +192,10 @@ async function warnExpiringDocuments(): Promise<number> {
 
     for (const row of soon) {
       const name = DOCUMENT_KINDS[row.doc_type as DocumentKind] ?? row.doc_type;
-      await db.query(
+      const notification = await db.one<{ id: string }>(
         `insert into notifications (user_id, job_id, kind, title, body, payload)
-         values ($1, null, 'document.expiring', $2, $3, $4::jsonb)`,
+         values ($1, null, 'document.expiring', $2, $3, $4::jsonb)
+         returning id`,
         [
           row.provider_id,
           'מסמך עומד לפוג',
@@ -180,6 +204,9 @@ async function warnExpiringDocuments(): Promise<number> {
           JSON.stringify({ documentId: row.document_id, expiresOn: row.expires_on }),
         ],
       );
+      if (notification) {
+        await queueDelivery(db, { notificationId: notification.id, userId: row.provider_id });
+      }
       await db.query(
         'update provider_documents set expiry_warning_sent_at = now() where id = $1',
         [row.document_id],

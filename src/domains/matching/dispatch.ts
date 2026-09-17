@@ -2,6 +2,7 @@ import { getMapProvider } from '@/domains/geo';
 import type { DbSession } from '@/lib/db';
 import { withSystem } from '@/lib/db';
 import { logOperation } from '@/lib/logger';
+import { queueDelivery } from '@/domains/notifications';
 import { loadMatchingConfiguration } from '@/lib/settings';
 import { MatchingEngine } from './engine';
 import type { MatchRequest, ProviderCandidate, ScoredCandidate } from './types';
@@ -322,9 +323,10 @@ export async function runDispatchWave(
         [scored.candidate.providerId],
       );
 
-      await db.query(
+      const notification = await db.one<{ id: string }>(
         `insert into notifications (user_id, job_id, kind, title, body, payload)
-         values ($1,$2,'offer.new',$3,$4,$5)`,
+         values ($1,$2,'offer.new',$3,$4,$5)
+         returning id`,
         [
           scored.candidate.providerId,
           jobId,
@@ -333,6 +335,23 @@ export async function runDispatchWave(
           JSON.stringify({ offerId: offer.id, isOnTheWay: scored.routeOpportunity.isOnTheWay }),
         ],
       );
+
+      /*
+       * This is the one notification the whole product rests on.
+       *
+       * The row above reaches a provider with the app open, over SSE. A
+       * provider with the tab closed — which is most providers, most of the
+       * time — learned nothing at all, and the offer expired in two minutes
+       * having never been seen. Queued in the same transaction as the offer,
+       * so a dispatch that rolls back does not promise work that no longer
+       * exists.
+       */
+      if (notification) {
+        await queueDelivery(db, {
+          notificationId: notification.id,
+          userId: scored.candidate.providerId,
+        });
+      }
     }
 
     // Telemetry for candidates we considered but did not offer (spec §36).
