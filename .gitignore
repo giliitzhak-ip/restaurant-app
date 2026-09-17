@@ -1,0 +1,30 @@
+node_modules
+.next
+out
+build
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env
+.env
+.env*.local
+!.env.example
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# prisma
+src/generated/prisma
+
+# local uploads (development object-storage driver)
+public/uploads
+
+# generated placeholder media (npm run media:generate)
+public/media
