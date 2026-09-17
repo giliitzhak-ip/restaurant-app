@@ -26,14 +26,23 @@ async function mustBeEmpty(label, sql, params = []) {
   results.push({ label, ok: count === 0, detail: count === 0 ? 'none' : `${count} violation(s)` });
 }
 
-/** A check that must meet a minimum. */
-async function mustBeAtLeast(label, minimum, sql, params = []) {
-  const { rows } = await client.query(sql, params);
+/**
+ * A check that must meet a minimum.
+ *
+ * `hint` is appended to the detail only on FAILURE. Several of these
+ * properties hold for a freshly generated network and can be legitimately
+ * changed by something else later — the demo tick refreshing locations, for
+ * instance — and the report should say so rather than leaving the reader to
+ * work out why a check that passed this morning fails now.
+ */
+async function mustBeAtLeast(label, minimum, sql, hint = null) {
+  const { rows } = await client.query(sql);
   const value = Number(rows[0]?.n ?? 0);
+  const ok = value >= minimum;
   results.push({
     label,
-    ok: value >= minimum,
-    detail: `${value} (need ≥ ${minimum})`,
+    ok,
+    detail: `${value} (need ≥ ${minimum})${!ok && hint ? ` — ${hint}` : ''}`,
   });
 }
 
@@ -78,9 +87,16 @@ async function main() {
     'route scenarios (destination set)', 50,
     'select count(*) as n from provider_locations where destination is not null',
   );
+  // The generated network deliberately contains stale fixes, so the "a stale
+  // fix is not a live fix" path in matching is exercised by real data rather
+  // than only by a unit test. Note the ordering constraint: the demo tick
+  // refreshes every demo location, so after running it this check fails
+  // honestly — the dataset no longer has the property. Validate on a freshly
+  // seeded network (npm run db:network -- --reset).
   await mustBeAtLeast(
     'stale locations present', 10,
     `select count(*) as n from provider_locations where recorded_at < now() - interval '5 minutes'`,
+    'the demo tick refreshes all demo locations — re-seed before validating',
   );
   await mustBeAtLeast(
     'split-shift schedules present', 10,

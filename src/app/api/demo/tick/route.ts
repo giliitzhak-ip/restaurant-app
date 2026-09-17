@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { ApiError, handleError, ok, parseJson } from '@/lib/api';
-import { withSystem } from '@/lib/db';
+import { withSystem, withUser } from '@/lib/db';
 import { expireAndEscalate } from '@/domains/matching/dispatch';
 import { logOperation, newRequestId } from '@/lib/logger';
 
@@ -14,6 +14,15 @@ const bodySchema = z
     refreshLocations: z.boolean().default(true),
     /** Also expire stale offers and escalate waiting jobs. */
     runMaintenance: z.boolean().default(false),
+    /**
+     * Accept pending offers held by SYNTHETIC providers, so a demo request
+     * reaches a match instead of waiting for a provider who has no login.
+     *
+     * Off by default: a tick must never silently assign someone's work.
+     */
+    autoAcceptSynthetic: z.boolean().default(false),
+    /** Ceiling on acceptances per tick, so one call cannot drain the board. */
+    maxAccepts: z.number().int().min(1).max(50).default(10),
   });
 
 /**
@@ -45,6 +54,8 @@ export async function POST(request: Request) {
       advanceMeters: 120,
       refreshLocations: true,
       runMaintenance: false,
+      autoAcceptSynthetic: false,
+      maxAccepts: 10,
     }));
 
     const result = await withSystem(async (db) => {
@@ -87,6 +98,64 @@ export async function POST(request: Request) {
 
     const maintenance = body.runMaintenance ? await expireAndEscalate() : null;
 
+    /* ── Let the synthetic network answer ──────────────────────────────────
+       The 1000-provider network is DATA, not accounts: it has no passwords,
+       so nobody can accept on its behalf through the UI. Since its members
+       usually outrank the 22 hand-built demo logins, a demo request would
+       collect offers and never reach a match.
+
+       Acceptance goes through accept_job_offer() as the provider, exactly as
+       the real endpoint does — the SELECT … FOR UPDATE, the single-winner
+       rule, the state machine and the audit trail all apply. Nothing is
+       written directly, so this cannot produce an assignment the real flow
+       could not have produced. It is reachable only with DEMO_MODE=true and
+       only for @synthetic.local providers. */
+    const accepted: { jobId: string; providerId: string }[] = [];
+    const skipped: string[] = [];
+
+    if (body.autoAcceptSynthetic) {
+      const candidates = await withSystem((db) =>
+        db.many<{ offer_id: string; job_id: string; provider_id: string }>(
+          `select distinct on (o.job_id)
+                  o.id as offer_id, o.job_id, o.provider_id
+             from job_offers o
+             join jobs j on j.id = o.job_id
+             join profiles customer on customer.id = j.customer_id
+             join profiles p on p.id = o.provider_id
+            where o.status = 'PENDING'
+              and o.expires_at > now()
+              and j.status in ('SEARCHING','OFFERS_AVAILABLE')
+              -- The CUSTOMER's flag, not the job's: a request typed into the
+              -- UI during a demo has no is_demo of its own, and those are
+              -- precisely the requests this exists to answer. Keying on the
+              -- customer keeps the separation that matters — a real
+              -- customer's job can never be auto-accepted.
+              and customer.is_demo = true
+              and p.is_demo = true
+              and p.email like '%@synthetic.local'
+              and not exists (select 1 from job_assignments a where a.job_id = o.job_id)
+            order by o.job_id, o.final_score desc nulls last
+            limit $1`,
+          [body.maxAccepts],
+        ),
+      );
+
+      for (const candidate of candidates) {
+        try {
+          await withUser(
+            candidate.provider_id,
+            (db) => db.query('select accept_job_offer($1)', [candidate.offer_id]),
+            { actorRole: 'provider', transitionReason: 'Demo simulator accepted on behalf of a synthetic provider' },
+          );
+          accepted.push({ jobId: candidate.job_id, providerId: candidate.provider_id });
+        } catch (error) {
+          // Losing a race is the normal outcome, not a failure: another
+          // provider may have accepted between the query and the call.
+          skipped.push(error instanceof Error ? error.message.slice(0, 80) : 'unknown');
+        }
+      }
+    }
+
     logOperation({
       requestId,
       operation: 'demo.tick',
@@ -95,6 +164,8 @@ export async function POST(request: Request) {
         moved: result.moved,
         advanceMeters: body.advanceMeters,
         expiredOffers: maintenance?.expiredOffers ?? 0,
+        autoAccepted: accepted.length,
+        autoAcceptSkipped: skipped.length,
       },
     });
 
@@ -103,6 +174,10 @@ export async function POST(request: Request) {
       advanceMeters: body.advanceMeters,
       locationsRefreshed: body.refreshLocations,
       maintenance,
+      autoAccepted: accepted,
+      // Surfaced rather than swallowed: a demo that quietly fails to accept
+      // is a demo that looks broken for no visible reason.
+      autoAcceptSkipped: skipped,
     });
   } catch (error) {
     return handleError(error, 'demo.tick', requestId);

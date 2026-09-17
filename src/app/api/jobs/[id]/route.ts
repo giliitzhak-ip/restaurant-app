@@ -45,10 +45,17 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
         `select a.id, a.provider_id, a.price_ils, a.eta_minutes,
                 a.assigned_at, a.en_route_at, a.arrived_at, a.started_at, a.completed_at,
                 p.full_name as provider_name, pp.business_name,
-                pp.rating_avg, pp.rating_count, pp.completed_jobs
+                pp.rating_avg, pp.rating_count, pp.completed_jobs,
+                -- The route-opportunity verdict from the offer that was
+                -- accepted. It is only ever true on real evidence — a stated
+                -- destination or a measured heading — never on proximity
+                -- alone, so showing it to the customer is not a route claim
+                -- we cannot support (spec §12, §72).
+                o.is_on_the_way
            from job_assignments a
            join profiles p on p.id = a.provider_id
            join provider_profiles pp on pp.id = a.provider_id
+           left join job_offers o on o.id = a.offer_id
           where a.job_id = $1`,
         [id],
       );

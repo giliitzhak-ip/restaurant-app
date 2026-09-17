@@ -8,6 +8,7 @@ import {
   Button,
   Card,
   ConnectionBanner,
+  ConnectionLine,
   ErrorState,
   LoadingState,
   Minutes,
@@ -59,6 +60,7 @@ interface JobData {
     completed_jobs: number;
     en_route_at: string | null;
     arrived_at: string | null;
+    is_on_the_way: boolean | null;
   } | null;
   payment: {
     id: string;
@@ -236,6 +238,18 @@ export function JobLiveView({ jobId }: { jobId: string }) {
       {assignment && job.status === 'PROVIDER_SELECTED' && (
         <Card className="border-ok/40">
           <p className="text-sm font-semibold text-ok-bright">מצאנו לך מקצוען</p>
+
+          {/* The thesis, stated to the customer: the best match is often the
+              person already heading this way, not the nearest one. Shown only
+              when the offer carried real route evidence. */}
+          {assignment.is_on_the_way && (
+            <div className="mt-2.5">
+              <Badge tone="live">🚗 כבר בדרך לאזור שלך</Badge>
+              <div className="mt-2">
+                <ConnectionLine active label="בדרך" />
+              </div>
+            </div>
+          )}
 
           <div className="mt-2 flex items-start gap-3">
             <Avatar name={assignment.provider_name} size={48} />
