@@ -360,7 +360,7 @@ function FilterGroups({
         <Input
           type="number"
           inputMode="decimal"
-          step="0.5"
+          step="any"
           placeholder={String(facets.thickness.min)}
           defaultValue={state.thicknessMin ?? ""}
           aria-label="עובי מינימלי"
@@ -371,7 +371,7 @@ function FilterGroups({
         <Input
           type="number"
           inputMode="decimal"
-          step="0.5"
+          step="any"
           placeholder={String(facets.thickness.max)}
           defaultValue={state.thicknessMax ?? ""}
           aria-label="עובי מקסימלי"

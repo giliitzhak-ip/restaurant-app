@@ -21,11 +21,8 @@ import { useToast } from "@/components/ui/toast";
 import { CartSummary } from "@/features/cart/cart-summary";
 import { useCart } from "@/features/cart/cart-provider";
 import { useSessionUser } from "@/components/providers";
-import {
-  checkoutSchema,
-  placeOrderAction,
-  type CheckoutInput,
-} from "@/server/actions/checkout";
+import { placeOrderAction } from "@/server/actions/checkout";
+import { checkoutSchema, type CheckoutInput } from "@/features/checkout/schema";
 
 export function CheckoutForm({
   paymentLabel,

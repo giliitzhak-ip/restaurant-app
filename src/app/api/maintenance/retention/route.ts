@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getRepository } from "@/server/repositories";
+import { removeStoredImage } from "@/server/storage";
 
 /**
  * Privacy retention job.
@@ -28,8 +29,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 
-  const removed = await getRepository().purgeExpiredDesigns();
-  return NextResponse.json({ ok: true, removed });
+  const { removed, imageUrls } = await getRepository().purgeExpiredDesigns();
+  // Delete the files as well as the rows.
+  for (const url of imageUrls) await removeStoredImage(url);
+  return NextResponse.json({ ok: true, removed, files: imageUrls.length });
 }
 
 export const GET = POST;

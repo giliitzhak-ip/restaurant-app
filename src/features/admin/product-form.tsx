@@ -314,7 +314,7 @@ export function ProductForm({
               id="price"
               type="number"
               min="0"
-              step="0.01"
+              step="any"
               className="num"
               value={form.pricePerUnit}
               onChange={(event) => set("pricePerUnit", Number(event.target.value))}
@@ -326,7 +326,7 @@ export function ProductForm({
               id="compare"
               type="number"
               min="0"
-              step="0.01"
+              step="any"
               className="num"
               value={form.compareAtPrice ?? ""}
               onChange={(event) =>
@@ -348,7 +348,7 @@ export function ProductForm({
               id="coverage"
               type="number"
               min="0"
-              step="0.01"
+              step="any"
               className="num"
               value={form.packageCoverageSqm ?? ""}
               onChange={(event) =>
@@ -455,7 +455,7 @@ export function ProductForm({
               id="thicknessMm"
               type="number"
               min="0.1"
-              step="0.1"
+              step="any"
               className="num"
               value={form.specs.thicknessMm}
               onChange={(event) => setSpec("thicknessMm", Number(event.target.value))}
@@ -467,7 +467,7 @@ export function ProductForm({
               id="wearLayerMm"
               type="number"
               min="0"
-              step="0.05"
+              step="any"
               className="num"
               value={form.specs.wearLayerMm ?? ""}
               onChange={(event) =>
@@ -721,7 +721,7 @@ export function ProductForm({
                   id="texW"
                   type="number"
                   min="1"
-                  step="0.1"
+                  step="any"
                   className="num"
                   value={form.texture.widthCm}
                   onChange={(event) =>
@@ -738,7 +738,7 @@ export function ProductForm({
                   id="texH"
                   type="number"
                   min="1"
-                  step="0.1"
+                  step="any"
                   className="num"
                   value={form.texture.heightCm}
                   onChange={(event) =>
@@ -807,7 +807,7 @@ export function ProductForm({
                   id="scaleFactor"
                   type="number"
                   min="0.1"
-                  step="0.05"
+                  step="any"
                   className="num"
                   value={form.texture.scaleFactor}
                   onChange={(event) =>

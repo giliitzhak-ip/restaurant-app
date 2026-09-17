@@ -4,24 +4,12 @@ import { routes } from "@/config/site";
 import { t } from "@/i18n";
 import { formatArea, formatDateTime, formatPrice } from "@/lib/format";
 import { getRepository } from "@/server/repositories";
-import { setOrderStatusAction } from "@/server/actions/admin";
 import { AdminCell, AdminPageHeader, AdminTable } from "@/features/admin/admin-table";
-import { StatusSelect } from "@/features/admin/status-select";
-import type { OrderStatus } from "@/types/commerce";
-
+import { OrderStatusSelect } from "@/features/admin/status-select";
 export const metadata: Metadata = {
   title: t.admin.orders,
   robots: { index: false, follow: false },
 };
-
-const statusOptions: { value: OrderStatus; label: string }[] = [
-  { value: "PENDING", label: "ממתינה לתשלום" },
-  { value: "PAID", label: "שולמה" },
-  { value: "PROCESSING", label: "בהכנה" },
-  { value: "SHIPPED", label: "נשלחה" },
-  { value: "COMPLETED", label: "הושלמה" },
-  { value: "CANCELLED", label: "בוטלה" },
-];
 
 export default async function AdminOrdersPage() {
   const orders = await getRepository().listOrders();
@@ -65,11 +53,10 @@ export default async function AdminOrdersPage() {
               </AdminCell>
               <AdminCell className="num">{formatPrice(order.total)}</AdminCell>
               <AdminCell>
-                <StatusSelect
-                  label={`סטטוס הזמנה ${order.number}`}
-                  value={order.status}
-                  options={statusOptions}
-                  onSave={(next) => setOrderStatusAction(order.id, next)}
+                <OrderStatusSelect
+                  id={order.id}
+                  status={order.status}
+                  number={order.number}
                 />
               </AdminCell>
             </tr>

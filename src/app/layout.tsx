@@ -63,6 +63,8 @@ export default async function RootLayout({
       lang={localeMeta[defaultLocale].htmlLang}
       dir={localeMeta[defaultLocale].dir}
       className={`${sans.variable} ${display.variable}`}
+      // Smooth scrolling is intentional; this tells Next not to warn about it.
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <body className="min-h-dvh antialiased">

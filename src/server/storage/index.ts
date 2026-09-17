@@ -20,4 +20,26 @@ export async function readUploadedImage(file: File) {
   return new Uint8Array(await file.arrayBuffer());
 }
 
+/**
+ * Maps a stored URL back to its driver key and removes the file.
+ *
+ * Deleting a design row is not enough for a privacy promise — the bytes have
+ * to go too. Best effort by design: a missing file is not an error.
+ */
+export async function removeStoredImage(url: string | null | undefined) {
+  if (!url) return;
+  const driver = getStorage();
+
+  if (driver.id === "local") {
+    if (!url.startsWith("/uploads/")) return; // generated media, not an upload
+    await driver.remove(url.replace("/uploads/", ""));
+    return;
+  }
+
+  const base = process.env.STORAGE_PUBLIC_BASE_URL?.replace(/\/$/, "");
+  if (base && url.startsWith(base)) {
+    await driver.remove(url.slice(base.length + 1));
+  }
+}
+
 export type { StorageDriver, StoredFile } from "./types";

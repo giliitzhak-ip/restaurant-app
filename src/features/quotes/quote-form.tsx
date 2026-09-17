@@ -131,7 +131,7 @@ export function QuoteForm({
             type="number"
             inputMode="decimal"
             min="0"
-            step="0.1"
+            step="any"
             defaultValue={defaultAreaSqm ? defaultAreaSqm.toFixed(1) : ""}
             className="num"
           />

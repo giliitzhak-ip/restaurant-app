@@ -3,23 +3,12 @@ import Image from "next/image";
 import { t } from "@/i18n";
 import { formatArea, formatDateTime } from "@/lib/format";
 import { getRepository } from "@/server/repositories";
-import { setQuoteStatusAction } from "@/server/actions/admin";
 import { AdminCell, AdminPageHeader, AdminTable } from "@/features/admin/admin-table";
-import { StatusSelect } from "@/features/admin/status-select";
-import type { QuoteStatus } from "@/types/commerce";
-
+import { QuoteStatusSelect } from "@/features/admin/status-select";
 export const metadata: Metadata = {
   title: t.admin.quotes,
   robots: { index: false, follow: false },
 };
-
-const statusOptions: { value: QuoteStatus; label: string }[] = [
-  { value: "NEW", label: "נקלטה" },
-  { value: "IN_PROGRESS", label: "בטיפול" },
-  { value: "SENT", label: "הצעה נשלחה" },
-  { value: "WON", label: "אושרה" },
-  { value: "LOST", label: "נסגרה" },
-];
 
 export default async function AdminQuotesPage() {
   const quotes = await getRepository().listQuotes();
@@ -74,11 +63,10 @@ export default async function AdminQuotesPage() {
                 )}
               </AdminCell>
               <AdminCell>
-                <StatusSelect
-                  label={`סטטוס בקשה ${quote.number}`}
-                  value={quote.status}
-                  options={statusOptions}
-                  onSave={(next) => setQuoteStatusAction(quote.id, next)}
+                <QuoteStatusSelect
+                  id={quote.id}
+                  status={quote.status}
+                  number={quote.number}
                 />
               </AdminCell>
             </tr>

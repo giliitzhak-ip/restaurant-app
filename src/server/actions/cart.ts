@@ -27,6 +27,15 @@ export type CartActionResult =
   | { ok: true; cart: Cart }
   | { ok: false; error: string; cart: Cart };
 
+export type CouponActionResult =
+  | { ok: true; cart: Cart }
+  | {
+      ok: false;
+      error: "INVALID_COUPON" | "MIN_NOT_MET";
+      minSubtotal?: number;
+      cart: Cart;
+    };
+
 function revalidate() {
   revalidatePath("/cart");
   revalidatePath("/checkout");
@@ -76,10 +85,16 @@ export async function clearCartAction(): Promise<CartActionResult> {
   return { ok: true, cart };
 }
 
-export async function applyCouponAction(code: string): Promise<CartActionResult> {
-  const { cart, ok } = await applyCoupon(code);
+export async function applyCouponAction(code: string): Promise<CouponActionResult> {
+  const { cart, outcome, minSubtotal } = await applyCoupon(code);
   revalidate();
-  return ok ? { ok: true, cart } : { ok: false, error: "INVALID_COUPON", cart };
+  if (outcome === "APPLIED" || outcome === "CLEARED") return { ok: true, cart };
+  return {
+    ok: false,
+    error: outcome === "MIN_NOT_MET" ? "MIN_NOT_MET" : "INVALID_COUPON",
+    minSubtotal,
+    cart,
+  };
 }
 
 export async function setInstallationAction(

@@ -153,22 +153,41 @@ export async function clearCart() {
   });
 }
 
-export async function applyCoupon(code: string): Promise<{ cart: Cart; ok: boolean }> {
+export type CouponOutcome = "APPLIED" | "CLEARED" | "INVALID" | "MIN_NOT_MET";
+
+export async function applyCoupon(
+  code: string,
+): Promise<{ cart: Cart; outcome: CouponOutcome; minSubtotal?: number }> {
   const repository = getRepository();
   const trimmed = code.trim();
   if (!trimmed) {
-    return { cart: await mutate((record) => void (record.couponCode = null)), ok: true };
+    return {
+      cart: await mutate((record) => void (record.couponCode = null)),
+      outcome: "CLEARED",
+    };
   }
+
   const coupon = await repository.getCoupon(trimmed);
-  if (!coupon || !coupon.active) {
-    return { cart: await getCart(), ok: false };
+  const expired =
+    coupon?.expiresAt && new Date(coupon.expiresAt).getTime() < Date.now();
+  if (!coupon || !coupon.active || expired) {
+    return { cart: await getCart(), outcome: "INVALID" };
   }
+
   const cart = await mutate((record) => {
     record.couponCode = coupon.code;
   });
-  // A code that exists but does not clear its minimum spend is reported back
-  // as invalid rather than silently applying zero discount.
-  return { cart, ok: cart.totals.discount > 0 };
+
+  // A real code that simply misses its minimum spend gets its own message —
+  // "invalid code" would send the customer looking for a typo.
+  if (cart.totals.discount <= 0) {
+    return {
+      cart,
+      outcome: "MIN_NOT_MET",
+      minSubtotal: coupon.minSubtotal ?? undefined,
+    };
+  }
+  return { cart, outcome: "APPLIED" };
 }
 
 export async function setInstallation(enabled: boolean, sqm?: number) {

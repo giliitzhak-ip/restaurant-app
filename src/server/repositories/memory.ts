@@ -31,7 +31,7 @@ import type {
   QuoteStatus,
   User,
 } from "@/types/commerce";
-import type { RoomDesignRecord, SurfaceSelection } from "@/types/design";
+import type { RoomDesignRecord } from "@/types/design";
 import { buildFacets, matchesFilter, sortProducts } from "./filter";
 import type {
   AdminStats,
@@ -169,16 +169,6 @@ function productFromInput(input: ProductInput, id: string, createdAt: string): P
   };
 }
 
-function selectionsFrom(surfaces: DesignInput["surfaces"]): SurfaceSelection[] {
-  return surfaces
-    .filter((surface) => surface.productId)
-    .map((surface) => ({
-      surfaceId: surface.surfaceId,
-      productId: surface.productId!,
-      settings: surface.settings,
-    }));
-}
-
 function designFrom(input: DesignInput, id: string, createdAt: string): RoomDesignRecord {
   const floor = input.surfaces.find((s) => s.kind === "FLOOR" && s.productId);
   const wall = input.surfaces.find((s) => s.kind === "WALL" && s.productId);
@@ -201,7 +191,7 @@ function designFrom(input: DesignInput, id: string, createdAt: string): RoomDesi
     updatedAt: new Date().toISOString(),
     expiresAt: input.expiresAt,
     analysis: input.analysis,
-    selections: selectionsFrom(input.surfaces),
+    surfaces: clone(input.surfaces),
   };
 }
 
@@ -556,11 +546,18 @@ export const memoryRepository: Repository = {
   },
 
   async purgeExpiredDesigns(now = new Date()) {
-    const before = store.designs.length;
-    store.designs = store.designs.filter(
-      (design) => !design.expiresAt || new Date(design.expiresAt) > now,
+    const expired = store.designs.filter(
+      (design) => design.expiresAt && new Date(design.expiresAt) <= now,
     );
-    return before - store.designs.length;
+    const expiredIds = new Set(expired.map((design) => design.id));
+    store.designs = store.designs.filter((design) => !expiredIds.has(design.id));
+    for (const id of expiredIds) store.designSurfaces.delete(id);
+    return {
+      removed: expired.length,
+      imageUrls: expired
+        .flatMap((design) => [design.originalImageUrl, design.renderedImageUrl])
+        .filter((url): url is string => Boolean(url)),
+    };
   },
 
   async createUser(input) {

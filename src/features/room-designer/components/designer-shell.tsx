@@ -31,7 +31,7 @@ import {
   uploadRoomImageAction,
 } from "@/server/actions/designs";
 import type { ProductSwatch } from "@/types/catalog";
-import type { SurfaceKind } from "@/types/design";
+import type { RoomDesignRecord, SurfaceKind } from "@/types/design";
 import { canvasToFile } from "../utils/image";
 import { useDesigner } from "../hooks/use-designer";
 import { CanvasStage } from "./canvas-stage";
@@ -58,12 +58,19 @@ export function DesignerShell({
   swatches,
   initialProductSlug,
   initialSurface,
+  savedDesign,
 }: {
   swatches: ProductSwatch[];
   initialProductSlug?: string;
   initialSurface?: SurfaceKind;
+  savedDesign?: RoomDesignRecord | null;
 }) {
-  const controller = useDesigner({ swatches, initialProductSlug, initialSurface });
+  const controller = useDesigner({
+    swatches,
+    initialProductSlug,
+    initialSurface,
+    savedDesign,
+  });
   const [compare, setCompare] = React.useState(false);
   const [saveOpen, setSaveOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
@@ -222,8 +229,12 @@ export function DesignerShell({
       {controller.step === "analyzing" ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
           <Loader2 className="size-7 animate-spin text-studio-ink/70" />
-          <p className="font-display text-xl">{t.designer.analyzing}</p>
-          <p className="text-sm text-studio-ink/55">{t.designer.analyzingHint}</p>
+          <p className="font-display text-xl">
+            {savedDesign ? t.common.loading : t.designer.analyzing}
+          </p>
+          <p className="text-sm text-studio-ink/55">
+            {savedDesign ? savedDesign.name : t.designer.analyzingHint}
+          </p>
         </div>
       ) : null}
 

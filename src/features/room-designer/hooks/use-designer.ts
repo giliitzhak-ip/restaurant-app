@@ -8,6 +8,7 @@ import type { ProductSwatch } from "@/types/catalog";
 import type {
   NormPoint,
   RoomAnalysis,
+  RoomDesignRecord,
   RoomSurfaceMask,
   SurfaceKind,
   TextureSettings,
@@ -53,13 +54,19 @@ export function useDesigner({
   swatches,
   initialProductSlug,
   initialSurface,
+  savedDesign,
 }: {
   swatches: ProductSwatch[];
   initialProductSlug?: string;
   initialSurface?: SurfaceKind;
+  /** Reopening a design from "my designs". */
+  savedDesign?: RoomDesignRecord | null;
 }) {
   const [state, setState] = React.useState<DesignerState>({
-    step: "upload",
+    // A saved design goes straight to the loading state; the photo and masks
+    // are restored in the effect below. A design whose photo the customer
+    // deleted starts at the upload step instead.
+    step: savedDesign?.originalImageUrl ? "analyzing" : "upload",
     image: null,
     analysis: null,
     surfaces: [],
@@ -68,8 +75,8 @@ export function useDesigner({
     roomWidthM: 4,
     error: null,
     rendering: false,
-    designId: null,
-    designName: "",
+    designId: savedDesign?.id ?? null,
+    designName: savedDesign?.name ?? "",
   });
 
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
@@ -201,6 +208,55 @@ export function useDesigner({
     },
     [applyAnalysis],
   );
+
+  /* --------------------------- restore a design -------------------------- */
+
+  const restoreDesign = React.useCallback(
+    async (design: RoomDesignRecord) => {
+      maskCache.current.clear();
+      let image: WorkingImage;
+      try {
+        image = await prepareImage(design.originalImageUrl);
+      } catch {
+        setState((current) => ({
+          ...current,
+          step: "upload",
+          error: "IMAGE_DECODE_FAILED",
+        }));
+        return;
+      }
+
+      const surfaces: SurfaceState[] = design.surfaces.map((surface) => ({
+        mask: surface.mask,
+        productId: surface.productId,
+        settings: surface.settings,
+        areaSqm: surface.areaSqm,
+      }));
+      const preferred =
+        surfaces.find((surface) => surface.mask.kind === "FLOOR") ?? surfaces[0];
+
+      setState((current) => ({
+        ...current,
+        step: "design",
+        image,
+        analysis: design.analysis,
+        surfaces,
+        activeSurfaceId: preferred?.mask.id ?? null,
+        activeKind: preferred?.mask.kind ?? current.activeKind,
+        designId: design.id,
+        designName: design.name,
+        error: null,
+      }));
+    },
+    [],
+  );
+
+  const restored = React.useRef(false);
+  React.useEffect(() => {
+    if (!savedDesign?.originalImageUrl || restored.current) return;
+    restored.current = true;
+    void restoreDesign(savedDesign);
+  }, [restoreDesign, savedDesign]);
 
   /* ------------------------------ selection ------------------------------ */
 

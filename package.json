@@ -19,7 +19,8 @@
     "predev": "tsx scripts/generate-media.ts",
     "prebuild": "prisma generate && tsx scripts/generate-media.ts",
     "postinstall": "prisma generate",
-    "qa:responsive": "node scripts/qa-responsive.mjs"
+    "qa:responsive": "node scripts/qa-responsive.mjs",
+    "qa:flows": "node scripts/qa-flows.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

@@ -8,7 +8,7 @@ import { roundTo } from "@/lib/format";
 import { ensureGuestToken, getSessionUser } from "@/server/auth/session";
 import { addToCart } from "@/server/cart/cart-service";
 import { getRepository } from "@/server/repositories";
-import { getStorage, readUploadedImage } from "@/server/storage";
+import { getStorage, readUploadedImage, removeStoredImage } from "@/server/storage";
 import type { RoomDesignRecord } from "@/types/design";
 
 const pointSchema = z.object({ x: z.number(), y: z.number() });
@@ -195,6 +195,9 @@ export async function deleteDesignAction(designId: string) {
   const design = await assertOwnership(designId);
   if (!design) return { ok: false as const };
   await getRepository().deleteDesign(designId);
+  // The row and the bytes go together.
+  await removeStoredImage(design.originalImageUrl);
+  await removeStoredImage(design.renderedImageUrl);
   revalidatePath(routes.account.designs);
   return { ok: true as const };
 }
@@ -204,6 +207,8 @@ export async function deleteDesignImageAction(designId: string) {
   const design = await assertOwnership(designId);
   if (!design) return { ok: false as const };
   await getRepository().deleteDesignImage(designId);
+  await removeStoredImage(design.originalImageUrl);
+  await removeStoredImage(design.renderedImageUrl);
   revalidatePath(routes.account.designs);
   return { ok: true as const };
 }
@@ -223,29 +228,7 @@ export async function duplicateDesignAction(designId: string) {
     estimatedAreaSqm: design.estimatedAreaSqm,
     estimatedPrice: design.estimatedPrice,
     analysis: design.analysis,
-    surfaces: design.selections.map((selection) => {
-      const mask = design.analysis?.surfaces.find(
-        (surface) => surface.id === selection.surfaceId,
-      );
-      return {
-        surfaceId: selection.surfaceId,
-        kind: mask?.kind ?? "FLOOR",
-        label: mask?.label ?? "משטח",
-        productId: selection.productId,
-        mask:
-          mask ?? {
-            id: selection.surfaceId,
-            kind: "FLOOR" as const,
-            label: "משטח",
-            polygon: [],
-            holes: [],
-            confidence: 1,
-            source: "MANUAL" as const,
-          },
-        settings: selection.settings,
-        areaSqm: design.estimatedAreaSqm,
-      };
-    }),
+    surfaces: design.surfaces,
     expiresAt: null,
   });
 
@@ -259,18 +242,15 @@ export async function addDesignToCartAction(designId: string) {
   const design = await repository.getDesign(designId);
   if (!design) return { ok: false as const, error: "NOT_FOUND" };
 
-  const areaBySurface = new Map<string, number>();
-  for (const surface of design.analysis?.surfaces ?? []) {
-    areaBySurface.set(surface.id, design.estimatedAreaSqm);
-  }
-
   let added = 0;
-  for (const selection of design.selections) {
-    const product = await repository.getProductById(selection.productId);
+  for (const surface of design.surfaces) {
+    if (!surface.productId) continue;
+    const product = await repository.getProductById(surface.productId);
     if (!product) continue;
     await addToCart({
       productId: product.id,
-      sqm: areaBySurface.get(selection.surfaceId) ?? design.estimatedAreaSqm,
+      // Each surface is sized by its own estimated area.
+      sqm: Math.max(0.5, surface.areaSqm || design.estimatedAreaSqm),
       designId: design.id,
       designLabel: design.name,
     });

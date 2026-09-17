@@ -180,14 +180,34 @@ npm run build        # next build
 npm run qa           # all three
 ```
 
-Responsive / RTL sweep at 375, 430, 768 and 1440 px (statuses, direction,
-console errors and horizontal overflow with the offending element):
+Two Playwright scripts cover the rest (they need a running server):
 
 ```bash
 npx playwright install chromium   # once
 npm run dev -- -p 3100
-npm run qa:responsive
+
+npm run qa:responsive   # 375 / 430 / 768 / 1440: status, dir, console errors,
+                        # and horizontal overflow with the offending element
+npm run qa:flows        # home → filter → product → calculator → cart → coupon
+                        # → checkout → order, quote, designer (analyse, apply,
+                        # save, add to cart), admin login → product edit
 ```
+
+`qa:flows` writes real records, so point it at a throwaway environment. Both
+were run against the in-memory driver **and** a live PostgreSQL 16 instance,
+with identical results and no console errors.
+
+### Deployment
+
+Any Node host that runs `next start` (Vercel, Fly, a container) works:
+
+1. set `DATABASE_URL`, `AUTH_SECRET`, `NEXT_PUBLIC_SITE_URL`;
+2. `npm ci && npm run build` (the build generates placeholder media and the
+   Prisma client);
+3. run `prisma migrate deploy` (or `db push` for a first deploy) and
+   `npm run db:seed` once;
+4. point `STORAGE_DRIVER=remote` at a bucket so uploads survive redeploys;
+5. schedule `POST /api/maintenance/retention` daily with `MAINTENANCE_TOKEN`.
 
 ---
 

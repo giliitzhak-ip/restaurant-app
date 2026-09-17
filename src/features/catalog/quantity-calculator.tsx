@@ -151,7 +151,7 @@ export function QuantityCalculator({
                       type="number"
                       inputMode="decimal"
                       min="0"
-                      step="0.01"
+                      step="any"
                       value={room.length}
                       onChange={(event) =>
                         update(room.id, { length: event.target.value })
@@ -167,7 +167,7 @@ export function QuantityCalculator({
                       type="number"
                       inputMode="decimal"
                       min="0"
-                      step="0.01"
+                      step="any"
                       value={room.width}
                       onChange={(event) => update(room.id, { width: event.target.value })}
                       className="num"
@@ -183,7 +183,7 @@ export function QuantityCalculator({
                     type="number"
                     inputMode="decimal"
                     min="0"
-                    step="0.01"
+                    step="any"
                     value={room.area}
                     onChange={(event) => update(room.id, { area: event.target.value })}
                     className="num"

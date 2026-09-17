@@ -281,13 +281,18 @@ function toDesign(row: DesignRow): RoomDesignRecord {
     updatedAt: row.updatedAt.toISOString(),
     expiresAt: row.expiresAt?.toISOString() ?? null,
     analysis: (row.analysis as unknown as RoomAnalysis | null) ?? null,
-    selections: row.surfaces
-      .filter((surface) => surface.productId)
-      .map((surface) => ({
-        surfaceId: (surface.mask as unknown as RoomSurfaceMask).id,
-        productId: surface.productId!,
+    surfaces: row.surfaces.map((surface) => {
+      const mask = surface.mask as unknown as RoomSurfaceMask;
+      return {
+        surfaceId: mask.id,
+        kind: surface.kind,
+        label: surface.label,
+        productId: surface.productId,
+        mask,
         settings: surface.settings as unknown as TextureSettings,
-      })),
+        areaSqm: surface.areaSqm,
+      };
+    }),
   };
 }
 
@@ -971,10 +976,21 @@ export const prismaRepository: Repository = {
   },
 
   async purgeExpiredDesigns(now = new Date()) {
-    const result = await getPrisma().roomDesign.deleteMany({
+    const prisma = getPrisma();
+    const expired = await prisma.roomDesign.findMany({
       where: { expiresAt: { lt: now } },
+      select: { id: true, originalImageUrl: true, renderedImageUrl: true },
     });
-    return result.count;
+    if (!expired.length) return { removed: 0, imageUrls: [] };
+    await prisma.roomDesign.deleteMany({
+      where: { id: { in: expired.map((design) => design.id) } },
+    });
+    return {
+      removed: expired.length,
+      imageUrls: expired
+        .flatMap((design) => [design.originalImageUrl, design.renderedImageUrl])
+        .filter((url): url is string => Boolean(url)),
+    };
   },
 
   async createUser(input) {

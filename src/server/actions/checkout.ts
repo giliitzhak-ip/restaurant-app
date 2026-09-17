@@ -2,6 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import {
+  checkoutSchema,
+  type CheckoutInput,
+} from "@/features/checkout/schema";
 import { routes, siteUrl } from "@/config/site";
 import { getSessionUser } from "@/server/auth/session";
 import { clearCart, getCart } from "@/server/cart/cart-service";
@@ -9,31 +13,9 @@ import { getPaymentProvider } from "@/server/payments";
 import { getRepository } from "@/server/repositories";
 import { generateOrderNumber } from "@/server/commerce/pricing";
 
-export const checkoutSchema = z
-  .object({
-    fullName: z.string().trim().min(2, "נדרש שם מלא"),
-    phone: z
-      .string()
-      .trim()
-      .regex(/^0\d{1,2}-?\d{7}$|^\+972\d{8,9}$/, "מספר טלפון לא תקין"),
-    email: z.string().trim().email("אימייל לא תקין"),
-    fulfilment: z.enum(["SHIPPING", "PICKUP"]),
-    street: z.string().trim().optional(),
-    city: z.string().trim().optional(),
-    zip: z.string().trim().optional(),
-    floor: z.string().trim().optional(),
-    notes: z.string().trim().max(1000).optional(),
-    terms: z.literal(true, { message: "יש לאשר את התקנון" }),
-  })
-  .refine(
-    (value) =>
-      value.fulfilment === "PICKUP" ||
-      (Boolean(value.street && value.street.length > 1) &&
-        Boolean(value.city && value.city.length > 1)),
-    { message: "נדרשת כתובת למשלוח", path: ["street"] },
-  );
+export type { CheckoutInput };
 
-export type CheckoutInput = z.input<typeof checkoutSchema>;
+
 
 export type CheckoutResult =
   | { ok: true; orderNumber: string; redirectUrl?: string }

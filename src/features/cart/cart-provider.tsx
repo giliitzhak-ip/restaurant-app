@@ -4,6 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { track } from "@/lib/analytics";
 import { t } from "@/i18n";
+import { formatPrice } from "@/lib/format";
 import { routes } from "@/config/site";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -145,7 +146,17 @@ export function CartProvider({
     const result = await run(() => applyCouponAction(code));
     setCart(result.cart);
     if (!result.ok) {
-      toast({ tone: "error", title: t.cart.couponInvalid });
+      toast({
+        tone: "error",
+        title:
+          result.error === "MIN_NOT_MET"
+            ? t.cart.couponMinNotMet
+            : t.cart.couponInvalid,
+        description:
+          result.error === "MIN_NOT_MET" && result.minSubtotal
+            ? t.cart.couponMinHint(formatPrice(result.minSubtotal))
+            : undefined,
+      });
       return false;
     }
     toast({ title: t.cart.couponApplied });

@@ -27,8 +27,7 @@ import type {
 import type {
   RoomAnalysis,
   RoomDesignRecord,
-  RoomSurfaceMask,
-  TextureSettings,
+  StoredRoomSurface,
 } from "@/types/design";
 import type { CartRecord } from "@/server/commerce/pricing";
 
@@ -167,16 +166,7 @@ export interface DesignInput {
   estimatedAreaSqm: number;
   estimatedPrice: number;
   analysis: RoomAnalysis | null;
-  surfaces: {
-    /** Matches the surface id inside `analysis`, so masks stay addressable. */
-    surfaceId: string;
-    kind: "FLOOR" | "WALL" | "CEILING";
-    label: string;
-    productId: string | null;
-    mask: RoomSurfaceMask;
-    settings: TextureSettings;
-    areaSqm: number;
-  }[];
+  surfaces: StoredRoomSurface[];
   expiresAt: string | null;
 }
 
@@ -255,7 +245,10 @@ export interface Repository {
   /** Privacy: drops the stored image while keeping the product selection. */
   deleteDesignImage(id: string): Promise<void>;
   claimGuestDesigns(guestToken: string, userId: string): Promise<number>;
-  purgeExpiredDesigns(now?: Date): Promise<number>;
+  /** Returns the deleted count and the image URLs, so files can be removed too. */
+  purgeExpiredDesigns(
+    now?: Date,
+  ): Promise<{ removed: number; imageUrls: string[] }>;
 
   /* accounts */
   createUser(input: {

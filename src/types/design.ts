@@ -101,7 +101,19 @@ export interface RoomDesignSummary {
   expiresAt: string | null;
 }
 
+/** A surface as it was saved: mask, product and render settings. */
+export interface StoredRoomSurface {
+  surfaceId: string;
+  kind: SurfaceKind;
+  label: string;
+  productId: string | null;
+  mask: RoomSurfaceMask;
+  settings: TextureSettings;
+  areaSqm: number;
+}
+
 export interface RoomDesignRecord extends RoomDesignSummary {
   analysis: RoomAnalysis | null;
-  selections: SurfaceSelection[];
+  /** Everything needed to reopen and keep editing the design. */
+  surfaces: StoredRoomSurface[];
 }

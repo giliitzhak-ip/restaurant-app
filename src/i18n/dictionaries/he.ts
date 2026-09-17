@@ -237,6 +237,8 @@ export const he = {
     coupon: "קוד הנחה",
     couponApply: "החלה",
     couponInvalid: "קוד ההנחה אינו תקף",
+    couponMinNotMet: "הקוד תקף, אבל לא הגעתם לסכום המינימלי",
+    couponMinHint: (amount: string) => `הקוד חל מ־${amount} ומעלה.`,
     couponApplied: "קוד ההנחה הוחל",
     freeShippingProgress: (amount: string) =>
       `עוד ${amount} למשלוח חינם`,
