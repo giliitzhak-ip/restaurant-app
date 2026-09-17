@@ -35,6 +35,14 @@ interface Offer {
   service_name: string | null;
 }
 
+/** Hebrew names for the photo kinds, matching @/domains/jobs/images. */
+const PHOTO_KINDS: Record<string, string> = {
+  problem: 'תיאור התקלה',
+  before: 'לפני העבודה',
+  after: 'אחרי העבודה',
+  receipt: 'קבלה',
+};
+
 interface ActiveJob {
   job_id: string;
   price_ils: string;
@@ -49,6 +57,23 @@ interface ActiveJob {
   customer_phone: string | null;
   category_name: string | null;
   service_name: string | null;
+}
+
+/** A photo taken on this job. Never carries the bytes or the locator. */
+interface JobPhoto {
+  id: string;
+  kind: string;
+  content_type: string | null;
+  size_bytes: string | null;
+  created_at: string;
+  uploaded_by_name: string;
+}
+
+interface JobPhotoResponse {
+  images: JobPhoto[];
+  /** Required kinds the job has not got. Blocks finishing the work. */
+  missing: string[];
+  kinds: Record<string, string>;
 }
 
 interface AvailabilityLine {
@@ -89,6 +114,19 @@ export function ProviderConsole() {
   const [busy, setBusy] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [locationNote, setLocationNote] = useState<string | null>(null);
+  /*
+   * Photos of the job, when the category asks to have it documented.
+   *
+   * Stored WITH the job id they belong to rather than in two lists that an
+   * effect has to remember to clear. A stale list shows the last job's
+   * evidence against the next one, and "clear it on change" is both a lint
+   * error and a bug waiting for the one path that forgets.
+   */
+  const [photoState, setPhotoState] = useState<{
+    jobId: string; images: JobPhoto[]; missing: string[];
+  } | null>(null);
+  const [photoBusy, setPhotoBusy] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
   const refetch = useCallback(async () => {
     try {
@@ -221,6 +259,76 @@ export function ProviderConsole() {
       setBusy(null);
     }
   };
+
+  const refreshPhotos = useCallback(async (jobId: string) => {
+    const fresh = await apiFetch<JobPhotoResponse>(`/api/jobs/${jobId}/images`).catch(() => null);
+    if (fresh) setPhotoState({ jobId, images: fresh.images, missing: fresh.missing });
+  }, []);
+
+  const uploadPhoto = async (jobId: string, kind: string, file: File) => {
+    setPhotoError(null);
+    setPhotoBusy(kind);
+    try {
+      const body = new FormData();
+      body.set('file', file);
+      body.set('kind', kind);
+      // Not apiFetch: multipart needs the browser to write its own boundary.
+      const response = await fetch(`/api/jobs/${jobId}/images`, { method: 'POST', body });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as
+          | { error?: { message?: string } }
+          | null;
+        throw new Error(payload?.error?.message ?? 'לא הצלחנו להעלות את התמונה');
+      }
+      await refreshPhotos(jobId);
+    } catch (caught) {
+      setPhotoError(caught instanceof Error ? caught.message : 'לא הצלחנו להעלות את התמונה');
+    } finally {
+      setPhotoBusy(null);
+    }
+  };
+
+  const removePhoto = async (jobId: string, imageId: string) => {
+    setPhotoError(null);
+    setPhotoBusy(imageId);
+    try {
+      await apiFetch(`/api/jobs/${jobId}/images?imageId=${imageId}`, { method: 'DELETE' });
+      await refreshPhotos(jobId);
+    } catch (caught) {
+      setPhotoError(
+        caught instanceof ApiRequestError ? caught.message : 'לא הצלחנו להסיר את התמונה',
+      );
+    } finally {
+      setPhotoBusy(null);
+    }
+  };
+
+  /* Load the job's photos whenever the active job changes. Nothing needs
+     clearing: the list carries its job id and is read only when it matches.
+
+     The fetch is inlined rather than calling refreshPhotos, because the state
+     update has to happen after an await — a setState in an effect body causes
+     the cascading render the lint rule is there to prevent, and it cannot see
+     through a useCallback to tell that this one does not. */
+  const activeJobId = data?.active?.job_id ?? null;
+  useEffect(() => {
+    if (!activeJobId) return;
+    let live = true;
+    void (async () => {
+      const fresh = await apiFetch<JobPhotoResponse>(
+        `/api/jobs/${activeJobId}/images`,
+      ).catch(() => null);
+      if (live && fresh) {
+        setPhotoState({ jobId: activeJobId, images: fresh.images, missing: fresh.missing });
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [activeJobId]);
+
+  const photos = photoState?.jobId === activeJobId ? photoState.images : [];
+  const missingPhotos = photoState?.jobId === activeJobId ? photoState.missing : [];
 
   const advance = async (to: string) => {
     if (!data?.active) return;
@@ -388,6 +496,111 @@ export function ProviderConsole() {
             </p>
           )}
 
+          {/* ── Documenting the work ──────────────────────────────────────
+              Shown from the moment the provider is on site, because "before"
+              stops being possible once they have started. The category
+              decides whether it appears at all: asking a locksmith who opened
+              a door for a before-and-after is how a form gets ignored.
+
+              This exists because `job_images` shipped in migration 0004 and
+              `requires_before_after` was sent to both screens, and nothing
+              ever wrote a photo — the platform told both sides the work was
+              documented and held nothing. */}
+          {activeStatus && ['ARRIVED', 'IN_PROGRESS'].includes(activeStatus)
+            && (missingPhotos.length > 0 || photos.length > 0) && (
+            <div className="mt-4 rounded-xl border border-line bg-bg p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-ink">תיעוד העבודה</p>
+                {missingPhotos.length > 0 ? (
+                  <Badge tone="warn">
+                    חסר: {missingPhotos.map((kind) => PHOTO_KINDS[kind] ?? kind).join(', ')}
+                  </Badge>
+                ) : (
+                  <Badge tone="ok">התיעוד הושלם</Badge>
+                )}
+              </div>
+
+              {photoError && (
+                <p role="alert" className="mt-2 rounded-lg bg-bad/10 px-3 py-2 text-xs text-bad-bright">
+                  {photoError}
+                </p>
+              )}
+
+              <div className="mt-3 space-y-3">
+                {(['before', 'after'] as const).map((kind) => {
+                  const mine = photos.filter((photo) => photo.kind === kind);
+                  return (
+                    <div key={kind}>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm text-ink-2">{PHOTO_KINDS[kind]}</p>
+                        {mine.length > 0 && <Badge tone="ok">צולם</Badge>}
+                      </div>
+
+                      {mine.map((photo) => (
+                        <div
+                          key={photo.id}
+                          className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-2 px-3 py-2"
+                        >
+                          <a
+                            href={`/api/jobs/${active!.job_id}/images/${photo.id}/file`}
+                            className="text-sm font-medium text-brand-bright underline decoration-line-strong underline-offset-4"
+                          >
+                            הצג תמונה
+                          </a>
+                          <Button
+                            variant="secondary"
+                            size="md"
+                            loading={photoBusy === photo.id}
+                            onClick={() => void removePhoto(active!.job_id, photo.id)}
+                          >
+                            הסר
+                          </Button>
+                        </div>
+                      ))}
+
+                      {mine.length === 0 && (
+                        <>
+                          {/* Hidden input, styled label: a bare file input
+                              renders the browser's own English chrome in a
+                              Hebrew RTL screen. `capture` opens the camera
+                              straight away on a handset, which is where this
+                              is used. */}
+                          <label
+                            htmlFor={`photo-${kind}`}
+                            className="mt-2 flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong bg-surface-2 px-4 text-sm font-semibold text-brand-bright hover:border-brand"
+                          >
+                            <span aria-hidden="true">📷</span>
+                            {photoBusy === kind ? 'מעלה…' : 'צלמו או בחרו תמונה'}
+                          </label>
+                          <input
+                            id={`photo-${kind}`}
+                            type="file"
+                            className="sr-only"
+                            accept="image/jpeg,image/png,image/webp"
+                            capture="environment"
+                            disabled={photoBusy === kind}
+                            onChange={(event) => {
+                              const file = event.target.files?.[0];
+                              event.target.value = '';
+                              if (file) void uploadPhoto(active!.job_id, kind, file);
+                            }}
+                          />
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {missingPhotos.length > 0 && (
+                <p className="mt-3 text-xs text-ink-3">
+                  בלי התיעוד לא נוכל לסמן את העבודה כהושלמה — התמונות הן מה שיש
+                  להסתמך עליו אם יתעורר ויכוח.
+                </p>
+              )}
+            </div>
+          )}
+
           {nextStep && (
             <Button
               size="xl"
@@ -395,6 +608,7 @@ export function ProviderConsole() {
               variant={nextStep.variant}
               className="mt-4"
               loading={busy === 'advance'}
+              disabled={nextStep.to === 'AWAITING_CUSTOMER_CONFIRMATION' && missingPhotos.length > 0}
               onClick={() => void advance(nextStep.to)}
             >
               {nextStep.label}

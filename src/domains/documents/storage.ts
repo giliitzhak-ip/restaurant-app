@@ -59,62 +59,20 @@ export interface DocumentStorage {
   get(db: DbSession, storagePath: string): Promise<FetchedDocument | null>;
 }
 
-/**
- * What a provider is allowed to upload, by magic bytes rather than by the
- * Content-Type the client claims.
- *
- * A client-declared type is a request, not a fact. Accepting it would let a
- * provider upload an HTML file labelled image/png; served back to an admin
- * from our own origin, that is script execution in a session that can
- * approve providers. Every file is therefore identified from its own leading
- * bytes, and the type we store and later serve is the one we recognised.
+/*
+ * File-type identification and the private-file headers moved to
+ * @/domains/files/sniff when job photos needed exactly the same reasoning.
+ * Re-exported here so the documents module keeps one import surface, and so
+ * there is one implementation of "what is this file really" rather than two
+ * that can drift.
  */
-export const ALLOWED_DOCUMENT_TYPES = [
-  'application/pdf',
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-] as const;
-
-export type AllowedDocumentType = (typeof ALLOWED_DOCUMENT_TYPES)[number];
-
-/** 10 MB, matching the CHECK constraint in migration 0031. */
-export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
-
-/**
- * Identify a file from its leading bytes, or null if it is none of the four.
- *
- * Deliberately strict and deliberately short: these are the formats a phone
- * camera and a scanner produce. Anything else is refused rather than stored
- * and puzzled over later.
- */
-export function sniffDocumentType(bytes: Buffer): AllowedDocumentType | null {
-  if (bytes.length < 12) return null;
-
-  // %PDF
-  if (bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) {
-    return 'application/pdf';
-  }
-  // JPEG: FF D8 FF
-  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
-    return 'image/jpeg';
-  }
-  // PNG: 89 50 4E 47 0D 0A 1A 0A
-  if (
-    bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 &&
-    bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a
-  ) {
-    return 'image/png';
-  }
-  // WebP: "RIFF" .... "WEBP"
-  if (
-    bytes.toString('ascii', 0, 4) === 'RIFF' &&
-    bytes.toString('ascii', 8, 12) === 'WEBP'
-  ) {
-    return 'image/webp';
-  }
-  return null;
-}
+export {
+  sniffFileType as sniffDocumentType,
+  MAX_UPLOAD_BYTES as MAX_DOCUMENT_BYTES,
+  privateFileHeaders,
+  FILE_TYPES,
+  type SniffedType as AllowedDocumentType,
+} from '@/domains/files/sniff';
 
 /** The document kinds a provider submits, and what each one is called. */
 export const DOCUMENT_KINDS = {

@@ -8,6 +8,7 @@ import {
   type JobStatus,
   JOB_STATUSES,
 } from '@/domains/jobs/state-machine';
+import { assertJobImagesComplete } from '@/domains/jobs/images';
 import { runDispatchWave } from '@/domains/matching/dispatch';
 import { logOperation, newRequestId } from '@/lib/logger';
 
@@ -79,6 +80,21 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     await withUser(
       user.id,
       async (db) => {
+        /*
+         * A category that asks to have the work documented refuses a
+         * completion without the photos, rather than reminding.
+         *
+         * The softer choice would be wrong: the photos exist for the dispute
+         * that happens weeks later, and by then nobody can go back and take
+         * them. Checked inside the same transaction as the status change, so
+         * there is no window where the job is finished and the evidence is
+         * not. Only this transition — a cancellation must never be blocked by
+         * paperwork.
+         */
+        if (body.to === 'AWAITING_CUSTOMER_CONFIRMATION') {
+          await assertJobImagesComplete(db, id);
+        }
+
         await db.query(`update jobs set status = $2::job_status where id = $1`, [id, body.to]);
 
         const column = ASSIGNMENT_TIMESTAMPS[body.to];
