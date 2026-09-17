@@ -183,7 +183,6 @@ describe('notification delivery', () => {
   });
 
   it('a channel the adapter cannot speak is abandoned rather than retried forever', async () => {
-    const customer = await createCustomer();
     const provider = await createProvider({ name: 'מקבל', lat: 32.075, lon: 34.775 });
 
     const notification = await withSystem(async (db) => {

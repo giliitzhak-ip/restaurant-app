@@ -5,7 +5,15 @@ import { useState } from 'react';
 import { Button, Card, Field, inputClasses } from '@/components/ui';
 import { apiFetch, ApiRequestError } from '@/lib/client/api';
 
-type Mode = 'login' | 'register';
+/**
+ * `forgot` and `reset` are part of this form rather than a page of their own.
+ *
+ * There was no password reset at all, and the only recovery for a provider
+ * who forgot theirs was an admin editing the database. Keeping it here means
+ * one screen holds every way into an account, and somebody who mistyped their
+ * password does not have to navigate anywhere to fix it.
+ */
+type Mode = 'login' | 'register' | 'forgot' | 'reset';
 
 interface AuthResponse {
   id: string;
@@ -26,6 +34,9 @@ export function LoginForm({ demoMode }: { demoMode: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  /** The code from the message, and what the last step said went well. */
+  const [resetToken, setResetToken] = useState('');
+  const [notice, setNotice] = useState<string | null>(null);
 
   const routeFor = (user: AuthResponse, justRegistered = false): string => {
     if (next) return next;
@@ -43,6 +54,33 @@ export function LoginForm({ demoMode }: { demoMode: boolean }) {
     setBusy(true);
 
     try {
+      if (mode === 'forgot') {
+        const result = await apiFetch<{ message: string }>('/api/auth/forgot', {
+          method: 'POST',
+          json: { email },
+        });
+        // The same message whether or not the account exists: the endpoint
+        // will not say, and neither will this screen.
+        setNotice(result.message);
+        setMode('reset');
+        return;
+      }
+
+      if (mode === 'reset') {
+        const result = await apiFetch<{ message: string }>('/api/auth/reset', {
+          method: 'POST',
+          json: { token: resetToken.trim(), password },
+        });
+        setNotice(result.message);
+        setResetToken('');
+        setPassword('');
+        // Deliberately back to login rather than straight in: holding the
+        // code proves you can read the message, and a reset that mints a
+        // session would make a leaked code as good as a stolen account.
+        setMode('login');
+        return;
+      }
+
       const user =
         mode === 'login'
           ? await apiFetch<AuthResponse>('/api/auth/login', {
@@ -136,6 +174,7 @@ export function LoginForm({ demoMode }: { demoMode: boolean }) {
             </Field>
           )}
 
+          {mode !== 'reset' && (
           <Field label='דוא"ל' htmlFor="email" error={fieldErrors.email}>
             <input
               id="email"
@@ -148,12 +187,14 @@ export function LoginForm({ demoMode }: { demoMode: boolean }) {
               autoComplete="email"
             />
           </Field>
+          )}
 
+          {mode !== 'forgot' && (
           <Field
-            label="סיסמה"
+            label={mode === 'reset' ? 'סיסמה חדשה' : 'סיסמה'}
             htmlFor="password"
             error={fieldErrors.password}
-            hint={mode === 'register' ? 'לפחות 8 תווים' : undefined}
+            hint={mode === 'register' || mode === 'reset' ? 'לפחות 8 תווים' : undefined}
           >
             <input
               id="password"
@@ -163,10 +204,13 @@ export function LoginForm({ demoMode }: { demoMode: boolean }) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={mode === 'register' ? 8 : 1}
-              autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+              minLength={mode === 'register' || mode === 'reset' ? 8 : 1}
+              autoComplete={
+                mode === 'register' || mode === 'reset' ? 'new-password' : 'current-password'
+              }
             />
           </Field>
+          )}
 
           {mode === 'register' && (
             <Field label="סוג החשבון">
@@ -195,6 +239,27 @@ export function LoginForm({ demoMode }: { demoMode: boolean }) {
             </Field>
           )}
 
+          {mode === 'reset' && (
+            <Field
+              label="הקוד מההודעה"
+              htmlFor="reset-token"
+              hint="הקוד בתוקף לחצי שעה"
+            >
+              <input
+                id="reset-token"
+                dir="ltr"
+                autoComplete="one-time-code"
+                className={inputClasses}
+                value={resetToken}
+                onChange={(event) => setResetToken(event.target.value)}
+              />
+            </Field>
+          )}
+
+          {notice && (
+            <p className="rounded-xl bg-ok/10 px-4 py-3 text-sm text-ok-bright">{notice}</p>
+          )}
+
           {error && (
             <p role="alert" className="rounded-xl bg-bad/10 px-4 py-3 text-sm text-bad-bright">
               {error}
@@ -202,8 +267,42 @@ export function LoginForm({ demoMode }: { demoMode: boolean }) {
           )}
 
           <Button type="submit" fullWidth loading={busy}>
-            {mode === 'login' ? 'התחברו' : 'צרו חשבון'}
+            {mode === 'login'
+              ? 'התחברו'
+              : mode === 'register'
+                ? 'צרו חשבון'
+                : mode === 'forgot'
+                  ? 'שלחו לי קוד'
+                  : 'עדכנו סיסמה'}
           </Button>
+
+          {mode === 'login' && (
+            <button
+              type="button"
+              onClick={() => {
+                setMode('forgot');
+                setError(null);
+                setNotice(null);
+              }}
+              className="min-h-11 text-sm font-medium text-brand-bright underline decoration-line-strong underline-offset-4"
+            >
+              שכחתי את הסיסמה
+            </button>
+          )}
+
+          {(mode === 'forgot' || mode === 'reset') && (
+            <button
+              type="button"
+              onClick={() => {
+                setMode('login');
+                setError(null);
+                setNotice(null);
+              }}
+              className="min-h-11 text-sm text-ink-2"
+            >
+              חזרה להתחברות
+            </button>
+          )}
         </form>
       </Card>
 

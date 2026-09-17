@@ -85,7 +85,7 @@ export function startMaintenanceScheduler(): void {
       const did =
         result.expiredOffers + result.shiftsEnded + result.escalated.length +
         result.lapsedProviders + result.expiryWarnings + result.purgedDocumentFiles +
-        result.purgedRateLimits + result.deliveriesSent + result.deliveriesFailed +
+        result.purgedRateLimits + result.purgedCredentials + result.deliveriesSent + result.deliveriesFailed +
         result.deliveriesAbandoned;
       if (did > 0 || result.failures.length > 0) {
         logOperation({

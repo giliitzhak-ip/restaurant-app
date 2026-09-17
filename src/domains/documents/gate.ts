@@ -46,3 +46,38 @@ export async function assertDocumentsComplete(
     { missing },
   );
 }
+
+/**
+ * A verified provider must have a phone number we have actually reached.
+ *
+ * The whole product rests on it twice over: it is the number a customer is
+ * told to call when the provider is at the door, and the number the delivery
+ * outbox texts when a job appears. An unchecked string in that field means a
+ * provider who never hears about work and a customer who cannot reach
+ * anybody, and neither failure announces itself — the account simply looks
+ * quiet.
+ *
+ * Verification is the right place to insist, because it is the moment a human
+ * is already looking at this provider and deciding whether the platform
+ * vouches for them.
+ */
+export async function assertPhoneVerified(
+  db: DbSession,
+  providerId: string,
+): Promise<void> {
+  const row = await db.one<{ phone: string | null; verified: boolean }>(
+    `select phone, phone_verified_at is not null as verified
+       from profiles where id = $1`,
+    [providerId],
+  );
+  if (!row?.phone) {
+    throw new ApiError('PHONE_REQUIRED', 'לא ניתן לאמת: אין מספר טלפון בחשבון', 409);
+  }
+  if (!row.verified) {
+    throw new ApiError(
+      'PHONE_NOT_VERIFIED',
+      'לא ניתן לאמת: מספר הטלפון לא אומת. המקצוען צריך לאשר קוד שנשלח אליו.',
+      409,
+    );
+  }
+}

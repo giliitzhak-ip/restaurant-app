@@ -6,6 +6,7 @@ import { invalidateSettingsCache } from '@/lib/settings';
 import { approveTradeProposal, rejectTradeProposal } from '@/domains/catalog/trade-proposals';
 import {
   assertDocumentsComplete,
+  assertPhoneVerified,
   missingRequiredDocuments,
   DOCUMENT_KINDS,
   type DocumentKind,
@@ -217,6 +218,7 @@ export async function POST(request: Request) {
            * the market must never be blocked by missing paperwork.
            */
           if (nextStatus === 'VERIFIED') {
+            await assertPhoneVerified(db, body.providerId);
             await assertDocumentsComplete(db, body.providerId);
           }
 

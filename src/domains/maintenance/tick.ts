@@ -25,6 +25,8 @@ export interface MaintenanceResult {
   purgedDocumentFiles: number;
   /** Closed rate-limit windows dropped. */
   purgedRateLimits: number;
+  /** Used or expired reset tokens and verification codes deleted. */
+  purgedCredentials: number;
   /** Out-of-app notifications attempted, and how they went. */
   deliveriesSent: number;
   deliveriesFailed: number;
@@ -48,6 +50,7 @@ export async function runMaintenanceTick(): Promise<MaintenanceResult> {
     expiryWarnings: 0,
     purgedDocumentFiles: 0,
     purgedRateLimits: 0,
+    purgedCredentials: 0,
     deliveriesSent: 0,
     deliveriesFailed: 0,
     deliveriesAbandoned: 0,
@@ -98,6 +101,18 @@ export async function runMaintenanceTick(): Promise<MaintenanceResult> {
 
   await step('documents.purge', async () => {
     result.purgedDocumentFiles = await purgeRejectedDocumentFiles();
+  });
+
+  /* A used reset token is a credential with no purpose. Kept a day so "I
+     clicked it twice" has an explanation, then deleted. */
+  await step('credentials.purge', async () => {
+    result.purgedCredentials = await withSystem(async (db) => {
+      const row = await db.one<{ purge_spent_credentials: number }>(
+        'select purge_spent_credentials($1)',
+        [24],
+      );
+      return row?.purge_spent_credentials ?? 0;
+    });
   });
 
   await step('ratelimits.purge', async () => {

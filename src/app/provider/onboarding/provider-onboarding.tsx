@@ -49,6 +49,13 @@ interface TradeProposal {
 }
 
 /** One document the provider has submitted. Never carries the bytes. */
+interface ContactStatus {
+  phone: string | null;
+  email: string | null;
+  phoneVerified: boolean;
+  emailVerified: boolean;
+}
+
 interface ProviderDocument {
   id: string;
   doc_type: string;
@@ -137,6 +144,14 @@ export function ProviderOnboarding() {
   const [proposalBusy, setProposalBusy] = useState(false);
   const [proposalError, setProposalError] = useState<string | null>(null);
 
+  /* ── The number a customer will call, and the platform will text ───── */
+  const [contact, setContact] = useState<ContactStatus | null>(null);
+  const [phoneDraft, setPhoneDraft] = useState('');
+  const [codeDraft, setCodeDraft] = useState('');
+  const [contactBusy, setContactBusy] = useState<string | null>(null);
+  const [contactError, setContactError] = useState<string | null>(null);
+  const [contactNotice, setContactNotice] = useState<string | null>(null);
+
   /* ── The papers the trade requires ──────────────────────────────────── */
   const [documents, setDocuments] = useState<ProviderDocument[]>([]);
   const [docKinds, setDocKinds] = useState<Record<string, string>>({});
@@ -193,6 +208,12 @@ export function ProviderOnboarding() {
       if (active && docs) {
         setDocuments(docs.documents);
         setDocKinds(docs.kinds);
+      }
+
+      const status = await apiFetch<ContactStatus>('/api/auth/verify').catch(() => null);
+      if (active && status) {
+        setContact(status);
+        setPhoneDraft(status.phone ?? '');
       }
       setLoading(false);
     })();
@@ -348,6 +369,31 @@ export function ProviderOnboarding() {
       );
     } finally {
       setProposalBusy(false);
+    }
+  };
+
+  /* ── Phone ────────────────────────────────────────────────────────────
+     Registration never asked for a number, so a provider had none — and both
+     halves of this product depend on it: it is what a customer is told to
+     call, and what the delivery outbox texts when a job appears. A provider
+     cannot be verified without one that has been reached. */
+  const contactAction = async (label: string, body: Record<string, unknown>) => {
+    setContactError(null);
+    setContactNotice(null);
+    setContactBusy(label);
+    try {
+      await apiFetch('/api/auth/verify', { method: 'POST', json: body });
+      const status = await apiFetch<ContactStatus>('/api/auth/verify');
+      setContact(status);
+      if (body.action === 'send') setContactNotice('נשלח קוד בת שש ספרות.');
+      if (body.action === 'confirm') {
+        setContactNotice('המספר אומת.');
+        setCodeDraft('');
+      }
+    } catch (caught) {
+      setContactError(caught instanceof ApiRequestError ? caught.message : 'הפעולה נכשלה');
+    } finally {
+      setContactBusy(null);
     }
   };
 
@@ -551,7 +597,7 @@ export function ProviderOnboarding() {
             ]
               .filter(Boolean)
               .join(' ו')}
-            . אפשר להעלות את המסמכים בשלב 5 למטה — בלעדיהם לא נוכל לאמת את החשבון.
+            . אפשר להעלות את המסמכים בשלב 6 למטה — בלעדיהם לא נוכל לאמת את החשבון.
           </p>
         )}
 
@@ -876,7 +922,122 @@ export function ProviderOnboarding() {
         </Card>
       )}
 
-      {/* ── 5. Documents ───────────────────────────────────────────────
+      {/* ── 5. The phone number ────────────────────────────────────────
+          Before the documents, because it is the cheaper and more immediate
+          of the two gates and because nothing else on this screen matters if
+          we cannot reach the person. */}
+      {categorySlug && (
+        <Card>
+          <h2 className="text-base font-bold text-ink">
+            <span className="ltr-nums text-ink-3" dir="ltr">5</span> מספר הטלפון
+          </h2>
+          <p className="mt-1 text-sm text-ink-2">
+            זה המספר שהלקוח יתקשר אליו, וזה המספר שנשלח אליו הודעה כשיש עבודה.
+            בלי אימות לא נוכל לאמת את החשבון.
+          </p>
+
+          {contactError && (
+            <p role="alert" className="mt-3 rounded-xl bg-bad/10 px-3 py-2 text-sm text-bad-bright">
+              {contactError}
+            </p>
+          )}
+          {contactNotice && (
+            <p className="mt-3 rounded-xl bg-ok/10 px-3 py-2 text-sm text-ok-bright">
+              {contactNotice}
+            </p>
+          )}
+
+          <div className="mt-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm text-ink-2">
+                {contact?.phone ? (
+                  <span className="ltr-nums" dir="ltr">{contact.phone}</span>
+                ) : (
+                  'עוד לא הוזן מספר'
+                )}
+              </p>
+              {contact?.phoneVerified ? (
+                <Badge tone="ok">אומת</Badge>
+              ) : contact?.phone ? (
+                <Badge tone="warn">ממתין לאימות</Badge>
+              ) : (
+                <Badge tone="bad">חסר</Badge>
+              )}
+            </div>
+
+            {!contact?.phoneVerified && (
+              <>
+                <Field label="מספר טלפון נייד" htmlFor="phone">
+                  <input
+                    id="phone"
+                    type="tel"
+                    dir="ltr"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    placeholder="050-1234567"
+                    className={`${inputClasses} ltr-nums`}
+                    value={phoneDraft}
+                    onChange={(event) => setPhoneDraft(event.target.value)}
+                  />
+                </Field>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="secondary"
+                    size="md"
+                    loading={contactBusy === 'phone'}
+                    disabled={phoneDraft.trim().length < 9}
+                    onClick={() =>
+                      void contactAction('phone', {
+                        action: 'set-phone',
+                        phone: phoneDraft.trim(),
+                      })
+                    }
+                  >
+                    שמרו מספר
+                  </Button>
+                  <Button
+                    size="md"
+                    loading={contactBusy === 'send'}
+                    disabled={!contact?.phone}
+                    onClick={() => void contactAction('send', { action: 'send', channel: 'sms' })}
+                  >
+                    שלחו לי קוד
+                  </Button>
+                </div>
+
+                <Field label="הקוד שקיבלתם" htmlFor="phone-code" hint="שש ספרות, בתוקף ל-10 דקות">
+                  <input
+                    id="phone-code"
+                    dir="ltr"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    className={`${inputClasses} ltr-nums`}
+                    value={codeDraft}
+                    onChange={(event) => setCodeDraft(event.target.value)}
+                  />
+                </Field>
+                <Button
+                  size="md"
+                  loading={contactBusy === 'confirm'}
+                  disabled={!/^\d{6}$/.test(codeDraft.trim())}
+                  onClick={() =>
+                    void contactAction('confirm', {
+                      action: 'confirm',
+                      channel: 'sms',
+                      code: codeDraft.trim(),
+                    })
+                  }
+                >
+                  אמתו את המספר
+                </Button>
+              </>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {/* ── 6. Documents ───────────────────────────────────────────────
           Only shown when the chosen category actually requires something.
           Asking a cleaner for a licence is how a form loses the person
           filling it in.
@@ -890,7 +1051,7 @@ export function ProviderOnboarding() {
       {categorySlug && requiredDocs.length > 0 && (
         <Card>
           <h2 className="text-base font-bold text-ink">
-            <span className="ltr-nums text-ink-3" dir="ltr">5</span> המסמכים שהתחום דורש
+            <span className="ltr-nums text-ink-3" dir="ltr">6</span> המסמכים שהתחום דורש
           </h2>
           <p className="mt-1 text-sm text-ink-2">
             המנהל בודק כל מסמך מול הרשם. עד שהמסמכים יאושרו החשבון לא יאומת ולא
