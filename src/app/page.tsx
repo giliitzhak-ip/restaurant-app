@@ -53,7 +53,7 @@ export default async function HomePage() {
         <Logo />
         <Link
           href="/login"
-          className="rounded-lg px-3 py-2 text-sm font-medium text-slate-300 hover:text-white"
+          className="inline-flex min-h-11 items-center rounded-lg px-4 text-sm font-medium text-slate-300 hover:text-white"
         >
           התחברות
         </Link>
@@ -69,7 +69,10 @@ export default async function HomePage() {
       <HomeSearch categories={categories} />
 
       <footer className="mt-auto pt-10 text-center text-xs text-slate-500">
-        <Link href="/provider" className="hover:text-slate-300">
+        <Link
+          href="/provider"
+          className="inline-flex min-h-11 items-center px-4 hover:text-slate-300"
+        >
           אני בעל מקצוע
         </Link>
       </footer>

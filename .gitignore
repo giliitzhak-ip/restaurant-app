@@ -12,3 +12,4 @@ next-env.d.ts
 npm-debug.log*
 legacy-restaurant/restaurant.db
 storage/
+.ui-shots/

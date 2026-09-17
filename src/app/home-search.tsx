@@ -61,7 +61,7 @@ export function HomeSearch({ categories }: { categories: Category[] }) {
             key={example}
             type="button"
             onClick={() => setDescription(example)}
-            className="rounded-full border border-navy-600 bg-navy-900 px-3 py-1.5 text-sm text-slate-300 hover:border-accent-500 hover:text-white"
+            className="inline-flex min-h-11 items-center rounded-full border border-navy-600 bg-navy-900 px-4 text-sm text-slate-300 hover:border-accent-500 hover:text-white"
           >
             {example}
           </button>
@@ -119,7 +119,7 @@ export function HomeSearch({ categories }: { categories: Category[] }) {
                   if (description.trim()) params.set('q', description.trim());
                   startTransition(() => router.push(`/request?${params.toString()}`));
                 }}
-                className="rounded-xl border border-navy-700 bg-navy-900 px-4 py-2.5 text-sm font-medium text-slate-200 hover:border-accent-500"
+                className="inline-flex min-h-11 items-center rounded-xl border border-navy-700 bg-navy-900 px-4 text-sm font-medium text-slate-200 hover:border-accent-500"
               >
                 {category.name_he}
               </button>
