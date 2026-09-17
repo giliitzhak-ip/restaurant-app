@@ -117,7 +117,32 @@ export async function GET() {
                -- Verifying a provider who has declared no trade changes
                -- nothing: the candidate search would still never return them.
                -- Surfaced so an admin is not approving a dead account.
-               (c.id is not null) as is_configured
+               (c.id is not null) as is_configured,
+               -- Which required documents are still outstanding. The verify
+               -- action refuses while this is non-empty, so showing it here
+               -- is the difference between a reviewer knowing and a reviewer
+               -- finding out by clicking.
+               provider_missing_documents(pp.id) as missing_documents,
+               -- The documents themselves, so a decision can be made from
+               -- this one screen. No storage_path: the locator is not the
+               -- client's business, and the file is fetched by id.
+               coalesce((
+                 select json_agg(json_build_object(
+                          'id', d.id, 'docType', d.doc_type,
+                          'docNumber', d.doc_number,
+                          'originalFilename', d.original_filename,
+                          'contentType', d.content_type,
+                          'sizeBytes', d.size_bytes,
+                          'status', d.status::text,
+                          -- Text, not a date: see the note in
+                          -- /api/provider/documents.
+                          'expiresOn', to_char(d.expires_on, 'YYYY-MM-DD'),
+                          'reviewNotes', d.review_notes,
+                          'createdAt', d.created_at)
+                          order by d.created_at)
+                   from provider_documents d
+                  where d.provider_id = pp.id
+               ), '[]'::json) as documents
           from provider_profiles pp
           join profiles p on p.id = pp.id
           left join provider_categories pc on pc.provider_id = pp.id and pc.is_primary

@@ -4,6 +4,12 @@ import { requireRole } from '@/lib/auth';
 import { withSystem, withUser, type DbSession } from '@/lib/db';
 import { invalidateSettingsCache } from '@/lib/settings';
 import { approveTradeProposal, rejectTradeProposal } from '@/domains/catalog/trade-proposals';
+import {
+  assertDocumentsComplete,
+  missingRequiredDocuments,
+  DOCUMENT_KINDS,
+  type DocumentKind,
+} from '@/domains/documents';
 import { runDispatchWave } from '@/domains/matching/dispatch';
 import { logOperation, newRequestId } from '@/lib/logger';
 
@@ -66,6 +72,27 @@ const bodySchema = z.discriminatedUnion('action', [
   z.object({
     action: z.literal('reject_trade'),
     proposalId: z.uuid(),
+    reason: z.string().min(3).max(500),
+  }),
+
+  /**
+   * Resolve a document a provider submitted (spec §31).
+   *
+   * Separate from verifying the provider, and necessarily so: a document is
+   * checked against its issuing registry, a provider is verified once every
+   * document their trades require has been checked. Collapsing the two would
+   * mean approving papers by approving a person.
+   */
+  z.object({
+    action: z.literal('approve_document'),
+    documentId: z.uuid(),
+    /** Correct the expiry if the reviewer read a different date on the file. */
+    expiresOn: z.iso.date().optional(),
+    note: z.string().max(500).optional(),
+  }),
+  z.object({
+    action: z.literal('reject_document'),
+    documentId: z.uuid(),
     reason: z.string().min(3).max(500),
   }),
 ]);
@@ -172,6 +199,19 @@ export async function POST(request: Request) {
             [body.providerId],
           );
           if (!before) throw new ApiError('NOT_FOUND', 'המקצוען לא נמצא', 404);
+
+          /*
+           * Verifying a licensed trade with no approved licence is the thing
+           * the documents feature exists to prevent, so it is refused here
+           * rather than merely discouraged in the UI. `requires_license` was
+           * a sentence on a form until this call could fail.
+           *
+           * Suspending and rejecting are unaffected: taking someone out of
+           * the market must never be blocked by missing paperwork.
+           */
+          if (nextStatus === 'VERIFIED') {
+            await assertDocumentsComplete(db, body.providerId);
+          }
 
           await db.query(
             `update provider_profiles
@@ -334,6 +374,119 @@ export async function POST(request: Request) {
         });
 
         return ok(result);
+      }
+
+      /* ── Provider documents ───────────────────────────────────────────
+         Only an admin may UPDATE provider_documents — the table has no
+         owner UPDATE policy at all — so a provider reaching this code path
+         writes nothing. */
+      case 'approve_document':
+      case 'reject_document': {
+        const approving = body.action === 'approve_document';
+
+        const resolved = await withUser(admin.id, async (db) => {
+          const before = await db.one<{
+            provider_id: string; doc_type: string; status: string;
+            expires_on: string | null; provider_name: string;
+          }>(
+            `select d.provider_id, d.doc_type, d.status::text as status,
+                    d.expires_on, p.full_name as provider_name
+               from provider_documents d
+               join profiles p on p.id = d.provider_id
+              where d.id = $1`,
+            [body.documentId],
+          );
+          if (!before) throw new ApiError('NOT_FOUND', 'המסמך לא נמצא', 404);
+          if (before.status !== 'PENDING') {
+            throw new ApiError('ALREADY_RESOLVED', 'המסמך כבר נבדק', 409, {
+              status: before.status,
+            });
+          }
+
+          const expiresOn = approving && 'expiresOn' in body && body.expiresOn
+            ? body.expiresOn
+            : before.expires_on;
+
+          // An approval that is already expired is not an approval, and
+          // provider_missing_documents would ignore it — so it fails here,
+          // where the reviewer can see why, rather than silently.
+          if (approving && expiresOn) {
+            const today = new Date().toISOString().slice(0, 10);
+            if (expiresOn < today) {
+              throw new ApiError(
+                'DOCUMENT_EXPIRED',
+                'תוקף המסמך פג — אין לאשר מסמך שאינו בתוקף',
+                422,
+              );
+            }
+          }
+
+          await db.query(
+            `update provider_documents
+                set status = $2::verification_status,
+                    reviewed_by = $3, reviewed_at = now(),
+                    review_notes = $4,
+                    expires_on = $5
+              where id = $1`,
+            [
+              body.documentId,
+              approving ? 'VERIFIED' : 'REJECTED',
+              admin.id,
+              approving ? ('note' in body ? body.note ?? null : null) : body.reason,
+              expiresOn,
+            ],
+          );
+
+          // What the provider still owes AFTER this decision, so the response
+          // can tell the reviewer whether verification is now possible.
+          const stillMissing = await missingRequiredDocuments(db, before.provider_id);
+
+          await audit(
+            db, body.action, 'provider_document', body.documentId,
+            { status: 'PENDING', docType: before.doc_type },
+            {
+              status: approving ? 'VERIFIED' : 'REJECTED',
+              docType: before.doc_type,
+              providerId: before.provider_id,
+              stillMissing,
+            },
+            approving
+              ? ('note' in body ? body.note : undefined)
+              : body.reason,
+          );
+
+          return { ...before, missing: stillMissing };
+        });
+
+        const kindName = DOCUMENT_KINDS[resolved.doc_type as DocumentKind] ?? resolved.doc_type;
+        await notifyProvider(
+          resolved.provider_id,
+          approving ? 'document.approved' : 'document.rejected',
+          approving ? 'המסמך אושר' : 'המסמך לא אושר',
+          approving
+            ? resolved.missing.length === 0
+              ? `${kindName} אושר. כל המסמכים הנדרשים הושלמו.`
+              : `${kindName} אושר. עוד חסר: ${resolved.missing
+                  .map((kind) => DOCUMENT_KINDS[kind as DocumentKind] ?? kind)
+                  .join(', ')}.`
+            : `${kindName}: ${body.reason}`,
+          { documentId: body.documentId, docType: resolved.doc_type },
+        );
+
+        logOperation({
+          requestId, userId: admin.id, providerId: resolved.provider_id,
+          operation: `admin.${body.action}`, result: 'ok',
+          // No document number and no filename: this is the one place that
+          // data must not end up.
+          meta: { docType: resolved.doc_type, stillMissing: resolved.missing.length },
+        });
+
+        return ok({
+          documentId: body.documentId,
+          status: approving ? 'VERIFIED' : 'REJECTED',
+          providerId: resolved.provider_id,
+          stillMissing: resolved.missing,
+        });
       }
 
       case 'reject_trade': {

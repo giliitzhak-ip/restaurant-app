@@ -82,7 +82,7 @@ writes them.
 | Category | Weighted — plumbing and electrical are common, pest control is not. |
 | Rating | Generated **with** its review count in six tiers, so 4.9 comes with hundreds of reviews and 4.2 with a few dozen. A rating and a count drawn independently produce nonsense like 5.0 from two reviews sitting above 4.8 from three hundred. |
 | New providers | ~9% have `rating_avg = null` and `rating_count = 0`, so the "no rating yet" path is exercised by data rather than only by a test. They show `חדש ב-GET SERVICE`, never `0.0`. |
-| Verification | Mostly `VERIFIED`, some `PENDING`, a few `REJECTED`/`SUSPENDED`. |
+| Verification | Mostly `VERIFIED`, some `PENDING`, a few `REJECTED`/`SUSPENDED`. **No documents back it.** The seeder does not create licence or insurance rows, because a fabricated licence is exactly the thing `provider_documents` exists to prevent — so `provider_missing_documents` reports an outstanding licence for most of the network, and says so honestly. The verification gate applies when an admin verifies somebody, so these synthetic verifications stand; they are not evidence of anything and are tagged `is_demo`. |
 | Realtime state | ~59% `ONLINE` at seed time. |
 | Weekly hours | Several shapes: standard weekday, long-hours, split shift, weekend-inclusive, and ~25% with no declared hours at all. |
 | Date overrides | 342 upcoming exceptions, both blocks and replacement windows. |

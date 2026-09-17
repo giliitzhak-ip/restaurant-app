@@ -710,3 +710,77 @@ the label and the reviewer's name, if they set one, as the customer-facing
 name. Migration `0030` fails if any shipped service is left without a label,
 because a missing one silently falls back to the customer's words — exactly
 the mixed list this exists to end.
+
+## D-029 — The documents table starts holding documents, and gates verification
+
+**Context.** `provider_documents` shipped in migration `0007` with the right
+row security in `0011`: a provider reads and inserts only their own rows, and
+only an admin may `UPDATE`, so nobody can approve their own licence. Nothing
+ever wrote to it.
+
+The result was a dead end in three places at once. The registration form told
+a provider "התחום הזה דורש רישיון וביטוח. המנהל יבקש את המסמכים לפני האימות"
+and gave them nowhere to put either one. The admin had nothing to look at.
+And `verify_provider` would happily mark a licensed trade `VERIFIED` with no
+licence anywhere in the system — so `requires_license` was a sentence on a
+form rather than a rule.
+
+**Decision.** An upload endpoint, a download endpoint, per-document review,
+and a gate: `provider_missing_documents(uuid)` in migration `0031` returns the
+required kinds a provider has no valid approval for, and verification refuses
+while it is non-empty. The admin queue shows the same answer, from the same
+function, so a reviewer sees what is missing instead of discovering it by
+clicking.
+
+**Why the bytes live in Postgres.** `0007`'s comment promised "storage" and "a
+short-lived signed URL" from an object store this deployment does not have,
+and a signed URL we cannot sign is worse than no URL — that promise is part of
+why nothing was ever stored. A licence scan is a few hundred kilobytes and
+there is one per provider, so the table grows with the provider count rather
+than with traffic. In exchange the bytes inherit the row security the
+documents table already had, they commit in the same transaction as the row
+that describes them, and they survive a container being recycled, which a
+local filesystem in this environment would not. `storage_path` stays an opaque
+locator (`db://<id>/<nonce>`), so an object store later is a new
+implementation of `DocumentStorage`, not a schema change.
+
+**Why the type comes from the file's own bytes.** A client-declared
+Content-Type is a request, not a fact. A provider could otherwise upload an
+HTML file labelled `image/png`; served back from our own origin, that is
+script execution inside an admin session which can verify providers and read
+every document in the queue. `sniffDocumentType` reads the magic bytes and
+accepts four formats; the type we store and later serve is the one we
+recognised. The file is served as an attachment, with `nosniff`, a
+`default-src 'none'; sandbox` CSP and `private, no-store` — the sniffing makes
+the header honest, and the headers make the honesty redundant.
+
+**Consequences.** There is no public URL and the interface cannot produce one:
+every read goes through a handler that runs the SELECT as the caller, so RLS
+is the authorization and there is no second answer to the same question. A
+provider may withdraw a `PENDING` document (new DELETE policy, `PENDING` only)
+but not one already reviewed, because a rejection is a record rather than a
+draft. Suspending and rejecting a provider are deliberately NOT gated: taking
+somebody out of the market is the action you least want to be unable to take.
+One pending document per kind, so the reviewer's queue cannot be filled with
+copies. Uploads and reads are rate-limited, and neither the filename nor the
+document number is ever logged.
+
+**Two bugs found while building it.** The upload originally inserted the row
+and then patched `storage_path` onto it — but there is no owner `UPDATE`
+policy, precisely so a provider cannot approve their own licence, so the
+update silently matched no row and every document was stored unreadable. The
+id and the locator are now decided before the `INSERT` and go in with it;
+found by a test that asserted the path, not by anything the upload reported.
+And `expires_on` is a `DATE` that node-postgres returns as a `Date`: serialised
+to JSON it became `"2028-06-30T00:00:00.000Z"`, a timestamp the document does
+not have, which lands on the previous day for any viewer west of UTC. Both
+endpoints now return it as text.
+
+**A control we could not fix, so we made it legible.** Chromium renders a
+date input's placeholder as `mm/dd/yyyy` even under `--lang=he-IL`, so an
+Israeli provider is shown American order in a field where 30/06 and 06/30 are
+both plausible. The stored value was always ISO, so nothing was wrong with the
+data — but rather than leave the ambiguity, the screen echoes what it
+understood in words: "כלומר: 30 ביוני 2028". Same family as the time input in
+the availability editor (D-018), and the same conclusion: a native control
+whose chrome is not ours needs either replacing or explaining.

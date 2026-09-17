@@ -1175,6 +1175,10 @@ const initial = () => ({
   onbYears: '',
   onbLocated: false,
   onbSaved: false,
+  /* kind -> 'PENDING' | 'VERIFIED' | undefined. The provider submits; only
+     an admin moves it to VERIFIED, which is why the switch is not theirs. */
+  onbDocs: {},
+  onbDocExpiry: {},
   /* Searching the catalog by the work, and proposing what is not in it. */
   onbSearch: '',
   onbProposing: false,
@@ -1890,6 +1894,51 @@ function screenOnboarding() {
       </div>
     </div>`}
 
+    ${!cat || requiredDocKinds().length === 0 ? '' : `
+    <div class="gs-card" style="margin-top:14px">
+      <h2 style="margin:0;font-size:16px;font-weight:700">
+        <span class="ltr" style="color:var(--p-ink-3)">5</span> המסמכים שהתחום דורש
+      </h2>
+      <p style="margin:4px 0 0;font-size:14px;color:var(--p-ink-2)">
+        המנהל בודק כל מסמך מול הרשם. עד שהמסמכים יאושרו החשבון לא יאומת ולא יישלחו עבודות.
+      </p>
+
+      <div style="margin-top:14px;display:grid;gap:12px">
+        ${requiredDocKinds().map((kind) => {
+          const state = S.onbDocs[kind];
+          const expiry = S.onbDocExpiry[kind] || null;
+          return `
+            <div style="border-radius:12px;border:1px solid var(--line);background:var(--bg);padding:12px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                <p style="margin:0;font-size:14px;font-weight:600">${DOC_KIND_NAMES[kind]}</p>
+                <span class="gs-badge ${state === 'VERIFIED' ? 'ok' : state === 'PENDING' ? 'warn' : 'bad'}">
+                  ${state === 'VERIFIED' ? 'אושר' : state === 'PENDING' ? 'ממתין לבדיקה' : 'חסר'}
+                </span>
+              </div>
+
+              ${state
+                ? `<p style="margin:8px 0 0;font-size:12.5px;color:var(--p-ink-3);line-height:1.5">
+                     licence.pdf${expiry ? ' · בתוקף עד ' + ltr(expiry) : ' · ללא תאריך תוקף'}
+                     ${state === 'PENDING' ? ' — רק המנהל יכול לאשר, ולכן המפסק הזה אינו של המקצוען.' : ''}
+                   </p>`
+                : `<div style="margin-top:10px;display:grid;gap:10px">
+                     <div>
+                       <label style="display:block;font-size:12.5px;color:var(--p-ink-3);margin-bottom:6px" for="doc-exp-${kind}">בתוקף עד (אופציונלי)</label>
+                       <input id="doc-exp-${kind}" data-doc-exp="${kind}" class="gs-input ltr" type="date" value="${esc(expiry || '')}">
+                     </div>
+                     <button class="gs-btn sec" data-doc-upload="${kind}" style="border-style:dashed">
+                       <span aria-hidden="true">↑</span> בחרו קובץ להעלאה
+                     </button>
+                     <p style="margin:0;font-size:12px;color:var(--p-ink-3);line-height:1.45">
+                       PDF, JPG, PNG או WEBP, עד ${ltr('10MB')}. הסוג נקבע מהבייטים של הקובץ
+                       עצמו ולא ממה שהדפדפן מצהיר.
+                     </p>
+                   </div>`}
+            </div>`;
+        }).join('')}
+      </div>
+    </div>`}
+
     <div style="margin-top:18px;display:grid;gap:10px">
       <button class="gs-btn" id="sim-onb-save" ${ready ? '' : 'disabled'}>שמור והמשך</button>
       <p id="onb-gate" ${ready ? 'hidden' : ''} style="margin:0;text-align:center;font-size:14px;color:var(--p-ink-3)">${
@@ -1908,8 +1957,59 @@ function screenOnboarding() {
 function screenReview() {
   const pending = S.proposals.filter((p) => p.status === 'PENDING');
 
+  /* Documents awaiting a decision. Above the trades on purpose: a document
+     blocks a provider from earning at all, while a trade proposal only adds
+     to what they can be found for. */
+  const docQueue = requiredDocKinds().filter((kind) => S.onbDocs[kind] === 'PENDING');
+  const docsDone = requiredDocKinds().filter((kind) => S.onbDocs[kind] === 'VERIFIED');
+  const stillOwed = requiredDocKinds().filter((kind) => S.onbDocs[kind] !== 'VERIFIED');
+
   return `
     <div class="gs-head">${logo()}<span class="gs-badge brand">מרכז בקרה</span></div>
+
+    ${requiredDocKinds().length === 0 ? '' : `
+      <p class="gs-label">מסמכים לבדיקה</p>
+      <div class="gs-card" style="margin-bottom:16px">
+        ${docQueue.length === 0 && docsDone.length === 0 ? `
+          <p style="margin:0;font-size:13.5px;color:var(--p-ink-2);line-height:1.55">
+            המקצוען עוד לא העלה מסמכים. האימות חסום עד שיאושרו.
+          </p>` : `
+          <div style="display:grid;gap:10px">
+            ${requiredDocKinds().map((kind) => {
+              const state = S.onbDocs[kind];
+              if (!state) {
+                return `<div class="gs-inset" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                  <span style="font-size:14px">${DOC_KIND_NAMES[kind]}</span>
+                  <span class="gs-badge bad">לא הועלה</span>
+                </div>`;
+              }
+              return `
+                <div class="gs-inset">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                    <span style="min-width:0">
+                      <span style="display:block;font-size:14px;font-weight:600">${DOC_KIND_NAMES[kind]}</span>
+                      <span style="display:block;font-size:12px;color:var(--p-ink-3)">
+                        licence.pdf${S.onbDocExpiry[kind] ? ' · בתוקף עד ' + ltr(S.onbDocExpiry[kind]) : ' · ללא תאריך תוקף'}
+                      </span>
+                    </span>
+                    <span class="gs-badge ${state === 'VERIFIED' ? 'ok' : 'warn'}">
+                      ${state === 'VERIFIED' ? 'אושר' : 'ממתין'}
+                    </span>
+                  </div>
+                  ${state === 'PENDING' ? `
+                    <button class="gs-btn ok" data-doc-approve="${kind}" style="margin-top:10px;min-height:44px;font-size:14px">
+                      אשר מסמך
+                    </button>` : ''}
+                </div>`;
+            }).join('')}
+          </div>`}
+
+        <p style="margin:12px 0 0;font-size:12.5px;color:${stillOwed.length ? 'var(--warn-bright)' : 'var(--ok-bright)'};line-height:1.55">
+          ${stillOwed.length
+            ? 'אימות המקצוען חסום: חסרים ' + stillOwed.map((k) => DOC_KIND_NAMES[k]).join(', ') + '. הכפתור "אמת" ב-API מחזיר DOCUMENTS_REQUIRED, לא רק מסתיר את עצמו.'
+            : 'כל המסמכים הנדרשים אושרו — עכשיו אפשר לאמת את המקצוען.'}
+        </p>
+      </div>`}
 
     <p class="gs-label">מקצועות שהוצעו</p>
 
@@ -2158,6 +2258,7 @@ const ONB_RAIL = [
   { key: 'provider_categories', label: 'תחום הוצהר' },
   { key: 'provider_services', label: 'שירותים במחיר' },
   { key: 'service_areas', label: 'אזור עבודה נקבע' },
+  { key: 'provider_documents', label: 'מסמכים אושרו' },
   { key: 'verification = VERIFIED', label: 'מנהל אימת' },
   { key: 'state = ONLINE', label: 'מקבל עבודות' }
 ];
@@ -2168,8 +2269,20 @@ function onbRailIndex() {
   if (!cat) return 1;
   if (chosen.length === 0) return 2;
   if (!S.onbLocated) return 3;
-  return 4; /* waiting on a human, which no amount of form-filling resolves */
+  /* Documents are a real gate, not a formality: provider_missing_documents
+     is non-empty and verify_provider refuses while it is. */
+  if (requiredDocKinds().some((kind) => S.onbDocs[kind] !== 'VERIFIED')) return 4;
+  return 5; /* waiting on a human, which no amount of form-filling resolves */
 }
+
+/** What the chosen category demands, from its own flags. */
+function requiredDocKinds() {
+  const cat = CATALOG.find((c) => c.slug === S.onbCat);
+  if (!cat) return [];
+  return [cat.lic ? 'license' : null, cat.ins ? 'insurance' : null].filter(Boolean);
+}
+
+const DOC_KIND_NAMES = { license: 'רישיון מקצועי', insurance: 'ביטוח אחריות מקצועית' };
 
 function railIndex() {
   switch (S.step) {
@@ -2249,10 +2362,20 @@ function renderKv() {
     rows.push(['provider_categories', cat ? '1 (' + cat.slug + ')' : '0']);
     rows.push(['provider_services', String(chosen.length)]);
     rows.push(['service_areas', S.onbLocated ? '1 · ' + (S.onbRadius || '?') + ' km' : '0']);
-    rows.push(['verification', S.onbSaved ? 'PENDING' : 'PENDING']);
+    const owed = requiredDocKinds().filter((kind) => S.onbDocs[kind] !== 'VERIFIED');
+    rows.push([
+      'provider_documents',
+      requiredDocKinds().length === 0
+        ? 'התחום לא דורש'
+        : requiredDocKinds().map((k) => k + '=' + (S.onbDocs[k] ?? 'none')).join(' ')
+    ]);
+    rows.push(['provider_missing_documents', owed.length ? '{' + owed.join(',') + '}' : '{}']);
+    rows.push(['verification', 'PENDING']);
     rows.push([
       'יימצא ב-find_candidate_providers?',
-      cat && chosen.length && S.onbLocated ? 'לא — ממתין לאימות' : 'לא — חסרים נתונים'
+      cat && chosen.length && S.onbLocated
+        ? (owed.length ? 'לא — חסרים מסמכים' : 'לא — ממתין לאימות')
+        : 'לא — חסרים נתונים'
     ]);
   } else if (S.side === 'provider') {
     rows.push(['provider_profiles.state', S.providerOnline ? 'ONLINE' : 'OFFLINE']);
@@ -2474,6 +2597,11 @@ document.getElementById('viewport').addEventListener('input', (ev) => {
     return;
   }
 
+  if (t.dataset.docExp) {
+    S.onbDocExpiry = { ...S.onbDocExpiry, [t.dataset.docExp]: t.value };
+    return;
+  }
+
   if (t.id === 'onb-radius') { S.onbRadius = t.value; renderKv(); }
   if (t.id === 'onb-biz') S.onbBiz = t.value;
   if (t.id === 'onb-years') S.onbYears = t.value;
@@ -2507,6 +2635,24 @@ document.getElementById('viewport').addEventListener('click', (ev) => {
     S.onbCat = t.dataset.hit;
     S.onbRadius = String(CATALOG.find((c) => c.slug === t.dataset.hit).radius);
     S.onbSearch = '';
+    render();
+    return;
+  }
+
+  /* A "file" is chosen and the document goes to PENDING. The simulator has
+     no server, so what it reproduces is the state machine: the provider can
+     reach PENDING and no further, because provider_documents has no owner
+     UPDATE policy — which is what stops anyone approving their own licence. */
+  if (t.dataset.docUpload) {
+    push();
+    S.onbDocs = { ...S.onbDocs, [t.dataset.docUpload]: 'PENDING' };
+    render();
+    return;
+  }
+
+  if (t.dataset.docApprove) {
+    push();
+    S.onbDocs = { ...S.onbDocs, [t.dataset.docApprove]: 'VERIFIED' };
     render();
     return;
   }

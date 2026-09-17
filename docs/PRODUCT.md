@@ -161,6 +161,34 @@ approval cannot be expressed. See [DECISIONS D-022](DECISIONS.md).
 
 ---
 
+## Papers, and what they gate
+
+Some trades are regulated. A category carries `requires_license` and
+`requires_insurance`, and until migration `0031` those were only words: the
+registration form said the admin would ask for documents and offered nowhere
+to put them, and `verify_provider` would mark a licensed trade `VERIFIED` with
+no licence in the system.
+
+A provider now uploads each required document with its number and expiry, sees
+its status and the reviewer's reason if it was refused, and can withdraw one
+that has not been reviewed yet. An admin reviews each document separately from
+the provider — a document is checked against its issuing registry, a provider
+is verified once every document their trades require has been checked — and
+**verification is refused while anything is outstanding or expired**. The
+refusal and the admin queue read the same answer from
+`provider_missing_documents`, so the screen cannot say "ready" about a
+provider the action then rejects.
+
+Nobody can approve their own: `provider_documents` has no owner `UPDATE`
+policy at all. The files have no public URL — every read goes through a
+handler that runs as the caller, so row security is the authorization — and a
+file's type is established from its own leading bytes rather than from what
+the browser claimed, because an HTML file labelled `image/png` served back to
+a reviewer is script running in a session that can verify providers. See
+[DECISIONS D-029](DECISIONS.md).
+
+---
+
 ## MVP categories
 
 Plumbing · Electrical · Air conditioning · Locksmith · Pest control ·

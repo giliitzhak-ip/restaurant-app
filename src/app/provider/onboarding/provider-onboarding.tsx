@@ -48,6 +48,28 @@ interface TradeProposal {
   resolved_category_name: string | null;
 }
 
+/** One document the provider has submitted. Never carries the bytes. */
+interface ProviderDocument {
+  id: string;
+  doc_type: string;
+  doc_number: string | null;
+  original_filename: string | null;
+  content_type: string | null;
+  size_bytes: string | null;
+  status: 'PENDING' | 'VERIFIED' | 'REJECTED';
+  expires_on: string | null;
+  review_notes: string | null;
+  created_at: string;
+}
+
+interface DocumentsResponse {
+  documents: ProviderDocument[];
+  /** Required kinds with no approved document. Empty means nothing owed. */
+  missing: string[];
+  kinds: Record<string, string>;
+  maxBytes: number;
+}
+
 interface ProfileResponse {
   catalog: { categories: Category[]; services: Service[] };
   profile: {
@@ -63,6 +85,22 @@ interface ProfileResponse {
   serviceArea: { lat: number; lon: number; radius_km: string } | null;
   isConfigured: boolean;
   canReceiveWork: boolean;
+}
+
+/**
+ * An ISO date written out in Hebrew, or null when there is nothing to write.
+ *
+ * Used to echo what a date input actually captured, because the control's own
+ * placeholder is in the browser's format rather than the document's language.
+ */
+function hebrewDate(iso: string | undefined): string | null {
+  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
+  const [year, month, day] = iso.split('-').map(Number);
+  const at = new Date(Date.UTC(year!, month! - 1, day!));
+  if (Number.isNaN(at.getTime())) return null;
+  return new Intl.DateTimeFormat('he-IL', {
+    timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric',
+  }).format(at);
 }
 
 /**
@@ -98,6 +136,14 @@ export function ProviderOnboarding() {
   const [proposalPrice, setProposalPrice] = useState('');
   const [proposalBusy, setProposalBusy] = useState(false);
   const [proposalError, setProposalError] = useState<string | null>(null);
+
+  /* ── The papers the trade requires ──────────────────────────────────── */
+  const [documents, setDocuments] = useState<ProviderDocument[]>([]);
+  const [docKinds, setDocKinds] = useState<Record<string, string>>({});
+  const [docBusy, setDocBusy] = useState<string | null>(null);
+  const [docError, setDocError] = useState<string | null>(null);
+  const [docNumber, setDocNumber] = useState<Record<string, string>>({});
+  const [docExpiry, setDocExpiry] = useState<Record<string, string>>({});
   const [proposalNotice, setProposalNotice] = useState<string | null>(null);
 
   useEffect(() => {
@@ -138,6 +184,16 @@ export function ProviderOnboarding() {
         '/api/provider/trades',
       ).catch(() => null);
       if (active && mine) setProposals(mine.proposals);
+
+      // Same reasoning for the documents: a failure here must not cost them
+      // the setup screen.
+      const docs = await apiFetch<DocumentsResponse>('/api/provider/documents').catch(
+        () => null,
+      );
+      if (active && docs) {
+        setDocuments(docs.documents);
+        setDocKinds(docs.kinds);
+      }
       setLoading(false);
     })();
     return () => {
@@ -148,6 +204,22 @@ export function ProviderOnboarding() {
   const category = data?.catalog.categories.find((c) => c.slug === categorySlug) ?? null;
   const services = data?.catalog.services.filter((s) => s.category_slug === categorySlug) ?? [];
   const chosen = services.filter((s) => (prices[s.slug] ?? '').trim() !== '');
+
+  /**
+   * Which documents this trade requires, from the category's own flags.
+   *
+   * Derived from the chosen category rather than from the server's `missing`
+   * list, because the two answer different questions: `missing` is what the
+   * provider still owes for the trades they have SAVED, and this screen has
+   * to show the slots before anything is saved. The server's list is what the
+   * verification gate actually enforces.
+   */
+  const requiredDocs = category
+    ? [
+        category.requires_license ? 'license' : null,
+        category.requires_insurance ? 'insurance' : null,
+      ].filter((kind): kind is string => kind !== null)
+    : [];
 
   /**
    * Search the catalog by the work, not by our category names.
@@ -276,6 +348,67 @@ export function ProviderOnboarding() {
       );
     } finally {
       setProposalBusy(false);
+    }
+  };
+
+  /* ── Documents ────────────────────────────────────────────────────────
+     Uploaded as multipart rather than as JSON with a base64 string: the file
+     is the payload, and a 10MB document inflates by a third in base64 for no
+     benefit. The server identifies the type from the file's own leading bytes
+     and ignores whatever the browser claims. */
+  const refreshDocuments = async () => {
+    const fresh = await apiFetch<DocumentsResponse>('/api/provider/documents').catch(
+      () => null,
+    );
+    if (fresh) {
+      setDocuments(fresh.documents);
+      setDocKinds(fresh.kinds);
+    }
+  };
+
+  const uploadDocument = async (docType: string, file: File) => {
+    setDocError(null);
+    setDocBusy(docType);
+    try {
+      const body = new FormData();
+      body.set('file', file);
+      body.set('docType', docType);
+      const number = (docNumber[docType] ?? '').trim();
+      const expiry = (docExpiry[docType] ?? '').trim();
+      if (number) body.set('docNumber', number);
+      if (expiry) body.set('expiresOn', expiry);
+
+      // Not apiFetch: that sets a JSON content type, and multipart needs the
+      // browser to write its own boundary.
+      const response = await fetch('/api/provider/documents', { method: 'POST', body });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as
+          | { error?: { message?: string } }
+          | null;
+        throw new Error(payload?.error?.message ?? 'לא הצלחנו להעלות את המסמך');
+      }
+      setDocNumber((current) => ({ ...current, [docType]: '' }));
+      setDocExpiry((current) => ({ ...current, [docType]: '' }));
+      await refreshDocuments();
+    } catch (caught) {
+      setDocError(caught instanceof Error ? caught.message : 'לא הצלחנו להעלות את המסמך');
+    } finally {
+      setDocBusy(null);
+    }
+  };
+
+  const withdrawDocument = async (id: string) => {
+    setDocError(null);
+    setDocBusy(id);
+    try {
+      await apiFetch(`/api/provider/documents?id=${id}`, { method: 'DELETE' });
+      await refreshDocuments();
+    } catch (caught) {
+      setDocError(
+        caught instanceof ApiRequestError ? caught.message : 'לא הצלחנו להסיר את המסמך',
+      );
+    } finally {
+      setDocBusy(null);
     }
   };
 
@@ -418,7 +551,7 @@ export function ProviderOnboarding() {
             ]
               .filter(Boolean)
               .join(' ו')}
-            . המנהל יבקש את המסמכים לפני האימות.
+            . אפשר להעלות את המסמכים בשלב 5 למטה — בלעדיהם לא נוכל לאמת את החשבון.
           </p>
         )}
 
@@ -739,6 +872,208 @@ export function ProviderOnboarding() {
                 className={`${inputClasses} ltr-nums`}
               />
             </Field>
+          </div>
+        </Card>
+      )}
+
+      {/* ── 5. Documents ───────────────────────────────────────────────
+          Only shown when the chosen category actually requires something.
+          Asking a cleaner for a licence is how a form loses the person
+          filling it in.
+
+          This step exists because the sentence in step 1 used to be a
+          promise nothing kept: `provider_documents` shipped in migration
+          0007 and nothing ever wrote to it, so a provider was told the admin
+          would ask for papers and given nowhere to put them, and
+          `verify_provider` would mark a licensed trade VERIFIED with no
+          licence in the system. */}
+      {categorySlug && requiredDocs.length > 0 && (
+        <Card>
+          <h2 className="text-base font-bold text-ink">
+            <span className="ltr-nums text-ink-3" dir="ltr">5</span> המסמכים שהתחום דורש
+          </h2>
+          <p className="mt-1 text-sm text-ink-2">
+            המנהל בודק כל מסמך מול הרשם. עד שהמסמכים יאושרו החשבון לא יאומת ולא
+            יישלחו עבודות.
+          </p>
+
+          {docError && (
+            <p role="alert" className="mt-3 rounded-xl bg-bad/10 px-3 py-2 text-sm text-bad-bright">
+              {docError}
+            </p>
+          )}
+
+          <div className="mt-4 space-y-4">
+            {requiredDocs.map((kind) => {
+              const mine = documents.filter((d) => d.doc_type === kind);
+              const approved = mine.find((d) => d.status === 'VERIFIED');
+              const pending = mine.find((d) => d.status === 'PENDING');
+              const rejected = mine.filter((d) => d.status === 'REJECTED');
+
+              return (
+                <div key={kind} className="rounded-xl border border-line bg-bg p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-semibold text-ink">{docKinds[kind] ?? kind}</p>
+                    {approved ? (
+                      <Badge tone="ok">אושר</Badge>
+                    ) : pending ? (
+                      <Badge tone="warn">ממתין לבדיקה</Badge>
+                    ) : (
+                      <Badge tone="bad">חסר</Badge>
+                    )}
+                  </div>
+
+                  {/* Every submitted copy, with what the reviewer said. A
+                      rejection the provider cannot read is a rejection they
+                      resubmit unchanged. */}
+                  {mine.length > 0 && (
+                    <ul className="mt-3 space-y-2">
+                      {mine.map((doc) => (
+                        <li
+                          key={doc.id}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-2 px-3 py-2"
+                        >
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm text-ink">
+                              {doc.original_filename ?? 'מסמך'}
+                            </span>
+                            <span className="block text-xs text-ink-3">
+                              {doc.expires_on ? (
+                                <>
+                                  בתוקף עד{' '}
+                                  <span className="ltr-nums" dir="ltr">
+                                    {doc.expires_on}
+                                  </span>
+                                </>
+                              ) : (
+                                'ללא תאריך תוקף'
+                              )}
+                              {doc.status === 'REJECTED' && doc.review_notes
+                                ? ` · ${doc.review_notes}`
+                                : ''}
+                            </span>
+                          </span>
+                          <span className="flex flex-none items-center gap-2">
+                            <a
+                              href={`/api/provider/documents/${doc.id}/file`}
+                              className="text-sm font-medium text-brand-bright underline decoration-line-strong underline-offset-4"
+                            >
+                              הצג
+                            </a>
+                            {doc.status === 'PENDING' && (
+                              <Button
+                                variant="secondary"
+                                size="md"
+                                loading={docBusy === doc.id}
+                                onClick={() => void withdrawDocument(doc.id)}
+                              >
+                                הסר
+                              </Button>
+                            )}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* Nothing to upload while one is already awaiting review:
+                      a reviewer facing four copies of the same licence is a
+                      queue nobody works through. */}
+                  {!pending && !approved && (
+                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                      <Field label="מספר הרישיון / הפוליסה (אופציונלי)" htmlFor={`num-${kind}`}>
+                        <input
+                          id={`num-${kind}`}
+                          className={inputClasses}
+                          value={docNumber[kind] ?? ''}
+                          onChange={(event) =>
+                            setDocNumber((current) => ({ ...current, [kind]: event.target.value }))
+                          }
+                        />
+                      </Field>
+                      <Field label="בתוקף עד (אופציונלי)" htmlFor={`exp-${kind}`}>
+                        <input
+                          id={`exp-${kind}`}
+                          type="date"
+                          dir="ltr"
+                          min={new Date().toISOString().slice(0, 10)}
+                          className={`${inputClasses} ltr-nums`}
+                          value={docExpiry[kind] ?? ''}
+                          onChange={(event) =>
+                            setDocExpiry((current) => ({ ...current, [kind]: event.target.value }))
+                          }
+                        />
+                        {/* The date the system understood, written out.
+
+                            Chromium renders a date input's own placeholder as
+                            mm/dd/yyyy even under --lang=he-IL, so an Israeli
+                            provider is shown American order in a field where
+                            30/06 and 06/30 are both plausible. The control's
+                            chrome is not ours to fix, so instead the value is
+                            echoed unambiguously: a wrong entry is visible
+                            immediately rather than discovered by a reviewer.
+                            The stored value was always ISO, so this is a
+                            legibility fix, not a data one. */}
+                        {hebrewDate(docExpiry[kind]) && (
+                          <p className="mt-1 text-xs text-ink-3">
+                            כלומר: {hebrewDate(docExpiry[kind])}
+                          </p>
+                        )}
+                      </Field>
+                      <div className="md:col-span-2">
+                        {/* The input itself is hidden and the label is the
+                            button.
+
+                            A bare <input type="file"> renders the browser's
+                            own "Choose File / No file chosen" — English, in
+                            an interface that is Hebrew and RTL, and not
+                            translatable from here. Same lesson as the time
+                            input in the availability editor: a native control
+                            whose chrome we cannot write is a control that
+                            does not belong on this screen. The input stays in
+                            the DOM and keeps its label association, so the
+                            keyboard and screen-reader behaviour are the
+                            native ones. */}
+                        <label
+                          htmlFor={`file-${kind}`}
+                          className="flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong bg-surface-2 px-4 text-sm font-semibold text-brand-bright hover:border-brand"
+                        >
+                          <span aria-hidden="true">↑</span>
+                          {docBusy === kind ? 'מעלה…' : 'בחרו קובץ להעלאה'}
+                        </label>
+                        <input
+                          id={`file-${kind}`}
+                          type="file"
+                          className="sr-only"
+                          accept="application/pdf,image/jpeg,image/png,image/webp"
+                          disabled={docBusy === kind}
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            // Cleared so choosing the same file again after a
+                            // failure still fires a change event.
+                            event.target.value = '';
+                            if (file) void uploadDocument(kind, file);
+                          }}
+                        />
+                        <p className="mt-2 text-xs text-ink-3">
+                          PDF, JPG, PNG או WEBP, עד{' '}
+                          <span className="ltr-nums" dir="ltr">
+                            10MB
+                          </span>
+                          . צילום של הרישיון מהטלפון מתאים.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {rejected.length > 0 && !pending && !approved && (
+                    <p className="mt-3 text-xs text-ink-3">
+                      המסמך הקודם לא אושר. אפשר להעלות אחר.
+                    </p>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </Card>
       )}

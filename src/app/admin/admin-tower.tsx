@@ -31,6 +31,9 @@ interface Overview {
   pendingVerification: {
     id: string; full_name: string; email: string; created_at: string;
     category_name: string | null; priced_services: number; is_configured: boolean;
+    /** Required document kinds with no valid approval. Blocks verification. */
+    missing_documents: string[];
+    documents: ProviderDocument[];
   }[];
   tradeProposals: {
     id: string; proposed_name: string; description: string | null;
@@ -44,6 +47,32 @@ interface Overview {
   totals: { pendingVerification: number; pendingTrades: number; liveProviders: number; liveJobs: number };
   shown: { pendingVerification: number; tradeProposals: number; liveProviders: number; liveJobs: number };
 }
+
+/** A document a provider submitted. Never carries the bytes or the locator. */
+interface ProviderDocument {
+  id: string;
+  docType: string;
+  docNumber: string | null;
+  originalFilename: string | null;
+  contentType: string | null;
+  sizeBytes: string | null;
+  status: 'PENDING' | 'VERIFIED' | 'REJECTED';
+  expiresOn: string | null;
+  reviewNotes: string | null;
+  createdAt: string;
+}
+
+/** Hebrew names for the document kinds, matching @/domains/documents. */
+const DOC_KINDS: Record<string, string> = {
+  license: 'רישיון מקצועי',
+  insurance: 'ביטוח אחריות מקצועית',
+  identity: 'תעודת זהות',
+  business_registration: 'רישום עוסק / חברה',
+  payout: 'אישור ניהול חשבון',
+  other: 'מסמך נוסף',
+};
+
+const docKind = (kind: string) => DOC_KINDS[kind] ?? kind;
 
 /**
  * The reviewer's form for one proposal.
@@ -83,6 +112,8 @@ export function AdminTower() {
   /** Per-proposal review form: which category, and the phrases that make it
    *  reachable. Keyed by proposal id so two reviews cannot cross over. */
   const [review, setReview] = useState<Record<string, ReviewForm>>({});
+  /** Why a document was refused, keyed by document id. Required to reject. */
+  const [docReason, setDocReason] = useState<Record<string, string>>({});
 
   const refetch = useCallback(async () => {
     const fresh = await apiFetch<Overview>('/api/admin/overview').catch((caught: unknown) => {
@@ -538,7 +569,8 @@ export function AdminTower() {
           </h2>
           <ul className="mt-3 divide-y divide-line">
             {data.pendingVerification.map((provider) => (
-              <li key={provider.id} className="flex items-center justify-between gap-3 py-3">
+              <li key={provider.id} className="py-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="font-medium text-ink">{provider.full_name}</p>
                   <p className="tech-id text-xs text-ink-3">{provider.email}</p>
@@ -553,13 +585,20 @@ export function AdminTower() {
                     ) : (
                       <Badge tone="warn">לא הגדיר תחום — אימות לא יועיל</Badge>
                     )}
+                    {/* The verify action refuses while this is non-empty, so
+                        it is stated here rather than discovered by clicking. */}
+                    {provider.missing_documents.length > 0 && (
+                      <Badge tone="bad">
+                        חסר: {provider.missing_documents.map(docKind).join(', ')}
+                      </Badge>
+                    )}
                   </div>
                 </div>
                 <div className="flex gap-2">
                   <Button
                     size="md"
                     variant="success"
-                    disabled={!provider.is_configured}
+                    disabled={!provider.is_configured || provider.missing_documents.length > 0}
                     loading={busy === `אימות ${provider.full_name}`}
                     onClick={() =>
                       void act(
@@ -588,6 +627,131 @@ export function AdminTower() {
                     דחה
                   </Button>
                 </div>
+                </div>
+
+                {/* ── The documents themselves ─────────────────────────────
+                    Reviewed one at a time and separately from the provider,
+                    because a document is checked against its issuing registry
+                    and a provider is verified once every document their trades
+                    require has been checked. Collapsing the two would mean
+                    approving papers by approving a person. */}
+                {provider.documents.length > 0 && (
+                  <ul className="mt-3 space-y-2">
+                    {provider.documents.map((doc) => (
+                      <li key={doc.id} className="rounded-xl border border-line bg-bg p-3">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-ink">
+                              {docKind(doc.docType)}
+                            </p>
+                            <p className="text-xs text-ink-3">
+                              {doc.originalFilename ?? 'מסמך'}
+                              {doc.docNumber ? (
+                                <>
+                                  {' · '}
+                                  <span className="tech-id">{doc.docNumber}</span>
+                                </>
+                              ) : null}
+                              {doc.expiresOn ? (
+                                <>
+                                  {' · בתוקף עד '}
+                                  <span className="ltr-nums" dir="ltr">
+                                    {doc.expiresOn}
+                                  </span>
+                                </>
+                              ) : ' · ללא תאריך תוקף'}
+                            </p>
+                          </div>
+                          <div className="flex flex-none items-center gap-2">
+                            <Badge
+                              tone={
+                                doc.status === 'VERIFIED'
+                                  ? 'ok'
+                                  : doc.status === 'REJECTED'
+                                    ? 'bad'
+                                    : 'warn'
+                              }
+                            >
+                              {doc.status === 'VERIFIED'
+                                ? 'אושר'
+                                : doc.status === 'REJECTED'
+                                  ? 'נדחה'
+                                  : 'ממתין'}
+                            </Badge>
+                            {/* Downloads rather than renders: the file is
+                                served as an attachment with sniffing off, so
+                                an uploaded document can never execute in an
+                                admin session. */}
+                            <a
+                              href={`/api/provider/documents/${doc.id}/file`}
+                              className="text-sm font-medium text-brand-bright underline decoration-line-strong underline-offset-4"
+                            >
+                              הורד
+                            </a>
+                          </div>
+                        </div>
+
+                        {doc.status === 'PENDING' && (
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <Button
+                              size="md"
+                              variant="success"
+                              loading={busy === `approve-doc-${doc.id}`}
+                              onClick={() =>
+                                void act(
+                                  { action: 'approve_document', documentId: doc.id },
+                                  `approve-doc-${doc.id}`,
+                                )
+                              }
+                            >
+                              אשר מסמך
+                            </Button>
+                            <input
+                              value={docReason[doc.id] ?? ''}
+                              onChange={(event) =>
+                                setDocReason((current) => ({
+                                  ...current,
+                                  [doc.id]: event.target.value,
+                                }))
+                              }
+                              placeholder="סיבת דחייה"
+                              aria-label={`סיבת דחייה עבור ${docKind(doc.docType)}`}
+                              className="min-h-11 flex-1 rounded-lg border border-line-strong bg-surface-2 px-3 text-sm text-ink"
+                            />
+                            <Button
+                              size="md"
+                              variant="danger"
+                              loading={busy === `reject-doc-${doc.id}`}
+                              disabled={(docReason[doc.id] ?? '').trim().length < 3}
+                              onClick={() =>
+                                void act(
+                                  {
+                                    action: 'reject_document',
+                                    documentId: doc.id,
+                                    reason: (docReason[doc.id] ?? '').trim(),
+                                  },
+                                  `reject-doc-${doc.id}`,
+                                )
+                              }
+                            >
+                              דחה מסמך
+                            </Button>
+                          </div>
+                        )}
+
+                        {doc.status === 'REJECTED' && doc.reviewNotes && (
+                          <p className="mt-2 text-xs text-ink-3">{doc.reviewNotes}</p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {provider.documents.length === 0 && provider.missing_documents.length > 0 && (
+                  <p className="mt-2 rounded-xl bg-warn/10 px-3 py-2 text-xs text-warn-bright">
+                    המקצוען עוד לא העלה מסמכים. האימות חסום עד שיאושרו.
+                  </p>
+                )}
               </li>
             ))}
           </ul>

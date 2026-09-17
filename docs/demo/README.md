@@ -55,6 +55,13 @@ rule set, so the registration form can then find it and a description can then
 route to it — which is the behaviour of the real approval, done in memory. It
 touches no database.
 
+The document step uploads nothing — there is no file picker and no bytes.
+What it reproduces is the state machine: the provider can move a document to
+`PENDING` and no further, because `provider_documents` has no owner `UPDATE`
+policy, and only the review view moves it to approved. The rail and the panel
+show `provider_missing_documents` the way the real gate reads it, including
+the refusal a reviewer gets while anything is outstanding.
+
 ## Refreshing the recording
 
 Re-seed, dispatch a fresh job, and regenerate the two constants from
