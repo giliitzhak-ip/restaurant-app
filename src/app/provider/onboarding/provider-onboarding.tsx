@@ -171,19 +171,19 @@ export function ProviderOnboarding() {
     return (
       <div className="space-y-5">
         <Logo />
-        <Card className="border-success-500/40">
-          <h1 className="text-xl font-bold text-white">הפרטים נשמרו</h1>
+        <Card className="border-ok/40">
+          <h1 className="text-xl font-bold text-ink">הפרטים נשמרו</h1>
           {verified ? (
-            <p className="mt-2 text-sm text-slate-300">
+            <p className="mt-2 text-sm text-ink-2">
               החשבון מאומת ומוגדר. אפשר להתחיל משמרת ולקבל עבודות.
             </p>
           ) : (
             <>
-              <p className="mt-2 text-sm text-slate-300">
+              <p className="mt-2 text-sm text-ink-2">
                 החשבון מוגדר ומחכה לאימות של מנהל. עד לאישור לא יישלחו אליך
                 עבודות.
               </p>
-              <p className="mt-3 text-xs text-slate-500">
+              <p className="mt-3 text-xs text-ink-3">
                 זה שלב מכוון: אנחנו מאמתים בעלי מקצוע לפני שהם מקבלים גישה
                 ללקוחות.
               </p>
@@ -202,17 +202,17 @@ export function ProviderOnboarding() {
       <header className="flex items-center justify-between">
         <Logo />
         {data?.profile?.verification && (
-          <Badge tone={data.profile.verification === 'VERIFIED' ? 'success' : 'warning'}>
+          <Badge tone={data.profile.verification === 'VERIFIED' ? 'ok' : 'warn'}>
             {data.profile.verification === 'VERIFIED' ? 'מאומת' : 'ממתין לאימות'}
           </Badge>
         )}
       </header>
 
       <div>
-        <h1 className="text-2xl font-black text-white">
+        <h1 className="text-2xl font-black text-ink">
           {data?.isConfigured ? 'עדכון הפרטים שלך' : 'בוא נגדיר את הפרופיל'}
         </h1>
-        <p className="mt-2 text-sm text-slate-400">
+        <p className="mt-2 text-sm text-ink-2">
           בלי תחום ומחירים לא נוכל לשלוח לך עבודות — המערכת פשוט לא תכלול אותך
           בחיפוש.
         </p>
@@ -220,8 +220,8 @@ export function ProviderOnboarding() {
 
       {/* ── 1. Trade ─────────────────────────────────────────────────── */}
       <Card>
-        <h2 className="text-base font-bold text-white">
-          <span className="ltr-nums text-slate-500" dir="ltr">1</span> באיזה תחום אתה עובד?
+        <h2 className="text-base font-bold text-ink">
+          <span className="ltr-nums text-ink-3" dir="ltr">1</span> באיזה תחום אתה עובד?
         </h2>
         <div className="mt-3 flex flex-wrap gap-2">
           {data?.catalog.categories.map((c) => (
@@ -235,8 +235,8 @@ export function ProviderOnboarding() {
               }}
               className={`inline-flex min-h-11 items-center rounded-xl border px-4 text-sm font-medium ${
                 categorySlug === c.slug
-                  ? 'border-accent-500 bg-accent-500/10 text-white'
-                  : 'border-navy-600 bg-navy-950 text-slate-300 hover:border-accent-500'
+                  ? 'border-brand bg-brand/10 text-ink'
+                  : 'border-line-strong bg-bg text-ink-2 hover:border-brand'
               }`}
             >
               {c.name_he}
@@ -245,7 +245,7 @@ export function ProviderOnboarding() {
         </div>
 
         {category && (category.requires_license || category.requires_insurance) && (
-          <p className="mt-3 rounded-xl bg-warning-500/10 px-3 py-2 text-sm text-warning-400">
+          <p className="mt-3 rounded-xl bg-warn/10 px-3 py-2 text-sm text-warn-bright">
             התחום הזה דורש{' '}
             {[
               category.requires_license ? 'רישיון' : null,
@@ -261,10 +261,10 @@ export function ProviderOnboarding() {
       {/* ── 2. Services and prices ───────────────────────────────────── */}
       {categorySlug && (
         <Card>
-          <h2 className="text-base font-bold text-white">
-            <span className="ltr-nums text-slate-500" dir="ltr">2</span> מה אתה עושה, ובכמה?
+          <h2 className="text-base font-bold text-ink">
+            <span className="ltr-nums text-ink-3" dir="ltr">2</span> מה אתה עושה, ובכמה?
           </h2>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-ink-2">
             סמן רק מה שאתה מבצע. המחיר שתזין הוא המחיר שיוצג ללקוח.
           </p>
 
@@ -276,15 +276,15 @@ export function ProviderOnboarding() {
                 <div
                   key={s.slug}
                   className={`rounded-xl border p-3 ${
-                    active ? 'border-accent-500/50 bg-navy-950' : 'border-navy-700 bg-navy-950'
+                    active ? 'border-brand/50 bg-bg' : 'border-line bg-bg'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <label htmlFor={`price-${s.slug}`} className="text-sm font-medium text-white">
+                    <label htmlFor={`price-${s.slug}`} className="text-sm font-medium text-ink">
                       {s.name_he}
                     </label>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-slate-400">₪</span>
+                      <span className="text-sm text-ink-2">₪</span>
                       <input
                         id={`price-${s.slug}`}
                         type="number"
@@ -296,12 +296,12 @@ export function ProviderOnboarding() {
                         onChange={(event) =>
                           setPrices((current) => ({ ...current, [s.slug]: event.target.value }))
                         }
-                        className="ltr-nums w-24 rounded-lg border border-navy-600 bg-navy-900 px-3 py-2 text-white"
+                        className="ltr-nums w-24 rounded-lg border border-line-strong bg-surface-1 px-3 py-2 text-ink"
                       />
                     </div>
                   </div>
                   {guide !== null && (
-                    <p className="mt-1.5 text-xs text-slate-500">
+                    <p className="mt-1.5 text-xs text-ink-3">
                       מחיר ייחוס בפלטפורמה: <Money shekels={guide} />
                       {s.min_price_ils && s.max_price_ils && (
                         <>
@@ -319,7 +319,7 @@ export function ProviderOnboarding() {
           </div>
 
           {chosen.length > 0 && (
-            <p className="mt-3 text-sm text-success-400">
+            <p className="mt-3 text-sm text-ok-bright">
               נבחרו <span className="ltr-nums" dir="ltr">{chosen.length}</span> שירותים
             </p>
           )}
@@ -329,24 +329,24 @@ export function ProviderOnboarding() {
       {/* ── 3. Where ─────────────────────────────────────────────────── */}
       {categorySlug && (
         <Card>
-          <h2 className="text-base font-bold text-white">
-            <span className="ltr-nums text-slate-500" dir="ltr">3</span> איפה אתה עובד?
+          <h2 className="text-base font-bold text-ink">
+            <span className="ltr-nums text-ink-3" dir="ltr">3</span> איפה אתה עובד?
           </h2>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-ink-2">
             נשלח לך עבודות רק בתוך הרדיוס הזה.
           </p>
 
           <div className="mt-4">
             {areaLat !== null && areaLon !== null ? (
-              <p className="flex items-center gap-2 text-sm text-success-400">
+              <p className="flex items-center gap-2 text-sm text-ok-bright">
                 <span aria-hidden="true">📍</span> מרכז אזור העבודה נקבע
               </p>
             ) : (
-              <p className="text-sm text-slate-400">עדיין לא נקבע מרכז לאזור העבודה.</p>
+              <p className="text-sm text-ink-2">עדיין לא נקבע מרכז לאזור העבודה.</p>
             )}
 
             {geo.message && (
-              <p className="mt-2 rounded-xl bg-warning-500/10 px-3 py-2 text-sm text-warning-400">
+              <p className="mt-2 rounded-xl bg-warn/10 px-3 py-2 text-sm text-warn-bright">
                 {geo.message}
               </p>
             )}
@@ -383,8 +383,8 @@ export function ProviderOnboarding() {
       {/* ── 4. About ─────────────────────────────────────────────────── */}
       {categorySlug && (
         <Card>
-          <h2 className="text-base font-bold text-white">
-            <span className="ltr-nums text-slate-500" dir="ltr">4</span> פרטי העסק
+          <h2 className="text-base font-bold text-ink">
+            <span className="ltr-nums text-ink-3" dir="ltr">4</span> פרטי העסק
           </h2>
           <div className="mt-4 space-y-4">
             <Field label="שם העסק (אופציונלי)" htmlFor="business">
@@ -414,7 +414,7 @@ export function ProviderOnboarding() {
       )}
 
       {error && (
-        <p role="alert" className="rounded-xl bg-danger-500/10 px-4 py-3 text-sm text-danger-400">
+        <p role="alert" className="rounded-xl bg-bad/10 px-4 py-3 text-sm text-bad-bright">
           {error}
         </p>
       )}
@@ -424,7 +424,7 @@ export function ProviderOnboarding() {
           שמור והמשך
         </Button>
         {!ready && (
-          <p className="text-center text-sm text-slate-500">
+          <p className="text-center text-sm text-ink-3">
             {categorySlug === null
               ? 'בחר תחום כדי להמשיך'
               : chosen.length === 0

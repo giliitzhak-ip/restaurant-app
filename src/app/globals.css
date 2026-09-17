@@ -1,72 +1,85 @@
 @import 'tailwindcss';
 
-/* ---------------------------------------------------------------------------
-   GET SERVICE design tokens (spec §38–§39)
-   Base: deep navy / near black. Accent: electric blue / cyan.
-   Deliberately restrained: no glassmorphism, no gradient noise, no neon.
-   --------------------------------------------------------------------------- */
+/* ===========================================================================
+   GET SERVICE — dark-first product surface (spec §37–§40)
+   
+   The feeling is a night-time mobility network: quiet, precise, operational.
+   Not cyberpunk, not a crypto dashboard. That means restraint is the rule —
+   four surface levels, two borders, one accent, and semantic colour reserved
+   for state that actually matters.
+   =========================================================================== */
 @theme {
-  --color-navy-950: #060a14;
-  --color-navy-900: #0b1120;
-  --color-navy-850: #0f172a;
-  --color-navy-800: #151f36;
-  --color-navy-700: #1e2b47;
-  --color-navy-600: #2c3c5e;
+  /* ── Surfaces. Four levels is enough to build every hierarchy; a fifth
+        just invites putting everything in a card (spec §39). ───────────── */
+  --color-bg: #080b12;
+  --color-surface-1: #0d121c;
+  --color-surface-2: #121925;
+  --color-surface-3: #182130;
 
-  --color-accent-400: #38bdf8;
-  --color-accent-500: #0ea5e9;
-  --color-accent-600: #0284c7;
+  /* Borders carry a slight blue cast so they read as part of the surface
+     rather than grey lines laid on top. */
+  --color-line: #1c2536;
+  --color-line-strong: #2a3648;
 
-  --color-success-400: #34d399;
-  --color-success-500: #10b981;
-  --color-success-600: #059669;
+  /* ── Text. Three weights of voice, no more. ──────────────────────────── */
+  --color-ink: #f8fafc;
+  --color-ink-2: #a8b3c4;
+  --color-ink-3: #6f7c90;
 
-  --color-warning-400: #fbbf24;
-  --color-warning-500: #f59e0b;
+  /* ── Brand. One accent, spent on the primary action and live state. ──── */
+  --color-brand: #3b82f6;
+  --color-brand-bright: #60a5fa;
+  --color-brand-dim: #1e3a8a;
 
-  --color-danger-400: #f87171;
-  --color-danger-500: #ef4444;
-  --color-danger-600: #dc2626;
+  /* Realtime cyan is NOT a second accent: it marks live, moving data only —
+     a provider en route, a position updating. */
+  --color-live: #22d3ee;
+
+  /* ── Semantic state, separate from the accent (spec §62). ───────────── */
+  --color-ok: #22c55e;
+  --color-ok-bright: #4ade80;
+  --color-warn: #f59e0b;
+  --color-warn-bright: #fbbf24;
+  --color-bad: #ef4444;
+  --color-bad-bright: #f87171;
 
   --font-sans: 'Heebo', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Monaco, Consolas, monospace;
 
   --radius-card: 1rem;
 }
 
+/* Single-theme by intent: GET SERVICE commits to one dark identity, so every
+   colour is painted explicitly and nothing is inherited from the host. */
 :root {
   color-scheme: dark;
-  --bg: var(--color-navy-950);
-  --surface: var(--color-navy-900);
-  --surface-raised: var(--color-navy-850);
-  --border: var(--color-navy-700);
-  --text: #f8fafc;
-  --text-muted: #94a3b8;
 }
 
-html {
-  background-color: var(--bg);
+html,
+body {
+  background-color: var(--color-bg);
 }
 
 body {
-  background-color: var(--bg);
-  color: var(--text);
+  color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* Accessibility: always-visible focus ring (spec §41) */
+/* Accessibility: an always-visible focus ring (spec §41). */
 :focus-visible {
-  outline: 2px solid var(--color-accent-400);
+  outline: 2px solid var(--color-brand-bright);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
-/* RTL correctness (spec §40): the document direction is set on <html dir>.
-   Content that must stay LTR-readable — numbers, prices, phone numbers,
-   coordinates, identifiers — is wrapped in these helpers rather than being
-   force-flipped. */
+/* ───────────────────────────────────────────────────────────────────────────
+   RTL (spec §40)
+   Hebrew is the document direction. Runs that must stay LTR-readable —
+   numbers, prices, distances, times, identifiers — are ISOLATED rather than
+   force-flipped, so the bidi algorithm cannot reorder them.
+   ─────────────────────────────────────────────────────────────────────────── */
 .ltr-nums {
   direction: ltr;
   unicode-bidi: isolate;
@@ -79,7 +92,7 @@ body {
   font-family: var(--font-mono);
 }
 
-/* Respect users who ask for less motion (spec §41) */
+/* Respect a reduced-motion preference (spec §41). */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -91,26 +104,53 @@ body {
   }
 }
 
-@keyframes gs-pulse-ring {
-  0% { transform: scale(0.85); opacity: 0.7; }
-  70% { transform: scale(1.6); opacity: 0; }
-  100% { transform: scale(1.6); opacity: 0; }
+/* ───────────────────────────────────────────────────────────────────────────
+   Motion: MOVE → CONNECT → ARRIVE (spec §43)
+   Every animation here explains searching, movement or arrival. None is
+   decorative.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* A live signal: something is actually happening right now. */
+@keyframes gs-pulse {
+  0% { transform: scale(0.9); opacity: 0.75; }
+  70%, 100% { transform: scale(2.2); opacity: 0; }
+}
+.gs-pulse {
+  animation: gs-pulse 2s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
 }
 
-.gs-pulse-ring {
-  animation: gs-pulse-ring 1.9s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
-}
-
+/* Searching the network. */
 @keyframes gs-sweep {
-  from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
-
 .gs-sweep {
-  animation: gs-sweep 2.4s linear infinite;
+  animation: gs-sweep 2.6s linear infinite;
 }
 
-/* Screen-reader-only utility */
+/* The visual signature: ● ───────→ ●
+   A connection being made. Used at the matching and tracking moments only —
+   route lines everywhere would make it wallpaper (spec §40). */
+@keyframes gs-travel {
+  0% { transform: translateX(0); opacity: 0; }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { transform: translateX(var(--gs-travel-distance, 100%)); opacity: 0; }
+}
+.gs-travel {
+  animation: gs-travel 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes gs-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+/* Arrival of new information. Starts from a VISIBLE resting state on the
+   server-rendered frame, so nothing is parked at opacity 0. */
+.gs-rise {
+  animation: gs-rise 0.34s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Screen-reader-only, with a focusable escape for the skip link. */
 .sr-only {
   position: absolute;
   width: 1px;

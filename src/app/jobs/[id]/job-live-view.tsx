@@ -66,23 +66,23 @@ interface JobData {
   reviews: { id: string; direction: string; rating: number }[];
 }
 
-const STATUS_COPY: Record<JobStatus, { title: string; tone: 'neutral' | 'accent' | 'success' | 'warning' | 'danger' }> = {
+const STATUS_COPY: Record<JobStatus, { title: string; tone: 'neutral' | 'brand' | 'ok' | 'warn' | 'bad' }> = {
   REQUESTED: { title: 'הבקשה נרשמה', tone: 'neutral' },
-  SEARCHING: { title: 'מחפשים מקצוען', tone: 'accent' },
-  OFFERS_AVAILABLE: { title: 'מחפשים מקצוען', tone: 'accent' },
-  PROVIDER_SELECTED: { title: 'מצאנו לך מקצוען', tone: 'success' },
-  CONFIRMED: { title: 'ההזמנה אושרה', tone: 'success' },
-  EN_ROUTE: { title: 'המקצוען בדרך אליך', tone: 'accent' },
-  ARRIVED: { title: 'המקצוען הגיע', tone: 'success' },
-  IN_PROGRESS: { title: 'העבודה מתבצעת', tone: 'accent' },
-  AWAITING_CUSTOMER_CONFIRMATION: { title: 'העבודה הושלמה — נדרש אישורך', tone: 'warning' },
-  COMPLETED: { title: 'העבודה הושלמה', tone: 'success' },
-  PAID: { title: 'שולם', tone: 'success' },
-  REVIEWED: { title: 'תודה על הדירוג', tone: 'success' },
+  SEARCHING: { title: 'מחפשים מקצוען', tone: 'brand' },
+  OFFERS_AVAILABLE: { title: 'מחפשים מקצוען', tone: 'brand' },
+  PROVIDER_SELECTED: { title: 'מצאנו לך מקצוען', tone: 'ok' },
+  CONFIRMED: { title: 'ההזמנה אושרה', tone: 'ok' },
+  EN_ROUTE: { title: 'המקצוען בדרך אליך', tone: 'brand' },
+  ARRIVED: { title: 'המקצוען הגיע', tone: 'ok' },
+  IN_PROGRESS: { title: 'העבודה מתבצעת', tone: 'brand' },
+  AWAITING_CUSTOMER_CONFIRMATION: { title: 'העבודה הושלמה — נדרש אישורך', tone: 'warn' },
+  COMPLETED: { title: 'העבודה הושלמה', tone: 'ok' },
+  PAID: { title: 'שולם', tone: 'ok' },
+  REVIEWED: { title: 'תודה על הדירוג', tone: 'ok' },
   CANCELLED_BY_CUSTOMER: { title: 'ביטלת את ההזמנה', tone: 'neutral' },
-  CANCELLED_BY_PROVIDER: { title: 'המקצוען ביטל — מחפשים אחר', tone: 'warning' },
-  CANCELLED_BY_SYSTEM: { title: 'לא מצאנו מקצוען זמין', tone: 'danger' },
-  DISPUTED: { title: 'נפתחה מחלוקת', tone: 'danger' },
+  CANCELLED_BY_PROVIDER: { title: 'המקצוען ביטל — מחפשים אחר', tone: 'warn' },
+  CANCELLED_BY_SYSTEM: { title: 'לא מצאנו מקצוען זמין', tone: 'bad' },
+  DISPUTED: { title: 'נפתחה מחלוקת', tone: 'bad' },
 };
 
 export function JobLiveView({ jobId }: { jobId: string }) {
@@ -196,17 +196,17 @@ export function JobLiveView({ jobId }: { jobId: string }) {
       {(job.status === 'SEARCHING' || job.status === 'OFFERS_AVAILABLE') && (
         <Card className="text-center">
           <div className="relative mx-auto flex size-28 items-center justify-center">
-            <span className="gs-pulse-ring absolute size-20 rounded-full bg-accent-500/30" />
-            <span className="absolute size-20 rounded-full border border-accent-500/40" />
-            <div className="gs-sweep absolute size-24 rounded-full border-t-2 border-accent-400" />
+            <span className="gs-pulse-ring absolute size-20 rounded-full bg-brand/30" />
+            <span className="absolute size-20 rounded-full border border-brand/40" />
+            <div className="gs-sweep absolute size-24 rounded-full border-t-2 border-brand-bright" />
             <span aria-hidden="true" className="text-3xl">🔧</span>
           </div>
-          <h2 className="mt-5 text-xl font-bold text-white">מחפשים לך מקצוען…</h2>
-          <p className="mt-2 text-sm text-slate-400">
+          <h2 className="mt-5 text-xl font-bold text-ink">מחפשים לך מקצוען…</h2>
+          <p className="mt-2 text-sm text-ink-2">
             בודקים מי פנוי, מי קרוב ומי כבר נוסע לאזור שלך.
           </p>
           {job.dispatch_radius_km && (
-            <p className="mt-3 text-sm text-slate-500">
+            <p className="mt-3 text-sm text-ink-3">
               סבב {job.dispatch_wave} — רדיוס{' '}
               <span className="ltr-nums" dir="ltr">
                 {Number(job.dispatch_radius_km)} km
@@ -214,7 +214,7 @@ export function JobLiveView({ jobId }: { jobId: string }) {
             </p>
           )}
           <Button
-            variant="ghost"
+            variant="quiet"
             size="md"
             className="mt-5"
             loading={acting}
@@ -227,11 +227,11 @@ export function JobLiveView({ jobId }: { jobId: string }) {
 
       {/* ── MATCH FOUND: one clear recommendation (spec §10) ────────────── */}
       {assignment && job.status === 'PROVIDER_SELECTED' && (
-        <Card className="border-success-500/40">
-          <p className="text-sm font-semibold text-success-400">מצאנו לך מקצוען</p>
-          <h2 className="mt-1 text-2xl font-black text-white">{assignment.provider_name}</h2>
+        <Card className="border-ok/40">
+          <p className="text-sm font-semibold text-ok-bright">מצאנו לך מקצוען</p>
+          <h2 className="mt-1 text-2xl font-black text-ink">{assignment.provider_name}</h2>
           {assignment.business_name && (
-            <p className="text-sm text-slate-400">{assignment.business_name}</p>
+            <p className="text-sm text-ink-2">{assignment.business_name}</p>
           )}
 
           <div className="mt-3">
@@ -242,27 +242,27 @@ export function JobLiveView({ jobId }: { jobId: string }) {
           </div>
 
           <dl className="mt-5 grid grid-cols-2 gap-4">
-            <div className="rounded-xl bg-navy-950 p-3">
-              <dt className="text-xs text-slate-400">הגעה משוערת</dt>
-              <dd className="mt-1 text-2xl font-black text-white">
+            <div className="rounded-xl bg-bg p-3">
+              <dt className="text-xs text-ink-2">הגעה משוערת</dt>
+              <dd className="mt-1 text-2xl font-black text-ink">
                 <Minutes value={assignment.eta_minutes} />
-                <span className="ms-1 text-sm font-normal text-slate-400">דקות</span>
+                <span className="ms-1 text-sm font-normal text-ink-2">דקות</span>
               </dd>
             </div>
-            <div className="rounded-xl bg-navy-950 p-3">
-              <dt className="text-xs text-slate-400">מחיר</dt>
-              <dd className="mt-1 text-2xl font-black text-white">
+            <div className="rounded-xl bg-bg p-3">
+              <dt className="text-xs text-ink-2">מחיר</dt>
+              <dd className="mt-1 text-2xl font-black text-ink">
                 <Money shekels={Number(assignment.price_ils)} />
               </dd>
             </div>
           </dl>
 
-          <p className="mt-3 text-xs text-slate-500">
+          <p className="mt-3 text-xs text-ink-3">
             זמן ההגעה הוא הערכה ומתעדכן בזמן אמת. המחיר מאושר על ידי המקצוען.
           </p>
 
           {actionError && (
-            <p role="alert" className="mt-3 rounded-xl bg-danger-500/10 px-3 py-2 text-sm text-danger-400">
+            <p role="alert" className="mt-3 rounded-xl bg-bad/10 px-3 py-2 text-sm text-bad-bright">
               {actionError}
             </p>
           )}
@@ -272,7 +272,7 @@ export function JobLiveView({ jobId }: { jobId: string }) {
               הזמן עכשיו
             </Button>
             <Button
-              variant="ghost"
+              variant="quiet"
               size="md"
               fullWidth
               loading={acting}
@@ -289,7 +289,7 @@ export function JobLiveView({ jobId }: { jobId: string }) {
         <Card>
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-xl font-bold text-white">{assignment.provider_name}</h2>
+              <h2 className="text-xl font-bold text-ink">{assignment.provider_name}</h2>
               <div className="mt-1">
                 <Rating
                   value={assignment.rating_avg ? Number(assignment.rating_avg) : null}
@@ -298,51 +298,51 @@ export function JobLiveView({ jobId }: { jobId: string }) {
               </div>
             </div>
             <div className="text-end">
-              <p className="text-xs text-slate-400">מחיר</p>
-              <p className="text-xl font-black text-white">
+              <p className="text-xs text-ink-2">מחיר</p>
+              <p className="text-xl font-black text-ink">
                 <Money shekels={Number(assignment.price_ils)} />
               </p>
             </div>
           </div>
 
           {job.status === 'EN_ROUTE' && (
-            <div className="mt-4 rounded-xl bg-accent-500/10 p-4 text-center">
-              <p className="text-sm font-semibold text-accent-400">המקצוען בדרך אליך</p>
-              <p className="mt-1 text-3xl font-black text-white">
+            <div className="mt-4 rounded-xl bg-brand/10 p-4 text-center">
+              <p className="text-sm font-semibold text-brand-bright">המקצוען בדרך אליך</p>
+              <p className="mt-1 text-3xl font-black text-ink">
                 <Minutes value={assignment.eta_minutes} />
-                <span className="ms-1 text-base font-normal text-slate-400">דקות</span>
+                <span className="ms-1 text-base font-normal text-ink-2">דקות</span>
               </p>
-              <p className="mt-1 text-xs text-slate-500">הערכה — מתעדכנת לפי המיקום בפועל</p>
+              <p className="mt-1 text-xs text-ink-3">הערכה — מתעדכנת לפי המיקום בפועל</p>
             </div>
           )}
 
           {job.status === 'ARRIVED' && (
-            <div className="mt-4 rounded-xl bg-success-500/10 p-4 text-center">
-              <p className="text-lg font-bold text-success-400">המקצוען הגיע</p>
+            <div className="mt-4 rounded-xl bg-ok/10 p-4 text-center">
+              <p className="text-lg font-bold text-ok-bright">המקצוען הגיע</p>
             </div>
           )}
 
           {job.status === 'IN_PROGRESS' && (
-            <div className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-navy-950 p-4">
-              <Spinner className="size-5 text-accent-400" />
-              <p className="font-semibold text-white">העבודה מתבצעת</p>
+            <div className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-bg p-4">
+              <Spinner className="size-5 text-brand-bright" />
+              <p className="font-semibold text-ink">העבודה מתבצעת</p>
             </div>
           )}
 
           {job.status === 'CONFIRMED' && (
-            <p className="mt-4 rounded-xl bg-navy-950 p-4 text-center text-sm text-slate-300">
+            <p className="mt-4 rounded-xl bg-bg p-4 text-center text-sm text-ink-2">
               ההזמנה אושרה. המקצוען יעדכן כשיצא לדרך.
             </p>
           )}
 
           {actionError && (
-            <p role="alert" className="mt-3 rounded-xl bg-danger-500/10 px-3 py-2 text-sm text-danger-400">
+            <p role="alert" className="mt-3 rounded-xl bg-bad/10 px-3 py-2 text-sm text-bad-bright">
               {actionError}
             </p>
           )}
 
           <Button
-            variant="ghost"
+            variant="quiet"
             size="md"
             fullWidth
             className="mt-4"
@@ -356,13 +356,13 @@ export function JobLiveView({ jobId }: { jobId: string }) {
 
       {/* ── Work done, needs the customer's confirmation ────────────────── */}
       {job.status === 'AWAITING_CUSTOMER_CONFIRMATION' && (
-        <Card className="border-warning-500/40">
-          <h2 className="text-lg font-bold text-white">המקצוען סיים את העבודה</h2>
-          <p className="mt-2 text-sm text-slate-400">
+        <Card className="border-warn/40">
+          <h2 className="text-lg font-bold text-ink">המקצוען סיים את העבודה</h2>
+          <p className="mt-2 text-sm text-ink-2">
             אשרו שהעבודה בוצעה כדי להמשיך לתשלום.
           </p>
           {actionError && (
-            <p role="alert" className="mt-3 rounded-xl bg-danger-500/10 px-3 py-2 text-sm text-danger-400">
+            <p role="alert" className="mt-3 rounded-xl bg-bad/10 px-3 py-2 text-sm text-bad-bright">
               {actionError}
             </p>
           )}
@@ -406,9 +406,9 @@ export function JobLiveView({ jobId }: { jobId: string }) {
 
       {/* ── Nobody found: honest dead end with a way forward ───────────── */}
       {job.status === 'CANCELLED_BY_SYSTEM' && (
-        <Card className="border-danger-500/40">
-          <h2 className="text-lg font-bold text-white">לא מצאנו מקצוען זמין</h2>
-          <p className="mt-2 text-sm text-slate-400">
+        <Card className="border-bad/40">
+          <h2 className="text-lg font-bold text-ink">לא מצאנו מקצוען זמין</h2>
+          <p className="mt-2 text-sm text-ink-2">
             חיפשנו בכל הרדיוסים ולא נמצא מקצוען פנוי ומתאים כרגע. אפשר לנסות שוב
             או לקבוע למועד אחר.
           </p>
@@ -420,7 +420,7 @@ export function JobLiveView({ jobId }: { jobId: string }) {
 
       {job.status === 'CANCELLED_BY_CUSTOMER' && (
         <Card>
-          <h2 className="text-lg font-bold text-white">ההזמנה בוטלה</h2>
+          <h2 className="text-lg font-bold text-ink">ההזמנה בוטלה</h2>
           <Link href="/" className="mt-5 block">
             <Button variant="secondary" fullWidth>
               חזרה לדף הבית
@@ -431,13 +431,13 @@ export function JobLiveView({ jobId }: { jobId: string }) {
 
       {/* ── What was asked for ─────────────────────────────────────────── */}
       <Card>
-        <h2 className="text-sm font-semibold text-slate-400">הבקשה שלך</h2>
-        <p className="mt-2 text-white">{job.raw_description}</p>
+        <h2 className="text-sm font-semibold text-ink-2">הבקשה שלך</h2>
+        <p className="mt-2 text-ink">{job.raw_description}</p>
         <div className="mt-3 flex flex-wrap gap-2">
-          {job.category_name && <Badge tone="accent">{job.category_name}</Badge>}
+          {job.category_name && <Badge tone="brand">{job.category_name}</Badge>}
           {job.service_name && <Badge>{job.service_name}</Badge>}
         </div>
-        {job.address_text && <p className="mt-3 text-sm text-slate-400">{job.address_text}</p>}
+        {job.address_text && <p className="mt-3 text-sm text-ink-2">{job.address_text}</p>}
       </Card>
 
       <JobTimeline jobId={jobId} refreshKey={job.status} />

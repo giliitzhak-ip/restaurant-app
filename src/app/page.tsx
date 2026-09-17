@@ -53,25 +53,25 @@ export default async function HomePage() {
         <Logo />
         <Link
           href="/login"
-          className="inline-flex min-h-11 items-center rounded-lg px-4 text-sm font-medium text-slate-300 hover:text-white"
+          className="inline-flex min-h-11 items-center rounded-lg px-4 text-sm font-medium text-ink-2 hover:text-ink"
         >
           התחברות
         </Link>
       </header>
 
       <div className="mt-12">
-        <h1 className="text-3xl font-black leading-tight text-white">מה צריך לעשות?</h1>
-        <p className="mt-2 text-slate-400">
+        <h1 className="text-3xl font-black leading-tight text-ink">מה צריך לעשות?</h1>
+        <p className="mt-2 text-ink-2">
           תארו מה קרה. אנחנו נמצא את בעל המקצוע המתאים שכבר נמצא באזור שלכם.
         </p>
       </div>
 
       <HomeSearch categories={categories} />
 
-      <footer className="mt-auto pt-10 text-center text-xs text-slate-500">
+      <footer className="mt-auto pt-10 text-center text-xs text-ink-3">
         <Link
           href="/provider"
-          className="inline-flex min-h-11 items-center px-4 hover:text-slate-300"
+          className="inline-flex min-h-11 items-center px-4 hover:text-ink-2"
         >
           אני בעל מקצוע
         </Link>

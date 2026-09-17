@@ -130,7 +130,7 @@ export function MatchingLab() {
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-4">
           <Logo />
-          <h1 className="text-xl font-bold text-white">מעבדת התאמה</h1>
+          <h1 className="text-xl font-bold text-ink">מעבדת התאמה</h1>
         </div>
         <Link href="/admin">
           <Button variant="secondary" size="md">
@@ -139,13 +139,13 @@ export function MatchingLab() {
         </Link>
       </header>
 
-      <Card className="border-accent-500/30">
-        <h2 className="text-sm font-semibold text-accent-400">מה בודקים כאן</h2>
-        <p className="mt-2 text-sm text-slate-300">
+      <Card className="border-brand/30">
+        <h2 className="text-sm font-semibold text-brand-bright">מה בודקים כאן</h2>
+        <p className="mt-2 text-sm text-ink-2">
           המעבדה מריצה את מנוע ההתאמה האמיתי — אותו קוד שמשגר עבודות בפועל —
           על מקצוענים היפותטיים. אין כתיבה לבסיס הנתונים ואין שיגור הצעות.
         </p>
-        <p className="mt-2 text-sm text-slate-400">
+        <p className="mt-2 text-sm text-ink-2">
           התרחיש שנטען כברירת מחדל הוא המקרה המכריע: מקצוען <strong>קרוב יותר</strong>{' '}
           שנוסע בכיוון ההפוך, מול מקצוען <strong>רחוק יותר</strong> שכבר נוסע לכיוון
           הלקוח. מנוע שמתבסס על מרחק בלבד יבחר את דן. GET SERVICE צריך לבחור את רם.
@@ -154,7 +154,7 @@ export function MatchingLab() {
 
       {/* ── Editable scenario ─────────────────────────────────────────── */}
       <Card>
-        <h2 className="text-sm font-semibold text-slate-300">
+        <h2 className="text-sm font-semibold text-ink-2">
           מקצוענים בסימולציה (לקוח:{' '}
           <span className="ltr-nums" dir="ltr">
             {CUSTOMER.lat}, {CUSTOMER.lon}
@@ -164,8 +164,8 @@ export function MatchingLab() {
 
         <div className="mt-4 space-y-4">
           {providers.map((provider, index) => (
-            <div key={provider.id} className="rounded-xl border border-navy-700 bg-navy-950 p-4">
-              <p className="font-semibold text-white">{provider.name}</p>
+            <div key={provider.id} className="rounded-xl border border-line bg-bg p-4">
+              <p className="font-semibold text-ink">{provider.name}</p>
               <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
                 <Field label="כיוון נסיעה (°)" htmlFor={`h-${provider.id}`}>
                   <input
@@ -233,7 +233,7 @@ export function MatchingLab() {
 
       {busy && !result && (
         <Card>
-          <p className="flex items-center gap-2 text-slate-300">
+          <p className="flex items-center gap-2 text-ink-2">
             <Spinner className="size-5" /> מריץ…
           </p>
         </Card>
@@ -242,19 +242,19 @@ export function MatchingLab() {
       {/* ── Results ──────────────────────────────────────────────────── */}
       {result && (
         <>
-          <Card className={thesisHolds ? 'border-success-500/50' : 'border-danger-500/50'}>
-            <h2 className="text-sm font-semibold text-slate-300">תוצאה</h2>
-            <p className="mt-2 text-lg font-bold text-white">
+          <Card className={thesisHolds ? 'border-ok/50' : 'border-bad/50'}>
+            <h2 className="text-sm font-semibold text-ink-2">תוצאה</h2>
+            <p className="mt-2 text-lg font-bold text-ink">
               {winner ? `הנבחר: ${winner.name}` : 'לא נמצא מועמד כשיר'}
             </p>
             {winner && (
-              <p className={`mt-2 text-sm ${thesisHolds ? 'text-success-400' : 'text-danger-400'}`}>
+              <p className={`mt-2 text-sm ${thesisHolds ? 'text-ok-bright' : 'text-bad-bright'}`}>
                 {thesisHolds
                   ? '✓ המנוע בחר מקצוען שכבר בדרך — התזה מתקיימת.'
                   : '✗ המנוע לא בחר מקצוען שבדרך — יש לבדוק את הכיול.'}
               </p>
             )}
-            <p className="mt-2 text-xs text-slate-500">
+            <p className="mt-2 text-xs text-ink-3">
               מנוע מסלולים: {result.mapProvider}. משקלים:{' '}
               {Object.entries(result.weightsUsed)
                 .map(([k, v]) => `${k} ${(v * 100).toFixed(0)}%`)
@@ -263,10 +263,10 @@ export function MatchingLab() {
           </Card>
 
           <Card>
-            <h2 className="text-sm font-semibold text-slate-300">דירוג מועמדים</h2>
+            <h2 className="text-sm font-semibold text-ink-2">דירוג מועמדים</h2>
             <div className="mt-3 space-y-3">
               {result.ranked.map((entry) => (
-                <div key={entry.providerId} className="rounded-xl border border-navy-700 bg-navy-950">
+                <div key={entry.providerId} className="rounded-xl border border-line bg-bg">
                   <button
                     type="button"
                     onClick={() =>
@@ -276,17 +276,17 @@ export function MatchingLab() {
                     className="flex w-full items-center justify-between gap-3 p-4 text-start"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="ltr-nums text-lg font-black text-slate-500" dir="ltr">
+                      <span className="ltr-nums text-lg font-black text-ink-3" dir="ltr">
                         #{entry.rank}
                       </span>
                       <div>
-                        <p className="font-semibold text-white">{entry.name}</p>
+                        <p className="font-semibold text-ink">{entry.name}</p>
                         <div className="mt-1 flex flex-wrap items-center gap-2">
                           {entry.routeOpportunity.isOnTheWay && (
-                            <Badge tone="success">כבר בדרך</Badge>
+                            <Badge tone="ok">כבר בדרך</Badge>
                           )}
                           <Badge tone="neutral">{entry.routeOpportunity.basis}</Badge>
-                          <span className="ltr-nums text-xs text-slate-400" dir="ltr">
+                          <span className="ltr-nums text-xs text-ink-2" dir="ltr">
                             straight {entry.straightDistanceKm}km · road{' '}
                             {entry.routeDistanceKm}km · dev{' '}
                             {entry.routeOpportunity.routeDeviationMinutes}min
@@ -294,16 +294,16 @@ export function MatchingLab() {
                         </div>
                       </div>
                     </div>
-                    <span className="ltr-nums text-2xl font-black text-white" dir="ltr">
+                    <span className="ltr-nums text-2xl font-black text-ink" dir="ltr">
                       {entry.finalScore.toFixed(1)}
                     </span>
                   </button>
 
                   {expanded === entry.providerId && (
-                    <div className="border-t border-navy-700 p-4">
+                    <div className="border-t border-line p-4">
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="text-xs text-slate-400">
+                          <tr className="text-xs text-ink-2">
                             <th scope="col" className="p-1 text-start">אות</th>
                             <th scope="col" className="p-1 text-start">ניקוד</th>
                             <th scope="col" className="p-1 text-start">משקל</th>
@@ -313,20 +313,20 @@ export function MatchingLab() {
                         </thead>
                         <tbody>
                           {Object.entries(entry.breakdown).map(([key, component]) => (
-                            <tr key={key} className="border-t border-navy-800">
-                              <th scope="row" className="p-1 text-start font-normal text-slate-300">
+                            <tr key={key} className="border-t border-surface-2">
+                              <th scope="row" className="p-1 text-start font-normal text-ink-2">
                                 {key}
                               </th>
-                              <td className="ltr-nums p-1 font-semibold text-white" dir="ltr">
+                              <td className="ltr-nums p-1 font-semibold text-ink" dir="ltr">
                                 {component.score.toFixed(0)}
                               </td>
-                              <td className="ltr-nums p-1 text-slate-400" dir="ltr">
+                              <td className="ltr-nums p-1 text-ink-2" dir="ltr">
                                 {(component.weight * 100).toFixed(0)}%
                               </td>
-                              <td className="ltr-nums p-1 text-accent-400" dir="ltr">
+                              <td className="ltr-nums p-1 text-brand-bright" dir="ltr">
                                 {component.weighted.toFixed(1)}
                               </td>
-                              <td className="p-1 text-xs text-slate-400">{component.reason}</td>
+                              <td className="p-1 text-xs text-ink-2">{component.reason}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -339,12 +339,12 @@ export function MatchingLab() {
 
             {result.excluded.length > 0 && (
               <div className="mt-5">
-                <h3 className="text-sm font-semibold text-slate-400">נפסלו</h3>
+                <h3 className="text-sm font-semibold text-ink-2">נפסלו</h3>
                 <ul className="mt-2 space-y-1">
                   {result.excluded.map((entry) => (
                     <li key={entry.providerId} className="flex items-center justify-between text-sm">
-                      <span className="text-slate-300">{entry.name}</span>
-                      <Badge tone="danger">{entry.reason}</Badge>
+                      <span className="text-ink-2">{entry.name}</span>
+                      <Badge tone="bad">{entry.reason}</Badge>
                     </li>
                   ))}
                 </ul>

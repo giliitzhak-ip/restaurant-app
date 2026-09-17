@@ -64,8 +64,8 @@ export function JobTimeline({ jobId, refreshKey }: { jobId: string; refreshKey: 
         aria-expanded={open}
         className="flex w-full items-center justify-between text-start"
       >
-        <span className="text-sm font-semibold text-slate-300">מה קרה עד כה</span>
-        <span aria-hidden="true" className="text-slate-500">
+        <span className="text-sm font-semibold text-ink-2">מה קרה עד כה</span>
+        <span aria-hidden="true" className="text-ink-3">
           {open ? '−' : '+'}
         </span>
       </button>
@@ -73,27 +73,27 @@ export function JobTimeline({ jobId, refreshKey }: { jobId: string; refreshKey: 
       {open && (
         <div className="mt-4">
           {events === null ? (
-            <p className="flex items-center gap-2 text-sm text-slate-400">
+            <p className="flex items-center gap-2 text-sm text-ink-2">
               <Spinner className="size-4" /> טוען…
             </p>
           ) : events.length === 0 ? (
-            <p className="text-sm text-slate-500">אין עדיין אירועים.</p>
+            <p className="text-sm text-ink-3">אין עדיין אירועים.</p>
           ) : (
             <ol className="space-y-3">
               {events.map((event) => (
                 <li key={event.id} className="flex gap-3">
                   <time
-                    className="ltr-nums shrink-0 text-sm text-slate-500"
+                    className="ltr-nums shrink-0 text-sm text-ink-3"
                     dir="ltr"
                     dateTime={event.created_at}
                   >
                     {timeOf(event.created_at)}
                   </time>
                   <div>
-                    <p className="text-sm text-slate-200">
+                    <p className="text-sm text-ink">
                       {STATUS_LABEL[event.to_status] ?? event.to_status}
                     </p>
-                    {event.reason && <p className="text-xs text-slate-500">{event.reason}</p>}
+                    {event.reason && <p className="text-xs text-ink-3">{event.reason}</p>}
                   </div>
                 </li>
               ))}

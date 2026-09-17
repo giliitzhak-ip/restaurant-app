@@ -96,15 +96,15 @@ export function AdminTower() {
   const c = data.counters;
   const a = data.analytics;
 
-  const tiles: { label: string; value: string; tone?: 'accent' | 'warning' | 'danger' | 'success' }[] = [
-    { label: 'מקצוענים מחוברים', value: c.providers_online ?? '0', tone: 'success' },
-    { label: 'בעבודה', value: c.providers_busy ?? '0', tone: 'accent' },
-    { label: 'עבודות פעילות', value: c.active_jobs ?? '0', tone: 'accent' },
-    { label: 'בחיפוש', value: c.searching_jobs ?? '0', tone: 'warning' },
-    { label: 'ללא התאמה (24ש)', value: c.unmatched_jobs ?? '0', tone: 'danger' },
+  const tiles: { label: string; value: string; tone?: 'brand' | 'warn' | 'bad' | 'ok' }[] = [
+    { label: 'מקצוענים מחוברים', value: c.providers_online ?? '0', tone: 'ok' },
+    { label: 'בעבודה', value: c.providers_busy ?? '0', tone: 'brand' },
+    { label: 'עבודות פעילות', value: c.active_jobs ?? '0', tone: 'brand' },
+    { label: 'בחיפוש', value: c.searching_jobs ?? '0', tone: 'warn' },
+    { label: 'ללא התאמה (24ש)', value: c.unmatched_jobs ?? '0', tone: 'bad' },
     { label: 'בדרך', value: c.en_route ?? '0' },
-    { label: 'מחלוקות פתוחות', value: c.open_disputes ?? '0', tone: 'danger' },
-    { label: 'הושלמו היום', value: c.completed_today ?? '0', tone: 'success' },
+    { label: 'מחלוקות פתוחות', value: c.open_disputes ?? '0', tone: 'bad' },
+    { label: 'הושלמו היום', value: c.completed_today ?? '0', tone: 'ok' },
   ];
 
   return (
@@ -112,7 +112,7 @@ export function AdminTower() {
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Logo />
-          <h1 className="text-xl font-bold text-white">מרכז בקרה</h1>
+          <h1 className="text-xl font-bold text-ink">מרכז בקרה</h1>
         </div>
         <nav className="flex gap-2">
           <Link href="/matching-lab">
@@ -126,7 +126,7 @@ export function AdminTower() {
       <ConnectionBanner state={connection} />
 
       {notice && (
-        <p role="status" className="rounded-xl bg-accent-500/10 px-4 py-3 text-sm text-accent-400">
+        <p role="status" className="rounded-xl bg-brand/10 px-4 py-3 text-sm text-brand-bright">
           {notice}
         </p>
       )}
@@ -136,16 +136,16 @@ export function AdminTower() {
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {tiles.map((tile) => (
             <Card key={tile.label} className="p-4">
-              <p className="text-xs text-slate-400">{tile.label}</p>
+              <p className="text-xs text-ink-2">{tile.label}</p>
               <p
                 className={`ltr-nums mt-1 text-3xl font-black ${
-                  tile.tone === 'danger' && Number(tile.value) > 0
-                    ? 'text-danger-400'
-                    : tile.tone === 'warning' && Number(tile.value) > 0
-                      ? 'text-warning-400'
-                      : tile.tone === 'success'
-                        ? 'text-success-400'
-                        : 'text-white'
+                  tile.tone === 'bad' && Number(tile.value) > 0
+                    ? 'text-bad-bright'
+                    : tile.tone === 'warn' && Number(tile.value) > 0
+                      ? 'text-warn-bright'
+                      : tile.tone === 'ok'
+                        ? 'text-ok-bright'
+                        : 'text-ink'
                 }`}
                 dir="ltr"
               >
@@ -157,26 +157,26 @@ export function AdminTower() {
 
         <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
           <Card className="p-4">
-            <p className="text-xs text-slate-400">הכנסות היום</p>
-            <p className="mt-1 text-2xl font-black text-white">
+            <p className="text-xs text-ink-2">הכנסות היום</p>
+            <p className="mt-1 text-2xl font-black text-ink">
               <Money agorot={Number(c.revenue_today_agorot ?? 0)} />
             </p>
           </Card>
           <Card className="p-4">
-            <p className="text-xs text-slate-400">עמלות היום</p>
-            <p className="mt-1 text-2xl font-black text-white">
+            <p className="text-xs text-ink-2">עמלות היום</p>
+            <p className="mt-1 text-2xl font-black text-ink">
               <Money agorot={Number(c.platform_fees_today_agorot ?? 0)} />
             </p>
           </Card>
           <Card className="p-4">
-            <p className="text-xs text-slate-400">ממתינים לאימות</p>
-            <p className="ltr-nums mt-1 text-2xl font-black text-warning-400" dir="ltr">
+            <p className="text-xs text-ink-2">ממתינים לאימות</p>
+            <p className="ltr-nums mt-1 text-2xl font-black text-warn-bright" dir="ltr">
               {c.providers_pending ?? '0'}
             </p>
           </Card>
           <Card className="p-4">
-            <p className="text-xs text-slate-400">השלמות (7 ימים)</p>
-            <p className="ltr-nums mt-1 text-2xl font-black text-success-400" dir="ltr">
+            <p className="text-xs text-ink-2">השלמות (7 ימים)</p>
+            <p className="ltr-nums mt-1 text-2xl font-black text-ok-bright" dir="ltr">
               {a.completions_7d ?? '0'}
             </p>
           </Card>
@@ -185,7 +185,7 @@ export function AdminTower() {
 
       {/* ── North star and funnel (spec §37) ─────────────────────────── */}
       <Card>
-        <h2 className="text-sm font-semibold text-slate-300">
+        <h2 className="text-sm font-semibold text-ink-2">
           מדדי מפתח — כוכב הצפון: השלמות מוצלחות
         </h2>
         <dl className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -200,14 +200,14 @@ export function AdminTower() {
             ['זמן תגובת מקצוען', a.provider_response_time_s, 's'],
           ].map(([label, value, unit]) => (
             <div key={String(label)}>
-              <dt className="text-xs text-slate-400">{label}</dt>
-              <dd className="ltr-nums mt-1 text-lg font-bold text-white" dir="ltr">
+              <dt className="text-xs text-ink-2">{label}</dt>
+              <dd className="ltr-nums mt-1 text-lg font-bold text-ink" dir="ltr">
                 {value === null || value === undefined ? '—' : `${value}${unit}`}
               </dd>
             </div>
           ))}
         </dl>
-        <p className="mt-4 text-xs text-slate-500">
+        <p className="mt-4 text-xs text-ink-3">
           חושב על נתוני 7 הימים האחרונים. במצב הדגמה הנתונים מבוססים על נתוני דמו.
         </p>
       </Card>
@@ -218,23 +218,23 @@ export function AdminTower() {
       {/* ── Verification queue ───────────────────────────────────────── */}
       {data.pendingVerification.length > 0 && (
         <Card>
-          <h2 className="text-sm font-semibold text-slate-300">ממתינים לאימות</h2>
-          <ul className="mt-3 divide-y divide-navy-700">
+          <h2 className="text-sm font-semibold text-ink-2">ממתינים לאימות</h2>
+          <ul className="mt-3 divide-y divide-line">
             {data.pendingVerification.map((provider) => (
               <li key={provider.id} className="flex items-center justify-between gap-3 py-3">
                 <div>
-                  <p className="font-medium text-white">{provider.full_name}</p>
-                  <p className="tech-id text-xs text-slate-500">{provider.email}</p>
+                  <p className="font-medium text-ink">{provider.full_name}</p>
+                  <p className="tech-id text-xs text-ink-3">{provider.email}</p>
                   <div className="mt-1.5 flex flex-wrap items-center gap-2">
                     {provider.is_configured ? (
                       <>
-                        <Badge tone="accent">{provider.category_name}</Badge>
-                        <span className="ltr-nums text-xs text-slate-500" dir="ltr">
+                        <Badge tone="brand">{provider.category_name}</Badge>
+                        <span className="ltr-nums text-xs text-ink-3" dir="ltr">
                           {provider.priced_services} services priced
                         </span>
                       </>
                     ) : (
-                      <Badge tone="warning">לא הגדיר תחום — אימות לא יועיל</Badge>
+                      <Badge tone="warn">לא הגדיר תחום — אימות לא יועיל</Badge>
                     )}
                   </div>
                 </div>
@@ -279,14 +279,14 @@ export function AdminTower() {
 
       {/* ── Live jobs ────────────────────────────────────────────────── */}
       <Card>
-        <h2 className="text-sm font-semibold text-slate-300">עבודות חיות</h2>
+        <h2 className="text-sm font-semibold text-ink-2">עבודות חיות</h2>
         {data.liveJobs.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-500">אין עבודות פעילות כרגע.</p>
+          <p className="mt-3 text-sm text-ink-3">אין עבודות פעילות כרגע.</p>
         ) : (
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-start text-sm">
               <thead>
-                <tr className="text-xs text-slate-400">
+                <tr className="text-xs text-ink-2">
                   <th scope="col" className="p-2 text-start">מצב</th>
                   <th scope="col" className="p-2 text-start">תחום</th>
                   <th scope="col" className="p-2 text-start">תיאור</th>
@@ -296,27 +296,27 @@ export function AdminTower() {
                   <th scope="col" className="p-2 text-start">פעולות</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-navy-800">
+              <tbody className="divide-y divide-surface-2">
                 {data.liveJobs.map((job) => (
                   <tr key={job.id}>
                     <td className="p-2">
                       <Badge
                         tone={
                           job.status === 'SEARCHING' || job.status === 'OFFERS_AVAILABLE'
-                            ? 'warning'
+                            ? 'warn'
                             : job.status === 'EN_ROUTE'
-                              ? 'accent'
+                              ? 'live'
                               : 'neutral'
                         }
                       >
                         {job.status}
                       </Badge>
                     </td>
-                    <td className="p-2 text-slate-300">{job.category_name ?? '—'}</td>
-                    <td className="max-w-xs truncate p-2 text-slate-300">{job.raw_description}</td>
-                    <td className="p-2 text-slate-400">{job.customer_name ?? '—'}</td>
-                    <td className="p-2 text-slate-400">{job.provider_name ?? '—'}</td>
-                    <td className="ltr-nums p-2 text-slate-400" dir="ltr">{job.dispatch_wave}</td>
+                    <td className="p-2 text-ink-2">{job.category_name ?? '—'}</td>
+                    <td className="max-w-xs truncate p-2 text-ink-2">{job.raw_description}</td>
+                    <td className="p-2 text-ink-2">{job.customer_name ?? '—'}</td>
+                    <td className="p-2 text-ink-2">{job.provider_name ?? '—'}</td>
+                    <td className="ltr-nums p-2 text-ink-2" dir="ltr">{job.dispatch_wave}</td>
                     <td className="p-2">
                       <div className="flex gap-2">
                         <Link href={`/admin/jobs/${job.id}`}>

@@ -112,8 +112,8 @@ export function LoginForm({ demoMode }: { demoMode: boolean }) {
               }}
               className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
                 mode === value
-                  ? 'bg-accent-500 text-navy-950'
-                  : 'bg-navy-800 text-slate-300 hover:text-white'
+                  ? 'bg-brand text-bg'
+                  : 'bg-surface-2 text-ink-2 hover:text-ink'
               }`}
             >
               {value === 'login' ? 'התחברות' : 'הרשמה'}
@@ -184,8 +184,8 @@ export function LoginForm({ demoMode }: { demoMode: boolean }) {
                     onClick={() => setRole(value)}
                     className={`min-h-12 rounded-xl border px-3 text-sm font-medium ${
                       role === value
-                        ? 'border-accent-500 bg-accent-500/10 text-white'
-                        : 'border-navy-600 bg-navy-950 text-slate-300'
+                        ? 'border-brand bg-brand/10 text-ink'
+                        : 'border-line-strong bg-bg text-ink-2'
                     }`}
                   >
                     {label}
@@ -196,7 +196,7 @@ export function LoginForm({ demoMode }: { demoMode: boolean }) {
           )}
 
           {error && (
-            <p role="alert" className="rounded-xl bg-danger-500/10 px-4 py-3 text-sm text-danger-400">
+            <p role="alert" className="rounded-xl bg-bad/10 px-4 py-3 text-sm text-bad-bright">
               {error}
             </p>
           )}
@@ -208,9 +208,9 @@ export function LoginForm({ demoMode }: { demoMode: boolean }) {
       </Card>
 
       {demoMode && (
-        <Card className="border-warning-500/30 bg-warning-500/5">
-          <p className="text-sm font-semibold text-warning-400">מצב הדגמה</p>
-          <p className="mt-1 text-sm text-slate-400">
+        <Card className="border-warn/30 bg-warn/5">
+          <p className="text-sm font-semibold text-warn-bright">מצב הדגמה</p>
+          <p className="mt-1 text-sm text-ink-2">
             חשבונות לדוגמה בלבד. נתוני ההדגמה מסומנים ואינם מתערבבים בנתוני אמת.
           </p>
           <div className="mt-3 grid gap-2">

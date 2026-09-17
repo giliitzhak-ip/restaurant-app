@@ -61,7 +61,7 @@ export function HomeSearch({ categories }: { categories: Category[] }) {
             key={example}
             type="button"
             onClick={() => setDescription(example)}
-            className="inline-flex min-h-11 items-center rounded-full border border-navy-600 bg-navy-900 px-4 text-sm text-slate-300 hover:border-accent-500 hover:text-white"
+            className="inline-flex min-h-11 items-center rounded-full border border-line-strong bg-surface-1 px-4 text-sm text-ink-2 hover:border-brand hover:text-ink"
           >
             {example}
           </button>
@@ -97,7 +97,7 @@ export function HomeSearch({ categories }: { categories: Category[] }) {
           </Button>
         </div>
         {description.trim().length < 3 && (
-          <p className="text-center text-sm text-slate-500">
+          <p className="text-center text-sm text-ink-3">
             כתבו כמה מילים על התקלה כדי להמשיך
           </p>
         )}
@@ -105,7 +105,7 @@ export function HomeSearch({ categories }: { categories: Category[] }) {
 
       {categories.length > 0 && (
         <nav aria-label="תחומים פופולריים" className="pt-6">
-          <h2 className="mb-3 text-sm font-semibold text-slate-400">או בחרו תחום</h2>
+          <h2 className="mb-3 text-sm font-semibold text-ink-2">או בחרו תחום</h2>
           <div className="flex flex-wrap gap-2">
             {categories.map((category) => (
               <button
@@ -119,7 +119,7 @@ export function HomeSearch({ categories }: { categories: Category[] }) {
                   if (description.trim()) params.set('q', description.trim());
                   startTransition(() => router.push(`/request?${params.toString()}`));
                 }}
-                className="inline-flex min-h-11 items-center rounded-xl border border-navy-700 bg-navy-900 px-4 text-sm font-medium text-slate-200 hover:border-accent-500"
+                className="inline-flex min-h-11 items-center rounded-xl border border-line bg-surface-1 px-4 text-sm font-medium text-ink hover:border-brand"
               >
                 {category.name_he}
               </button>

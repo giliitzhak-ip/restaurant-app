@@ -30,8 +30,8 @@ export function LiveMap({ jobs, providers }: { jobs: Job[]; providers: Provider[
   if (points.length === 0) {
     return (
       <Card>
-        <h2 className="text-sm font-semibold text-slate-300">מפה חיה</h2>
-        <p className="mt-3 text-sm text-slate-500">
+        <h2 className="text-sm font-semibold text-ink-2">מפה חיה</h2>
+        <p className="mt-3 text-sm text-ink-3">
           אין מקצוענים מחוברים או עבודות פעילות להצגה.
         </p>
       </Card>
@@ -61,16 +61,16 @@ export function LiveMap({ jobs, providers }: { jobs: Job[]; providers: Provider[
   return (
     <Card>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold text-slate-300">מפה חיה</h2>
+        <h2 className="text-sm font-semibold text-ink-2">מפה חיה</h2>
         <div className="flex flex-wrap gap-2 text-xs">
-          <Badge tone="success">מקצוען פנוי</Badge>
-          <Badge tone="accent">מקצוען בעבודה</Badge>
-          <Badge tone="warning">עבודה בחיפוש</Badge>
-          <Badge tone="danger">מיקום לא עדכני</Badge>
+          <Badge tone="ok">מקצוען פנוי</Badge>
+          <Badge tone="brand">מקצוען בעבודה</Badge>
+          <Badge tone="warn">עבודה בחיפוש</Badge>
+          <Badge tone="bad">מיקום לא עדכני</Badge>
         </div>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-xl border border-navy-700 bg-navy-950">
+      <div className="mt-4 overflow-hidden rounded-xl border border-line bg-bg">
         <svg
           viewBox={`0 0 ${W} ${H}`}
           className="h-auto w-full"
@@ -149,7 +149,7 @@ export function LiveMap({ jobs, providers }: { jobs: Job[]; providers: Provider[
         </svg>
       </div>
 
-      <p className="mt-3 text-xs text-slate-500">
+      <p className="mt-3 text-xs text-ink-3">
         תרשים מצב יחסי (לא מפת רחובות). קו מציין כיוון נסיעה; מקצוען ללא קו לא
         מדווח כיוון. אדום = מיקום לא עדכני ולכן לא ישובץ.
       </p>

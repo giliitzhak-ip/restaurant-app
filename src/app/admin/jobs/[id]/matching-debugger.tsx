@@ -108,8 +108,8 @@ export function MatchingDebugger({ jobId }: { jobId: string }) {
     <div className="space-y-5">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-white">ניתוח התאמה</h1>
-          <p className="tech-id mt-1 text-xs text-slate-500">{data.job.id}</p>
+          <h1 className="text-xl font-bold text-ink">ניתוח התאמה</h1>
+          <p className="tech-id mt-1 text-xs text-ink-3">{data.job.id}</p>
         </div>
         <Link href="/admin">
           <Button variant="secondary" size="md">
@@ -120,7 +120,7 @@ export function MatchingDebugger({ jobId }: { jobId: string }) {
 
       <Card>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge tone="accent">{data.job.status}</Badge>
+          <Badge tone="brand">{data.job.status}</Badge>
           {data.job.category_name && <Badge>{data.job.category_name}</Badge>}
           {data.job.service_name && <Badge>{data.job.service_name}</Badge>}
           <Badge tone="neutral">
@@ -135,9 +135,9 @@ export function MatchingDebugger({ jobId }: { jobId: string }) {
             )}
           </Badge>
         </div>
-        <p className="mt-3 text-white">{data.job.raw_description}</p>
+        <p className="mt-3 text-ink">{data.job.raw_description}</p>
         {data.job.base_price_ils && (
-          <p className="mt-2 text-sm text-slate-400">
+          <p className="mt-2 text-sm text-ink-2">
             מחיר ייחוס: <Money shekels={Number(data.job.base_price_ils)} />
           </p>
         )}
@@ -146,7 +146,7 @@ export function MatchingDebugger({ jobId }: { jobId: string }) {
       {/* ── Score breakdown per candidate ─────────────────────────────── */}
       {scored.length === 0 ? (
         <Card>
-          <p className="text-sm text-slate-400">לא דורגו מועמדים עבור העבודה הזו.</p>
+          <p className="text-sm text-ink-2">לא דורגו מועמדים עבור העבודה הזו.</p>
         </Card>
       ) : (
         <div className="space-y-4">
@@ -155,21 +155,21 @@ export function MatchingDebugger({ jobId }: { jobId: string }) {
             return (
               <Card
                 key={candidate.provider_id}
-                className={candidate.accepted ? 'border-success-500/50' : undefined}
+                className={candidate.accepted ? 'border-ok/50' : undefined}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="ltr-nums text-sm text-slate-500" dir="ltr">
+                      <span className="ltr-nums text-sm text-ink-3" dir="ltr">
                         #{index + 1}
                       </span>
-                      <h2 className="text-lg font-bold text-white">{candidate.full_name}</h2>
-                      {candidate.is_on_the_way && <Badge tone="success">כבר בדרך</Badge>}
-                      {candidate.accepted && <Badge tone="success">קיבל</Badge>}
-                      {candidate.rejected && <Badge tone="danger">דחה</Badge>}
-                      {candidate.expired && <Badge tone="warning">פג</Badge>}
+                      <h2 className="text-lg font-bold text-ink">{candidate.full_name}</h2>
+                      {candidate.is_on_the_way && <Badge tone="ok">כבר בדרך</Badge>}
+                      {candidate.accepted && <Badge tone="ok">קיבל</Badge>}
+                      {candidate.rejected && <Badge tone="bad">דחה</Badge>}
+                      {candidate.expired && <Badge tone="warn">פג</Badge>}
                     </div>
-                    <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-400">
+                    <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-ink-2">
                       <div>
                         <dt className="inline">אווירי: </dt>
                         <dd className="ltr-nums inline" dir="ltr">
@@ -214,8 +214,8 @@ export function MatchingDebugger({ jobId }: { jobId: string }) {
                     </dl>
                   </div>
                   <div className="text-end">
-                    <p className="text-xs text-slate-400">FINAL SCORE</p>
-                    <p className="ltr-nums text-3xl font-black text-white" dir="ltr">
+                    <p className="text-xs text-ink-2">FINAL SCORE</p>
+                    <p className="ltr-nums text-3xl font-black text-ink" dir="ltr">
                       {Number(candidate.final_score ?? 0).toFixed(1)}
                     </p>
                   </div>
@@ -224,7 +224,7 @@ export function MatchingDebugger({ jobId }: { jobId: string }) {
                 <table className="mt-4 w-full text-sm">
                   <caption className="sr-only">פירוט ניקוד לפי אות</caption>
                   <thead>
-                    <tr className="text-xs text-slate-400">
+                    <tr className="text-xs text-ink-2">
                       <th scope="col" className="p-1 text-start">אות</th>
                       <th scope="col" className="p-1 text-start">ניקוד</th>
                       <th scope="col" className="p-1 text-start">משקל</th>
@@ -237,26 +237,26 @@ export function MatchingDebugger({ jobId }: { jobId: string }) {
                       const score = Number(candidate[signal.key] ?? 0);
                       const weight = weights[signal.weightKey] ?? 0;
                       return (
-                        <tr key={signal.label} className="border-t border-navy-800">
-                          <th scope="row" className="p-1 text-start font-normal text-slate-300">
+                        <tr key={signal.label} className="border-t border-surface-2">
+                          <th scope="row" className="p-1 text-start font-normal text-ink-2">
                             {signal.label}
                           </th>
-                          <td className="ltr-nums p-1 font-semibold text-white" dir="ltr">
+                          <td className="ltr-nums p-1 font-semibold text-ink" dir="ltr">
                             {score.toFixed(0)}
                           </td>
-                          <td className="ltr-nums p-1 text-slate-400" dir="ltr">
+                          <td className="ltr-nums p-1 text-ink-2" dir="ltr">
                             {(weight * 100).toFixed(0)}%
                           </td>
-                          <td className="ltr-nums p-1 text-accent-400" dir="ltr">
+                          <td className="ltr-nums p-1 text-brand-bright" dir="ltr">
                             {(score * weight).toFixed(1)}
                           </td>
                           <td className="p-1">
                             <div
-                              className="h-2 rounded-full bg-navy-800"
+                              className="h-2 rounded-full bg-surface-2"
                               role="presentation"
                             >
                               <div
-                                className="h-2 rounded-full bg-accent-500"
+                                className="h-2 rounded-full bg-brand"
                                 style={{ width: `${Math.min(100, score)}%` }}
                               />
                             </div>
@@ -275,16 +275,16 @@ export function MatchingDebugger({ jobId }: { jobId: string }) {
       {/* ── Why candidates were dropped ───────────────────────────────── */}
       {excluded.length > 0 && (
         <Card>
-          <h2 className="text-sm font-semibold text-slate-300">
+          <h2 className="text-sm font-semibold text-ink-2">
             מועמדים שנפסלו ({excluded.length})
           </h2>
-          <ul className="mt-3 divide-y divide-navy-800">
+          <ul className="mt-3 divide-y divide-surface-2">
             {excluded.map((candidate) => (
               <li
                 key={`${candidate.provider_id}-${candidate.wave}`}
                 className="flex items-center justify-between py-2"
               >
-                <span className="text-sm text-slate-300">{candidate.full_name}</span>
+                <span className="text-sm text-ink-2">{candidate.full_name}</span>
                 <Badge tone="neutral">
                   {EXCLUSION_LABEL[candidate.excluded_reason ?? ''] ?? candidate.excluded_reason}
                 </Badge>

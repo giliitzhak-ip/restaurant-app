@@ -24,9 +24,9 @@ export function ReviewPanel({
 
   if (done) {
     return (
-      <Card className="border-success-500/40 text-center">
-        <p className="font-semibold text-success-400">תודה על הדירוג</p>
-        <p className="mt-1 text-sm text-slate-400">הדירוג עוזר ללקוחות הבאים.</p>
+      <Card className="border-ok/40 text-center">
+        <p className="font-semibold text-ok-bright">תודה על הדירוג</p>
+        <p className="mt-1 text-sm text-ink-2">הדירוג עוזר ללקוחות הבאים.</p>
       </Card>
     );
   }
@@ -54,7 +54,7 @@ export function ReviewPanel({
 
   return (
     <Card>
-      <h2 className="text-lg font-bold text-white">איך היה עם {providerName}?</h2>
+      <h2 className="text-lg font-bold text-ink">איך היה עם {providerName}?</h2>
 
       <fieldset className="mt-4">
         <legend className="sr-only">דירוג מ-1 עד 5 כוכבים</legend>
@@ -67,7 +67,7 @@ export function ReviewPanel({
               aria-label={`${value} כוכבים`}
               aria-pressed={rating === value}
               className={`size-12 rounded-xl text-2xl transition-colors ${
-                value <= rating ? 'bg-warning-500/20 text-warning-400' : 'bg-navy-800 text-slate-600'
+                value <= rating ? 'bg-warn/20 text-warn-bright' : 'bg-surface-2 text-ink-3'
               }`}
             >
               ★
@@ -90,7 +90,7 @@ export function ReviewPanel({
       </div>
 
       {error && (
-        <p role="alert" className="mt-3 text-sm text-danger-400">
+        <p role="alert" className="mt-3 text-sm text-bad-bright">
           {error}
         </p>
       )}

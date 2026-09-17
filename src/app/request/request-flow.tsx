@@ -28,11 +28,11 @@ interface CreateJobResponse {
   status: string;
 }
 
-const URGENCY_LABEL: Record<Understanding['urgency'], { text: string; tone: 'neutral' | 'warning' | 'danger' }> = {
+const URGENCY_LABEL: Record<Understanding['urgency'], { text: string; tone: 'neutral' | 'warn' | 'bad' }> = {
   low: { text: 'לא דחוף', tone: 'neutral' },
   normal: { text: 'רגיל', tone: 'neutral' },
-  high: { text: 'דחוף', tone: 'warning' },
-  emergency: { text: 'חירום', tone: 'danger' },
+  high: { text: 'דחוף', tone: 'warn' },
+  emergency: { text: 'חירום', tone: 'bad' },
 };
 
 export function RequestFlow({
@@ -167,7 +167,7 @@ export function RequestFlow({
     <div className="space-y-5">
       <header className="flex items-center justify-between">
         <Logo />
-        <Badge tone="accent">{modeLabel}</Badge>
+        <Badge tone="brand">{modeLabel}</Badge>
       </header>
 
       <Card>
@@ -184,35 +184,35 @@ export function RequestFlow({
         </Field>
 
         {/* What we understood, shown before committing, and correctable. */}
-        <div className="mt-4 min-h-14 rounded-xl border border-navy-700 bg-navy-950 p-3">
+        <div className="mt-4 min-h-14 rounded-xl border border-line bg-bg p-3">
           {classifying ? (
-            <p className="flex items-center gap-2 text-sm text-slate-400">
+            <p className="flex items-center gap-2 text-sm text-ink-2">
               <Spinner className="size-4" /> מזהים את סוג התקלה…
             </p>
           ) : understanding?.understanding.category ? (
             <div className="space-y-2">
-              <p className="text-sm text-slate-400">זיהינו:</p>
+              <p className="text-sm text-ink-2">זיהינו:</p>
               <div className="flex flex-wrap items-center gap-2">
-                <Badge tone="accent">{understanding.categoryName}</Badge>
+                <Badge tone="brand">{understanding.categoryName}</Badge>
                 {understanding.serviceName && <Badge>{understanding.serviceName}</Badge>}
                 <Badge tone={URGENCY_LABEL[understanding.understanding.urgency].tone}>
                   {URGENCY_LABEL[understanding.understanding.urgency].text}
                 </Badge>
               </div>
               {understanding.guidePriceIls !== null && (
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-ink-2">
                   טווח מחירים מוערך: <Money shekels={understanding.guidePriceIls} />
-                  <span className="text-slate-500"> — המחיר הסופי יוצג לפני האישור</span>
+                  <span className="text-ink-3"> — המחיר הסופי יוצג לפני האישור</span>
                 </p>
               )}
               {understanding.understanding.clarifyingQuestion && (
-                <p className="text-sm text-warning-400">
+                <p className="text-sm text-warn-bright">
                   {understanding.understanding.clarifyingQuestion}
                 </p>
               )}
             </div>
           ) : (
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-ink-2">
               {description.trim().length < 3
                 ? 'כתבו כמה מילים כדי שנזהה את סוג התקלה.'
                 : 'לא זיהינו את סוג התקלה — נמשיך בכל זאת ונבקש פרטים.'}
@@ -222,20 +222,20 @@ export function RequestFlow({
       </Card>
 
       <Card>
-        <h2 className="text-base font-bold text-white">איפה?</h2>
+        <h2 className="text-base font-bold text-ink">איפה?</h2>
 
         {geo.status === 'requesting' && (
-          <p className="mt-3 flex items-center gap-2 text-sm text-slate-400">
+          <p className="mt-3 flex items-center gap-2 text-sm text-ink-2">
             <Spinner className="size-4" /> מאתרים את המיקום…
           </p>
         )}
 
         {geo.fix && (
-          <p className="mt-3 flex items-center gap-2 text-sm text-success-400">
+          <p className="mt-3 flex items-center gap-2 text-sm text-ok-bright">
             <span aria-hidden="true">📍</span>
             מיקום אותר
             {geo.fix.accuracyM !== null && (
-              <span className="ltr-nums text-slate-400" dir="ltr">
+              <span className="ltr-nums text-ink-2" dir="ltr">
                 (±{Math.round(geo.fix.accuracyM)}m)
               </span>
             )}
@@ -243,8 +243,8 @@ export function RequestFlow({
         )}
 
         {geo.message && (
-          <div className="mt-3 rounded-xl bg-warning-500/10 px-4 py-3">
-            <p className="text-sm text-warning-400">{geo.message}</p>
+          <div className="mt-3 rounded-xl bg-warn/10 px-4 py-3">
+            <p className="text-sm text-warn-bright">{geo.message}</p>
             <Button variant="secondary" size="md" className="mt-3" onClick={() => void geo.request()}>
               נסו לאתר שוב
             </Button>
@@ -291,7 +291,7 @@ export function RequestFlow({
       )}
 
       {error && (
-        <p role="alert" className="rounded-xl bg-danger-500/10 px-4 py-3 text-sm text-danger-400">
+        <p role="alert" className="rounded-xl bg-bad/10 px-4 py-3 text-sm text-bad-bright">
           {error}
         </p>
       )}
@@ -299,7 +299,7 @@ export function RequestFlow({
       <Button size="xl" fullWidth loading={submitting} disabled={!canSubmit} onClick={submit}>
         {bookingMode === 'NOW' ? 'מצאו לי מקצוען' : 'שלחו בקשה'}
       </Button>
-      <p className="text-center text-xs text-slate-500">
+      <p className="text-center text-xs text-ink-3">
         לא תחויבו עד שתאשרו את המקצוען והמחיר.
       </p>
     </div>

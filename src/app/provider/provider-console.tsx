@@ -254,15 +254,15 @@ export function ProviderConsole() {
 
       {/* ── Availability: the one control that matters most ─────────────── */}
       <Card>
-        <p className="text-lg font-bold text-white">שלום {profile?.full_name ?? ''}</p>
+        <p className="text-lg font-bold text-ink">שלום {profile?.full_name ?? ''}</p>
 
         {/* Setup comes before verification: verifying an account with no
             declared trade achieves nothing, because the candidate search
             would still never return it. */}
         {profile && !profile.is_configured ? (
-          <div className="mt-3 rounded-xl border border-accent-500/40 bg-accent-500/10 p-4">
-            <p className="font-semibold text-accent-400">צריך להשלים את הפרופיל</p>
-            <p className="mt-1 text-sm text-slate-400">
+          <div className="mt-3 rounded-xl border border-brand/40 bg-brand/10 p-4">
+            <p className="font-semibold text-brand-bright">צריך להשלים את הפרופיל</p>
+            <p className="mt-1 text-sm text-ink-2">
               בלי תחום ומחירים לא נשלח לך עבודות — המערכת לא תכלול אותך בחיפוש.
             </p>
             <Link href="/provider/onboarding" className="mt-3 block">
@@ -272,9 +272,9 @@ export function ProviderConsole() {
             </Link>
           </div>
         ) : profile?.verification !== 'VERIFIED' ? (
-          <div className="mt-3 rounded-xl border border-warning-500/40 bg-warning-500/10 p-4">
-            <p className="font-semibold text-warning-400">החשבון ממתין לאימות</p>
-            <p className="mt-1 text-sm text-slate-400">
+          <div className="mt-3 rounded-xl border border-warn/40 bg-warn/10 p-4">
+            <p className="font-semibold text-warn-bright">החשבון ממתין לאימות</p>
+            <p className="mt-1 text-sm text-ink-2">
               הפרופיל מוגדר. לא ניתן לקבל עבודות עד שמנהל יאמת את הפרטים והמסמכים.
             </p>
             <Link href="/provider/onboarding" className="mt-3 block">
@@ -287,10 +287,10 @@ export function ProviderConsole() {
           <>
             <div className="mt-4 flex items-center justify-between gap-3">
               <div>
-                <Badge tone={state === 'ONLINE' ? 'success' : state === 'BUSY' ? 'accent' : 'neutral'}>
+                <Badge tone={state === 'ONLINE' ? 'ok' : state === 'BUSY' ? 'brand' : 'neutral'}>
                   {state === 'ONLINE' ? 'ONLINE' : state === 'BUSY' ? 'בעבודה' : 'OFFLINE'}
                 </Badge>
-                <p className="mt-2 text-sm text-slate-400">
+                <p className="mt-2 text-sm text-ink-2">
                   {state === 'ONLINE'
                     ? 'אתה זמין לקבל עבודות'
                     : state === 'BUSY'
@@ -311,7 +311,7 @@ export function ProviderConsole() {
             </div>
 
             {locationNote && state !== 'OFFLINE' && (
-              <p className="mt-3 rounded-xl bg-warning-500/10 px-3 py-2 text-sm text-warning-400">
+              <p className="mt-3 rounded-xl bg-warn/10 px-3 py-2 text-sm text-warn-bright">
                 {locationNote}
               </p>
             )}
@@ -320,37 +320,37 @@ export function ProviderConsole() {
       </Card>
 
       {actionError && (
-        <p role="alert" className="rounded-xl bg-danger-500/10 px-4 py-3 text-sm text-danger-400">
+        <p role="alert" className="rounded-xl bg-bad/10 px-4 py-3 text-sm text-bad-bright">
           {actionError}
         </p>
       )}
 
       {/* ── Active job: big buttons, minimal reading ───────────────────── */}
       {active && (
-        <Card className="border-accent-500/40">
+        <Card className="border-brand/40">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm text-accent-400">{active.category_name}</p>
-              <h2 className="text-xl font-bold text-white">{active.service_name}</h2>
+              <p className="text-sm text-brand-bright">{active.category_name}</p>
+              <h2 className="text-xl font-bold text-ink">{active.service_name}</h2>
             </div>
-            <p className="text-xl font-black text-white">
+            <p className="text-xl font-black text-ink">
               <Money shekels={Number(active.price_ils)} />
             </p>
           </div>
 
-          <p className="mt-3 text-slate-300">{active.raw_description}</p>
+          <p className="mt-3 text-ink-2">{active.raw_description}</p>
 
-          <div className="mt-4 rounded-xl bg-navy-950 p-3">
-            <p className="font-semibold text-white">{active.customer_name}</p>
-            {active.address_text && <p className="text-sm text-slate-300">{active.address_text}</p>}
+          <div className="mt-4 rounded-xl bg-bg p-3">
+            <p className="font-semibold text-ink">{active.customer_name}</p>
+            {active.address_text && <p className="text-sm text-ink-2">{active.address_text}</p>}
             {active.address_notes && (
-              <p className="text-sm text-slate-400">{active.address_notes}</p>
+              <p className="text-sm text-ink-2">{active.address_notes}</p>
             )}
             <div className="mt-3 flex flex-wrap gap-2">
               {active.customer_phone && (
                 <a
                   href={`tel:${active.customer_phone}`}
-                  className="inline-flex min-h-11 items-center rounded-xl bg-navy-800 px-4 text-sm font-semibold text-white"
+                  className="inline-flex min-h-11 items-center rounded-xl bg-surface-2 px-4 text-sm font-semibold text-ink"
                 >
                   התקשר ללקוח
                 </a>
@@ -359,7 +359,7 @@ export function ProviderConsole() {
                 href={`https://www.google.com/maps/dir/?api=1&destination=${active.lat},${active.lon}`}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex min-h-11 items-center rounded-xl bg-navy-800 px-4 text-sm font-semibold text-white"
+                className="inline-flex min-h-11 items-center rounded-xl bg-surface-2 px-4 text-sm font-semibold text-ink"
               >
                 ניווט
               </a>
@@ -367,7 +367,7 @@ export function ProviderConsole() {
           </div>
 
           {activeStatus === 'PROVIDER_SELECTED' && (
-            <p className="mt-4 rounded-xl bg-navy-950 p-3 text-center text-sm text-slate-300">
+            <p className="mt-4 rounded-xl bg-bg p-3 text-center text-sm text-ink-2">
               ממתין לאישור הלקוח…
             </p>
           )}
@@ -386,14 +386,14 @@ export function ProviderConsole() {
           )}
 
           {activeStatus === 'AWAITING_CUSTOMER_CONFIRMATION' && (
-            <p className="mt-4 rounded-xl bg-success-500/10 p-3 text-center text-sm text-success-400">
+            <p className="mt-4 rounded-xl bg-ok/10 p-3 text-center text-sm text-ok-bright">
               ממתין לאישור הלקוח ולתשלום
             </p>
           )}
 
           {activeStatus && ['CONFIRMED', 'EN_ROUTE', 'ARRIVED'].includes(activeStatus) && (
             <Button
-              variant="ghost"
+              variant="quiet"
               size="md"
               fullWidth
               className="mt-2"
@@ -409,47 +409,47 @@ export function ProviderConsole() {
       {/* ── Incoming offers (spec §19) ─────────────────────────────────── */}
       {!active && offers.length > 0 && (
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-slate-400">עבודות שמחכות לך</h2>
+          <h2 className="text-sm font-semibold text-ink-2">עבודות שמחכות לך</h2>
           {offers.map((offer) => (
             <Card
               key={offer.id}
-              className={offer.is_on_the_way ? 'border-success-500/50' : undefined}
+              className={offer.is_on_the_way ? 'border-ok/50' : undefined}
             >
               {/* The route-opportunity signal, stated plainly — this is what
                   makes the offer worth taking. */}
               {offer.is_on_the_way && (
-                <Badge tone="success" className="mb-3">
+                <Badge tone="ok" className="mb-3">
                   🚗 עבודה בדרך שלך
                 </Badge>
               )}
 
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm text-accent-400">{offer.category_name}</p>
-                  <h3 className="text-lg font-bold text-white">{offer.service_name}</h3>
+                  <p className="text-sm text-brand-bright">{offer.category_name}</p>
+                  <h3 className="text-lg font-bold text-ink">{offer.service_name}</h3>
                 </div>
-                {offer.urgency === 'emergency' && <Badge tone="danger">חירום</Badge>}
+                {offer.urgency === 'emergency' && <Badge tone="bad">חירום</Badge>}
               </div>
 
-              <p className="mt-2 line-clamp-2 text-sm text-slate-300">{offer.raw_description}</p>
+              <p className="mt-2 line-clamp-2 text-sm text-ink-2">{offer.raw_description}</p>
 
               <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-xl bg-navy-950 p-2">
-                  <dt className="text-xs text-slate-400">מרחק</dt>
-                  <dd className="text-base font-bold text-white">
+                <div className="rounded-xl bg-bg p-2">
+                  <dt className="text-xs text-ink-2">מרחק</dt>
+                  <dd className="text-base font-bold text-ink">
                     <Distance km={offer.distance_km ? Number(offer.distance_km) : null} />
                   </dd>
                 </div>
-                <div className="rounded-xl bg-navy-950 p-2">
-                  <dt className="text-xs text-slate-400">הגעה</dt>
-                  <dd className="text-base font-bold text-white">
+                <div className="rounded-xl bg-bg p-2">
+                  <dt className="text-xs text-ink-2">הגעה</dt>
+                  <dd className="text-base font-bold text-ink">
                     <Minutes value={offer.eta_minutes} />
-                    <span className="text-xs font-normal text-slate-400"> דק׳</span>
+                    <span className="text-xs font-normal text-ink-2"> דק׳</span>
                   </dd>
                 </div>
-                <div className="rounded-xl bg-navy-950 p-2">
-                  <dt className="text-xs text-slate-400">שכר</dt>
-                  <dd className="text-base font-bold text-white">
+                <div className="rounded-xl bg-bg p-2">
+                  <dt className="text-xs text-ink-2">שכר</dt>
+                  <dd className="text-base font-bold text-ink">
                     <Money shekels={Number(offer.price_ils)} />
                   </dd>
                 </div>
