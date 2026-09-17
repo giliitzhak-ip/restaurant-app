@@ -129,6 +129,24 @@ async function main() {
     'select count(*) as n from provider_profiles where offers_accepted > offers_received',
   );
   await mustBeEmpty(
+    'duplicate schedule window',
+    // Caught a real idempotency bug: seed-network had no unique key and no
+    // pre-delete for provider_availability_rules, so a rerun without --reset
+    // doubled every schedule. Row COUNTS all still looked plausible.
+    `select count(*) as n from (
+       select provider_id, weekday, starts_at, ends_at
+         from provider_availability_rules
+        group by 1,2,3,4 having count(*) > 1
+     ) t`,
+  );
+  await mustBeEmpty(
+    'duplicate service area',
+    `select count(*) as n from (
+       select provider_id, center, radius_km from service_areas
+        group by 1,2,3 having count(*) > 1
+     ) t`,
+  );
+  await mustBeEmpty(
     'impossible schedule window',
     'select count(*) as n from provider_availability_rules where ends_at <= starts_at',
   );

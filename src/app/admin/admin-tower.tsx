@@ -32,6 +32,14 @@ interface Overview {
     id: string; full_name: string; email: string; created_at: string;
     category_name: string | null; priced_services: number; is_configured: boolean;
   }[];
+  /** Totals behind the capped lists, so a truncated queue says so. */
+  totals: { pendingVerification: number; liveProviders: number; liveJobs: number };
+  shown: { pendingVerification: number; liveProviders: number; liveJobs: number };
+}
+
+/** "12" when everything is shown, "50 מתוך 137" when it is not. */
+function countLabel(shown: number, total: number): string {
+  return shown < total ? `${shown} מתוך ${total}` : `${total}`;
 }
 
 /** Control tower (spec §33). */
@@ -214,11 +222,27 @@ export function AdminTower() {
 
       {/* ── Live map ─────────────────────────────────────────────────── */}
       <LiveMap jobs={data.liveJobs} providers={data.liveProviders} />
+      <p className="-mt-2 text-xs text-ink-3">
+        מוצגים{' '}
+        <span className="ltr-nums" dir="ltr">
+          {countLabel(data.shown.liveProviders, data.totals.liveProviders)}
+        </span>{' '}
+        מקצוענים מחוברים ו-
+        <span className="ltr-nums" dir="ltr">
+          {countLabel(data.shown.liveJobs, data.totals.liveJobs)}
+        </span>{' '}
+        עבודות פעילות. המפה מוגבלת בכוונה — היא כלי מבט, לא רשימה מלאה.
+      </p>
 
       {/* ── Verification queue ───────────────────────────────────────── */}
       {data.pendingVerification.length > 0 && (
         <Card>
-          <h2 className="text-sm font-semibold text-ink-2">ממתינים לאימות</h2>
+          <h2 className="text-sm font-semibold text-ink-2">
+            ממתינים לאימות{' '}
+            <span className="ltr-nums text-ink-3" dir="ltr">
+              ({countLabel(data.shown.pendingVerification, data.totals.pendingVerification)})
+            </span>
+          </h2>
           <ul className="mt-3 divide-y divide-line">
             {data.pendingVerification.map((provider) => (
               <li key={provider.id} className="flex items-center justify-between gap-3 py-3">

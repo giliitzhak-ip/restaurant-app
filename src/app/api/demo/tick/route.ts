@@ -50,6 +50,28 @@ export async function POST(request: Request) {
       throw new ApiError('DEMO_MODE_DISABLED', 'סימולטור ההדגמה כבוי', 403);
     }
 
+    /*
+     * DEMO_MODE alone is enough locally, where the whole database is
+     * disposable. It is NOT enough in production: this endpoint moves
+     * locations and — with autoAcceptSynthetic — creates assignments, and it
+     * takes no session, so a deployment that shipped with DEMO_MODE=true
+     * would be handing that to anyone who found the URL. In production the
+     * shared maintenance secret is required as well.
+     */
+    if (process.env.NODE_ENV === 'production') {
+      const token = process.env.MAINTENANCE_TOKEN;
+      if (!token) {
+        throw new ApiError(
+          'NOT_CONFIGURED',
+          'MAINTENANCE_TOKEN must be set to run the simulator in production',
+          503,
+        );
+      }
+      if (request.headers.get('x-maintenance-token') !== token) {
+        throw new ApiError('FORBIDDEN', 'Invalid maintenance token', 403);
+      }
+    }
+
     const body = await parseJson(request, bodySchema).catch(() => ({
       advanceMeters: 120,
       refreshLocations: true,

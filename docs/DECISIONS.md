@@ -249,3 +249,133 @@ new build.
 `TypeError: contextOrFilename.getFilename is not a function`. A permissive
 peer range is not evidence of compatibility. TypeScript 5.9 is the version
 Next.js 16 is tested against.
+
+---
+
+## D-013 — The realtime switch outranks the weekly plan for a "now" request
+
+**Context.** A provider states availability twice: a live switch, and a weekly
+schedule. They disagree constantly — someone whose plan is Sunday–Thursday
+08:00–17:00 taps "accepting jobs" at 20:00 on a Thursday.
+
+**Decision.** For a request at or near now, the switch decides. For a future
+slot, the plan decides. A **date override** outranks both, for its date only.
+
+**Why.** The switch is the more specific, more recent and more deliberate
+statement: the provider is answering "right now" with a tap, having seen the
+current time. A weekly plan is a default. But "I'm off today" is a decision
+about today, not a default, which is why overrides sit above both.
+
+**Consequences.** `provider_planned_covers()` could not serve both branches,
+because it returned plain `false` for an override *and* for an uncovered hour
+— so the "now" branch treated the two identically. Migration `0022` adds
+`provider_override_verdict()` so each layer answers only for itself. Before
+the split, the "available for two hours" and "available until 18:00" actions
+silently did nothing outside planned hours: the provider was shown as
+available and matched as unavailable.
+
+## D-014 — Temporary availability is enforced in the predicate, not by a sweeper
+
+**Context.** A provider who taps "accepting jobs" almost never means "until I
+remember to turn this off". They mean two hours, or until six.
+
+**Decision.** `provider_profiles.online_until` gives the switch an optional
+end, checked **inside** `provider_is_available_at()`. A sweeper
+(`expire_online_windows()`, run from the maintenance tick) exists as well, but
+only to reconcile the visible state.
+
+**Why.** Matching must never depend on a background job having run. If the
+expiry lived only in the sweeper, a missed tick would send work to someone who
+had finished for the day — the exact failure the feature exists to prevent.
+
+**Consequences.** Two sources of truth that must agree, and they are tested to:
+one test asserts matching refuses an expired window *before* any sweep, and
+that the provider record still reads `ONLINE` at that moment — which is
+precisely the state the sweeper is for.
+
+## D-015 — Dead configuration is deleted, not left as documentation
+
+**Context.** `availability.rules` carried `noRulesMeansAlwaysPlanned: true`,
+whose own description claimed it "keeps a provider who never set hours
+matchable via their realtime switch". Nothing read the key, and a comment in
+migration `0022` cited it as though it were load-bearing.
+
+**Decision.** Migration `0023` removes it and states the real rule: no
+declared hours means matchable now through the switch, never for a future
+slot.
+
+**Why.** A flag that describes behaviour nothing implements is worse than no
+flag. It reads as the explanation for what the system does, so the next
+person changes it and nothing happens — or, worse, trusts it and reasons from
+a false premise. Implementing it would also have been wrong: dispatching an
+03:00 Tuesday job to someone who never said they work then, and cannot be
+asked, manufactures availability out of an absence of data.
+
+## D-016 — SQL relation references are asserted structurally
+
+**Context.** Migration `0017` renamed `provider_availability` to
+`provider_status_history`. `/api/provider/state` kept writing the old name, so
+going online returned 500 — with types, lint, build and 164 tests all green,
+because SQL inside a template literal is just text.
+
+**Decision.** `tests/integration/sql-references.test.ts` extracts every
+relation named in every query under `src/` and asks the database whether it
+exists.
+
+**Why.** A per-route test would have caught that one route. This catches the
+class, stays cheap as routes are added, and needs no maintenance. Verified by
+reverting the fix and watching it fail.
+
+**Consequences.** The extractor is heuristic — it strips SQL comments, ignores
+CTE names and set-returning function calls — and asserts it found at least 40
+references, so a silently broken extractor cannot pass as a clean run.
+
+## D-017 — Grants are part of the security model, so they are tested
+
+**Context.** Migration `0017` granted two new tables to `authenticated` only.
+Every provider action on their own hours worked; every *system* read returned
+42501, which the API faithfully reports as `403 FORBIDDEN`. The result was a
+permission error on screens where permission was never the question.
+
+**Decision.** `tests/security/grants.test.ts` asserts the shape of the grants
+rather than a list of tables: `service_role` can read every application table;
+everything granted to `authenticated` has RLS enabled; `anon` can read the
+catalog and write nothing. Plus a behavioural check that a signed-in non-admin
+cannot write `settings` or the catalog — since `authenticated` legitimately
+holds those privileges and RLS, not the grant, is what separates an admin.
+
+**Why.** Shape-based assertions cover a new table the day it is added. The
+behavioural check exists because the grant is correct and the policy is
+load-bearing, which is worth proving rather than reading off an ACL.
+
+## D-018 — COMPARE mode is refused, not disabled
+
+**Context.** The "עבודה גדולה" flow created a job in `COMPARE` mode that
+nothing dispatched, with no screen to compare quotes on.
+
+**Decision.** Removed from the UI **and** from the API's accepted values.
+
+**Why.** An absent feature is a gap; a button that promises it is a lie the
+customer pays for with a request that goes nowhere. Leaving the API able to
+create such a job keeps the dead end reachable — and a stuck job looks like a
+bug in dispatch rather than an unbuilt feature.
+
+## D-019 — The UI audit runs against a production build
+
+**Context.** Every earlier UI audit ran against `next dev`. In this sandbox
+the dev server's hot-reload websocket cannot complete a handshake, and Next
+then never finishes hydrating: event handlers are dead and client effects
+never run. Clicking a login button fired no request at all. Every screenshot
+was of server-rendered HTML and every check passed on it.
+
+**Decision.** The audit probes hydration directly (React's fibre keys on a
+real DOM node), fails a page still showing a loading label, and documents
+that it must run against `next start`.
+
+**Why.** An audit that passes dead pages is worse than no audit: it converts
+"unverified" into "verified" without anyone deciding to.
+
+**Consequences.** Two further audit faults surfaced once it was telling the
+truth — it logged in once per page and tripped the login rate limiter, so
+later pages rendered signed out; and it counted a wrapping `<label>` as an
+unlabelled input, pushing authors towards redundant ARIA on correct markup.

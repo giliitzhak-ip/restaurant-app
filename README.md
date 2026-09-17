@@ -94,6 +94,11 @@ Full detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 | Document | Contents |
 |---|---|
 | [`docs/PRODUCT.md`](docs/PRODUCT.md) | What this is and why route opportunity matters |
+| [`docs/UX_PRINCIPLES.md`](docs/UX_PRINCIPLES.md) | Nine rules, each of which deleted something already built |
+| [`docs/AVAILABILITY.md`](docs/AVAILABILITY.md) | The precedence rules, and why the switch outranks the plan |
+| [`docs/SEED_DATA.md`](docs/SEED_DATA.md) | The two datasets, and what synthetic providers may never do |
+| [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) | Tokens, primitives, motion, RTL, measured contrast |
+| [`docs/BRAND_GUIDELINES.md`](docs/BRAND_GUIDELINES.md) | Voice, the visual signature, and the honesty rules |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Layers, matching pipeline, security model |
 | [`docs/QA.md`](docs/QA.md) | Test inventory, verified flows, **and the honest gaps** |
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | Decisions, alternatives rejected, trade-offs |

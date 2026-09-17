@@ -277,3 +277,80 @@ server so a client cannot forge freshness.
 **Verification.** Three security tests: a customer cannot see a provider's
 location before the job is in flight, can once it is, and a stranger never
 can. Retention limits and a deletion policy are not implemented.
+
+---
+
+## R-014 — Client-side behaviour is verified in one environment only
+
+**Risk.** Hydration, event handlers and client effects are exercised against
+a local production build driven by Chromium. There is no matrix of real
+devices, and iOS Safari in particular differs on `100dvh`, `env(safe-area-*)`
+and native date/time controls.
+
+**Why it matters.** The whole provider console is client-driven. A hydration
+failure looks like a frozen loading state — which is exactly the failure that
+went unnoticed under `next dev` until the audit was taught to detect it.
+
+**Mitigation now.** `scripts/ui-audit.mjs` asserts hydration directly and
+fails any page still showing a loading label, so the failure mode is loud
+rather than silent. The journey is driven end to end, not screenshotted.
+
+**What would reduce it.** A device matrix in CI, and a synthetic check that
+loads the provider console on a real handset and asserts the switch toggles.
+
+## R-015 — Two sources of truth for an expired shift
+
+**Risk.** `online_until` is enforced in `provider_is_available_at()` and
+reconciled by `expire_online_windows()`. If the maintenance tick stops
+running, matching stays correct but the provider's screen, the admin tower
+and the status history keep saying `ONLINE`.
+
+**Why it matters.** A provider seeing "accepting jobs" while receiving nothing
+will conclude the platform is broken, and support has no way to tell the
+difference from the UI.
+
+**Mitigation now.** The important direction is safe — matching never
+over-offers — and the divergence is asserted in a test, so the behaviour is
+deliberate rather than discovered.
+
+**What would reduce it.** Surface `online_until` on the provider's own screen
+as a countdown (partially done: the screen explains that the shift will end
+automatically), and alert in the admin tower when the tick has not run.
+
+## R-016 — The demo simulator can accept work on a provider's behalf
+
+**Risk.** `POST /api/demo/tick` with `autoAcceptSynthetic: true` creates real
+assignments by calling `accept_job_offer()` as a synthetic provider.
+
+**Why it matters.** An acceptance is a commitment. A path that manufactures
+one, if it ever escaped its guards, would put jobs against providers who never
+agreed.
+
+**Mitigation now.** Four independent conditions, all required:
+`DEMO_MODE=true`; the flag is off by default; the provider must be
+`@synthetic.local` **and** `is_demo`; the job's **customer** must be
+`is_demo`. It goes through `accept_job_offer()` rather than writing rows, so
+the single-winner transaction, the state machine and the audit trail all
+apply, and it cannot produce an assignment the real flow could not. It is
+capped per tick.
+
+**What would reduce it.** Move the simulator out of the application entirely,
+into a script that can only be run against a non-production database.
+
+## R-017 — Seed reruns and demo ticks interact with validation
+
+**Risk.** The demo tick refreshes every demo location, which removes the stale
+fixes the generated network deliberately contains; `npm run db:validate` then
+fails a coverage check that was passing.
+
+**Why it matters.** A validator that fails for a legitimate reason teaches
+people to ignore it, which is how a real failure gets waved through.
+
+**Mitigation now.** That check prints why it failed and what to do
+(`re-seed before validating`), and the ordering constraint is documented in
+[SEED_DATA.md](SEED_DATA.md). Seeding itself is now idempotent — a rerun
+without `--reset` used to double every schedule silently, and two new
+duplicate checks would now catch it.
+
+**What would reduce it.** Tag the generated stale fixes explicitly, so the
+check can assert the *intent* survived rather than the current timestamps.

@@ -225,3 +225,50 @@ offered a given job at most once, ever.
 Re-pestering a provider who declined is bad for supply retention, and the
 candidate finder already excludes anyone with an existing offer row, so wave
 expansion reaches new providers rather than re-asking the same ones.
+
+---
+
+## A-011 — A provider's own switch is a better signal than their calendar
+
+**Assumption.** When a provider is switched on outside their declared hours,
+they mean it, and matching should believe them.
+
+**Why we think so.** The tap is deliberate, recent, and made with the current
+time visible. A weekly plan is set once and rarely revisited.
+
+**How it could be wrong.** A provider who forgets to switch off after a late
+job receives work at midnight. Two things limit the damage: `online_until`
+makes "for two hours" the easy choice, and a date override still outranks the
+switch, so "not today" wins.
+
+**What we would do.** If accidental overnight availability shows up in
+declines or cancellations, default the switch to expiring at the end of the
+day's planned window rather than staying open.
+
+## A-012 — 15 minutes is a fine enough granularity for declared hours
+
+**Assumption.** Providers think in quarter-hours, not minutes, when declaring
+a shift.
+
+**Why we think so.** Shift boundaries are conventional times. The editor is
+also much narrower and more certain as a list than as a free-form time field.
+
+**How it could be wrong.** A trade with genuinely irregular hours would be
+forced to round. Values already stored off the grid remain selectable, so
+nobody's existing hours are rounded silently, and `provider_planned_covers()`
+compares exact times — only `provider_next_available_at()`'s 30-minute scan
+is coarser, and it errs late rather than early.
+
+## A-013 — A rating aggregate without review rows is acceptable in seed data
+
+**Assumption.** Showing a seeded provider's rating average and count, with no
+individual reviews behind them, is honest enough for a demo dataset.
+
+**Why we think so.** The aggregate is what a real provider's record would
+carry, and fabricating ~150,000 completed jobs to back it would pollute every
+operational view in the product for a cosmetic gain.
+
+**How it could be wrong.** A customer could reasonably expect to read some of
+341 reviews. The mitigation is that the product says nothing it cannot
+support: `ratingBreakdown` is `null` when no rows exist, and no quoted review
+is ever invented. See [SEED_DATA.md](SEED_DATA.md).

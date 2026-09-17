@@ -58,18 +58,31 @@ Verified end to end over HTTP against a real database. A worked run is in
 
 ---
 
-## Booking modes
+## When the customer needs someone
 
-Not every category fits one model, and the model is configuration, not code.
+The customer picks one of three, on the home screen, as one control:
 
-| Mode | For | Behaviour |
+| Choice | Means | Matched against |
 |---|---|---|
-| **NOW** | Leak, power cut, lockout, urgent pest control | Dispatches immediately |
-| **SCHEDULE** | Appointments | Created, dispatched for the slot |
-| **COMPARE** | Larger or less predictable work | Multiple quotes |
+| **עכשיו** (`NOW`) | needs someone now | the provider's realtime switch |
+| **היום** (`ASAP`) | soon, today | the switch, and the next open slot counts too |
+| **בתאריך** (`SCHEDULED`) | a specific time | the provider's weekly plan for that slot |
 
-Each category declares which modes it supports. Locksmith is NOW-only;
-cleaning and gardening are quote-based.
+This is not a label. It becomes `jobs.timing_intent` and
+`jobs.requested_for`, and it changes **who is eligible** — for a `NOW` job an
+online provider is offered and an offline one is not; for tomorrow at 10:00 it
+inverts. Job duration is honoured too, so a 90-minute job does not fit a
+window closing in 60. See [AVAILABILITY.md](AVAILABILITY.md).
+
+Underneath, each category still declares which booking modes it supports
+(`supports_now`, `supports_schedule`) as configuration rather than code, and
+timing is normalised onto that.
+
+**`COMPARE` (multi-quote) is not built.** It was removed from the UI *and*
+refused by the API rather than left reachable: a job created in that mode sat
+in `REQUESTED` with nothing dispatching it and no screen to compare quotes
+on. An absent feature is a gap; a button promising it is a lie the customer
+pays for.
 
 ---
 
@@ -87,29 +100,56 @@ required skills.
 
 ## What the customer sees
 
-The home screen asks one question — **מה צריך לעשות?** — offers one text
-field, three ways to proceed, and a short list of popular trades. No category
-grid, no adverts, no onboarding carousel. Target: a first-time customer
-requests service in under 60 seconds.
+The home screen asks **two** things and nothing else: *מה צריך?* and *מתי?*,
+then one button. No category grid, no radius, no rating filter, no adverts,
+no onboarding carousel. Target: a first-time customer requests service in
+under 60 seconds.
+
+The category grid was removed rather than tidied away. It looked helpful and
+was harmful: it invited the customer to classify their own problem — the job
+the system exists to do — and a wrong self-classification silently narrows
+the search to the wrong trade. The description already contains the answer.
+
+`/request` then shows those two answers as sentences with a `שינוי` link, and
+spends itself on the one thing still genuinely missing: location. Both
+answers survive the sign-in redirect, so a request started while signed out
+is the request you come back to.
 
 At the match, one recommendation, not a list to browse:
 
 ```
 מצאנו לך מקצוען
-רם אביטן          ★ 4.8
-🚗 כבר נמצא באזור שלך
-הגעה משוערת   13 דקות
-מחיר          ₪290
-[ הזמן עכשיו ]
+רם אביטן          ★ 4.8 (156)
+🚗 כבר בדרך לאזור שלך      ● ───────→ ●
+הגעה משוערת   13 דקות      מחיר   ₪290
+[ הזמן עכשיו ]             [ פרטים › ]
 ```
+
+`כבר בדרך לאזור שלך` appears only when the accepted offer carried real route
+evidence — a stated destination or a measured heading — never on proximity
+alone.
 
 ETAs are labelled as estimates, because with the default routing provider
 they are estimates. The product does not promise a number it cannot measure.
 
+`פרטים` opens the provider's profile as a **bottom sheet**, so the match, its
+price and its ETA stay behind it and closing returns to exactly them. Inside,
+the order is the trust order: verification, then the rating *with* its review
+count, then completed jobs, then experience, then availability as one
+sentence. Never the provider's calendar, coordinates, or any internal score.
+
 ## What the provider sees
 
 Built for someone who may be driving between jobs: large buttons, minimal
-text, one decision at a time. Availability is one control. An incoming offer
+text, one decision at a time.
+
+The home screen is **one** dominant control — a `מקבל עבודות` switch — the
+current answer underneath it (`זמין עד 18:00`, `זמין מחר מ-08:00`), and one
+`שינוי שעות` link. Everything deeper lives on `/provider/availability`: the
+weekly plan, quick actions (available for two hours, until the end of the
+shift, not today), vacation ranges, and upcoming exceptions.
+
+An incoming offer
 leads with the thing that makes it worth taking — **🚗 עבודה בדרך שלך** — then
 distance, ETA and pay. During a job there is exactly one primary button:
 *יוצא לדרך* → *הגעתי* → *מתחיל לעבוד* → *סיימתי*.

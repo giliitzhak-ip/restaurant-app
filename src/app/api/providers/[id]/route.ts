@@ -1,9 +1,10 @@
 import { z } from 'zod';
-import { ApiError, handleError, ok } from '@/lib/api';
+import { ApiError, fail, handleError, ok } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth';
 import { withSystem } from '@/lib/db';
 import { availabilityPhrase, availabilitySummary } from '@/domains/availability/summary';
 import { newRequestId } from '@/lib/logger';
+import { rateLimit } from '@/lib/rate-limit';
 
 const paramsSchema = z.object({ id: z.uuid() });
 
@@ -28,6 +29,17 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     // Requires a session: provider profiles are not an anonymous directory.
     const user = await getCurrentUser();
     if (!user) throw new ApiError('UNAUTHENTICATED', 'נדרשת התחברות', 401);
+
+    /*
+     * Rate limited per viewer. A profile is meant to be read at a decision
+     * point — one match, one tap — not walked. Without this, any account can
+     * enumerate every verified provider's prices and service list by id. The
+     * ceiling is well above real use and well below a scrape.
+     */
+    const limit = rateLimit(`providers:${user.id}`, 60, 300);
+    if (!limit.allowed) {
+      return fail('RATE_LIMITED', 'יותר מדי בקשות. נסו בעוד כמה דקות.', 429, requestId);
+    }
 
     const { id } = paramsSchema.parse(await context.params);
     const serviceSlug = new URL(request.url).searchParams.get('service');

@@ -6,7 +6,7 @@ What is verified, how, and — importantly — what is **not**.
 
 ## Test inventory
 
-152 tests, 15 files. Run: `npm test`
+181 tests, 19 files. Run: `npm test`
 (first time: `npm run test:db` to create the test database).
 
 ### Unit — pure domain logic, no I/O
@@ -19,6 +19,7 @@ What is verified, how, and — importantly — what is **not**.
 | `fees.test.ts` | 11 | Tier boundaries, exact splits, bounds, category overrides |
 | `understanding.test.ts` | 17 | Classification, determinism, specificity, urgency, empty input |
 | `payments.test.ts` | 10 | Idempotency, over-capture, over-refund, declines |
+| `availability-phrase.test.ts` | 7 | The one availability sentence a customer reads, including "busy now" vs "no availability" and the local day boundary |
 | `foundation.test.ts` | 2 | Class merging |
 
 ### Integration — against a real PostgreSQL + PostGIS
@@ -30,6 +31,8 @@ What is verified, how, and — importantly — what is **not**.
 | `failure-scenarios.test.ts` | 12 | Every §44 failure mode |
 | `state-machine.test.ts` | 4 | DB↔TypeScript parity across all 240 status pairs |
 | `provider-onboarding.test.ts` | 7 | An unconfigured provider yields zero candidates; onboarded + verified yields one |
+| `availability.test.ts` | 16 | The §52 case, the precedence order, job duration and fit, conflicts, temporary shifts and their expiry |
+| `sql-references.test.ts` | 1 | **Every relation named in every query under `src/` exists** |
 
 ### Security
 
@@ -38,6 +41,7 @@ What is verified, how, and — importantly — what is **not**.
 | `rls.test.ts` | 17 | Cross-tenant reads, payout privacy, foreign offers, earnings tampering, role escalation, self-verification, audit forgery, review eligibility, location windows |
 | `enforcement.test.ts` | 8 | **Proof the harness can fail** |
 | `admin-audit.test.ts` | 5 | Audit append-only, no cross-admin forgery, change and record commit together |
+| `grants.test.ts` | 5 | `service_role` reads every table; everything granted to `authenticated` has RLS on; `anon` reads the catalog and writes nothing; a non-admin cannot write settings or the catalog |
 
 ---
 
@@ -266,6 +270,55 @@ Listed because each one would have shipped:
 15. **ESLint 10 incompatibility.** `eslint-config-next@16` declares
     `eslint >= 9` but bundles a plugin using APIs removed in 10; every lint run
     crashed. Pinned to 9.39.5 (D-012).
+16. **The realtime switch was broken outright.** Migration `0017` renamed
+    `provider_availability` to `provider_status_history`; `/api/provider/state`
+    kept writing the old name, so going online returned 500. Types, lint, build
+    and 164 tests were green, because SQL in a template literal is just text.
+    Now caught structurally by `sql-references.test.ts` (D-016), proven by
+    reverting the fix.
+17. **Every system read of the availability tables returned 42501,** which the
+    API faithfully reports as `403 FORBIDDEN` — so the provider's own hours
+    screen and the customer-facing profile both answered "no permission" on a
+    request where permission was never the question. Migration `0017` granted
+    those tables to `authenticated` only. Fixed by `0021`; the invariant is now
+    asserted in `grants.test.ts` (D-017).
+18. **The weekly plan vetoed the realtime switch.** A provider with normal
+    weekday hours who tapped "accepting jobs" in the evening was shown as
+    available and matched as unavailable, because a date override and an
+    uncovered hour both came back as plain `false`. Migration `0022` (D-013).
+    Without the fix, the two new quick actions would have done nothing at all
+    outside planned hours.
+19. **The UI audit passed dead pages.** Under `next dev` in this sandbox the
+    HMR websocket cannot handshake, so Next never finished hydrating: handlers
+    were dead and effects never ran. Clicking a login button fired no request.
+    Every screenshot was of server-rendered HTML and every check passed on it.
+    The audit now probes hydration directly and fails a page still loading
+    (D-019). Found by clicking a button and watching nothing happen.
+20. **A profile told a customer a lie.** The sheet read
+    `אין זמינות בשבועיים הקרובים` about the provider who had just accepted that
+    customer's own job. Every step of the computation was correct — `BUSY` is
+    not available now, and a fortnight scan of an empty schedule finds nothing
+    — and the sentence was false. Now `בעבודה כרגע`, with
+    `לא פרסם שעות קבועות` kept distinct from "there is none"
+    (`availability-phrase.test.ts`).
+21. **Dead configuration posing as an explanation.**
+    `availability.rules.noRulesMeansAlwaysPlanned` described behaviour nothing
+    implemented, and a migration comment cited it as load-bearing. Removed by
+    `0023` (D-015).
+22. **Seeding was not idempotent.** `service_areas` and
+    `provider_availability_rules` have no natural unique key, so a rerun
+    without `--reset` silently doubled every schedule (4,914 → 9,828) while
+    every other table upserted cleanly. Row counts still looked plausible, and
+    validation passed because it counted providers. Two duplicate checks added;
+    both fail on the corrupted data and pass after the fix.
+23. **`--reset` could not run once a synthetic offer had been accepted.**
+    `job_assignments.offer_id` references `job_offers` `ON DELETE RESTRICT` and
+    the offers were deleted first. Reachable as soon as the demo simulator
+    could accept. Fixed with the right order, and a refusal if any affected job
+    belongs to a non-demo customer.
+24. **Two `סגירה` controls for one action.** The sheet's backdrop was an
+    `aria-label`led button behind the dialog, so a click on "the close button"
+    hit the backdrop and was intercepted. Now `aria-hidden` and untabbable.
 
 ---
 
@@ -287,6 +340,70 @@ Listed because each one would have shipped:
 | Error state | ✅ Typed codes, retry, offline, unauthorized, expired |
 | Empty state | ✅ No offers, no jobs, nobody found |
 | Build passes | ✅ `next build` clean |
+
+---
+
+## Measured, at 1,022 providers
+
+`find_candidate_providers()` against the seeded network (1,022 providers, 591
+of them online and verified), on this machine:
+
+| Radius | Execution | Rows |
+|---|---|---|
+| 5 km | 36 ms | 25 |
+| 15 km | 37 ms | 50 (capped) |
+| 50 km | 37 ms | 50 (capped) |
+
+Flat across radius because the row cap bounds the work. This is after
+migration `0019`, which reordered the filters so the cheap index-backed
+predicates prune before the expensive availability function: the query
+previously had a **fixed** cost regardless of results — 62 ms even when it
+returned nothing — and measured 94 ms before the change against 17 ms after,
+on the dataset of the day.
+
+`provider_next_available_at()` costs ~10 ms per provider, worst case ~48 ms
+for someone with no availability at all (a full 14-day scan in 30-minute
+steps). It is called once per profile view, not per candidate.
+
+Admin lists are capped (50 pending verifications, 200 live providers) and now
+report the totals behind the cap, so a truncated queue says
+`50 מתוך 137` rather than looking finished.
+
+---
+
+## Adversarial probe, second pass
+
+Fourteen probes against the running production build, after this round's
+changes. All behaved correctly:
+
+| Probe | Result |
+|---|---|
+| Customer calls the provider availability API | `403 FORBIDDEN` |
+| Anonymous reads a provider profile | `401 UNAUTHENTICATED` |
+| Nonexistent / unverified provider id | `404 NOT_FOUND` |
+| Non-UUID provider id | `422 VALIDATION_FAILED` |
+| Window ending before it starts | `422 INVALID_WINDOW`, names the day |
+| Weekday `9` | `422`, bounded by the schema |
+| 200 windows (max 60) | `422`, bounded by the schema |
+| `forMinutes` **and** `untilLocalTime` together | `422`, refinement fires |
+| `forMinutes: 99999` | `422`, bounded |
+| Customer sets provider state | `403 FORBIDDEN` |
+| `bookingMode: COMPARE` | `422`, no longer an accepted value |
+| Scheduled job in the past | `422 TIME_IN_PAST` |
+| 65 profile reads in a row | 60 × `200`, then `429` |
+| Demo tick auto-accept | accepted nothing it should not |
+
+Two real findings, both fixed in the same pass:
+
+* **The demo tick took no authentication.** `DEMO_MODE=true` was the only
+  gate, so a deployment that shipped with it enabled would hand location
+  mutation and — with `autoAcceptSynthetic` — assignment creation to anyone
+  who found the URL. In production it now requires the shared
+  `MAINTENANCE_TOKEN` as well, and refuses with `503` if that is unset.
+* **The profile endpoint allowed enumeration.** Any signed-in account could
+  walk every verified provider's prices and service list by id. Now rate
+  limited per viewer at 60 per 5 minutes — well above a decision point, well
+  below a scrape. Verified: 60 pass, the 61st is `429`.
 
 ---
 
@@ -314,17 +431,35 @@ These are stated rather than implied to work:
   single recommendation, which is built. "Several genuinely different options
   → show at most three" is not: the customer never sees the offer list, and
   `GET /api/jobs/:id` does not return `job_offers` to them.
-- **COMPARE is a dead end.** The booking mode is accepted and validated, but
-  only `NOW` dispatches, so a COMPARE job is created and nothing further
-  happens. There is also no customer-side offer-selection endpoint — only the
-  provider's `accept`/`decline`. Choosing between the quote model and the
-  pick-a-candidate model is a product decision with different schema
-  consequences, so it is left open rather than guessed at.
+- **COMPARE is not built, and is now refused rather than a dead end.** The
+  booking mode was accepted and validated but nothing dispatched it, so a
+  COMPARE job sat in `REQUESTED` forever. It is removed from the UI and from
+  the API's accepted values (D-018). There is still no customer-side
+  offer-selection endpoint — only the provider's `accept`/`decline`. Choosing
+  between the quote model and the pick-a-candidate model is a product
+  decision with different schema consequences, so it is left open rather
+  than guessed at.
+- **Client behaviour is verified in one environment.** Hydration, handlers and
+  effects are driven against a local production build in Chromium. There is
+  no device matrix, and iOS Safari differs on `100dvh`, safe-area insets and
+  native date controls (R-014).
+- **A rating aggregate without review rows.** Seeded providers carry
+  `rating_avg`/`rating_count` with no `reviews` rows behind them, so the
+  profile shows the aggregate and `ratingBreakdown: null` rather than a
+  fabricated distribution (A-013, SEED_DATA.md).
+- **`provider_next_available_at()` scans in 30-minute steps** while the hours
+  editor offers quarter-hours, so an 08:15 shift can be reported as free from
+  08:30 — late, never early (A-012).
+- **The demo simulator can accept on a synthetic provider's behalf.** Four
+  guards, and it goes through `accept_job_offer()` rather than writing rows,
+  but it is a path that manufactures a commitment (R-016).
 - **Provider documents are not uploadable.** Categories declare
   `requires_license` / `requires_insurance` / `requires_documents`, and
   onboarding tells the provider an admin will ask for them, but there is no
   upload surface and no storage adapter behind `provider_documents`.
-- **No load testing.** Index choices are reasoned, not benchmarked.
+- **No load testing.** Index choices are reasoned, and the candidate query is
+  measured at 1,022 providers (below), but there is no concurrency or
+  sustained-throughput test.
 - **`npm audit` not run** as part of the gates.
 
 ---

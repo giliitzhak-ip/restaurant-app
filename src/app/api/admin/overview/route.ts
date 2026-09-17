@@ -127,7 +127,46 @@ export async function GET() {
          limit 50
       `);
 
-      return { counters, analytics, liveJobs, liveProviders, pendingVerification };
+      /*
+       * Every list above is capped. Without the totals the admin cannot tell
+       * "50 providers awaiting verification" from "the first 50 of 300" — and
+       * a queue that looks finished when it is not is worse than a long one.
+       */
+      const totals = await db.one<{
+        pending_verification: number;
+        live_providers: number;
+        live_jobs: number;
+      }>(`
+        select
+          (select count(*) from provider_profiles where verification = 'PENDING')::int
+            as pending_verification,
+          (select count(*) from provider_profiles pp
+             join provider_locations pl on pl.provider_id = pp.id
+            where pp.state <> 'OFFLINE')::int as live_providers,
+          (select count(*) from jobs
+            where status in ('REQUESTED','SEARCHING','OFFERS_AVAILABLE',
+                             'PROVIDER_SELECTED','CONFIRMED','EN_ROUTE',
+                             'ARRIVED','IN_PROGRESS',
+                             'AWAITING_CUSTOMER_CONFIRMATION'))::int as live_jobs
+      `);
+
+      return {
+        counters,
+        analytics,
+        liveJobs,
+        liveProviders,
+        pendingVerification,
+        totals: {
+          pendingVerification: totals?.pending_verification ?? 0,
+          liveProviders: totals?.live_providers ?? 0,
+          liveJobs: totals?.live_jobs ?? 0,
+        },
+        shown: {
+          pendingVerification: pendingVerification.length,
+          liveProviders: liveProviders.length,
+          liveJobs: liveJobs.length,
+        },
+      };
     });
 
     return ok(data);

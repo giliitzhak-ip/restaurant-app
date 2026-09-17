@@ -395,6 +395,22 @@ async function insertProviders(client, providers) {
        on conflict (provider_id, service_id) do nothing`,
       [JSON.stringify(svcs)],
     );
+    /*
+     * service_areas and provider_availability_rules have no natural unique
+     * key — a provider may legitimately have two areas, or two windows on one
+     * weekday — so ON CONFLICT cannot make these inserts idempotent. Without
+     * this delete, a rerun WITHOUT --reset silently doubled every schedule
+     * (4,914 rows became 9,828) while every other table upserted cleanly, and
+     * seed validation passed because it counted providers, not rows.
+     * Clearing the batch's own rows first makes a rerun converge.
+     */
+    const batchIds = batch.map((p) => p.id);
+    await client.query('delete from service_areas where provider_id = any($1::uuid[])', [batchIds]);
+    await client.query(
+      'delete from provider_availability_rules where provider_id = any($1::uuid[])',
+      [batchIds],
+    );
+
     await client.query(
       `insert into service_areas (provider_id, label, center, radius_km, is_active)
        select (v->>0)::uuid, v->>1,
@@ -466,12 +482,59 @@ async function removeNetwork(client) {
   if (ids.length === 0) return;
 
   await client.query('begin');
-  await client.query(`delete from job_offers where provider_id = any($1::uuid[])`, [ids]);
-  await client.query(`delete from job_assignments where provider_id = any($1::uuid[])`, [ids]);
-  await client.query(`delete from matching_events where provider_id = any($1::uuid[])`, [ids]);
-  await client.query(`delete from auth.users where id = any($1::uuid[])`, [ids]);
-  await client.query('commit');
-  log(`• removed ${ids.length} synthetic providers`);
+  try {
+    /*
+     * Order matters, and it used to be wrong: job_assignments.offer_id
+     * references job_offers ON DELETE RESTRICT, so deleting the offers first
+     * fails the moment any synthetic offer has been ACCEPTED. That became
+     * reachable as soon as the demo simulator could accept on their behalf,
+     * and the reset then aborted with a foreign-key error.
+     *
+     * A job whose assigned provider is about to stop existing is not a record
+     * worth keeping, so the job goes too — and deleting the job cascades to
+     * its offers and assignment. But a job belongs to a CUSTOMER, so this
+     * refuses outright rather than deleting anything owned by a real one.
+     */
+    const { rows: risky } = await client.query(
+      `select j.id
+         from job_assignments a
+         join jobs j on j.id = a.job_id
+         join profiles customer on customer.id = j.customer_id
+        where a.provider_id = any($1::uuid[])
+          and customer.is_demo is not true`,
+      [ids],
+    );
+    if (risky.length > 0) {
+      throw new Error(
+        `refusing to reset: ${risky.length} job(s) belonging to non-demo customers are ` +
+        `assigned to synthetic providers (first: ${risky[0].id}). ` +
+        `That should be impossible — investigate before re-seeding.`,
+      );
+    }
+
+    const { rowCount: jobsRemoved } = await client.query(
+      `delete from jobs j
+        where exists (
+          select 1 from job_assignments a
+           where a.job_id = j.id and a.provider_id = any($1::uuid[])
+        )`,
+      [ids],
+    );
+
+    // Any remaining assignments, then the offers they pointed at.
+    await client.query(`delete from job_assignments where provider_id = any($1::uuid[])`, [ids]);
+    await client.query(`delete from job_offers where provider_id = any($1::uuid[])`, [ids]);
+    await client.query(`delete from matching_events where provider_id = any($1::uuid[])`, [ids]);
+    await client.query(`delete from auth.users where id = any($1::uuid[])`, [ids]);
+    await client.query('commit');
+    log(
+      `• removed ${ids.length} synthetic providers` +
+      (jobsRemoved ? ` and ${jobsRemoved} demo job(s) assigned to them` : ''),
+    );
+  } catch (error) {
+    await client.query('rollback');
+    throw error;
+  }
 }
 
 async function summarise(client) {
