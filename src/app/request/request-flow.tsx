@@ -39,13 +39,19 @@ export function RequestFlow({
   initialDescription,
   bookingMode,
   categoryHint,
+  // Computed by the server component. Deriving it from Date.now() during
+  // render would be impure and would disagree between server and client;
+  // the server also revalidates the chosen time on submit.
+  minScheduleValue,
 }: {
   initialDescription: string;
   bookingMode: 'NOW' | 'SCHEDULE' | 'COMPARE';
   categoryHint: string | null;
+  minScheduleValue: string;
 }) {
   const router = useRouter();
   const geo = useGeolocation();
+  const requestLocation = geo.request;
 
   const [description, setDescription] = useState(initialDescription);
   const [understanding, setUnderstanding] = useState<UnderstandResponse | null>(null);
@@ -77,15 +83,30 @@ export function RequestFlow({
   }, []);
 
   useEffect(() => {
-    void classify(initialDescription);
-  }, [classify, initialDescription]);
+    let active = true;
+    void (async () => {
+      const text = initialDescription.trim();
+      if (text.length < 3) return;
+      const result = await apiFetch<UnderstandResponse>('/api/understand', {
+        method: 'POST',
+        json: { text },
+      }).catch(() => null);
+      // Classification is a convenience; the server re-runs it on submit.
+      if (active && result) setUnderstanding(result);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [initialDescription]);
 
   // Ask for location immediately: it is the one thing we genuinely cannot
-  // proceed without, so asking late wastes the customer's time.
+  // proceed without, so asking late wastes the customer's time. Deferred by
+  // a tick so the permission prompt does not set state mid-commit.
   useEffect(() => {
-    void geo.request();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const timer = setTimeout(() => void requestLocation(), 0);
+    return () => clearTimeout(timer);
+  }, [requestLocation]);
+
 
   const hasLocation = geo.fix !== null;
   const canSubmit =
@@ -262,7 +283,7 @@ export function RequestFlow({
               dir="ltr"
               className={inputClasses}
               value={scheduledFor}
-              min={new Date(Date.now() + 3_600_000).toISOString().slice(0, 16)}
+              min={minScheduleValue || undefined}
               onChange={(event) => setScheduledFor(event.target.value)}
             />
           </Field>

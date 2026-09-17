@@ -91,8 +91,29 @@ export function ProviderConsole() {
   }, []);
 
   useEffect(() => {
-    void refetch();
-  }, [refetch]);
+    let active = true;
+    void (async () => {
+      const fresh = await apiFetch<ProviderData>('/api/provider/offers').catch(
+        (caught: unknown) => {
+          if (active) {
+            setError(
+              caught instanceof ApiRequestError ? caught.message : 'לא הצלחנו לטעון נתונים',
+            );
+          }
+          return null;
+        },
+      );
+      if (!active) return;
+      if (fresh) {
+        setData(fresh);
+        setError(null);
+      }
+      setLoading(false);
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const { connection } = useRealtime({ onChange: () => void refetch() });
   usePolling(() => void refetch(), 10_000, true);
@@ -401,7 +422,7 @@ export function ProviderConsole() {
                   <dt className="text-xs text-slate-400">הגעה</dt>
                   <dd className="text-base font-bold text-white">
                     <Minutes value={offer.eta_minutes} />
-                    <span className="text-xs font-normal text-slate-400"> דק'</span>
+                    <span className="text-xs font-normal text-slate-400"> דק׳</span>
                   </dd>
                 </div>
                 <div className="rounded-xl bg-navy-950 p-2">

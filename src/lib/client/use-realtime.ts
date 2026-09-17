@@ -31,9 +31,13 @@ export function useRealtime({ channels, onChange, enabled = true }: RealtimeOpti
   connection: ConnectionState;
 } {
   const [connection, setConnection] = useState<ConnectionState>('connecting');
-  // Kept in a ref so re-renders do not tear down the stream.
+  // Kept in a ref so a changing callback does not tear down the stream.
+  // Assigned in an effect rather than during render: mutating a ref while
+  // rendering is not safe under concurrent rendering.
   const handlerRef = useRef(onChange);
-  handlerRef.current = onChange;
+  useEffect(() => {
+    handlerRef.current = onChange;
+  });
 
   const channelKey = channels?.join(',') ?? '';
 
@@ -103,7 +107,9 @@ export function useRealtime({ channels, onChange, enabled = true }: RealtimeOpti
  */
 export function usePolling(fn: () => void, intervalMs: number, enabled = true): void {
   const ref = useRef(fn);
-  ref.current = fn;
+  useEffect(() => {
+    ref.current = fn;
+  });
 
   useEffect(() => {
     if (!enabled) return;

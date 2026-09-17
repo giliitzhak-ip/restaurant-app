@@ -18,6 +18,7 @@
     "db:migrate": "node scripts/migrate.mjs",
     "db:reset": "node scripts/migrate.mjs --reset",
     "db:seed": "node scripts/seed.mjs",
+    "test:db": "node scripts/setup-test-db.mjs",
     "db:setup": "node scripts/setup-roles.mjs && node scripts/migrate.mjs --reset && node scripts/seed.mjs"
   },
   "dependencies": {

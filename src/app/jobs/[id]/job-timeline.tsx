@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, Spinner } from '@/components/ui';
 import { apiFetch } from '@/lib/client/api';
 
@@ -42,18 +42,19 @@ export function JobTimeline({ jobId, refreshKey }: { jobId: string; refreshKey: 
   const [events, setEvents] = useState<TimelineEvent[] | null>(null);
   const [open, setOpen] = useState(false);
 
-  const load = useCallback(async () => {
-    try {
-      const result = await apiFetch<{ events: TimelineEvent[] }>(`/api/jobs/${jobId}/timeline`);
-      setEvents(result.events);
-    } catch {
-      setEvents([]);
-    }
-  }, [jobId]);
-
   useEffect(() => {
-    if (open) void load();
-  }, [open, load, refreshKey]);
+    if (!open) return;
+    let active = true;
+    void (async () => {
+      const result = await apiFetch<{ events: TimelineEvent[] }>(
+        `/api/jobs/${jobId}/timeline`,
+      ).catch(() => ({ events: [] as TimelineEvent[] }));
+      if (active) setEvents(result.events);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [open, jobId, refreshKey]);
 
   return (
     <Card>

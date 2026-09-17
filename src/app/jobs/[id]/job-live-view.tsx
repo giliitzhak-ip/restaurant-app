@@ -112,9 +112,31 @@ export function JobLiveView({ jobId }: { jobId: string }) {
     }
   }, [jobId]);
 
+  // The abort flag is not just lint hygiene: without it a slow first response
+  // can land after the component moved on, or after a newer refetch already
+  // applied fresher data.
   useEffect(() => {
-    void refetch();
-  }, [refetch]);
+    let active = true;
+    void (async () => {
+      const fresh = await apiFetch<JobData>(`/api/jobs/${jobId}`).catch((caught: unknown) => {
+        if (active) {
+          setError(
+            caught instanceof ApiRequestError ? caught.message : 'לא הצלחנו לטעון את פרטי העבודה.',
+          );
+        }
+        return null;
+      });
+      if (!active) return;
+      if (fresh) {
+        setData(fresh);
+        setError(null);
+      }
+      setLoading(false);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [jobId]);
 
   const { connection } = useRealtime({
     onChange: () => {

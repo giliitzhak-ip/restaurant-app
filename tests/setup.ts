@@ -25,3 +25,28 @@ try {
 
 process.env.MAP_PROVIDER ??= 'estimate';
 process.env.PAYMENT_PROVIDER ??= 'mock';
+
+/**
+ * Integration and security suites run against a DEDICATED test database.
+ *
+ * They share a Postgres instance with development, where the demo seed places
+ * providers around Tel Aviv — inside the radius the dispatch tests search. So
+ * without this redirection a test's result depended on whether `db:seed` had
+ * been run, which is not a property tests may have.
+ *
+ * Create it with: npm run test:db
+ */
+function swapDatabase(url: string | undefined, database: string): string | undefined {
+  if (!url) return url;
+  try {
+    const parsed = new URL(url);
+    parsed.pathname = `/${database}`;
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
+const testDbName = process.env.TEST_DB_NAME ?? 'getservice_test';
+process.env.DATABASE_URL = swapDatabase(process.env.DATABASE_URL, testDbName);
+process.env.DATABASE_ADMIN_URL = swapDatabase(process.env.DATABASE_ADMIN_URL, testDbName);

@@ -236,13 +236,21 @@ async function main() {
   const plumbingCat = categoryBySlug.get('plumbing');
   const sinkLeak = svcRows.find((s) => s.slug === 'sink_leak');
   const completedJobId = 'dddddddd-0001-4000-8000-dddddddddddd';
+  // created_at is set explicitly and BEFORE matched_at. Leaving it to default
+  // to now() while back-dating matched_at produced a negative
+  // "time to match" in the admin analytics — a metric that cannot happen in
+  // real data, so the seed must not manufacture it either.
   await client.query(
     `insert into jobs (id, customer_id, raw_description, category_id, service_id,
                        urgency, booking_mode, status, location, address_text,
-                       quoted_price_ils, final_price_ils, is_demo, search_started_at, matched_at)
+                       quoted_price_ils, final_price_ils, is_demo,
+                       created_at, search_started_at, matched_at, updated_at)
      values ($1,$2,$3,$4,$5,'high','NOW','COMPLETED',
              st_point($7,$6)::geography,'דיזנגוף 50, תל אביב',290,290,true,
-             now() - interval '2 hours', now() - interval '110 minutes')
+             now() - interval '2 hours',
+             now() - interval '2 hours',
+             now() - interval '116 minutes',
+             now() - interval '90 minutes')
      on conflict (id) do nothing`,
     [completedJobId, customerIds.eitan, 'נזילה מתחת לכיור במטבח',
      plumbingCat, sinkLeak?.id ?? null, 32.06, 34.77],

@@ -33,6 +33,13 @@ export default async function RequestPage({
         initialDescription={params.q ?? ''}
         bookingMode={mode}
         categoryHint={params.category ?? null}
+        // Scoped exemption: this is a SERVER component rendered once per
+        // request, so a per-request clock read is deterministic for that
+        // render and cannot cause a hydration mismatch. The value is only a
+        // UX floor on the picker — the chosen time is revalidated server-side
+        // in POST /api/jobs, which is the actual guard.
+        // eslint-disable-next-line react-hooks/purity
+        minScheduleValue={new Date(Date.now() + 3_600_000).toISOString().slice(0, 16)}
       />
     </main>
   );
