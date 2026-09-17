@@ -562,3 +562,64 @@ matching is by substring and morphology does not carry: `החלפת דוד` does
 match "צריך להחליף דוד", so each plausible form is listed rather than assumed.
 Migration `0028` and `catalog-reachability.test.ts` both refuse a service with
 no way to be found.
+
+## D-025 — The simulator plays back a recorded dispatch instead of imitating one
+
+**Context.** The interface simulator (`docs/demo/getservice-simulator.html`)
+carried its own copy of the data: a catalog of 23 services, five providers,
+and its own JavaScript re-derivation of the score — `100 - ((price - ref) /
+ref) * 140` for price, `62 - km * 8` for route opportunity, and so on. Once
+the catalog grew to 62 it also drifted out of date. But staleness was the
+smaller problem: those formulas were never the engine's. At the reference
+price the real `scorePrice` returns 50 and the simulator's returned 100, so
+every number the page displayed was a plausible invention presented as the
+system's own output.
+
+**Decision.** The page carries a recording, not a model. A real job was
+dispatched through the real engine against the seeded network, and the
+`matching_events` row for each candidate — every per-signal score, the final
+score, the ETA, the distance, the route verdict — is what the page holds. The
+total is recomputed only as `Σ score × weight`, which is exactly what
+`engine.ts` does, and it reproduces the recorded `final_score` to the cent.
+The description classifier is the one thing genuinely computed in the page,
+because typing into the box has to do something: its rules are the merge of
+`SERVICE_RULES` and `services.strong_phrases`, and its `normalise` /
+`phraseMatches` / `phraseScore` are the same functions. It agrees with
+`/api/understand` on 20 descriptions, confidence included.
+
+**Why.** A demo of a matching engine whose numbers are not the engine's
+numbers argues for a product that does not exist. The one signal that does
+legitimately change with the customer's timing — availability, where planned
+hours decide and the live switch does not — is substituted with the value
+`scorers.ts` uses when a live fix is not required, and the substitution is
+stated on the page.
+
+**Consequences.** The candidate list is one dispatch, so it does not follow a
+reclassification; the page says so when the classified service is not the
+recorded one rather than implying these seven are candidates for anything.
+Refreshing the recording means re-running the dispatch and regenerating the
+constants. Two invented things went with the formulas: a rating distribution
+derived from the review count with fixed 82/13/3/2 ratios, drawn directly
+beneath the sentence "no written reviews yet, and no distribution is shown
+because there is nothing to base one on" — the endpoint returns
+`ratingBreakdown: null` for every one of these providers, so nothing is drawn
+— and a proposer's name borrowed from a provider row.
+
+## D-026 — Provider-facing copy addresses people in the plural, not the masculine
+
+**Context.** The onboarding form, the availability editor and the console
+addressed the provider as `אתה`: "באיזה תחום אתה עובד?", "סמן רק מה שאתה
+מבצע", "אתה לא מקוון". The customer-facing profile sheet labelled the service
+list "מה הוא עושה". Hebrew has no neutral singular second person, and the
+seeded network is roughly half women — so did the recorded candidate list,
+where six of the seven are.
+
+**Decision.** Second person plural (`אתם`, `סמנו`, `הזינו`), which is
+idiomatic Hebrew for an interface and carries no gender. The one label that
+was third person became a description of its contents: "שירותים ומחירים".
+
+**Why.** Addressing half the providers as men is a defect in the product, not
+a matter of style, and it is visible on the first screen a provider sees.
+
+**Consequences.** Nine strings in four files, and the simulator follows them,
+because it promises the same text as the app. No API, schema or test change.

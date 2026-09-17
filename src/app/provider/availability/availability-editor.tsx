@@ -219,7 +219,7 @@ export function AvailabilityEditor() {
         method: 'POST',
         json: { state: next ? 'ONLINE' : 'OFFLINE' },
       });
-      return next ? 'אתה מקבל עבודות' : 'הפסקת לקבל עבודות';
+      return next ? 'מקבלים עבודות' : 'הפסקתם לקבל עבודות';
     });
 
   const onlineFor = (minutes: number) =>
@@ -252,7 +252,7 @@ export function AvailabilityEditor() {
       if (state === 'ONLINE') {
         await apiFetch('/api/provider/state', { method: 'POST', json: { state: 'OFFLINE' } });
       }
-      return 'סימנו שאתה לא זמין היום';
+      return 'סימנו שאינכם זמינים היום';
     });
 
   const saveVacation = () =>

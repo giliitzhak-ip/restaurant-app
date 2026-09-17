@@ -429,7 +429,13 @@ async function insertProviders(client, providers) {
                    else st_point((v->>7)::double precision, (v->>6)::double precision)::geography end,
               now() - make_interval(secs => (v->>8)::int)
          from jsonb_array_elements($1::jsonb) v
-       on conflict (provider_id) do nothing`,
+       on conflict (provider_id) do update
+         set location    = excluded.location,
+             heading_deg = excluded.heading_deg,
+             speed_kmh   = excluded.speed_kmh,
+             accuracy_m  = excluded.accuracy_m,
+             destination = excluded.destination,
+             recorded_at = excluded.recorded_at`,
       [JSON.stringify(locations)],
     );
     if (rules.length > 0) {

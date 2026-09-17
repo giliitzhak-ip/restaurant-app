@@ -504,7 +504,7 @@ export function ProviderConsole() {
 
       {!active && state === 'OFFLINE' && profile?.verification === 'VERIFIED' && (
         <EmptyState
-          title="אתה לא מקוון"
+          title="לא מקוונים כרגע"
           message="התחל משמרת כדי לקבל עבודות."
           action={
             <Link href="/provider/onboarding">

@@ -337,7 +337,7 @@ export function ProviderOnboarding() {
       {/* ── 1. Trade ─────────────────────────────────────────────────── */}
       <Card>
         <h2 className="text-base font-bold text-ink">
-          <span className="ltr-nums text-ink-3" dir="ltr">1</span> באיזה תחום אתה עובד?
+          <span className="ltr-nums text-ink-3" dir="ltr">1</span> באיזה תחום אתם עובדים?
         </h2>
 
         {/* Search across categories AND services, because a provider thinks
@@ -444,7 +444,7 @@ export function ProviderOnboarding() {
               <div>
                 <p className="text-sm font-bold text-ink">הוספת מקצוע חדש</p>
                 <p className="mt-1 text-sm text-ink-2">
-                  כתוב מה אתה עושה במילים שלך. נבדוק ונאשר, ורק אחרי האישור
+                  כתבו מה אתם עושים במילים שלכם. נבדוק ונאשר, ורק אחרי האישור
                   תתחיל לקבל עבודות בו.
                 </p>
               </div>
@@ -461,7 +461,7 @@ export function ProviderOnboarding() {
               </Field>
 
               <Field
-                label="מה אתה עושה בפועל (לא חובה)"
+                label="מה אתם עושים בפועל (לא חובה)"
                 htmlFor="proposal-desc"
                 hint="כמה מילים יעזרו לנו לאשר מהר ולנתב אליך את הלקוחות הנכונים"
               >
@@ -575,7 +575,7 @@ export function ProviderOnboarding() {
                   )}
                   {proposal.status === 'APPROVED' && proposal.resolved_category_name && (
                     <p className="mt-2 text-xs text-ok-bright">
-                      נוסף תחת {proposal.resolved_category_name} — אתה יכול לקבל עבודות בו.
+                      נוסף תחת {proposal.resolved_category_name} — אפשר לקבל עבודות בו.
                     </p>
                   )}
                   {proposal.status === 'REJECTED' && proposal.review_note && (
@@ -592,10 +592,10 @@ export function ProviderOnboarding() {
       {categorySlug && (
         <Card>
           <h2 className="text-base font-bold text-ink">
-            <span className="ltr-nums text-ink-3" dir="ltr">2</span> מה אתה עושה, ובכמה?
+            <span className="ltr-nums text-ink-3" dir="ltr">2</span> מה אתם עושים, ובכמה?
           </h2>
           <p className="mt-1 text-sm text-ink-2">
-            סמן רק מה שאתה מבצע. המחיר שתזין הוא המחיר שיוצג ללקוח.
+            סמנו רק את מה שאתם מבצעים. המחיר שתזינו הוא המחיר שיוצג ללקוח.
           </p>
 
           <div className="mt-4 space-y-3">
@@ -660,7 +660,7 @@ export function ProviderOnboarding() {
       {categorySlug && (
         <Card>
           <h2 className="text-base font-bold text-ink">
-            <span className="ltr-nums text-ink-3" dir="ltr">3</span> איפה אתה עובד?
+            <span className="ltr-nums text-ink-3" dir="ltr">3</span> איפה אתם עובדים?
           </h2>
           <p className="mt-1 text-sm text-ink-2">
             נשלח לך עבודות רק בתוך הרדיוס הזה.
@@ -756,10 +756,10 @@ export function ProviderOnboarding() {
         {!ready && (
           <p className="text-center text-sm text-ink-3">
             {categorySlug === null
-              ? 'בחר תחום כדי להמשיך'
+              ? 'בחרו תחום כדי להמשיך'
               : chosen.length === 0
-                ? 'הזן מחיר לפחות לשירות אחד'
-                : 'קבע את מרכז אזור העבודה'}
+                ? 'הזינו מחיר לפחות לשירות אחד'
+                : 'קבעו את מרכז אזור העבודה'}
           </p>
         )}
       </div>

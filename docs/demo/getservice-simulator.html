@@ -1,0 +1,2605 @@
+<title>GET SERVICE Simulator</title>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;900&family=Sora:wght@500;700&display=swap">
+
+<style>
+/* ===========================================================================
+   Two design systems, on purpose.
+
+   The PHONE uses GET SERVICE's own tokens, unchanged — that is the thing
+   being shown, and it commits to one dark identity by design.
+   The SIMULATOR CHROME around it is this page's own, and follows the
+   viewer's theme.
+   =========================================================================== */
+:root {
+  /* Chrome — light. Neutrals biased slightly blue so they read as chosen
+     next to the product's navy, rather than as default grey. */
+  --ground: #eaeef4;
+  --panel: #ffffff;
+  --panel-2: #f4f6fa;
+  --hair: #d3dae5;
+  --hair-2: #bcc6d6;
+  --ink: #141a24;
+  --ink-2: #566277;
+  --ink-3: #8794a8;
+  --accent: #2563eb;
+  --accent-soft: #dbe6fe;
+  --shadow: 0 1px 2px rgba(20, 26, 36, .06), 0 12px 32px rgba(20, 26, 36, .09);
+
+  /* ── GET SERVICE product tokens (verbatim from src/app/globals.css) ──── */
+  --bg: #080b12;
+  --surface-1: #0d121c;
+  --surface-2: #121925;
+  --surface-3: #182130;
+  --line: #1c2536;
+  --line-strong: #2a3648;
+  --p-ink: #f8fafc;
+  --p-ink-2: #a8b3c4;
+  --p-ink-3: #6f7c90;
+  --brand: #3b82f6;
+  --brand-bright: #60a5fa;
+  --live: #22d3ee;
+  --ok: #22c55e;
+  --ok-bright: #4ade80;
+  --warn: #f59e0b;
+  --warn-bright: #fbbf24;
+  --bad: #ef4444;
+  --bad-bright: #f87171;
+
+  --sans: 'Heebo', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --display: 'Sora', ui-sans-serif, system-ui, sans-serif;
+  --mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #070a0f;
+    --panel: #10151d;
+    --panel-2: #161c26;
+    --hair: #232b38;
+    --hair-2: #323c4d;
+    --ink: #e9eef6;
+    --ink-2: #9aa7ba;
+    --ink-3: #6b7789;
+    --accent: #60a5fa;
+    --accent-soft: #17273f;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 16px 40px rgba(0, 0, 0, .45);
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #070a0f;
+  --panel: #10151d;
+  --panel-2: #161c26;
+  --hair: #232b38;
+  --hair-2: #323c4d;
+  --ink: #e9eef6;
+  --ink-2: #9aa7ba;
+  --ink-3: #6b7789;
+  --accent: #60a5fa;
+  --accent-soft: #17273f;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 16px 40px rgba(0, 0, 0, .45);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The chrome is Hebrew too, so it gets the document direction. Without it
+   sentence-final punctuation lands at the wrong end of the line. */
+.wrap {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding-inline: 16px;
+  padding-block: 28px 56px;
+  direction: rtl;
+}
+
+/* Latin and technical runs inside that RTL flow stay isolated. */
+.wordmark, .rail code, .kv dd, .cand .sc, .cand .tag, code { direction: ltr; unicode-bidi: isolate; }
+.rail code, .kv dd, .cand .sc { text-align: start; }
+
+/* ── Page head ───────────────────────────────────────────────────────── */
+.masthead { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px 24px; }
+.masthead h1 {
+  font-family: var(--display);
+  font-size: clamp(22px, 3.4vw, 30px);
+  font-weight: 700;
+  letter-spacing: -.02em;
+  margin: 0;
+  text-wrap: balance;
+}
+.masthead p {
+  margin: 6px 0 0;
+  color: var(--ink-2);
+  font-size: 14.5px;
+  max-width: 62ch;
+  line-height: 1.55;
+}
+.wordmark {
+  font-family: var(--display);
+  font-weight: 700;
+  letter-spacing: -.01em;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-2);
+}
+.wordmark i {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--brand); display: inline-block;
+}
+
+/* An honesty banner, not a footnote. The product's own brand rules say a
+   demo that looks like production is a lie with a nice interface. */
+.disclosure {
+  margin-top: 20px;
+  display: flex; gap: 12px; align-items: flex-start;
+  border: 1px solid var(--hair);
+  border-inline-start: 3px solid var(--warn);
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.disclosure strong { color: var(--ink); font-weight: 700; }
+
+/* ── The two-column stage ────────────────────────────────────────────── */
+.stage {
+  margin-top: 26px;
+  display: grid;
+  grid-template-columns: minmax(0, 390px) minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+@media (max-width: 880px) {
+  .stage { grid-template-columns: minmax(0, 1fr); justify-items: center; }
+  .underneath { width: 100%; }
+}
+
+/* ── Phone ───────────────────────────────────────────────────────────── */
+.device { width: 100%; max-width: 390px; }
+.bezel {
+  background: #05070c;
+  border: 1px solid var(--hair-2);
+  border-radius: 34px;
+  padding: 9px;
+  box-shadow: var(--shadow);
+}
+.screen {
+  position: relative;
+  border-radius: 26px;
+  overflow: hidden;
+  background: var(--bg);
+  height: 720px;
+  display: flex;
+  flex-direction: column;
+  direction: rtl;
+  font-family: var(--sans);
+  color: var(--p-ink);
+}
+.statusbar {
+  flex: none;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 18px 2px;
+  font-size: 11.5px;
+  color: var(--p-ink-3);
+  font-variant-numeric: tabular-nums;
+}
+.viewport {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px 18px 22px;
+  scrollbar-width: thin;
+}
+.viewport::-webkit-scrollbar { width: 5px; }
+.viewport::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 9px; }
+
+.devicefoot {
+  display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+  margin-top: 14px;
+}
+
+/* ── Product primitives, reproduced from src/components/ui ───────────── */
+/* Latin inside an RTL document must be ISOLATED, not merely left-aligned:
+   without this the bidi algorithm reorders the run and the wordmark renders
+   as "SERVICE GET". Same reason .ltr exists for numbers. */
+.gs-logo { font-family: var(--display); font-weight: 700; font-size: 19px; letter-spacing: -.01em; display: inline-flex; align-items: center; gap: 8px; direction: ltr; unicode-bidi: isolate; }
+.gs-logo i { width: 8px; height: 8px; border-radius: 50%; background: var(--brand); }
+.gs-logo b { font-weight: 700; color: var(--p-ink); }
+.gs-logo span { color: var(--brand-bright); font-weight: 700; }
+
+.gs-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+
+.gs-h1 { font-size: 31px; line-height: 1.15; font-weight: 900; margin: 0; letter-spacing: -.02em; }
+.gs-sub { margin: 8px 0 0; color: var(--p-ink-2); font-size: 15px; line-height: 1.5; }
+.gs-label { font-size: 12.5px; font-weight: 600; letter-spacing: .02em; color: var(--p-ink-3); margin: 0 0 10px; }
+.gs-qlabel { font-size: 18px; font-weight: 700; margin: 0 0 10px; }
+
+.gs-card { border: 1px solid var(--line); background: var(--surface-1); border-radius: 16px; padding: 16px; }
+.gs-inset { background: var(--surface-2); border-radius: 12px; padding: 12px; }
+
+.gs-input, .gs-area {
+  width: 100%; border: 1px solid var(--line-strong); background: var(--surface-2);
+  border-radius: 12px; padding: 12px 15px; color: var(--p-ink);
+  font-family: var(--sans); font-size: 16px; resize: none;
+}
+.gs-area { min-height: 92px; line-height: 1.45; }
+.gs-input::placeholder, .gs-area::placeholder { color: var(--p-ink-3); }
+.gs-input:focus, .gs-area:focus { outline: none; border-color: var(--brand); }
+
+.gs-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; min-height: 52px; border-radius: 16px; border: 0;
+  font-family: var(--sans); font-size: 17px; font-weight: 700; cursor: pointer;
+  background: var(--brand); color: #081019;
+  transition: background .15s, opacity .15s;
+}
+.gs-btn:hover { background: var(--brand-bright); }
+.gs-btn:disabled { opacity: .45; cursor: not-allowed; }
+.gs-btn.sec { background: var(--surface-3); color: var(--p-ink); border: 1px solid var(--line-strong); font-weight: 600; font-size: 15px; min-height: 46px; }
+.gs-btn.sec:hover { background: var(--line-strong); }
+.gs-btn.quiet { background: transparent; color: var(--p-ink-2); font-weight: 500; font-size: 15px; min-height: 44px; }
+.gs-btn.quiet:hover { background: var(--surface-2); color: var(--p-ink); }
+.gs-btn.ok { background: var(--ok); color: #04140a; }
+.gs-btn.ok:hover { background: var(--ok-bright); }
+
+.gs-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.gs-chip {
+  min-height: 42px; padding: 0 14px; border-radius: 999px;
+  border: 1px solid var(--line-strong); background: var(--surface-1);
+  color: var(--p-ink-2); font-family: var(--sans); font-size: 13px; cursor: pointer;
+}
+.gs-chip:hover { border-color: var(--brand); color: var(--p-ink); }
+
+.gs-seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.gs-seg button {
+  min-height: 58px; border-radius: 12px; cursor: pointer;
+  border: 1px solid var(--line-strong); background: var(--surface-2);
+  color: var(--p-ink-2); font-family: var(--sans);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+}
+.gs-seg button:hover { border-color: rgba(59,130,246,.5); color: var(--p-ink); }
+.gs-seg button[aria-checked="true"] { border-color: var(--brand); background: rgba(59,130,246,.12); color: var(--p-ink); }
+.gs-seg strong { font-size: 15px; font-weight: 700; }
+.gs-seg small { font-size: 11px; color: var(--p-ink-3); }
+
+.gs-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  border-radius: 999px; border: 1px solid var(--line-strong);
+  background: var(--surface-3); color: var(--p-ink-2);
+  padding: 4px 11px; font-size: 12.5px; font-weight: 500;
+}
+.gs-badge.brand { background: rgba(59,130,246,.12); color: var(--brand-bright); border-color: rgba(59,130,246,.35); }
+.gs-badge.live  { background: rgba(34,211,238,.12); color: var(--live); border-color: rgba(34,211,238,.35); }
+.gs-badge.ok    { background: rgba(34,197,94,.12); color: var(--ok-bright); border-color: rgba(34,197,94,.35); }
+.gs-badge.warn  { background: rgba(245,158,11,.12); color: var(--warn-bright); border-color: rgba(245,158,11,.35); }
+.gs-badge.bad   { background: rgba(239,68,68,.12); color: var(--bad-bright); border-color: rgba(239,68,68,.35); }
+
+.ltr { direction: ltr; unicode-bidi: isolate; font-variant-numeric: tabular-nums; }
+
+.gs-avatar {
+  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%; border: 1px solid var(--line-strong);
+  font-weight: 700; color: var(--p-ink);
+}
+
+.gs-stars { color: var(--warn-bright); }
+
+/* The visual signature: ● ───────→ ● */
+.gs-line { display: flex; align-items: center; gap: 8px; }
+.gs-line .dot { position: relative; width: 10px; height: 10px; flex: none; }
+.gs-line .dot b { position: absolute; inset: 0; border-radius: 50%; background: var(--live); }
+.gs-line .dot i { position: absolute; inset: 0; border-radius: 50%; background: var(--live); animation: pulse 2s cubic-bezier(.22,.61,.36,1) infinite; }
+.gs-line .track { position: relative; flex: 1 1 auto; height: 1px; background: var(--line-strong); overflow: hidden; }
+.gs-line .track u { position: absolute; inset-block: -1px; width: 38px; background: linear-gradient(to left, transparent, var(--live), transparent); animation: travel 2.4s cubic-bezier(.4,0,.6,1) infinite; }
+.gs-line .end { width: 10px; height: 10px; flex: none; border-radius: 50%; border: 1px solid var(--brand-bright); background: var(--surface-2); }
+.gs-line span { font-size: 11px; color: var(--p-ink-3); flex: none; }
+
+@keyframes pulse { 0% { transform: scale(.9); opacity: .75; } 70%, 100% { transform: scale(2.2); opacity: 0; } }
+@keyframes travel { 0% { transform: translateX(0); opacity: 0; } 12%, 88% { opacity: 1; } 100% { transform: translateX(100%); opacity: 0; } }
+@keyframes sweep { to { transform: rotate(360deg); } }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.rise { animation: rise .34s cubic-bezier(.16,1,.3,1) both; }
+
+/* Radar */
+.radar { position: relative; width: 116px; height: 116px; margin: 4px auto 0; display: grid; place-items: center; }
+.radar .ring { position: absolute; width: 80px; height: 80px; border-radius: 50%; border: 1px solid rgba(59,130,246,.4); }
+.radar .pulse { position: absolute; width: 80px; height: 80px; border-radius: 50%; background: rgba(59,130,246,.3); animation: pulse 2s cubic-bezier(.22,.61,.36,1) infinite; }
+.radar .sweep { position: absolute; width: 100px; height: 100px; border-radius: 50%; border-top: 2px solid var(--brand-bright); animation: sweep 2.6s linear infinite; }
+.radar .glyph { font-size: 30px; }
+
+/* Provider switch */
+.gs-switch {
+  display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 16px;
+  border-radius: 16px; border: 1px solid var(--line-strong); background: var(--surface-2);
+  padding: 16px; cursor: pointer; text-align: start; font-family: var(--sans);
+  transition: background .15s, border-color .15s;
+}
+.gs-switch[aria-checked="true"] { border-color: rgba(34,197,94,.45); background: rgba(34,197,94,.1); }
+.gs-switch .lbl { font-size: 18px; font-weight: 700; color: var(--p-ink); display: block; }
+.gs-switch[aria-checked="true"] .lbl { color: var(--ok-bright); }
+.gs-switch .det { font-size: 14px; color: var(--p-ink-2); display: block; margin-top: 2px; }
+.gs-switch .knobtrack { position: relative; flex: none; width: 56px; height: 32px; border-radius: 999px; background: var(--line-strong); transition: background .18s; }
+.gs-switch[aria-checked="true"] .knobtrack { background: var(--ok); }
+.gs-switch .knobtrack i { position: absolute; top: 4px; inset-inline-start: 4px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: inset-inline-start .18s; }
+.gs-switch[aria-checked="true"] .knobtrack i { inset-inline-start: 28px; }
+
+/* Bottom sheet */
+.sheetwrap { position: absolute; inset: 0; z-index: 40; display: flex; align-items: flex-end; }
+.sheetwrap[hidden] { display: none !important; }
+.sheetwrap .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.65); border: 0; padding: 0; }
+.sheet {
+  position: relative; width: 100%; max-height: 88%; display: flex; flex-direction: column;
+  border-radius: 22px 22px 0 0; border: 1px solid var(--line); background: var(--surface-1);
+  animation: rise .28s cubic-bezier(.16,1,.3,1) both;
+}
+.sheet header { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); padding: 12px 16px; }
+.sheet header h2 { margin: 0; font-size: 16px; font-weight: 700; }
+.sheet header button { width: 40px; height: 40px; border-radius: 10px; border: 0; background: transparent; color: var(--p-ink-2); font-size: 17px; cursor: pointer; }
+.sheet header button:hover { background: var(--surface-3); color: var(--p-ink); }
+.sheet .body { overflow-y: auto; padding: 16px; }
+
+/* ── "What's happening underneath" ───────────────────────────────────── */
+.underneath { display: grid; gap: 16px; }
+.pnl { background: var(--panel); border: 1px solid var(--hair); border-radius: 14px; padding: 16px 18px; }
+.pnl > h2 {
+  font-family: var(--display); font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .09em; color: var(--ink-3);
+  margin: 0 0 12px;
+}
+
+/* The state rail IS the job state machine — the order carries information. */
+.rail { display: grid; gap: 0; }
+.rail li { list-style: none; display: grid; grid-template-columns: 22px 1fr; gap: 12px; align-items: start; }
+.rail .mark { display: grid; justify-items: center; }
+.rail .mark b { width: 11px; height: 11px; border-radius: 50%; background: var(--hair-2); margin-top: 4px; transition: background .2s, box-shadow .2s; }
+.rail .mark u { width: 1px; flex: 1; background: var(--hair); min-height: 22px; }
+.rail li:last-child .mark u { display: none; }
+.rail .txt { padding-bottom: 14px; }
+.rail li:last-child .txt { padding-bottom: 0; }
+.rail code { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); display: block; }
+.rail span { font-size: 14px; color: var(--ink-2); }
+.rail li[data-on="done"] .mark b { background: var(--ok); }
+.rail li[data-on="now"] .mark b { background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.rail li[data-on="now"] span { color: var(--ink); font-weight: 700; }
+
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 13.5px; }
+.kv dt { color: var(--ink-3); }
+.kv dd { margin: 0; color: var(--ink); font-family: var(--mono); font-size: 12.5px; }
+
+/* Candidate table */
+.cands { display: grid; gap: 7px; }
+.cand {
+  display: grid; grid-template-columns: 1fr auto; gap: 4px 12px;
+  align-items: center; padding: 9px 11px; border-radius: 9px;
+  background: var(--panel-2); border: 1px solid transparent;
+  font-size: 13.5px;
+}
+.cand.picked { border-color: rgba(34,197,94,.5); background: color-mix(in srgb, var(--ok) 9%, var(--panel-2)); }
+.cand.out { opacity: .62; }
+.cand .nm { font-weight: 700; color: var(--ink); }
+.cand .sc { font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); }
+.cand .why { grid-column: 1 / -1; font-size: 12px; color: var(--ink-3); line-height: 1.45; }
+.cand .tag { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 1px 6px; border-radius: 4px; margin-inline-end: 6px; font-family: var(--display); }
+.tag.route { background: rgba(34,211,238,.16); color: #0e7490; }
+.tag.near  { background: var(--accent-soft); color: var(--accent); }
+.tag.no    { background: color-mix(in srgb, var(--bad) 14%, transparent); color: #b42318; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .tag.route { color: #67e8f9; }
+  :root:not([data-theme="light"]) .tag.no { color: #fca5a5; }
+}
+:root[data-theme="dark"] .tag.route { color: #67e8f9; }
+:root[data-theme="dark"] .tag.no { color: #fca5a5; }
+
+.note { font-size: 12.5px; color: var(--ink-3); line-height: 1.55; margin: 10px 0 0; }
+
+/* Chrome buttons under the phone */
+.ctl {
+  border: 1px solid var(--hair-2); background: var(--panel); color: var(--ink);
+  border-radius: 9px; padding: 8px 13px; font-family: var(--display); font-weight: 500;
+  font-size: 12.5px; cursor: pointer; min-height: 38px;
+}
+.ctl:hover { border-color: var(--accent); color: var(--accent); }
+.ctl[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.screen :focus-visible { outline-color: var(--brand-bright); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div style="flex:1 1 320px">
+      <span class="wordmark"><i></i>GET SERVICE</span>
+      <h1>סימולטור הממשק</h1>
+      <p>
+        המסך שמאל הוא הממשק האמיתי, עם אותם טוקנים, אותו טקסט ואותה זרימה.
+        הלוח שמימין מראה מה קורה מתחת: באיזה מצב העבודה, ומי נכלל או הודר
+        מהחיפוש — ולמה.
+      </p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="ctl" id="btn-customer" aria-pressed="true">צד הלקוח</button>
+      <button class="ctl" id="btn-onboarding" aria-pressed="false">טופס ההרשמה</button>
+      <button class="ctl" id="btn-provider" aria-pressed="false">צד בעל המקצוע</button>
+      <button class="ctl" id="btn-review" aria-pressed="false">
+        האישור שלך<span id="review-dot" hidden> ●</span>
+      </button>
+    </div>
+  </header>
+
+  <p class="disclosure">
+    <span aria-hidden="true">⚠︎</span>
+    <span>
+      <strong>זו הדמיה, לא המערכת.</strong>
+      אין כאן שרת ואין תשלומים — אבל גם אין נתונים מומצאים. השמות, הדירוגים,
+      המחירים, המרחקים, זמני ההגעה והניקוד נקראו מ-<code
+      style="font-family:var(--mono);font-size:12px">matching_events</code>
+      אחרי שיגור אמיתי של מנוע ההתאמה על רשת ההדגמה (1,000 מקצוענים מסומנים
+      <code style="font-family:var(--mono);font-size:12px">is_demo</code>).
+      הסיווג של התיאור שתקלידו מחושב כאן, באותם כללים שבשרת. אף אחד
+      מהמקצוענים כאן אינו אדם אמיתי.
+    </span>
+  </p>
+
+  <div class="stage">
+
+    <!-- ── Device ────────────────────────────────────────────────────── -->
+    <div class="device">
+      <div class="bezel">
+        <div class="screen">
+          <div class="statusbar">
+            <span class="ltr" id="clock">20:50</span>
+            <span class="ltr">▮▮▮ ◗</span>
+          </div>
+          <div class="viewport" id="viewport"></div>
+
+          <div class="sheetwrap" id="sheetwrap" hidden>
+            <button class="scrim" id="scrim" aria-hidden="true" tabindex="-1"></button>
+            <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+              <header>
+                <h2 id="sheet-title">פרופיל</h2>
+                <button type="button" id="sheet-close" aria-label="סגירה">✕</button>
+              </header>
+              <div class="body" id="sheet-body"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="devicefoot">
+        <button class="ctl" id="btn-restart">התחל מחדש</button>
+        <button class="ctl" id="btn-back">חזרה צעד</button>
+      </div>
+    </div>
+
+    <!-- ── Underneath ────────────────────────────────────────────────── -->
+    <div class="underneath">
+
+      <section class="pnl">
+        <h2>מצב העבודה</h2>
+        <ul class="rail" id="rail"></ul>
+      </section>
+
+      <section class="pnl">
+        <h2>מה המערכת יודעת</h2>
+        <dl class="kv" id="kv"></dl>
+      </section>
+
+      <section class="pnl">
+        <h2>מועמדים בסבב</h2>
+        <div class="cands" id="cands"></div>
+        <p class="note" id="cands-note"></p>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===========================================================================
+   Data. Not a mock: a recording.
+
+   Every row below was read back out of the database after a real job was
+   dispatched through the real engine — description "יש לי נזילה מתחת לכיור"
+   from the seeded customer's fix at 32.0742, 34.7749, on the synthetic
+   network of 1,000 providers (SEED=20260917). The names, ratings, review
+   counts, completed jobs, years, prices, distances, ETAs and every
+   per-signal score are the values the engine actually produced and wrote to
+   `matching_events`; `recordedScore` is its own final_score. Nothing here is
+   invented, and nothing here is a real person.
+
+   The first five received a wave-1 offer simultaneously — the first to
+   accept takes the job. The last two ranked below the wave-1 cut, and are
+   included because they are the honest illustration of the thesis: גלית
+   הלוי is nearer (2.79 km), rated higher (4.86 of 2,292) and far more
+   experienced (27 years, 2,741 jobs) than שרה הרוש, and still ranks below
+   her — because שרה is already driving this way and גלית is not.
+
+   `online`  — the realtime switch right now.
+   `hours`   — a declared weekly window, or null for "never published hours".
+   `onway`   — the engine's own verdict that a route claim was earned.
+   =========================================================================== */
+const PROVIDERS = [
+  {
+    id: 'sara', name: 'שרה הרוש', biz: 'שרה הרוש — מיזוג אוויר',
+    rating: 4.57, reviews: 582, jobs: 716, years: 6, respSec: 24,
+    price: 335, km: 2.53, online: true, hours: '00:00–23:59',
+    onway: true, etaMin: 10.9, offered: true,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 94.08, skillMatch: 100.00, availability: 85.12,
+           eta: 86.82, reliability: 87.43, rating: 78.44,
+           price: 24.14, experience: 74.80 },
+    recordedScore: 86.50,
+    bio: 'עבודה נקייה עם אחריות על כל תיקון.',
+    services: [['נזילה מתחת לכיור', 335], ['החלפת צנרת', 2065], ['החלפת דוד', 1605], ['פתיחת סתימה בביוב ראשי', 745], ['פיצוץ צינור', 550], ['איתור נזילה', 515]],
+    ratingBreakdown: null, reviewsText: []
+  },
+  {
+    id: 'orly', name: 'אורלי מלכה', biz: '',
+    rating: 4.77, reviews: 502, jobs: 579, years: 20, respSec: 175,
+    price: 300, km: 3.76, online: true, hours: '08:00–18:00',
+    onway: true, etaMin: 14.7, offered: true,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 97.10, skillMatch: 100.00, availability: 71.12,
+           eta: 78.20, reliability: 75.97, rating: 88.24,
+           price: 44.25, experience: 100.00 },
+    recordedScore: 86.40,
+    bio: 'ותק רב בתחום, מגיע עם כל הציוד הנדרש.',
+    services: [['נזילה מתחת לכיור', 300], ['החלפת צנרת', 1865], ['פתיחת סתימה בביוב ראשי', 675], ['פיצוץ צינור', 495], ['איתור נזילה', 465], ['סתימה בצינור', 330]],
+    ratingBreakdown: null, reviewsText: []
+  },
+  {
+    id: 'avigail', name: 'אביגיל מזרחי', biz: 'אביגיל מזרחי — אינסטלציה',
+    rating: 4.64, reviews: 345, jobs: 503, years: 6, respSec: 74,
+    price: 305, km: 2.25, online: true, hours: '07:00–20:00',
+    onway: true, etaMin: 10.0, offered: true,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 99.85, skillMatch: 100.00, availability: 52.62,
+           eta: 88.73, reliability: 77.22, rating: 81.80,
+           price: 41.38, experience: 74.80 },
+    recordedScore: 83.44,
+    bio: 'מתמחה בתקלות דחופות, זמין גם בשעות לא שגרתיות.',
+    services: [['נזילה מתחת לכיור', 305], ['החלפת צנרת', 1900], ['פתיחת סתימה בביוב ראשי', 685], ['פיצוץ צינור', 505], ['בעיה בדוד', 410], ['סתימה בצינור', 340]],
+    ratingBreakdown: null, reviewsText: []
+  },
+  {
+    id: 'natan', name: 'נתן ברששת', biz: 'נתן ברששת — אינסטלציה',
+    rating: null, reviews: 0, jobs: 0, years: 3, respSec: null,
+    price: 285, km: 3.83, online: true, hours: null,
+    onway: true, etaMin: 14.9, offered: true,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 97.68, skillMatch: 100.00, availability: 76.12,
+           eta: 77.68, reliability: 60.00, rating: 60.00,
+           price: 52.87, experience: 38.40 },
+    recordedScore: 80.17,
+    bio: 'עבודה נקייה עם אחריות על כל תיקון.',
+    services: [['נזילה מתחת לכיור', 285], ['החלפת דוד', 1370], ['פתיחת סתימה בביוב ראשי', 635], ['איתור נזילה', 440], ['סתימה בצינור', 315], ['חיבור מדיח או מכונת כביסה', 275]],
+    ratingBreakdown: null, reviewsText: []
+  },
+  {
+    id: 'ram', name: 'רם בוזגלו', biz: 'רם בוזגלו — אינסטלציה',
+    rating: null, reviews: 0, jobs: 0, years: 2, respSec: null,
+    price: 265, km: 3.20, online: true, hours: '08:00–18:00',
+    onway: true, etaMin: 13.0, offered: true,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 94.75, skillMatch: 100.00, availability: 66.62,
+           eta: 82.05, reliability: 60.00, rating: 60.00,
+           price: 64.37, experience: 35.60 },
+    recordedScore: 78.88,
+    bio: 'עבודה נקייה עם אחריות על כל תיקון.',
+    services: [['נזילה מתחת לכיור', 265], ['החלפת צנרת', 1640], ['החלפת דוד', 1275], ['פתיחת סתימה בביוב ראשי', 590], ['פיצוץ צינור', 435], ['איתור נזילה', 410]],
+    ratingBreakdown: null, reviewsText: []
+  },
+  {
+    id: 'galit', name: 'גלית הלוי', biz: 'גלית הלוי — אינסטלציה',
+    rating: 4.86, reviews: 2292, jobs: 2741, years: 27, respSec: 117,
+    price: 345, km: 2.79, online: true, hours: '07:00–20:00',
+    onway: false, etaMin: 11.7, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 35.60, skillMatch: 100.00, availability: 82.62,
+           eta: 84.97, reliability: 75.83, rating: 92.92,
+           price: 18.39, experience: 100.00 },
+    recordedScore: 72.58,
+    bio: 'ותק רב בתחום, מגיע עם כל הציוד הנדרש.',
+    services: [['נזילה מתחת לכיור', 345], ['החלפת צנרת', 2130], ['החלפת דוד', 1655], ['פתיחת סתימה בביוב ראשי', 770], ['בעיה בדוד', 460], ['סתימה בצינור', 380]],
+    ratingBreakdown: null, reviewsText: []
+  },
+  {
+    id: 'sigal', name: 'סיגל סיסו', biz: '',
+    rating: 4.76, reviews: 55, jobs: 61, years: 9, respSec: 79,
+    price: 255, km: 2.90, online: true, hours: '06:00–12:00',
+    onway: false, etaMin: 12.0, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 35.23, skillMatch: 100.00, availability: 84.12,
+           eta: 84.21, reliability: 66.87, rating: 86.00,
+           price: 70.11, experience: 60.89 },
+    recordedScore: 71.69,
+    bio: 'ותק רב בתחום, מגיע עם כל הציוד הנדרש.',
+    services: [['נזילה מתחת לכיור', 255], ['החלפת צנרת', 1595], ['החלפת דוד', 1240], ['פתיחת סתימה בביוב ראשי', 575], ['פיצוץ צינור', 425], ['איתור נזילה', 400]],
+    ratingBreakdown: null, reviewsText: []
+  },
+];
+
+/* The real weights, read from settings.matching.weights. */
+const W = {
+  routeOpportunity: 0.25, skillMatch: 0.20, availability: 0.15, eta: 0.10,
+  reliability: 0.10, rating: 0.10, price: 0.05, experience: 0.05
+};
+/* services.base_price_ils for "נזילה מתחת לכיור" — what the price signal
+   compares a provider's own price against. */
+const REFERENCE_PRICE = 290;
+
+const EXAMPLES = ['יש לי נזילה מתחת לכיור', 'המזגן לא מקרר', 'ננעלתי מחוץ לבית', 'אני צריך הדברה'];
+
+/* The real catalog, read out of `categories` and `services`: seven
+   categories with their document requirements and default working radius,
+   and all 62 shipped services with the platform's reference price and the
+   range a provider may price inside. A provider whose trade is not here
+   proposes it in the registration form, and it reaches this list only after
+   it is approved with the words a customer would use to ask for it. */
+const CATALOG = [
+  { slug: 'plumbing', name: 'אינסטלציה', lic: true, ins: true, radius: 12, services: [
+    ['החלפת צנרת', 1800, 1000, 4000],
+    ['החלפת דוד', 1400, 900, 2600],
+    ['פתיחת סתימה בביוב ראשי', 650, 450, 1200],
+    ['פיצוץ צינור', 480, 350, 900],
+    ['איתור נזילה', 450, 320, 800],
+    ['בעיה בדוד', 390, 300, 650],
+    ['סתימה בצינור', 320, 250, 480],
+    ['נזילה מתחת לכיור', 290, 220, 420],
+    ['תיקון אסלה', 280, 200, 400],
+    ['חיבור מדיח או מכונת כביסה', 280, 200, 450],
+    ['החלפת ברז', 240, 180, 400]] },
+  { slug: 'electrical', name: 'חשמל', lic: true, ins: true, radius: 12, services: [
+    ['התקנת עמדת טעינה לרכב חשמלי', 2200, 1400, 4000],
+    ['החלפת לוח חשמל', 1500, 900, 3000],
+    ['בדיקת חשמל ודוח בודק', 450, 300, 800],
+    ['התקנת מפסק פחת', 420, 300, 700],
+    ['תיקון תריס חשמלי', 380, 260, 650],
+    ['קצר חשמלי', 350, 260, 550],
+    ['תיקון אינטרקום', 350, 250, 600],
+    ['הפסקת חשמל בדירה', 320, 250, 500],
+    ['התקנת נקודת חשמל', 320, 220, 550],
+    ['התקנת גוף תאורה', 240, 180, 380],
+    ['תיקון שקע', 220, 160, 320]] },
+  { slug: 'air_conditioning', name: 'מיזוג אוויר', lic: true, ins: false, radius: 15, services: [
+    ['פירוק והתקנת מזגן מחדש', 1100, 700, 2000],
+    ['התקנת מזגן', 900, 650, 1800],
+    ['תיקון מיני מרכזי', 480, 350, 900],
+    ['מילוי גז למזגן', 420, 300, 700],
+    ['מזגן לא מקרר', 340, 260, 520],
+    ['המזגן לא נדלק', 320, 240, 520],
+    ['מזגן מטפטף', 300, 230, 460],
+    ['ריח רע מהמזגן', 280, 200, 420],
+    ['ניקוי וטיפול למזגן', 260, 200, 380]] },
+  { slug: 'locksmith', name: 'מנעולנות', lic: false, ins: false, radius: 8, services: [
+    ['פריצת כספת', 650, 400, 1500],
+    ['שכפול מפתח לרכב', 550, 350, 1200],
+    ['תיקון מנעול רב בריח', 480, 320, 900],
+    ['ננעלתי מחוץ לרכב', 380, 280, 600],
+    ['שחרור דלת תקועה', 350, 250, 600],
+    ['ננעלתי מחוץ לבית', 350, 250, 550],
+    ['החלפת צילינדר', 320, 240, 480]] },
+  { slug: 'pest_control', name: 'הדברה', lic: true, ins: true, radius: 20, services: [
+    ['טיפול בטרמיטים', 900, 600, 2000],
+    ['מיגון מפני יונים', 750, 500, 1500],
+    ['הדברת מזיקים / מכרסמים', 520, 380, 850],
+    ['טיפול בקן צרעות', 450, 300, 800],
+    ['הדברת פרעושים וקרציות', 450, 320, 700],
+    ['הדברת תיקנים', 420, 320, 650],
+    ['הדברת יתושים', 380, 280, 600],
+    ['הדברת נמלים', 350, 260, 520]] },
+  { slug: 'cleaning', name: 'ניקיון', lic: false, ins: false, radius: 20, services: [
+    ['ניקיון אחרי שיפוץ', 900, 600, 2000],
+    ['ניקיון לפני או אחרי מעבר דירה', 800, 500, 1600],
+    ['פינוי גרוטאות ופסולת', 700, 450, 1500],
+    ['פוליש לרצפה', 600, 400, 1200],
+    ['ניקיון משרדים', 550, 350, 1200],
+    ['ניקוי ספות ושטיחים', 450, 300, 900],
+    ['ניקיון דירה', 450, 300, 900],
+    ['ניקוי חלונות', 350, 250, 700]] },
+  { slug: 'gardening', name: 'גינון', lic: false, ins: false, radius: 25, services: [
+    ['התקנת דשא סינתטי', 2200, 1200, 5000],
+    ['עיצוב והקמת גינה', 1500, 800, 4000],
+    ['כריתת עץ', 1200, 700, 3000],
+    ['התקנת מערכת השקיה', 900, 600, 2000],
+    ['גיזום עצים', 650, 400, 1500],
+    ['דישון והדברת עשבייה', 400, 280, 700],
+    ['תחזוקת גינה', 400, 280, 800],
+    ['כיסוח דשא', 280, 200, 500]] }
+];
+
+/* The classifier's rules, both halves of them.
+
+   CATALOG_RULES are the trigger phrases stored on the service rows — the
+   words an admin attached when approving a trade, read straight out of
+   `services.strong_phrases` / `weak_phrases`. BUILT_IN_RULES is the block
+   from understanding.ts, copied verbatim. The classifier below merges them in
+   this order, which is the order RuleBasedUnderstanding's constructor uses,
+   so a description classifies here exactly as it does on the server. */
+const CATALOG_RULES = [
+  { category: 'plumbing', service: 'pipe_replace', urgency: 'normal',
+    strong: ['החלפת צנרת', 'להחליף צנרת', 'צנרת מיושנת', 'שיפוץ צנרת'], weak: ['צנרת'] },
+  { category: 'plumbing', service: 'water_heater_replace', urgency: 'normal',
+    strong: ['החלפת דוד', 'להחליף דוד', 'דוד חדש', 'הדוד מחליד'], weak: [] },
+  { category: 'plumbing', service: 'main_drain_clearing', urgency: 'high',
+    strong: ['סתימה בביוב הראשי', 'ביוב ראשי סתום', 'ניקוי צינורות בלחץ', 'הביוב עולה בכל הבית'], weak: ['ביוב'] },
+  { category: 'plumbing', service: 'leak_detection', urgency: 'high',
+    strong: ['איתור נזילה', 'נזילה בקיר', 'רטיבות בקיר', 'לא מוצאים מאיפה הנזילה'], weak: ['רטיבות'] },
+  { category: 'plumbing', service: 'appliance_water_hookup', urgency: 'normal',
+    strong: ['חיבור מכונת כביסה', 'לחבר מכונת כביסה', 'התקנת מדיח', 'חיבור מדיח כלים'], weak: ['מדיח'] },
+  { category: 'plumbing', service: 'faucet_replace', urgency: 'normal',
+    strong: ['החלפת ברז', 'להחליף ברז', 'הברז דולף', 'ברז מטפטף'], weak: ['ברז'] },
+  { category: 'electrical', service: 'ev_charger', urgency: 'normal',
+    strong: ['עמדת טעינה', 'טעינה לרכב חשמלי', 'עמוד טעינה לרכב'], weak: [] },
+  { category: 'electrical', service: 'panel_replace', urgency: 'normal',
+    strong: ['החלפת לוח חשמל', 'להחליף לוח חשמל', 'לוח חשמל מיושן', 'ארון חשמל'], weak: [] },
+  { category: 'electrical', service: 'electrical_inspection', urgency: 'normal',
+    strong: ['בדיקת חשמל', 'דוח בודק חשמל', 'אישור בודק חשמל'], weak: [] },
+  { category: 'electrical', service: 'rcd_install', urgency: 'normal',
+    strong: ['מפסק פחת', 'הפחת קופץ', 'התקנת מפסק פחת'], weak: ['פחת'] },
+  { category: 'electrical', service: 'shutter_repair', urgency: 'normal',
+    strong: ['תריס חשמלי לא עובד', 'תיקון תריס חשמלי', 'התריס לא נסגר', 'התריס לא עולה'], weak: ['תריס'] },
+  { category: 'electrical', service: 'intercom_repair', urgency: 'normal',
+    strong: ['אינטרקום לא עובד', 'תיקון אינטרקום', 'הדלת לא נפתחת מהאינטרקום'], weak: ['אינטרקום'] },
+  { category: 'electrical', service: 'custom_7d0b7268dbd8', urgency: 'normal',
+    strong: ['מכונת כביסה', 'מכונת הכביסה', 'מייבש כבסים'], weak: ['כביסה'] },
+  { category: 'electrical', service: 'new_outlet', urgency: 'normal',
+    strong: ['התקנת שקע', 'להוסיף שקע', 'נקודת חשמל חדשה', 'שקע חדש'], weak: [] },
+  { category: 'air_conditioning', service: 'ac_relocate', urgency: 'normal',
+    strong: ['פירוק והתקנת מזגן', 'פירוק מזגן', 'להעביר מזגן לדירה חדשה'], weak: ['מעבר דירה'] },
+  { category: 'air_conditioning', service: 'ac_mini_central', urgency: 'normal',
+    strong: ['מיני מרכזי לא עובד', 'תיקון מיני מרכזי', 'מזגן מיני מרכזי'], weak: ['מיני מרכזי'] },
+  { category: 'air_conditioning', service: 'ac_gas_refill', urgency: 'normal',
+    strong: ['מילוי גז למזגן', 'תוספת גז למזגן', 'נגמר הגז במזגן'], weak: [] },
+  { category: 'air_conditioning', service: 'ac_no_power', urgency: 'high',
+    strong: ['המזגן לא נדלק', 'מזגן לא עובד בכלל', 'המזגן לא מגיב לשלט'], weak: [] },
+  { category: 'air_conditioning', service: 'ac_smell', urgency: 'normal',
+    strong: ['ריח רע מהמזגן', 'המזגן מריח', 'ריח מהמזגן'], weak: [] },
+  { category: 'locksmith', service: 'safe_opening', urgency: 'normal',
+    strong: ['פריצת כספת', 'כספת נעולה', 'שכחתי קוד לכספת'], weak: ['כספת'] },
+  { category: 'locksmith', service: 'car_key_duplicate', urgency: 'normal',
+    strong: ['שכפול מפתח לרכב', 'אבד מפתח הרכב', 'קודן לרכב לא עובד'], weak: [] },
+  { category: 'locksmith', service: 'multilock_repair', urgency: 'normal',
+    strong: ['רב בריח', 'מנעול רב בריח', 'הדלת לא ננעלת'], weak: ['מנעול'] },
+  { category: 'locksmith', service: 'stuck_door', urgency: 'high',
+    strong: ['דלת תקועה', 'המנעול לא מסתובב', 'המפתח נשבר במנעול'], weak: [] },
+  { category: 'pest_control', service: 'termites', urgency: 'high',
+    strong: ['טרמיטים', 'נמלים לבנות'], weak: [] },
+  { category: 'pest_control', service: 'pigeons', urgency: 'normal',
+    strong: ['מיגון מפני יונים', 'יונים במרפסת', 'קן יונים'], weak: ['יונים'] },
+  { category: 'pest_control', service: 'fleas_ticks', urgency: 'high',
+    strong: ['הדברת פרעושים', 'פרעושים בבית', 'קרציות'], weak: ['פרעושים'] },
+  { category: 'pest_control', service: 'wasps', urgency: 'high',
+    strong: ['קן צרעות', 'צרעות במרפסת', 'כוורת דבורים'], weak: ['צרעות'] },
+  { category: 'pest_control', service: 'mosquitoes', urgency: 'normal',
+    strong: ['הדברת יתושים', 'המון יתושים', 'יתושים בבית'], weak: ['יתושים'] },
+  { category: 'cleaning', service: 'move_cleaning', urgency: 'normal',
+    strong: ['ניקיון לפני מעבר דירה', 'ניקיון אחרי מעבר', 'ניקיון דירה ריקה'], weak: [] },
+  { category: 'cleaning', service: 'junk_removal', urgency: 'normal',
+    strong: ['פינוי גרוטאות', 'פינוי פסולת', 'לפנות מחסן'], weak: ['גרוטאות'] },
+  { category: 'cleaning', service: 'floor_polish', urgency: 'normal',
+    strong: ['פוליש', 'הברקת רצפה', 'ניקוי רצפות לעומק'], weak: [] },
+  { category: 'cleaning', service: 'office_cleaning', urgency: 'normal',
+    strong: ['ניקיון משרד', 'ניקיון משרדים', 'ניקוי משרד'], weak: [] },
+  { category: 'cleaning', service: 'custom_46fe335694ca', urgency: 'normal',
+    strong: ['פסנתר', 'כיוון פסנתר', 'פסנתרים'], weak: [] },
+  { category: 'cleaning', service: 'sofa_carpet', urgency: 'normal',
+    strong: ['ניקוי ספות', 'ניקוי שטיחים', 'ניקוי ספה בקיטור'], weak: ['שטיח'] },
+  { category: 'cleaning', service: 'windows', urgency: 'normal',
+    strong: ['ניקוי חלונות', 'לנקות חלונות', 'ניקוי תריסים וחלונות'], weak: ['חלונות'] },
+  { category: 'gardening', service: 'synthetic_grass', urgency: 'low',
+    strong: ['דשא סינתטי', 'להתקין דשא סינתטי'], weak: [] },
+  { category: 'gardening', service: 'garden_design', urgency: 'low',
+    strong: ['עיצוב גינה', 'הקמת גינה', 'לתכנן גינה חדשה'], weak: [] },
+  { category: 'gardening', service: 'tree_felling', urgency: 'normal',
+    strong: ['כריתת עץ', 'לכרות עץ', 'עץ מסוכן שצריך להוריד'], weak: [] },
+  { category: 'gardening', service: 'irrigation', urgency: 'normal',
+    strong: ['מערכת השקיה', 'טפטפות בגינה', 'ממטרות לא עובדות'], weak: ['השקיה'] },
+  { category: 'gardening', service: 'weed_fertilize', urgency: 'low',
+    strong: ['הדברת עשבייה', 'עשבים שוטים', 'דישון הגינה'], weak: ['עשבייה'] },
+  { category: 'gardening', service: 'lawn_mowing', urgency: 'normal',
+    strong: ['כיסוח דשא', 'לכסח את הדשא', 'הדשא גבוה'], weak: ['דשא'] },
+];
+
+const BUILT_IN_RULES = [
+    // ── Plumbing ────────────────────────────────────────────────────────────
+    {
+      category: 'plumbing', service: 'burst_pipe', urgency: 'emergency',
+      strong: ['פיצוץ צינור', 'צינור התפוצץ', 'הצפה', 'מפרץ מים', 'פרץ מים'],
+      weak: ['מים בכל הבית', 'שיטפון'],
+    },
+    {
+      category: 'plumbing', service: 'sink_leak', urgency: 'high',
+      strong: ['נזילה מתחת לכיור', 'נזילה בכיור', 'מים מתחת לכיור', 'דולף מתחת לכיור'],
+      weak: ['נזילה', 'דולף', 'מטפטף', 'כיור'],
+    },
+    {
+      category: 'plumbing', service: 'blocked_drain', urgency: 'high',
+      strong: ['סתימה', 'סתום', 'הביוב עולה', 'מים לא יורדים', 'פקק בצינור'],
+      weak: ['ניקוז', 'מסתם'],
+    },
+    {
+      category: 'plumbing', service: 'toilet_repair', urgency: 'normal',
+      strong: ['אסלה', 'ניאגרה', 'השירותים לא עובדים'],
+      weak: ['הדחה'],
+    },
+    {
+      category: 'plumbing', service: 'boiler_issue', urgency: 'normal',
+      strong: ['דוד', 'אין מים חמים', 'דוד שמש', 'בוילר'],
+    },
+  
+    // ── Electrical ──────────────────────────────────────────────────────────
+    {
+      category: 'electrical', service: 'power_outage', urgency: 'emergency',
+      strong: ['אין חשמל', 'הפסקת חשמל', 'החשמל נפל', 'הכל חשוך'],
+      weak: ['לוח חשמל', 'פקק קפץ'],
+    },
+    {
+      category: 'electrical', service: 'short_circuit', urgency: 'emergency',
+      strong: ['קצר חשמלי', 'קצר', 'ריח שרוף', 'ניצוצות', 'עשן מהשקע'],
+    },
+    {
+      category: 'electrical', service: 'socket_repair', urgency: 'normal',
+      strong: ['שקע לא עובד', 'תיקון שקע', 'מפסק לא עובד'],
+      weak: ['שקע', 'מפסק'],
+    },
+    {
+      category: 'electrical', service: 'light_fixture', urgency: 'low',
+      strong: ['התקנת גוף תאורה', 'להתקין מנורה', 'גוף תאורה'],
+      weak: ['מנורה', 'תאורה', 'נורה'],
+    },
+  
+    // ── Air conditioning ────────────────────────────────────────────────────
+    {
+      category: 'air_conditioning', service: 'ac_not_cooling', urgency: 'high',
+      strong: ['המזגן לא מקרר', 'מזגן לא מקרר', 'מזגן לא עובד', 'המזגן לא מצנן'],
+      weak: ['חם בבית', 'מזגן'],
+    },
+    {
+      category: 'air_conditioning', service: 'ac_leaking', urgency: 'normal',
+      strong: ['מזגן מטפטף', 'מזגן נוזל', 'מים מהמזגן'],
+    },
+    {
+      category: 'air_conditioning', service: 'ac_service', urgency: 'low',
+      strong: ['ניקוי מזגן', 'טיפול למזגן', 'שטיפת מזגן'],
+      weak: ['מסננים'],
+    },
+    {
+      category: 'air_conditioning', service: 'ac_install', urgency: 'low',
+      strong: ['התקנת מזגן', 'להתקין מזגן', 'מזגן חדש'],
+    },
+  
+    // ── Locksmith ───────────────────────────────────────────────────────────
+    {
+      category: 'locksmith', service: 'car_lockout', urgency: 'emergency',
+      strong: ['ננעלתי מחוץ לרכב', 'מפתחות ברכב', 'נעול באוטו', 'מפתח נשאר באוטו'],
+    },
+    {
+      category: 'locksmith', service: 'locked_out', urgency: 'emergency',
+      strong: ['ננעלתי מחוץ לבית', 'ננעלתי בחוץ', 'אין לי מפתח', 'הדלת נטרקה', 'נעול בחוץ'],
+      weak: ['מנעול', 'מפתח', 'ננעלתי'],
+    },
+    {
+      category: 'locksmith', service: 'lock_replacement', urgency: 'normal',
+      strong: ['החלפת צילינדר', 'להחליף מנעול', 'צילינדר'],
+    },
+  
+    // ── Pest control ────────────────────────────────────────────────────────
+    {
+      category: 'pest_control', service: 'cockroaches', urgency: 'high',
+      strong: ['תיקנים', 'ג׳וקים', 'גוקים', 'מקקים'],
+    },
+    {
+      category: 'pest_control', service: 'rodents', urgency: 'high',
+      strong: ['עכברים', 'חולדות', 'מכרסמים'],
+    },
+    {
+      category: 'pest_control', service: 'ants', urgency: 'normal',
+      strong: ['נמלים'],
+    },
+    {
+      category: 'pest_control', service: 'cockroaches', urgency: 'high',
+      strong: ['הדברה', 'להדביר', 'מזיקים'],
+    },
+  
+    // ── Cleaning ────────────────────────────────────────────────────────────
+    {
+      category: 'cleaning', service: 'post_renovation', urgency: 'low',
+      strong: ['ניקיון אחרי שיפוץ', 'אחרי שיפוץ', 'אבק שיפוץ'],
+    },
+    {
+      category: 'cleaning', service: 'apartment_cleaning', urgency: 'low',
+      strong: ['ניקיון דירה', 'לנקות את הבית', 'ניקוי דירה', 'מנקה'],
+      weak: ['ניקיון', 'לנקות'],
+    },
+  
+    // ── Gardening ───────────────────────────────────────────────────────────
+    {
+      category: 'gardening', service: 'tree_pruning', urgency: 'low',
+      strong: ['גיזום עצים', 'לגזום עץ', 'גיזום'],
+    },
+    {
+      category: 'gardening', service: 'garden_maintenance', urgency: 'low',
+      strong: ['תחזוקת גינה', 'לכסח את הדשא', 'כיסוח דשא', 'גינה'],
+      weak: ['דשא', 'גינון'],
+    },
+];
+
+const RULES = [...CATALOG_RULES, ...BUILT_IN_RULES];
+
+const URGENCY_ESCALATORS = [
+    { terms: ['דחוף', 'מיד', 'עכשיו', 'חירום', 'מסוכן', 'הצפה', 'עשן'], urgency: 'emergency' },
+    { terms: ['היום', 'בהקדם', 'כמה שיותר מהר'], urgency: 'high' },
+];
+const URGENCY_RANK = { low: 0, normal: 1, high: 2, emergency: 3 };
+
+/* Slug → the name a person reads. */
+const SERVICE_NAMES = {
+  boiler_issue: 'בעיה בדוד',
+  burst_pipe: 'פיצוץ צינור',
+  toilet_repair: 'תיקון אסלה',
+  blocked_drain: 'סתימה בצינור',
+  sink_leak: 'נזילה מתחת לכיור',
+  light_fixture: 'התקנת גוף תאורה',
+  socket_repair: 'תיקון שקע',
+  short_circuit: 'קצר חשמלי',
+  power_outage: 'הפסקת חשמל בדירה',
+  ac_install: 'התקנת מזגן',
+  ac_leaking: 'מזגן מטפטף',
+  ac_service: 'ניקוי וטיפול למזגן',
+  ac_not_cooling: 'מזגן לא מקרר',
+  car_lockout: 'ננעלתי מחוץ לרכב',
+  lock_replacement: 'החלפת צילינדר',
+  locked_out: 'ננעלתי מחוץ לבית',
+  rodents: 'הדברת מזיקים / מכרסמים',
+  ants: 'הדברת נמלים',
+  cockroaches: 'הדברת תיקנים',
+  post_renovation: 'ניקיון אחרי שיפוץ',
+  apartment_cleaning: 'ניקיון דירה',
+  tree_pruning: 'גיזום עצים',
+  garden_maintenance: 'תחזוקת גינה',
+  custom_7d0b7268dbd8: 'תיקון מכונות כביסה',
+  custom_46fe335694ca: 'כיוון והתקנת פסנתרים',
+  faucet_replace: 'החלפת ברז',
+  appliance_water_hookup: 'חיבור מדיח או מכונת כביסה',
+  leak_detection: 'איתור נזילה',
+  main_drain_clearing: 'פתיחת סתימה בביוב ראשי',
+  water_heater_replace: 'החלפת דוד',
+  pipe_replace: 'החלפת צנרת',
+  panel_replace: 'החלפת לוח חשמל',
+  new_outlet: 'התקנת נקודת חשמל',
+  shutter_repair: 'תיקון תריס חשמלי',
+  rcd_install: 'התקנת מפסק פחת',
+  electrical_inspection: 'בדיקת חשמל ודוח בודק',
+  intercom_repair: 'תיקון אינטרקום',
+  ev_charger: 'התקנת עמדת טעינה לרכב חשמלי',
+  ac_smell: 'ריח רע מהמזגן',
+  ac_no_power: 'המזגן לא נדלק',
+  ac_relocate: 'פירוק והתקנת מזגן מחדש',
+  ac_mini_central: 'תיקון מיני מרכזי',
+  ac_gas_refill: 'מילוי גז למזגן',
+  safe_opening: 'פריצת כספת',
+  car_key_duplicate: 'שכפול מפתח לרכב',
+  multilock_repair: 'תיקון מנעול רב בריח',
+  stuck_door: 'שחרור דלת תקועה',
+  mosquitoes: 'הדברת יתושים',
+  fleas_ticks: 'הדברת פרעושים וקרציות',
+  wasps: 'טיפול בקן צרעות',
+  pigeons: 'מיגון מפני יונים',
+  termites: 'טיפול בטרמיטים',
+  sofa_carpet: 'ניקוי ספות ושטיחים',
+  floor_polish: 'פוליש לרצפה',
+  windows: 'ניקוי חלונות',
+  junk_removal: 'פינוי גרוטאות ופסולת',
+  office_cleaning: 'ניקיון משרדים',
+  move_cleaning: 'ניקיון לפני או אחרי מעבר דירה',
+  lawn_mowing: 'כיסוח דשא',
+  irrigation: 'התקנת מערכת השקיה',
+  garden_design: 'עיצוב והקמת גינה',
+  tree_felling: 'כריתת עץ',
+  weed_fertilize: 'דישון והדברת עשבייה',
+  synthetic_grass: 'התקנת דשא סינתטי',
+};
+const CATEGORY_NAMES = {
+  plumbing: 'אינסטלציה',
+  electrical: 'חשמל',
+  air_conditioning: 'מיזוג אוויר',
+  locksmith: 'מנעולנות',
+  pest_control: 'הדברה',
+  cleaning: 'ניקיון',
+  gardening: 'גינון',
+};
+
+/* ── The classifier, line for line with understanding.ts ─────────────────
+   Not an approximation of it: normalise strips niqqud and quotes, a phrase
+   matches when every token of it appears anywhere in the description (so
+   "נזילה מתחת לכיור" is found in "יש לי נזילה קטנה מתחת לכיור"), and a
+   longer phrase is worth more because it is more specific. Strong terms
+   score 0.4 + 0.15 per extra token, weak ones 0.12 + 0.04, urgency words
+   escalate regardless of category, and confidence is the summed score
+   capped at 0.98. Below 0.5 the screen offers to be corrected instead of
+   asserting. */
+function normalise(text) {
+  return String(text).toLowerCase()
+    .replace(/[\u0591-\u05bd\u05bf-\u05c7]/g, '')
+    .replace(/["'`\u05f4\u05f3]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function phraseTokens(phrase) {
+  return normalise(phrase).split(' ').filter((t) => t.length > 1);
+}
+function phraseMatches(haystack, phrase) {
+  const tokens = phraseTokens(phrase);
+  return tokens.length > 0 && tokens.every((t) => haystack.includes(t));
+}
+function phraseScore(phrase, base, perExtraToken) {
+  return base + perExtraToken * Math.max(0, phraseTokens(phrase).length - 1);
+}
+
+function classify(text) {
+  const haystack = normalise(text);
+  if (haystack.length < 3) {
+    return { category: null, service: null, urgency: 'normal', confidence: 0, signals: [],
+             ask: 'תארו בבקשה מה קרה, במשפט קצר.' };
+  }
+
+  let best = null;
+  for (const rule of RULES) {
+    const signals = [];
+    let score = 0;
+    for (const term of rule.strong) {
+      if (phraseMatches(haystack, term)) { score += phraseScore(term, 0.4, 0.15); signals.push(term); }
+    }
+    for (const term of rule.weak || []) {
+      if (phraseMatches(haystack, term)) { score += phraseScore(term, 0.12, 0.04); signals.push(term); }
+    }
+    if (score > 0 && (best === null || score > best.score)) best = { rule, score, signals };
+  }
+  if (!best) {
+    return { category: null, service: null, urgency: 'normal', confidence: 0, signals: [],
+             ask: 'לא הצלחנו לזהות את סוג התקלה. באיזה תחום מדובר?' };
+  }
+
+  let urgency = best.rule.urgency;
+  const urgencySignals = [];
+  for (const esc of URGENCY_ESCALATORS) {
+    for (const term of esc.terms) {
+      if (phraseMatches(haystack, term)) {
+        urgencySignals.push(term);
+        if (URGENCY_RANK[esc.urgency] > URGENCY_RANK[urgency]) urgency = esc.urgency;
+      }
+    }
+  }
+
+  const confidence = Math.min(0.98, Math.round(best.score * 100) / 100);
+  return {
+    category: best.rule.category, service: best.rule.service, urgency, confidence,
+    signals: [...best.signals, ...urgencySignals],
+    ask: confidence < 0.5 ? 'רק כדי לוודא — זה מה שהתכוונתם? אפשר לתקן את הבחירה.' : null,
+  };
+}
+
+/* The reference price is the service's own base price, which is what the
+   price signal compares a provider's quote against. */
+function servicePrice(serviceSlug) {
+  for (const cat of CATALOG) {
+    for (const row of cat.services) {
+      if (SERVICE_NAMES[serviceSlug] === row[0]) return row[1];
+    }
+  }
+  return null;
+}
+
+/* The candidate pool below is a recording of one dispatch — the leak. Say so
+   rather than implying these seven would be the candidates for anything. */
+const RECORDED_SERVICE = 'sink_leak';
+
+const TIMINGS = [
+  { v: 'NOW', label: 'עכשיו', hint: 'מיד' },
+  { v: 'ASAP', label: 'היום', hint: 'בהקדם' },
+  { v: 'SCHEDULED', label: 'בתאריך', hint: 'אני אבחר' }
+];
+
+/* ── State ─────────────────────────────────────────────────────────────── */
+const initial = () => ({
+  side: 'customer',
+  step: 'home',
+  desc: '',
+  timing: 'NOW',
+  when: '',
+  matched: null,
+  rejected: [],
+  rejections: 0,
+  wave: 0,
+  providerOnline: true,
+  providerUntil: null,
+  /* The registration form's own state. */
+  onbCat: null,
+  onbPrices: {},
+  onbRadius: '',
+  onbBiz: '',
+  onbYears: '',
+  onbLocated: false,
+  onbSaved: false,
+  /* Searching the catalog by the work, and proposing what is not in it. */
+  onbSearch: '',
+  onbProposing: false,
+  onbPropName: '',
+  onbPropDesc: '',
+  onbPropPrice: '',
+  /* Proposals live here so the provider view and the review view are two
+     windows onto one list — approving in one is visible in the other, which
+     is the whole point of the gate. */
+  proposals: [],
+  /* The reviewer's in-progress form, keyed by proposal id. */
+  reviewForm: {}
+});
+let S = initial();
+const history = [];
+
+/* ── Availability, following the real precedence ───────────────────────
+   For a NOW request the realtime switch decides and declared hours do not.
+   For a chosen time the weekly plan decides and the switch does not. That
+   asymmetry is the whole of §11, and it is what makes the timing control
+   change WHO IS ELIGIBLE rather than only what the screen says.            */
+function eligibility(p, timing) {
+  if (timing === 'SCHEDULED') {
+    if (!p.hours) return { ok: false, why: 'לא פרסם שעות קבועות — אין על מה לבסס זמינות למועד עתידי' };
+    return { ok: true, why: 'התוכנית השבועית מכסה את המועד (' + p.hours + ')' };
+  }
+  if (!p.online) return { ok: false, why: 'המפסק כבוי כרגע — לבקשה עכשיו זה מכריע, גם אם יש שעות מוצהרות' };
+  return { ok: true, why: 'מקבל עבודות כרגע' };
+}
+
+/* Route opportunity, as the engine recorded it. A route claim needs a stated
+   destination or a measured heading; proximity alone never earns one, which
+   is why the near-but-not-travelling candidates carry the low score and the
+   honest label. */
+function routeScore(p) {
+  return p.onway
+    ? { score: p.sig.routeOpportunity, basis: 'destination_route', label: 'כבר בדרך לאזור' }
+    : { score: p.sig.routeOpportunity, basis: 'proximity_only', label: 'קרוב, אבל לא בדרך' };
+}
+
+/* The score is not recomputed here from invented formulas — it is the sum of
+   the recorded signals times the real weights, which is exactly what the
+   engine does (engine.ts buildBreakdown). For a NOW request that reproduces
+   `recordedScore` to the cent.
+
+   A chosen time is the one case where a signal legitimately changes: planned
+   hours, not the live switch, decide eligibility, so availability is scored
+   the way scorers.ts scores it when a live fix is not required (92 with a
+   live fix, 84 without) instead of by the freshness of a fix that is beside
+   the point. Every other signal stands as recorded. */
+function scoreOf(p, timing) {
+  const sig = timing === 'SCHEDULED' ? { ...p.sig, availability: 92 } : p.sig;
+  let total = 0;
+  for (const k in W) total += sig[k] * W[k];
+  return { total: Math.round(total * 100) / 100, etaMin: p.etaMin, route: routeScore(p) };
+}
+
+function ranked(timing) {
+  return PROVIDERS.map((p) => {
+    const e = eligibility(p, timing);
+    const s = scoreOf(p, timing);
+    const rejected = S.rejected.includes(p.id);
+    return { p, e, s, rejected };
+  }).sort((a, b) => {
+    const aOut = !a.e.ok || a.rejected, bOut = !b.e.ok || b.rejected;
+    if (aOut !== bOut) return aOut ? 1 : -1;
+    return b.s.total - a.s.total;
+  });
+}
+
+const eligibleList = (timing) => ranked(timing).filter((c) => c.e.ok && !c.rejected);
+
+/* ── Small helpers ─────────────────────────────────────────────────────── */
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const ltr = (s) => '<span class="ltr">' + esc(s) + '</span>';
+const money = (n) => '<span class="ltr">₪' + n + '</span>';
+const initials = (name) => name.split(' ').slice(0, 2).map((w) => w[0] || '').join('');
+const hue = (name) => [...name].reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
+
+function stars(rating, reviews, big) {
+  if (rating === null || reviews === 0) {
+    return '<span style="color:var(--p-ink-3);font-size:' + (big ? 14 : 13) + 'px">חדש ב-GET SERVICE</span>';
+  }
+  return '<span style="display:inline-flex;align-items:center;gap:5px;font-size:' + (big ? 16 : 13) + 'px">'
+    + '<span class="gs-stars" aria-hidden="true">★</span>'
+    + '<b class="ltr" style="font-weight:700">' + rating.toFixed(2) + '</b>'
+    + '<span class="ltr" style="color:var(--p-ink-3)">(' + reviews + ')</span></span>';
+}
+
+function avatar(name, size) {
+  return '<span class="gs-avatar" aria-hidden="true" style="width:' + size + 'px;height:' + size + 'px;'
+    + 'font-size:' + Math.round(size * 0.36) + 'px;'
+    + 'background:linear-gradient(145deg,hsl(' + hue(name) + ' 32% 22%),hsl(' + hue(name) + ' 28% 14%))">'
+    + esc(initials(name)) + '</span>';
+}
+
+/* The availability sentence, following the rules in AVAILABILITY.md:
+   "we do not know" and "there is none" are different statements. */
+function availabilityPhrase(p, isBusy) {
+  if (isBusy) return 'בעבודה כרגע · פנוי מחר מ-08:00';
+  if (p.online) {
+    /* "זמין עד 12:00" said at 20:00 is a false claim, and the switch being on
+       is not evidence about a window that already closed. Only a window we
+       are currently inside can end the sentence — the same rule as the
+       open_until subquery in availability/summary.ts. */
+    const w = openWindow(p);
+    return w ? 'זמין עד ' + w[1] : 'זמין כרגע';
+  }
+  if (p.hours) return 'זמין מחר מ-' + p.hours.split('–')[0];
+  return 'לא פרסם שעות קבועות';
+}
+
+/* The declared window we are inside right now, or null. */
+function openWindow(p) {
+  if (!p.hours) return null;
+  const [from, to] = p.hours.split('–');
+  const now = new Date();
+  const mins = now.getHours() * 60 + now.getMinutes();
+  const at = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+  return mins >= at(from) && mins <= at(to) ? [from, to] : null;
+}
+
+/* ── Render: the phone ─────────────────────────────────────────────────── */
+function logo() {
+  return '<span class="gs-logo"><i></i><b>GET</b><span>SERVICE</span></span>';
+}
+
+function screenHome() {
+  return `
+    <div class="gs-head">${logo()}
+      <span style="font-size:13px;color:var(--p-ink-2)">התחברות</span></div>
+    <h1 class="gs-h1">צריך? אנחנו מוצאים.</h1>
+    <p class="gs-sub">תארו מה קרה. נמצא את בעל המקצוע שכבר נמצא באזור שלכם.</p>
+
+    <div style="margin-top:26px">
+      <label class="gs-qlabel" for="sim-desc">מה צריך?</label>
+      <textarea class="gs-area" id="sim-desc" placeholder="כתבו מה קרה…">${esc(S.desc)}</textarea>
+      <div class="gs-chips">
+        ${EXAMPLES.map((e) => `<button class="gs-chip" data-example="${esc(e)}">${esc(e)}</button>`).join('')}
+      </div>
+    </div>
+
+    <div style="margin-top:26px">
+      <p class="gs-qlabel">מתי?</p>
+      <div class="gs-seg" role="radiogroup" aria-label="מתי">
+        ${TIMINGS.map((t) => `
+          <button type="button" role="radio" data-timing="${t.v}" aria-checked="${S.timing === t.v}">
+            <strong>${t.label}</strong><small>${t.hint}</small>
+          </button>`).join('')}
+      </div>
+      ${S.timing === 'SCHEDULED' ? `
+        <div style="margin-top:10px">
+          <label class="ltr" style="display:block;font-size:13px;color:var(--p-ink-2);margin-bottom:5px" for="sim-when">מועד מבוקש</label>
+          <input class="gs-input ltr" id="sim-when" type="text" inputmode="numeric" placeholder="מחר, 10:00" value="${esc(S.when)}">
+        </div>` : ''}
+    </div>
+
+    <div style="margin-top:26px">
+      <button class="gs-btn" id="sim-go" ${S.desc.trim().length < 3 ? 'disabled' : ''}>מצא לי מקצוען</button>
+      <p style="margin:10px 0 0;text-align:center;font-size:13px;color:var(--p-ink-3)">
+        ${S.desc.trim().length < 3 ? 'כתבו כמה מילים על התקלה כדי להמשיך' : 'לא תחויבו עד שתאשרו את המקצוען והמחיר.'}
+      </p>
+    </div>`;
+}
+
+function screenRequest() {
+  const t = TIMINGS.find((x) => x.v === S.timing);
+  const whenNote = S.timing === 'NOW' ? 'נחפש מקצוען שזמין ברגע זה.'
+    : S.timing === 'ASAP' ? 'נחפש את ההזדמנות הטובה ביותר להיום.'
+    : 'נחפש מי שפנוי במועד שבחרתם.';
+
+  /* Classified here and now, by the same rules the server uses. Type
+     something else into the description and this changes with it. */
+  const u = classify(S.desc);
+  const price = u.service ? servicePrice(u.service) : null;
+  return `
+    <div class="gs-head">${logo()}</div>
+
+    <p class="gs-label">מה קרה</p>
+    <p style="margin:0;font-size:17px;line-height:1.35">${esc(S.desc)}</p>
+    ${u.service ? `
+      <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px">
+        <span class="gs-badge brand">${esc(CATEGORY_NAMES[u.category] || u.category)}</span>
+        <span class="gs-badge">${esc(SERVICE_NAMES[u.service] || u.service)}</span>
+        ${u.urgency === 'emergency' ? '<span class="gs-badge bad">דחוף</span>' : ''}
+      </div>
+      ${price === null ? '' : `
+        <p style="margin:10px 0 0;font-size:13px;color:var(--p-ink-3)">
+          מחיר מוערך ${money(price)} — המחיר הסופי יוצג לאישורכם לפני שמישהו יוצא לדרך
+        </p>`}
+      ${u.ask ? `
+        <p style="margin:10px 0 0;font-size:13px;color:var(--warn-bright)">${esc(u.ask)}</p>` : ''}
+      ${u.service === RECORDED_SERVICE ? '' : `
+        <p style="margin:10px 0 0;font-size:12.5px;color:var(--p-ink-3);line-height:1.5">
+          הסיווג אמיתי, אבל רשימת המועמדים שמימין היא הקלטה של שיגור אחד —
+          <b style="color:var(--p-ink-2)">נזילה מתחת לכיור</b>. לכן היא לא תתחלף
+          יחד עם הסיווג.
+        </p>`}
+    ` : `
+      <p style="margin:12px 0 0;font-size:13px;color:var(--warn-bright)">${esc(u.ask)}</p>`}
+
+    <p class="gs-label" style="margin-top:24px">מתי</p>
+    <div class="gs-seg" role="radiogroup" aria-label="מתי">
+      ${TIMINGS.map((x) => `
+        <button type="button" role="radio" data-timing="${x.v}" aria-checked="${S.timing === x.v}">
+          <strong>${x.label}</strong><small>${x.hint}</small>
+        </button>`).join('')}
+    </div>
+    <p style="margin:8px 0 0;font-size:13px;color:var(--p-ink-3)">${whenNote}</p>
+
+    <p class="gs-label" style="margin-top:24px">איפה</p>
+    <div class="gs-card" style="display:grid;gap:12px">
+      <p style="margin:0;display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ok-bright)">
+        <span aria-hidden="true">📍</span> המיקום אותר <span class="ltr" style="color:var(--p-ink-3)">±18m</span>
+      </p>
+      <input class="gs-input" placeholder="רחוב ומספר (לא חובה)" aria-label="כתובת">
+      <input class="gs-input" placeholder="קומה, דירה, קוד כניסה" aria-label="הערות לכניסה">
+    </div>
+
+    <div style="margin-top:20px">
+      <button class="gs-btn" id="sim-submit">מצא לי מקצוען</button>
+      <p style="margin:10px 0 0;text-align:center;font-size:13px;color:var(--p-ink-3)">
+        לא תחויבו עד שתאשרו את המקצוען והמחיר.
+      </p>
+    </div>
+    <p style="margin:16px 0 0;font-size:12.5px;color:var(--p-ink-3);line-height:1.5">
+      נסו לשנות את <b style="color:var(--p-ink-2)">מתי</b> כאן — הלוח שמימין יראה שזה
+      מחליף מי כשיר, ולא רק את הטקסט.
+    </p>`;
+}
+
+function screenSearching() {
+  const radius = S.wave === 1 ? 5 : S.wave === 2 ? 10 : 20;
+  return `
+    <div class="gs-head">${logo()}<span class="gs-badge brand">מחפשים מקצוען</span></div>
+    <div class="gs-card rise" style="text-align:center">
+      <div class="radar">
+        <span class="pulse"></span><span class="ring"></span><span class="sweep"></span>
+        <span class="glyph" aria-hidden="true">🔧</span>
+      </div>
+      <h2 style="margin:18px 0 0;font-size:20px;font-weight:700">מחפשים לך מקצוען…</h2>
+      <p style="margin:8px 0 0;font-size:14px;color:var(--p-ink-2)">
+        בודקים מי פנוי, מי קרוב ומי כבר נוסע לאזור שלך.
+      </p>
+      <p style="margin:12px 0 0;font-size:13.5px;color:var(--p-ink-3)">
+        סבב ${ltr(S.wave)} — רדיוס ${ltr(radius + ' km')}
+      </p>
+      <button class="gs-btn quiet" id="sim-cancel" style="margin-top:16px">ביטול החיפוש</button>
+    </div>
+    <p style="margin:18px 0 0;font-size:12.5px;color:var(--p-ink-3);text-align:center">
+      ההצעות יצאו במקביל לכל הכשירים. <b style="color:var(--p-ink-2)">הראשון שמאשר לוקח.</b>
+    </p>
+    <div style="margin-top:14px"><button class="gs-btn ok" id="sim-accept">מקצוען מאשר את ההצעה</button></div>`;
+}
+
+function screenMatch() {
+  const c = S.matched;
+  if (!c) return '';
+  const p = c.p;
+  return `
+    <div class="gs-head">${logo()}<span class="gs-badge ok">מצאנו לך מקצוען</span></div>
+
+    <div class="gs-card rise" style="border-color:rgba(34,197,94,.4)">
+      <p style="margin:0;font-size:14px;font-weight:600;color:var(--ok-bright)">מצאנו לך מקצוען</p>
+
+      ${p.onway ? `
+        <div style="margin-top:10px">
+          <span class="gs-badge live"><span aria-hidden="true">🚗</span> כבר בדרך לאזור שלך</span>
+          <div class="gs-line" style="margin-top:8px" aria-hidden="true">
+            <span class="dot"><i></i><b></b></span>
+            <span class="track"><u></u></span>
+            <span>בדרך</span>
+            <span class="end"></span>
+          </div>
+        </div>` : ''}
+
+      <div style="margin-top:10px;display:flex;align-items:flex-start;gap:12px">
+        ${avatar(p.name, 48)}
+        <div style="min-width:0;flex:1">
+          <h2 style="margin:0;font-size:22px;font-weight:900;line-height:1.15">${esc(p.name)}</h2>
+          ${p.biz ? `<p style="margin:0;font-size:14px;color:var(--p-ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.biz)}</p>` : ''}
+          <div style="margin-top:4px">${stars(p.rating, p.reviews)}</div>
+        </div>
+        <button class="gs-btn quiet" id="sim-details" style="width:auto;min-height:40px;padding:0 10px;font-size:13px;font-weight:600;color:var(--brand-bright)">פרטים ›</button>
+      </div>
+
+      <dl style="margin:18px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="gs-inset" style="background:var(--bg)">
+          <dt style="font-size:12px;color:var(--p-ink-2)">הגעה משוערת</dt>
+          <dd style="margin:4px 0 0;font-size:24px;font-weight:900">${ltr(Math.round(c.s.etaMin))}<span style="font-size:13px;font-weight:400;color:var(--p-ink-2)"> דקות</span></dd>
+        </div>
+        <div class="gs-inset" style="background:var(--bg)">
+          <dt style="font-size:12px;color:var(--p-ink-2)">מחיר</dt>
+          <dd style="margin:4px 0 0;font-size:24px;font-weight:900">${money(p.price)}</dd>
+        </div>
+      </dl>
+
+      <p style="margin:12px 0 0;font-size:12px;color:var(--p-ink-3);line-height:1.5">
+        זמן ההגעה הוא הערכה ומתעדכן בזמן אמת. המחיר מאושר על ידי המקצוען.
+      </p>
+
+      <div style="margin-top:18px;display:grid;gap:10px">
+        <button class="gs-btn" id="sim-confirm">הזמן עכשיו</button>
+        <button class="gs-btn sec" id="sim-reject">לא זה — חפשו אחר</button>
+        <button class="gs-btn quiet" id="sim-cancel">ביטול הבקשה</button>
+        ${S.rejections > 0 ? `<p style="margin:0;text-align:center;font-size:12.5px;color:var(--p-ink-3)">
+          דחית ${ltr(S.rejections)} מתוך ${ltr(3)} התאמות בבקשה הזו</p>` : ''}
+      </div>
+    </div>
+
+    <div class="gs-card" style="margin-top:14px">
+      <h2 style="margin:0;font-size:14px;font-weight:600;color:var(--p-ink-2)">הבקשה שלך</h2>
+      <p style="margin:8px 0 0">${esc(S.desc)}</p>
+    </div>`;
+}
+
+function screenTracking() {
+  const c = S.matched;
+  const p = c.p;
+  return `
+    <div class="gs-head">${logo()}<span class="gs-badge live">המקצוען בדרך אליך</span></div>
+
+    <div class="gs-card rise">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+        <div style="display:flex;gap:10px;min-width:0">
+          ${avatar(p.name, 40)}
+          <div style="min-width:0">
+            <button id="sim-details" style="background:none;border:0;padding:0;font-family:var(--sans);font-size:19px;font-weight:700;color:var(--p-ink);text-decoration:underline;text-decoration-color:var(--line-strong);text-underline-offset:4px;cursor:pointer">${esc(p.name)}</button>
+            <div style="margin-top:3px">${stars(p.rating, p.reviews)}</div>
+          </div>
+        </div>
+        <div style="text-align:end;flex:none">
+          <p style="margin:0;font-size:22px;font-weight:900">${ltr(Math.max(1, Math.round(c.s.etaMin) - 5))}</p>
+          <p style="margin:0;font-size:11px;color:var(--p-ink-3)">דקות</p>
+        </div>
+      </div>
+
+      <div class="gs-line" style="margin-top:16px" aria-hidden="true">
+        <span class="dot"><i></i><b></b></span>
+        <span class="track"><u></u></span>
+        <span>בדרך אליך</span>
+        <span class="end"></span>
+      </div>
+
+      <div class="gs-inset" style="margin-top:16px;background:var(--bg)">
+        <p style="margin:0;font-size:13px;color:var(--p-ink-2)">מיקום חי, מתעדכן כל ${ltr(15)} שניות</p>
+        <p style="margin:6px 0 0;font-size:12.5px;color:var(--p-ink-3);line-height:1.5">
+          אם הדיווח נפסק, המיקום מפסיק להיחשב חי — ולא מוצג כאילו הוא עדכני.
+        </p>
+      </div>
+
+      <div style="margin-top:16px;display:grid;gap:10px">
+        <button class="gs-btn sec">התקשר למקצוען</button>
+        <button class="gs-btn quiet" id="sim-cancel">ביטול ההזמנה</button>
+      </div>
+    </div>
+
+    <div class="gs-card" style="margin-top:14px">
+      <p style="margin:0;font-size:13px;color:var(--p-ink-2)">מחיר מאושר</p>
+      <p style="margin:4px 0 0;font-size:20px;font-weight:900">${money(p.price)}</p>
+      <p style="margin:8px 0 0;font-size:12.5px;color:var(--p-ink-3);line-height:1.5">
+        עמלת הפלטפורמה ${ltr('15%')} עד ${money(1000)}. התשלום נתפס רק בסיום העבודה.
+      </p>
+    </div>`;
+}
+
+function screenCancelled() {
+  return `
+    <div class="gs-head">${logo()}<span class="gs-badge">הבקשה בוטלה</span></div>
+    <div class="gs-card rise" style="text-align:center">
+      <h2 style="margin:0;font-size:19px;font-weight:700">הבקשה בוטלה</h2>
+      <p style="margin:10px 0 0;font-size:14px;color:var(--p-ink-2);line-height:1.5">
+        לא חויבת. אפשר לפתוח בקשה חדשה בכל רגע.
+      </p>
+      <button class="gs-btn" id="sim-restart" style="margin-top:18px">בקשה חדשה</button>
+    </div>`;
+}
+
+function screenExhausted() {
+  return `
+    <div class="gs-head">${logo()}<span class="gs-badge bad">לא נמצא מקצוען</span></div>
+    <div class="gs-card rise" style="text-align:center;border-color:rgba(239,68,68,.35)">
+      <h2 style="margin:0;font-size:19px;font-weight:700">לא מצאנו מקצוען זמין</h2>
+      <p style="margin:10px 0 0;font-size:14px;color:var(--p-ink-2);line-height:1.5">
+        עברנו על כל הסבבים ולא נשאר מי שכשיר לבקשה הזו. לא חויבת.
+      </p>
+      <p style="margin:12px 0 0;font-size:12.5px;color:var(--p-ink-3);line-height:1.55">
+        זו התשובה הכנה. עדיף מלהציע מישהו שלא באמת יכול להגיע.
+      </p>
+      <button class="gs-btn" id="sim-restart" style="margin-top:18px">בקשה חדשה</button>
+    </div>`;
+}
+
+/* ── Provider side ─────────────────────────────────────────────────────── */
+function screenProvider() {
+  const me = PROVIDERS[0];
+  const phrase = S.providerOnline
+    ? (S.providerUntil ? 'זמין עד ' + S.providerUntil : 'זמין עד 18:00')
+    : 'זמין מחר מ-08:00';
+  return `
+    <div class="gs-head">${logo()}${stars(me.rating, me.reviews)}</div>
+
+    <p class="gs-label">עכשיו</p>
+    <button class="gs-switch" id="sim-switch" role="switch" aria-checked="${S.providerOnline}">
+      <span style="min-width:0">
+        <span class="lbl">מקבל עבודות</span>
+        <span class="det">${esc(phrase)}</span>
+      </span>
+      <span class="knobtrack" aria-hidden="true"><i></i></span>
+    </button>
+
+    <div style="margin-top:10px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+      <button class="gs-btn sec" data-until="2h" style="font-size:13.5px;padding:0 6px">לשעתיים</button>
+      <button class="gs-btn sec" data-until="18:00" style="font-size:13.5px;padding:0 6px">עד ${ltr('18:00')}</button>
+      <button class="gs-btn sec" data-until="off" style="font-size:13.5px;padding:0 6px">לא היום</button>
+    </div>
+
+    <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <p style="margin:0;font-size:13px;color:var(--p-ink-3)">${esc(me.name)}</p>
+      <span style="font-size:14px;font-weight:600;color:var(--brand-bright)">שינוי שעות ›</span>
+    </div>
+
+    <p class="gs-label" style="margin-top:26px">התוכנית השבועית</p>
+    <div class="gs-card" style="display:grid;gap:2px">
+      ${['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי'].map((d) => `
+        <div style="display:flex;align-items:center;gap:10px;min-height:42px;border-bottom:1px solid var(--line)">
+          <span style="width:48px;flex:none;font-size:13px;font-weight:600">${d}</span>
+          <span class="ltr" style="flex:1;font-size:14px;color:var(--p-ink-2)">08:00 – 18:00</span>
+          <span style="color:var(--p-ink-3);font-size:13px">✕ +</span>
+        </div>`).join('')}
+      ${['שישי', 'שבת'].map((d) => `
+        <div style="display:flex;align-items:center;gap:10px;min-height:42px;border-bottom:1px solid var(--line)">
+          <span style="width:48px;flex:none;font-size:13px;font-weight:600">${d}</span>
+          <span style="flex:1;font-size:13px;color:var(--p-ink-3)">לא עובד</span>
+          <span style="color:var(--brand-bright);font-size:16px">+</span>
+        </div>`).join('')}
+    </div>
+
+    ${S.providerOnline ? `
+    <p class="gs-label" style="margin-top:26px">עבודה שמחכה לך</p>
+    <div class="gs-card rise" style="border-color:rgba(34,197,94,.4)">
+      <span class="gs-badge ok" style="margin-bottom:10px"><span aria-hidden="true">🚗</span> עבודה בדרך שלך</span>
+      <p style="margin:0;font-size:13px;color:var(--brand-bright)">אינסטלציה</p>
+      <h3 style="margin:2px 0 0;font-size:18px;font-weight:700">נזילה מתחת לכיור</h3>
+      <p style="margin:8px 0 0;font-size:14px;color:var(--p-ink-2)">יש לי נזילה מתחת לכיור</p>
+      <dl style="margin:14px 0 0;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center">
+        ${[['מרחק', '4.9 km'], ['הגעה', '16 דק׳'], ['שכר', '₪335']].map(([k, v]) => `
+          <div class="gs-inset" style="background:var(--bg);padding:8px">
+            <dt style="font-size:11px;color:var(--p-ink-2)">${k}</dt>
+            <dd style="margin:2px 0 0;font-size:15px;font-weight:700" class="ltr">${v}</dd>
+          </div>`).join('')}
+      </dl>
+      <div style="margin-top:14px;display:grid;grid-template-columns:2fr 1fr;gap:10px">
+        <button class="gs-btn ok" style="min-height:50px">קבל עבודה</button>
+        <button class="gs-btn sec" style="min-height:50px">דחה</button>
+      </div>
+    </div>` : `
+    <div class="gs-card" style="margin-top:26px;text-align:center">
+      <h3 style="margin:0;font-size:16px;font-weight:700">אתה לא מקבל עבודות</h3>
+      <p style="margin:8px 0 0;font-size:13.5px;color:var(--p-ink-2);line-height:1.5">
+        כל עוד המפסק כבוי, בקשות ל"עכשיו" לא יגיעו אליך — גם אם התוכנית
+        השבועית מכסה את השעה הזו.
+      </p>
+    </div>`}`;
+}
+
+/* ── The page a provider fills in ──────────────────────────────────────────
+   Four numbered steps, and the numbering is information rather than
+   decoration: steps 2–4 do not exist until a trade is picked, because the
+   services, the default radius and the document requirements all come from
+   the category.
+
+   The copy leads with the consequence — "without a trade and prices we
+   cannot send you work" — because that is literally true: the candidate
+   search INNER JOINs provider_categories, so an unconfigured provider is not
+   a weak candidate, they are absent from the search entirely.               */
+function screenOnboarding() {
+  if (S.onbSaved) {
+    const cat = CATALOG.find((c) => c.slug === S.onbCat);
+    const n = Object.values(S.onbPrices).filter((v) => String(v).trim() !== '').length;
+    return `
+      <div class="gs-head">${logo()}<span class="gs-badge warn">ממתין לאימות</span></div>
+      <div class="gs-card rise" style="text-align:center">
+        <h1 style="margin:0;font-size:20px;font-weight:700">הפרטים נשמרו</h1>
+        <p style="margin:10px 0 0;font-size:14px;color:var(--p-ink-2);line-height:1.55">
+          החשבון מוגדר ומחכה לאימות של מנהל. עד לאישור לא יישלחו אליך עבודות.
+        </p>
+        <div class="gs-inset" style="margin-top:16px;text-align:start;background:var(--bg)">
+          <p style="margin:0;font-size:13px;color:var(--p-ink-3)">מה נשמר</p>
+          <p style="margin:6px 0 0;font-size:14px">${esc(cat.name)} · ${ltr(n)} שירותים במחיר · רדיוס ${ltr(S.onbRadius + ' ק״מ')}</p>
+        </div>
+        <p style="margin:14px 0 0;font-size:12.5px;color:var(--p-ink-3);line-height:1.55">
+          זה שלב מכוון: אנחנו מאמתים בעלי מקצוע לפני שהם מקבלים גישה ללקוחות.
+        </p>
+        <button class="gs-btn" id="sim-onb-reset" style="margin-top:18px">מלא שוב מההתחלה</button>
+      </div>`;
+  }
+
+  const cat = CATALOG.find((c) => c.slug === S.onbCat) || null;
+  const chosen = cat ? cat.services.filter(([n]) => String(S.onbPrices[n] ?? '').trim() !== '') : [];
+  const ready = cat !== null && chosen.length > 0 && S.onbLocated;
+
+  return `
+    <div class="gs-head">${logo()}<span class="gs-badge warn">ממתין לאימות</span></div>
+
+    <h1 style="margin:0;font-size:24px;font-weight:900;letter-spacing:-.02em">בוא נגדיר את הפרופיל</h1>
+    <p style="margin:8px 0 0;font-size:14px;color:var(--p-ink-2);line-height:1.5">
+      בלי תחום ומחירים לא נוכל לשלוח לך עבודות — המערכת פשוט לא תכלול אותך בחיפוש.
+    </p>
+
+    <div class="gs-card" style="margin-top:18px">
+      <h2 style="margin:0;font-size:16px;font-weight:700">
+        <span class="ltr" style="color:var(--p-ink-3)">1</span> באיזה תחום אתם עובדים?
+      </h2>
+
+      <!-- Searched by THE WORK, not by our category names: a provider thinks
+           "מזגן", not "מיזוג אוויר", and finding what already exists beats
+           proposing a duplicate that has to be reviewed and merged. -->
+      <label for="onb-search" class="sr-only">חיפוש מקצוע</label>
+      <input id="onb-search" class="gs-input" style="margin-top:12px"
+        value="${esc(S.onbSearch)}" placeholder="חפש את המקצוע שלך — למשל מזגן, אסלה, גינה…">
+
+      ${(() => {
+        const q = S.onbSearch.trim();
+        if (q.length < 2) return '';
+        const hits = [];
+        for (const c of CATALOG) {
+          if (c.name.includes(q)) hits.push({ cat: c, service: null });
+          for (const [name] of c.services) {
+            if (name.includes(q)) hits.push({ cat: c, service: name });
+          }
+        }
+        if (hits.length === 0) {
+          return `<p style="margin:12px 0 0;border-radius:12px;background:var(--surface-2);padding:10px 12px;font-size:14px;color:var(--p-ink-2);line-height:1.5">
+            לא מצאנו את זה בקטלוג. אפשר להציע אותו למטה — נבדוק ונאשר.
+          </p>`;
+        }
+        return `<div style="margin-top:12px;display:grid;gap:6px">
+          <p class="gs-label" style="margin:0 0 2px">נמצא בקטלוג</p>
+          ${hits.slice(0, 6).map((hit) => `
+            <button type="button" data-hit="${hit.cat.slug}"
+              style="display:flex;width:100%;align-items:center;justify-content:space-between;gap:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);padding:10px 12px;text-align:start;cursor:pointer;font-family:var(--sans)">
+              <span style="min-width:0">
+                <span style="display:block;font-size:14px;font-weight:500;color:var(--p-ink)">${esc(hit.service ?? hit.cat.name)}</span>
+                ${hit.service ? `<span style="display:block;font-size:12px;color:var(--p-ink-3)">${esc(hit.cat.name)}</span>` : ''}
+              </span>
+              <span aria-hidden="true" style="color:var(--p-ink-3)">›</span>
+            </button>`).join('')}
+        </div>`;
+      })()}
+
+      <div class="gs-chips" style="margin-top:14px">
+        ${CATALOG.map((c) => `
+          <button class="gs-chip" data-cat="${c.slug}" aria-pressed="${S.onbCat === c.slug}"
+            style="border-radius:12px;font-size:14px;font-weight:500;${S.onbCat === c.slug
+              ? 'border-color:var(--brand);background:rgba(59,130,246,.1);color:var(--p-ink)'
+              : 'background:var(--bg)'}">${esc(c.name)}</button>`).join('')}
+      </div>
+      ${cat && (cat.lic || cat.ins) ? `
+        <p style="margin:12px 0 0;border-radius:12px;background:rgba(245,158,11,.1);padding:8px 12px;font-size:14px;color:var(--warn-bright);line-height:1.5">
+          התחום הזה דורש ${[cat.lic ? 'רישיון' : null, cat.ins ? 'ביטוח' : null].filter(Boolean).join(' ו')}.
+          המנהל יבקש את המסמכים לפני האימות.
+        </p>` : ''}
+
+      <!-- ── The catalog is not the world ──────────────────────────────────
+           Seven categories do not cover the trades people do, and a provider
+           whose work is missing is not ranked low — the candidate search
+           requires a declared trade, so they are absent from it entirely. -->
+      <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:16px">
+        ${!S.onbProposing ? `
+          <button type="button" id="onb-propose-open"
+            style="min-height:44px;border:0;background:none;border-radius:8px;padding:0 4px;font-family:var(--sans);font-size:14px;font-weight:600;color:var(--brand-bright);cursor:pointer">
+            המקצוע שלי לא ברשימה — אני רוצה להוסיף אותו
+          </button>` : `
+          <div style="display:grid;gap:14px">
+            <div>
+              <p style="margin:0;font-size:14px;font-weight:700;color:var(--p-ink)">הוספת מקצוע חדש</p>
+              <p style="margin:4px 0 0;font-size:14px;color:var(--p-ink-2);line-height:1.5">
+                כתבו מה אתם עושים במילים שלכם. נבדוק ונאשר, ורק אחרי האישור תתחילו לקבל עבודות בו.
+              </p>
+            </div>
+            <div>
+              <label for="onb-prop-name" style="display:block;font-size:14px;font-weight:600;color:var(--p-ink-2);margin-bottom:6px">שם המקצוע</label>
+              <input id="onb-prop-name" class="gs-input" maxlength="80"
+                value="${esc(S.onbPropName)}" placeholder="לדוגמה: תיקון מכונות כביסה">
+            </div>
+            <div>
+              <label for="onb-prop-desc" style="display:block;font-size:14px;font-weight:600;color:var(--p-ink-2);margin-bottom:6px">מה אתם עושים בפועל (לא חובה)</label>
+              <textarea id="onb-prop-desc" class="gs-area" rows="3" maxlength="500"
+                placeholder="תיקון והתקנה של מכונות כביסה ומייבשים">${esc(S.onbPropDesc)}</textarea>
+            </div>
+            <div>
+              <label for="onb-prop-price" style="display:block;font-size:14px;font-weight:600;color:var(--p-ink-2);margin-bottom:6px">המחיר שלך לעבודה כזו (לא חובה)</label>
+              <input id="onb-prop-price" class="gs-input ltr" type="number" inputmode="numeric"
+                value="${esc(S.onbPropPrice)}" placeholder="320">
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <button class="gs-btn sec" id="onb-prop-send" style="width:auto;padding:0 18px"
+                ${S.onbPropName.trim().length < 2 ? 'disabled' : ''}>שלח לאישור</button>
+              <button class="gs-btn quiet" id="onb-prop-cancel" style="width:auto;padding:0 14px">ביטול</button>
+            </div>
+          </div>`}
+
+        ${S.proposals.length === 0 ? '' : `
+          <div style="margin-top:16px;display:grid;gap:8px">
+            <p class="gs-label" style="margin:0">המקצועות שהצעת</p>
+            ${S.proposals.map((prop) => `
+              <div class="gs-inset">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+                  <div style="min-width:0">
+                    <p style="margin:0;font-size:14px;font-weight:500;color:var(--p-ink)">${esc(prop.name)}</p>
+                    ${prop.price ? `<p style="margin:2px 0 0;font-size:12px;color:var(--p-ink-3)">${money(prop.price)}</p>` : ''}
+                  </div>
+                  <span class="gs-badge ${prop.status === 'APPROVED' ? 'ok' : prop.status === 'REJECTED' ? 'bad' : 'warn'}">
+                    ${prop.status === 'APPROVED' ? 'אושר' : prop.status === 'REJECTED' ? 'לא אושר' : 'ממתין לאישור'}
+                  </span>
+                </div>
+                ${prop.status === 'PENDING' ? `
+                  <p style="margin:8px 0 0;font-size:12px;color:var(--p-ink-3)">
+                    עדיין לא יישלחו לך עבודות במקצוע הזה.
+                  </p>` : ''}
+                ${prop.status === 'APPROVED' ? `
+                  <p style="margin:8px 0 0;font-size:12px;color:var(--ok-bright)">
+                    נוסף תחת ${esc(prop.approvedCategory)} — אפשר לקבל עבודות בו.
+                  </p>` : ''}
+                ${prop.status === 'REJECTED' && prop.reason ? `
+                  <p style="margin:8px 0 0;font-size:12px;color:var(--p-ink-2)">${esc(prop.reason)}</p>` : ''}
+              </div>`).join('')}
+          </div>`}
+      </div>
+    </div>
+
+    ${!cat ? '' : `
+    <div class="gs-card" style="margin-top:14px">
+      <h2 style="margin:0;font-size:16px;font-weight:700">
+        <span class="ltr" style="color:var(--p-ink-3)">2</span> מה אתם עושים, ובכמה?
+      </h2>
+      <p style="margin:4px 0 0;font-size:14px;color:var(--p-ink-2)">
+        סמנו רק את מה שאתם מבצעים. המחיר שתזינו הוא המחיר שיוצג ללקוח.
+      </p>
+      <div style="margin-top:16px;display:grid;gap:12px">
+        ${cat.services.map(([n, base, min, max]) => {
+          const val = String(S.onbPrices[n] ?? '');
+          const active = val.trim() !== '';
+          const num = Number(val);
+          const bad = active && (Number.isNaN(num) || num < min || num > max);
+          return `
+            <div class="onb-row" data-row="${esc(n)}"
+              style="border-radius:12px;border:1px solid ${bad ? 'rgba(239,68,68,.5)' : active ? 'rgba(59,130,246,.5)' : 'var(--line)'};background:var(--bg);padding:12px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+                <label style="font-size:14px;font-weight:500" for="onb-${esc(n)}">${esc(n)}</label>
+                <span style="display:flex;align-items:center;gap:8px;flex:none">
+                  <span style="font-size:14px;color:var(--p-ink-2)">₪</span>
+                  <input id="onb-${esc(n)}" class="ltr" data-price="${esc(n)}" type="number"
+                    inputmode="numeric" placeholder="${base}" value="${esc(val)}"
+                    data-min="${min}" data-max="${max}" data-base="${base}"
+                    style="width:86px;border-radius:9px;border:1px solid var(--line-strong);background:var(--surface-1);color:var(--p-ink);padding:8px 10px;font-family:var(--sans);font-size:15px;text-align:center">
+                </span>
+              </div>
+              <p class="onb-hint" style="margin:6px 0 0;font-size:12px;color:${bad ? 'var(--bad-bright)' : 'var(--p-ink-3)'};line-height:1.45">
+                ${bad
+                  ? 'מחוץ לטווח המקובל — ' + ltr('₪' + min + '–₪' + max)
+                  : 'מחיר ייחוס בפלטפורמה: ' + ltr('₪' + base) + ' · טווח מקובל ' + ltr('₪' + min + '–₪' + max)}
+              </p>
+            </div>`;
+        }).join('')}
+      </div>
+      <p id="onb-count" style="margin:12px 0 0;font-size:13.5px;color:${chosen.length ? 'var(--ok-bright)' : 'var(--p-ink-3)'};text-align:end">
+        ${chosen.length ? 'נבחרו ' + ltr(chosen.length) + ' שירותים' : 'עדיין לא נבחר שירות'}
+      </p>
+    </div>
+
+    <div class="gs-card" style="margin-top:14px">
+      <h2 style="margin:0;font-size:16px;font-weight:700">
+        <span class="ltr" style="color:var(--p-ink-3)">3</span> איפה אתם עובדים?
+      </h2>
+      <p style="margin:4px 0 0;font-size:14px;color:var(--p-ink-2)">נשלח לך עבודות רק בתוך הרדיוס הזה.</p>
+      <div style="margin-top:14px">
+        ${S.onbLocated
+          ? `<p style="margin:0;display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ok-bright)"><span aria-hidden="true">📍</span> מרכז אזור העבודה נקבע</p>`
+          : `<p style="margin:0;font-size:14px;color:var(--p-ink-2)">עדיין לא נקבע מרכז לאזור העבודה.</p>`}
+        <button class="gs-btn sec" id="sim-onb-locate" style="margin-top:12px;width:auto;padding:0 16px">
+          השתמש במיקום הנוכחי שלי
+        </button>
+      </div>
+      <div style="margin-top:16px">
+        <label style="display:block;font-size:14px;font-weight:600;color:var(--p-ink-2);margin-bottom:8px" for="onb-radius">רדיוס עבודה (ק״מ)</label>
+        <input id="onb-radius" class="gs-input ltr" type="number" inputmode="numeric" value="${esc(S.onbRadius)}">
+      </div>
+    </div>
+
+    <div class="gs-card" style="margin-top:14px">
+      <h2 style="margin:0;font-size:16px;font-weight:700">
+        <span class="ltr" style="color:var(--p-ink-3)">4</span> פרטי העסק
+      </h2>
+      <div style="margin-top:16px;display:grid;gap:16px">
+        <div>
+          <label style="display:block;font-size:14px;font-weight:600;color:var(--p-ink-2);margin-bottom:8px" for="onb-biz">שם העסק (אופציונלי)</label>
+          <input id="onb-biz" class="gs-input" value="${esc(S.onbBiz)}" placeholder="לדוגמה: אינסטלציה מהירה תל אביב">
+        </div>
+        <div>
+          <label style="display:block;font-size:14px;font-weight:600;color:var(--p-ink-2);margin-bottom:8px" for="onb-years">שנות ניסיון</label>
+          <input id="onb-years" class="gs-input ltr" type="number" inputmode="numeric" value="${esc(S.onbYears)}">
+        </div>
+      </div>
+    </div>`}
+
+    <div style="margin-top:18px;display:grid;gap:10px">
+      <button class="gs-btn" id="sim-onb-save" ${ready ? '' : 'disabled'}>שמור והמשך</button>
+      <p id="onb-gate" ${ready ? 'hidden' : ''} style="margin:0;text-align:center;font-size:14px;color:var(--p-ink-3)">${
+        !cat ? 'בחרו תחום כדי להמשיך' : chosen.length === 0 ? 'הזינו מחיר לפחות לשירות אחד' : 'קבעו את מרכז אזור העבודה'
+      }</p>
+    </div>`;
+}
+
+/* ── The review screen: where a proposed trade becomes real ───────────────
+   Approving REQUIRES the phrases a customer would type. The classifier
+   routes on them, so a service approved without any is unreachable by every
+   description — the provider would be told "approved" and still never get a
+   job, which is the exact failure the whole feature exists to end. The
+   button stays disabled until a category and at least one phrase are set,
+   and the simulator enforces it the same way the API does.             */
+function screenReview() {
+  const pending = S.proposals.filter((p) => p.status === 'PENDING');
+
+  return `
+    <div class="gs-head">${logo()}<span class="gs-badge brand">מרכז בקרה</span></div>
+
+    <p class="gs-label">מקצועות שהוצעו</p>
+
+    ${pending.length === 0 ? `
+      <div class="gs-card" style="text-align:center">
+        <p style="margin:0;font-size:15px;font-weight:600;color:var(--p-ink)">התור ריק</p>
+        <p style="margin:8px 0 0;font-size:13.5px;color:var(--p-ink-2);line-height:1.55">
+          כשמקצוען יציע מקצוע שאין בקטלוג, הוא יופיע כאן.
+          עבור ל<b style="color:var(--p-ink)">טופס ההרשמה</b> והצע אחד כדי לראות את זה.
+        </p>
+      </div>` : pending.map((prop) => {
+      const form = S.reviewForm[prop.id] ?? { category: '', phrases: '', reason: '' };
+      const phrases = form.phrases.split(',').map((x) => x.trim()).filter((x) => x.length >= 2);
+      const ready = form.category !== '' && phrases.length > 0;
+      // Approving a near-duplicate creates a second service meaning the same
+      // thing and splits the providers between them.
+      const similar = CATALOG.flatMap((c) => c.services)
+        .filter(([name]) => name.includes(prop.name.trim()) || prop.name.includes(name)).length;
+
+      return `
+        <div class="gs-card" style="margin-bottom:12px">
+          <div style="display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:10px">
+            <div style="min-width:0">
+              <p style="margin:0;font-size:16px;font-weight:700;color:var(--p-ink)">${esc(prop.name)}</p>
+              <p style="margin:2px 0 0;font-size:12px;color:var(--p-ink-3)">${esc(prop.provider)}</p>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              ${prop.price ? `<span class="gs-badge">${money(prop.price)}</span>` : ''}
+              <span class="gs-badge warn">לא מאומת</span>
+            </div>
+          </div>
+
+          ${prop.desc ? `<p style="margin:10px 0 0;font-size:14px;color:var(--p-ink-2);line-height:1.5">${esc(prop.desc)}</p>` : ''}
+
+          ${similar > 0 ? `
+            <p style="margin:10px 0 0;border-radius:10px;background:rgba(245,158,11,.1);padding:8px 10px;font-size:12px;color:var(--warn-bright);line-height:1.5">
+              יש כבר ${ltr(similar)} שירותים עם שם דומה — שווה לבדוק אם זה כבר קיים.
+            </p>` : ''}
+
+          <div style="margin-top:14px">
+            <label for="rv-cat-${prop.id}" style="display:block;font-size:12px;color:var(--p-ink-3);margin-bottom:6px">תחום שאליו ייכנס</label>
+            <select id="rv-cat-${prop.id}" data-rv-cat="${prop.id}"
+              style="min-height:44px;width:100%;border-radius:10px;border:1px solid var(--line-strong);background:var(--surface-2);color:var(--p-ink);padding:0 12px;font-family:var(--sans);font-size:15px">
+              <option value="">בחרו תחום…</option>
+              ${CATALOG.map((c) => `<option value="${c.slug}" ${form.category === c.slug ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
+            </select>
+          </div>
+
+          <div style="margin-top:12px">
+            <label for="rv-ph-${prop.id}" style="display:block;font-size:12px;color:var(--p-ink-3);margin-bottom:6px">
+              ביטויים שלקוח יכתוב (מופרדים בפסיק) — חובה
+            </label>
+            <input id="rv-ph-${prop.id}" data-rv-ph="${prop.id}" class="gs-input"
+              value="${esc(form.phrases)}" placeholder="מכונת כביסה, מייבש כבסים">
+            <p style="margin:6px 0 0;font-size:12px;color:var(--p-ink-3);line-height:1.5">
+              בלי ביטויים אף תיאור של לקוח לא ינותב לשירות הזה, והאישור יהיה חסר משמעות.
+            </p>
+          </div>
+
+          <div style="margin-top:14px;display:grid;gap:8px">
+            <button class="gs-btn" data-rv-approve="${prop.id}" ${ready ? '' : 'disabled'}>
+              אשר והוסף לקטלוג
+            </button>
+            <input data-rv-reason="${prop.id}" class="gs-input"
+              value="${esc(form.reason)}" placeholder="סיבת דחייה"
+              aria-label="סיבת דחייה עבור ${esc(prop.name)}">
+            <button class="gs-btn sec" data-rv-reject="${prop.id}"
+              ${form.reason.trim().length < 3 ? 'disabled' : ''}
+              style="background:var(--bad);color:#fff;border:0">דחה</button>
+          </div>
+        </div>`;
+    }).join('')}
+
+    ${S.proposals.some((p) => p.status !== 'PENDING') ? `
+      <p class="gs-label" style="margin-top:20px">טופל</p>
+      <div style="display:grid;gap:8px">
+        ${S.proposals.filter((p) => p.status !== 'PENDING').map((prop) => `
+          <div class="gs-inset" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <span style="min-width:0">
+              <span style="display:block;font-size:14px;color:var(--p-ink)">${esc(prop.name)}</span>
+              ${prop.status === 'APPROVED'
+                ? `<span style="display:block;font-size:12px;color:var(--p-ink-3)">תחת ${esc(prop.approvedCategory)} · ${ltr(prop.phrases.length)} ביטויים</span>`
+                : `<span style="display:block;font-size:12px;color:var(--p-ink-3)">${esc(prop.reason ?? '')}</span>`}
+            </span>
+            <span class="gs-badge ${prop.status === 'APPROVED' ? 'ok' : 'bad'}">
+              ${prop.status === 'APPROVED' ? 'אושר' : 'נדחה'}
+            </span>
+          </div>`).join('')}
+      </div>` : ''}`;
+}
+
+/* ── Profile sheet: the trust order from UX_PRINCIPLES 6 ───────────────── */
+function profileSheet(p, isBusy) {
+  /* The distribution is only ever drawn from real review rows. An earlier
+     version derived it from the rating count with fixed ratios — 82/13/3/2 —
+     which drew a confident chart of reviews that do not exist, directly under
+     a sentence saying there are none. The endpoint returns ratingBreakdown:
+     null whenever no review rows exist, and every provider in this recording
+     is exactly that case, so the chart is absent and the sentence is true. */
+  const bars = p.ratingBreakdown ? [
+    ['5 כוכבים', p.ratingBreakdown[5]],
+    ['4 כוכבים', p.ratingBreakdown[4]],
+    ['3 כוכבים', p.ratingBreakdown[3]],
+    ['2 ומטה', p.ratingBreakdown[2] + p.ratingBreakdown[1]]
+  ] : null;
+  const total = bars ? bars.reduce((a, b) => a + b[1], 0) : 0;
+
+  return `
+    <div style="display:flex;align-items:flex-start;gap:12px">
+      ${avatar(p.name, 52)}
+      <div style="min-width:0;flex:1">
+        <p style="margin:0;font-size:18px;font-weight:700;line-height:1.2">${esc(p.name)}</p>
+        ${p.biz ? `<p style="margin:0;font-size:14px;color:var(--p-ink-2)">${esc(p.biz)}</p>` : ''}
+        <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:8px">
+          <span class="gs-badge ok">✓ מאומת</span>
+          <span class="gs-badge ${isBusy ? '' : 'live'}">${esc(availabilityPhrase(p, isBusy))}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="gs-inset" style="margin-top:18px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <div>
+        ${stars(p.rating, p.reviews, true)}
+        ${p.reviews === 0 ? '<p style="margin:3px 0 0;font-size:12.5px;color:var(--p-ink-3)">חדש בפלטפורמה — עבר אימות מסמכים</p>' : ''}
+      </div>
+      <div style="text-align:end">
+        <p class="ltr" style="margin:0;font-size:20px;font-weight:900">${p.jobs}</p>
+        <p style="margin:0;font-size:11px;color:var(--p-ink-3)">עבודות שהושלמו</p>
+      </div>
+    </div>
+
+    ${p.bio ? `<p style="margin:18px 0 0;font-size:15px;line-height:1.6;color:var(--p-ink-2)">${esc(p.bio)}</p>` : ''}
+
+    <dl style="margin:18px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="gs-inset">
+        <dt style="font-size:12px;color:var(--p-ink-3)">ניסיון</dt>
+        <dd style="margin:2px 0 0;font-size:15px;font-weight:700">${ltr(p.years)} שנים</dd>
+      </div>
+      <div class="gs-inset">
+        <dt style="font-size:12px;color:var(--p-ink-3)">זמן תגובה ממוצע</dt>
+        <dd style="margin:2px 0 0;font-size:15px;font-weight:700">
+          ${p.respSec === null ? '<span style="color:var(--p-ink-3)">—</span>' : ltr(Math.max(1, Math.round(p.respSec / 60))) + ' דק׳'}
+        </dd>
+      </div>
+    </dl>
+
+    <p class="gs-label" style="margin:22px 0 10px">שירותים ומחירים</p>
+    <div style="display:grid;gap:6px">
+      ${p.services.map(([n, pr], i) => `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:12px;padding:9px 12px;background:${i === 0 ? 'rgba(59,130,246,.12)' : 'var(--surface-2)'}">
+          <p style="margin:0;font-size:14px">${esc(n)}${i === 0 ? '<span style="margin-inline-start:8px;font-size:12px;color:var(--brand-bright)">מה שביקשתם</span>' : ''}</p>
+          <p style="margin:0;font-size:14px;font-weight:700">${money(pr)}</p>
+        </div>`).join('')}
+    </div>
+
+    ${p.reviewsText.length ? `
+      <p class="gs-label" style="margin:22px 0 10px">מה לקוחות כתבו</p>
+      <div style="display:grid;gap:8px">
+        ${p.reviewsText.map((r) => `
+          <div class="gs-inset">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+              <p style="margin:0;font-size:13px;font-weight:600">${esc(r.who)}</p>
+              <span class="gs-stars" aria-hidden="true">${'★'.repeat(r.stars)}</span>
+            </div>
+            <p style="margin:6px 0 0;font-size:14px;line-height:1.6;color:var(--p-ink-2)">${esc(r.text)}</p>
+          </div>`).join('')}
+      </div>` : `
+      <p style="margin:22px 0 0;font-size:13px;color:var(--p-ink-3);line-height:1.55">
+        אין עדיין ביקורות כתובות. לא מוצג פירוט דירוגים, כי אין עליו על מה להתבסס.
+      </p>`}
+
+    ${bars ? `
+      <p class="gs-label" style="margin:22px 0 10px">פירוט דירוגים</p>
+      <dl style="display:grid;gap:5px;margin:0">
+        ${bars.map(([lbl, n]) => `
+          <div style="display:flex;align-items:center;gap:10px">
+            <dt style="width:76px;flex:none;font-size:12.5px;color:var(--p-ink-3)">${lbl}</dt>
+            <dd style="margin:0;flex:1;display:flex;align-items:center;gap:8px">
+              <span style="flex:1;height:6px;border-radius:999px;background:var(--surface-3);overflow:hidden;display:block">
+                <span style="display:block;height:100%;border-radius:999px;background:var(--warn);width:${Math.round((n / total) * 100)}%"></span>
+              </span>
+              <span class="ltr" style="width:44px;text-align:end;font-size:12px;color:var(--p-ink-3)">${n}</span>
+            </dd>
+          </div>`).join('')}
+      </dl>` : ''}
+
+    <p style="margin:20px 0 0;font-size:12.5px;color:var(--p-ink-3);line-height:1.55">
+      אין כאן יומן, אין מיקום מדויק ואין ניקוד התאמה. הלקוח צריך לדעת אם
+      האדם הזה יכול להגיע כשצריך — לא את השבוע שלו.
+    </p>`;
+}
+
+/* ── Render: underneath ────────────────────────────────────────────────── */
+const RAIL = [
+  { key: 'REQUESTED', label: 'הבקשה נרשמה' },
+  { key: 'SEARCHING', label: 'מחפשים מקצוען' },
+  { key: 'OFFERS_AVAILABLE', label: 'הצעות בחוץ, במקביל' },
+  { key: 'PROVIDER_SELECTED', label: 'הראשון אישר — התאמה' },
+  { key: 'CONFIRMED', label: 'הלקוח אישר' },
+  { key: 'EN_ROUTE', label: 'בדרך אליך' }
+];
+
+/* The registration form has its own sequence, and it is a real dependency
+   chain rather than a numbered decoration: nothing downstream exists until a
+   trade is picked, and the account stays invisible to matching until all of
+   it is done AND an admin has verified it. */
+const ONB_RAIL = [
+  { key: 'profiles.role = provider', label: 'החשבון נרשם' },
+  { key: 'provider_categories', label: 'תחום הוצהר' },
+  { key: 'provider_services', label: 'שירותים במחיר' },
+  { key: 'service_areas', label: 'אזור עבודה נקבע' },
+  { key: 'verification = VERIFIED', label: 'מנהל אימת' },
+  { key: 'state = ONLINE', label: 'מקבל עבודות' }
+];
+
+function onbRailIndex() {
+  const cat = CATALOG.find((c) => c.slug === S.onbCat);
+  const chosen = cat ? cat.services.filter(([n]) => String(S.onbPrices[n] ?? '').trim() !== '') : [];
+  if (!cat) return 1;
+  if (chosen.length === 0) return 2;
+  if (!S.onbLocated) return 3;
+  return 4; /* waiting on a human, which no amount of form-filling resolves */
+}
+
+function railIndex() {
+  switch (S.step) {
+    case 'home': return -1;
+    case 'request': return 0;
+    case 'searching': return S.wave > 0 ? 2 : 1;
+    case 'match': return 3;
+    case 'tracking': return 5;
+    default: return -1;
+  }
+}
+
+function renderRail() {
+  const railBox = document.getElementById('rail');
+  const heading = railBox.closest('.pnl').querySelector('h2');
+
+  if (S.side === 'review') {
+    heading.textContent = 'הדרך מהצעה לעבודה';
+    const REVIEW_RAIL = [
+      { key: 'trade_proposals.PENDING', label: 'המקצוען הציע' },
+      { key: 'services + strong_phrases', label: 'אישרת, עם ביטויים' },
+      { key: 'provider_categories + provider_services', label: 'המקצוען קושר לתחום' },
+      { key: 'understand() → category', label: 'תיאור של לקוח מנותב לשם' },
+      { key: 'find_candidate_providers', label: 'נמצא בחיפוש' }
+    ];
+    const anyApproved = S.proposals.some((p) => p.status === 'APPROVED');
+    const anyPending = S.proposals.some((p) => p.status === 'PENDING');
+    const at = anyApproved ? 4 : anyPending ? 1 : 0;
+    railBox.innerHTML = REVIEW_RAIL.map((r, i) => {
+      const on = i < at ? 'done' : i === at ? 'now' : '';
+      return `<li data-on="${on}">
+        <span class="mark"><b></b><u></u></span>
+        <span class="txt"><span>${r.label}</span><code>${r.key}</code></span>
+      </li>`;
+    }).join('');
+    return;
+  }
+
+  if (S.side === 'onboarding') {
+    heading.textContent = 'מה חסר כדי להיות נמצא';
+    const at = onbRailIndex();
+    railBox.innerHTML = ONB_RAIL.map((r, i) => {
+      const on = i < at ? 'done' : i === at ? 'now' : '';
+      return `<li data-on="${on}">
+        <span class="mark"><b></b><u></u></span>
+        <span class="txt"><span>${r.label}</span><code>${r.key}</code></span>
+      </li>`;
+    }).join('');
+    return;
+  }
+
+  heading.textContent = 'מצב העבודה';
+  const at = railIndex();
+  railBox.innerHTML = RAIL.map((r, i) => {
+    const on = at < 0 ? '' : i < at ? 'done' : i === at ? 'now' : '';
+    return `<li data-on="${on}">
+      <span class="mark"><b></b><u></u></span>
+      <span class="txt"><span>${r.label}</span><code>${r.key}</code></span>
+    </li>`;
+  }).join('');
+}
+
+function renderKv() {
+  const t = TIMINGS.find((x) => x.v === S.timing);
+  const rows = [];
+  if (S.side === 'review') {
+    const pending = S.proposals.filter((p) => p.status === 'PENDING').length;
+    const approved = S.proposals.filter((p) => p.status === 'APPROVED');
+    rows.push(['trade_proposals PENDING', String(pending)]);
+    rows.push(['שירותים שנוצרו מאישור', String(approved.length)]);
+    for (const prop of approved) {
+      rows.push([`services.strong_phrases`, prop.phrases.join(', ') || '—']);
+    }
+  } else if (S.side === 'onboarding') {
+    const cat = CATALOG.find((c) => c.slug === S.onbCat);
+    const chosen = cat ? cat.services.filter(([n]) => String(S.onbPrices[n] ?? '').trim() !== '') : [];
+    rows.push(['provider_categories', cat ? '1 (' + cat.slug + ')' : '0']);
+    rows.push(['provider_services', String(chosen.length)]);
+    rows.push(['service_areas', S.onbLocated ? '1 · ' + (S.onbRadius || '?') + ' km' : '0']);
+    rows.push(['verification', S.onbSaved ? 'PENDING' : 'PENDING']);
+    rows.push([
+      'יימצא ב-find_candidate_providers?',
+      cat && chosen.length && S.onbLocated ? 'לא — ממתין לאימות' : 'לא — חסרים נתונים'
+    ]);
+  } else if (S.side === 'provider') {
+    rows.push(['provider_profiles.state', S.providerOnline ? 'ONLINE' : 'OFFLINE']);
+    rows.push(['online_until', S.providerUntil ? S.providerUntil : 'null']);
+    rows.push(['availability_rules', 'א׳–ה׳ 08:00–18:00']);
+    rows.push(['זמין עכשיו?', S.providerOnline ? 'כן' : 'לא']);
+  } else {
+    const u = classify(S.desc);
+    rows.push(['raw_description', S.desc ? '"' + S.desc + '"' : '—']);
+    rows.push(['category / service', u.service ? u.category + ' / ' + u.service : '—']);
+    rows.push(['confidence', u.service ? u.confidence.toFixed(2) : '0']);
+    rows.push(['understanding.signals', u.signals.length ? u.signals.join(', ') : '—']);
+    rows.push(['urgency', u.service ? u.urgency : '—']);
+    rows.push(['timing_intent', S.timing]);
+    rows.push(['requested_for', S.timing === 'SCHEDULED' ? (S.when || 'מחר, 10:00') : 'now()']);
+    rows.push(['duration_min', '60']);
+    rows.push(['dispatch_wave', String(S.wave)]);
+    if (S.rejections) rows.push(['התאמות שנדחו', S.rejections + ' / 3']);
+    if (S.matched) rows.push(['quoted_price_ils', String(S.matched.p.price)]);
+  }
+  document.getElementById('kv').innerHTML = rows
+    .map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
+}
+
+function renderCands() {
+  const box = document.getElementById('cands');
+  const note = document.getElementById('cands-note');
+
+  if (S.side === 'review') {
+    box.innerHTML = '';
+    note.innerHTML = 'אישור מחייב <b>ביטויים</b>, ולא במקרה: המסווג מנתב תיאור של לקוח '
+      + 'לשירות לפי התאמת ביטויים, כך ששירות שאושר בלעדיהם אינו נגיש לאף תיאור. '
+      + 'המקצוען היה מקבל "אושר" ולעולם לא היה מקבל עבודה — בדיוק הכישלון שהפיצ׳ר '
+      + 'הזה נועד לסיים. לכן הכפתור חסום עד שיש תחום וביטוי אחד לפחות.';
+    return;
+  }
+
+  if (S.side === 'onboarding') {
+    box.innerHTML = '';
+    note.innerHTML = 'הטופס הזה קיים בגלל באג אמיתי: הרשמה יצרה חשבון בלי תחום, '
+      + 'והחיפוש עושה <b>INNER JOIN</b> על <code>provider_categories</code> — כך שמקצוען '
+      + 'כזה לא היה מועמד חלש, הוא <b>נעדר מהחיפוש לגמרי</b>, לתמיד. ולא היה מסך להצהיר בו על תחום.';
+    return;
+  }
+
+  if (S.side === 'provider') {
+    box.innerHTML = '';
+    note.textContent = 'בצד בעל המקצוע אין דירוג מועמדים — הוא רואה רק את ההצעות שהגיעו אליו.';
+    return;
+  }
+
+  const list = ranked(S.timing);
+  box.innerHTML = list.map((c) => {
+    const out = !c.e.ok || c.rejected;
+    const isMatched = S.matched && S.matched.p.id === c.p.id && (S.step === 'match' || S.step === 'tracking');
+    const r = c.s.route;
+    const tag = out ? '<span class="tag no">מודר</span>'
+      : r.basis === 'destination_route' ? '<span class="tag route">בדרך</span>'
+      : '<span class="tag near">קרוב</span>';
+    const why = c.rejected ? 'הלקוח דחה את ההתאמה הזו — לא יוצע שוב בקריאה הזו'
+      : !c.e.ok ? c.e.why
+      : r.label + ' · ' + c.p.km.toFixed(2) + ' ק״מ · הגעה ~' + Math.round(c.s.etaMin) + ' דק׳';
+    return `<div class="cand ${isMatched ? 'picked' : ''} ${out ? 'out' : ''}">
+      <span class="nm">${esc(c.p.name)}</span>
+      <span class="sc">${out ? '—' : c.s.total.toFixed(1)}</span>
+      <span class="why">${tag}${esc(why)}</span>
+    </div>`;
+  }).join('');
+
+  const n = eligibleList(S.timing).length;
+  note.innerHTML = S.timing === 'SCHEDULED'
+    ? 'לבקשה למועד עתידי מכריעה <b>התוכנית השבועית</b>. המפסק לא רלוונטי — לכן מי שלא פרסם שעות יוצא מהמשחק, ומי שכבוי עכשיו נכנס. כשירים: ' + n + '.'
+    : 'לבקשה ל<b>עכשיו</b> מכריע <b>המפסק</b>. שעות מוצהרות לא מכריעות — לכן מי שכבוי עכשיו יוצא מהמשחק. כשירים: ' + n + '.';
+}
+
+/* ── Render root ───────────────────────────────────────────────────────── */
+let lastScreenKey = '';
+
+function render() {
+  const vp = document.getElementById('viewport');
+  let html = '';
+  if (S.side === 'review') html = screenReview();
+  else if (S.side === 'onboarding') html = screenOnboarding();
+  else if (S.side === 'provider') html = screenProvider();
+  else if (S.step === 'home') html = screenHome();
+  else if (S.step === 'request') html = screenRequest();
+  else if (S.step === 'searching') html = screenSearching();
+  else if (S.step === 'match') html = screenMatch();
+  else if (S.step === 'tracking') html = screenTracking();
+  else if (S.step === 'cancelled') html = screenCancelled();
+  else if (S.step === 'exhausted') html = screenExhausted();
+  /* Reset the scroll only when the screen itself changes. Resetting on every
+     render meant a keystroke or a chip tap threw the provider back to the top
+     of a long form. */
+  const key = S.side + ':' + S.step + ':' +
+    (S.onbSaved ? 'saved' : S.onbCat || '') + ':' +
+    (S.onbProposing ? 'prop' : '') + ':' + S.proposals.length;
+  const keep = key === lastScreenKey;
+  const at = vp.scrollTop;
+  vp.innerHTML = html;
+  vp.scrollTop = keep ? at : 0;
+  lastScreenKey = key;
+
+  document.getElementById('btn-customer').setAttribute('aria-pressed', String(S.side === 'customer'));
+  document.getElementById('btn-onboarding').setAttribute('aria-pressed', String(S.side === 'onboarding'));
+  document.getElementById('btn-provider').setAttribute('aria-pressed', String(S.side === 'provider'));
+  document.getElementById('btn-review').setAttribute('aria-pressed', String(S.side === 'review'));
+  // A queue with something waiting says so, because a review queue nobody
+  // looks at is a provider who cannot earn.
+  document.getElementById('review-dot').hidden =
+    !S.proposals.some((p) => p.status === 'PENDING');
+  document.getElementById('btn-back').disabled = history.length === 0;
+
+  renderRail();
+  renderKv();
+  renderCands();
+}
+
+function push() { history.push(JSON.parse(JSON.stringify(S))); }
+
+/** Update one price row, the chosen-count and the CTA — without re-rendering
+ *  the form, so the field keeps focus while it is being typed into. */
+function updatePriceRow(input) {
+  const name = input.dataset.price;
+  const min = Number(input.dataset.min), max = Number(input.dataset.max), base = Number(input.dataset.base);
+  const val = String(input.value).trim();
+  const active = val !== '';
+  const num = Number(val);
+  const bad = active && (Number.isNaN(num) || num < min || num > max);
+
+  const row = input.closest('.onb-row');
+  row.style.borderColor = bad ? 'rgba(239,68,68,.5)' : active ? 'rgba(59,130,246,.5)' : 'var(--line)';
+  const hint = row.querySelector('.onb-hint');
+  hint.style.color = bad ? 'var(--bad-bright)' : 'var(--p-ink-3)';
+  hint.innerHTML = bad
+    ? 'מחוץ לטווח המקובל — ' + ltr('₪' + min + '–₪' + max)
+    : 'מחיר ייחוס בפלטפורמה: ' + ltr('₪' + base) + ' · טווח מקובל ' + ltr('₪' + min + '–₪' + max);
+
+  const cat = CATALOG.find((c) => c.slug === S.onbCat);
+  const chosen = cat ? cat.services.filter(([n]) => String(S.onbPrices[n] ?? '').trim() !== '') : [];
+  const counter = document.getElementById('onb-count');
+  if (counter) {
+    counter.innerHTML = chosen.length ? 'נבחרו ' + ltr(chosen.length) + ' שירותים' : 'עדיין לא נבחר שירות';
+    counter.style.color = chosen.length ? 'var(--ok-bright)' : 'var(--p-ink-3)';
+  }
+
+  const save = document.getElementById('sim-onb-save');
+  if (save) save.disabled = !(cat && chosen.length > 0 && S.onbLocated);
+  const gate = document.getElementById('onb-gate');
+  if (gate) {
+    gate.hidden = Boolean(cat && chosen.length > 0 && S.onbLocated);
+    gate.textContent = !cat ? 'בחרו תחום כדי להמשיך'
+      : chosen.length === 0 ? 'הזינו מחיר לפחות לשירות אחד'
+      : 'קבע את מרכז אזור העבודה';
+  }
+
+  renderRail();
+  renderKv();
+}
+
+function closeSheet() {
+  document.getElementById('sheetwrap').hidden = true;
+}
+
+function openSheet(p, isBusy) {
+  document.getElementById('sheet-title').textContent = p.biz || p.name;
+  document.getElementById('sheet-body').innerHTML = profileSheet(p, isBusy);
+  document.getElementById('sheetwrap').hidden = false;
+  document.getElementById('sheet-close').focus();
+}
+
+/* ── Events ────────────────────────────────────────────────────────────── */
+document.getElementById('viewport').addEventListener('input', (ev) => {
+  const t = ev.target;
+  if (t.id === 'sim-desc') {
+    S.desc = t.value;
+    const go = document.getElementById('sim-go');
+    if (go) go.disabled = S.desc.trim().length < 3;
+    renderKv();
+  }
+  if (t.id === 'sim-when') S.when = t.value;
+
+  /* The registration form. A full re-render on every keystroke would replace
+     the input being typed into — losing focus after one character and
+     jumping the scroll — so a price updates its own row in place. */
+  if (t.dataset.price) {
+    S.onbPrices[t.dataset.price] = t.value;
+    updatePriceRow(t);
+    return;
+  }
+  if (t.id === 'onb-search') { S.onbSearch = t.value; render(); return; }
+  // Plain text fields do NOT re-render: replacing the input mid-typing loses
+  // focus after one character.
+  if (t.id === 'onb-prop-name') {
+    S.onbPropName = t.value;
+    const send = document.getElementById('onb-prop-send');
+    if (send) send.disabled = S.onbPropName.trim().length < 2;
+    return;
+  }
+  if (t.id === 'onb-prop-desc') { S.onbPropDesc = t.value; return; }
+  if (t.id === 'onb-prop-price') { S.onbPropPrice = t.value; return; }
+
+  // The reviewer's form, same rule: update the buttons, never the field.
+  const rvPh = t.dataset.rvPh, rvReason = t.dataset.rvReason;
+  if (rvPh || rvReason) {
+    const id = rvPh ?? rvReason;
+    const form = S.reviewForm[id] ?? { category: '', phrases: '', reason: '' };
+    if (rvPh) form.phrases = t.value; else form.reason = t.value;
+    S.reviewForm = { ...S.reviewForm, [id]: form };
+    const phrases = form.phrases.split(',').map((x) => x.trim()).filter((x) => x.length >= 2);
+    const approve = document.querySelector(`[data-rv-approve="${id}"]`);
+    if (approve) approve.disabled = !(form.category !== '' && phrases.length > 0);
+    const reject = document.querySelector(`[data-rv-reject="${id}"]`);
+    if (reject) reject.disabled = form.reason.trim().length < 3;
+    return;
+  }
+
+  if (t.id === 'onb-radius') { S.onbRadius = t.value; renderKv(); }
+  if (t.id === 'onb-biz') S.onbBiz = t.value;
+  if (t.id === 'onb-years') S.onbYears = t.value;
+});
+
+document.getElementById('viewport').addEventListener('change', (ev) => {
+  const id = ev.target?.dataset?.rvCat;
+  if (!id) return;
+  const form = S.reviewForm[id] ?? { category: '', phrases: '', reason: '' };
+  S.reviewForm = { ...S.reviewForm, [id]: { ...form, category: ev.target.value } };
+  render();
+});
+
+document.getElementById('viewport').addEventListener('click', (ev) => {
+  const t = ev.target.closest('button');
+  if (!t) return;
+
+  if (t.dataset.example) {
+    push(); S.desc = t.dataset.example; render(); return;
+  }
+  if (t.dataset.timing) {
+    push(); S.timing = t.dataset.timing; render(); return;
+  }
+  // A catalog hit selects its category, which is the point of searching.
+  if (t.dataset.hit) {
+    push();
+    S.onbCat = t.dataset.hit;
+    S.onbRadius = String(CATALOG.find((c) => c.slug === t.dataset.hit).radius);
+    S.onbSearch = '';
+    render();
+    return;
+  }
+
+  if (t.dataset.rvApprove) {
+    const id = t.dataset.rvApprove;
+    const form = S.reviewForm[id] ?? { category: '', phrases: '', reason: '' };
+    const phrases = form.phrases.split(',').map((x) => x.trim()).filter((x) => x.length >= 2);
+    if (form.category === '' || phrases.length === 0) return;
+    push();
+    const category = CATALOG.find((c) => c.slug === form.category);
+    S.proposals = S.proposals.map((prop) => prop.id === id
+      ? { ...prop, status: 'APPROVED', approvedCategory: category.name, approvedSlug: category.slug, phrases }
+      : prop);
+    render();
+    return;
+  }
+
+  if (t.dataset.rvReject) {
+    const id = t.dataset.rvReject;
+    const form = S.reviewForm[id] ?? { category: '', phrases: '', reason: '' };
+    if (form.reason.trim().length < 3) return;
+    push();
+    S.proposals = S.proposals.map((prop) => prop.id === id
+      ? { ...prop, status: 'REJECTED', reason: form.reason.trim() }
+      : prop);
+    render();
+    return;
+  }
+
+  if (t.dataset.cat) {
+    push();
+    S.onbCat = t.dataset.cat;
+    // The radius comes from the category, as it does in the real form: a
+    // locksmith's 8km and a gardener's 25km are not the same trade.
+    S.onbRadius = String(CATALOG.find((c) => c.slug === t.dataset.cat).radius);
+    S.onbPrices = {};
+    render();
+    return;
+  }
+  if (t.dataset.until) {
+    push();
+    if (t.dataset.until === 'off') { S.providerOnline = false; S.providerUntil = null; }
+    else if (t.dataset.until === '2h') { S.providerOnline = true; S.providerUntil = '22:50'; }
+    else { S.providerOnline = true; S.providerUntil = t.dataset.until; }
+    render(); return;
+  }
+
+  switch (t.id) {
+    case 'sim-go':
+      push(); S.step = 'request'; render(); break;
+
+    case 'sim-submit': {
+      push();
+      S.step = 'searching';
+      S.wave = 1;
+      render();
+      break;
+    }
+
+    case 'sim-accept': {
+      const list = eligibleList(S.timing);
+      push();
+      if (list.length === 0) { S.step = 'exhausted'; }
+      else { S.matched = list[0]; S.step = 'match'; }
+      render();
+      break;
+    }
+
+    case 'sim-reject': {
+      push();
+      S.rejected.push(S.matched.p.id);
+      S.rejections += 1;
+      S.matched = null;
+      S.wave = 1;
+      S.step = eligibleList(S.timing).length === 0 ? 'exhausted' : 'searching';
+      render();
+      break;
+    }
+
+    case 'sim-confirm':
+      push(); S.step = 'tracking'; render(); break;
+
+    case 'sim-cancel':
+      push(); S.step = 'cancelled'; render(); break;
+
+    case 'sim-restart':
+      history.length = 0; S = initial(); render(); break;
+
+    case 'sim-details':
+      openSheet(S.matched.p, S.step === 'match' || S.step === 'tracking');
+      break;
+
+    case 'onb-propose-open':
+      push();
+      S.onbProposing = true;
+      if (S.onbSearch.trim().length >= 2) S.onbPropName = S.onbSearch.trim();
+      render();
+      break;
+
+    case 'onb-prop-cancel':
+      push(); S.onbProposing = false; render(); break;
+
+    case 'onb-prop-send': {
+      if (S.onbPropName.trim().length < 2) break;
+      push();
+      const price = Number(S.onbPropPrice);
+      S.proposals = [
+        ...S.proposals,
+        {
+          id: `p${S.proposals.length + 1}`,
+          name: S.onbPropName.trim(),
+          desc: S.onbPropDesc.trim(),
+          price: Number.isFinite(price) && price > 0 ? price : null,
+          /* Whoever is filling in the form — not one of the recorded rows,
+             which belong to a dispatch that already happened. */
+          provider: S.onbBiz.trim() || 'המקצוען שממלא את הטופס',
+          status: 'PENDING',
+          phrases: [],
+          approvedCategory: null,
+          reason: null,
+        },
+      ];
+      S.onbPropName = '';
+      S.onbPropDesc = '';
+      S.onbPropPrice = '';
+      S.onbProposing = false;
+      render();
+      break;
+    }
+
+    case 'sim-onb-locate':
+      push(); S.onbLocated = true; render(); break;
+
+    case 'sim-onb-save':
+      push(); S.onbSaved = true; render(); break;
+
+    case 'sim-onb-reset': {
+      push();
+      const fresh = initial();
+      S.onbCat = fresh.onbCat; S.onbPrices = {}; S.onbRadius = '';
+      S.onbBiz = ''; S.onbYears = ''; S.onbLocated = false; S.onbSaved = false;
+      render();
+      break;
+    }
+
+    case 'sim-switch':
+      push();
+      S.providerOnline = !S.providerOnline;
+      if (!S.providerOnline) S.providerUntil = null;
+      render();
+      break;
+  }
+});
+
+document.getElementById('sheet-close').addEventListener('click', closeSheet);
+document.getElementById('scrim').addEventListener('click', closeSheet);
+document.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape' && !document.getElementById('sheetwrap').hidden) closeSheet();
+});
+
+document.getElementById('btn-customer').addEventListener('click', () => {
+  push(); S.side = 'customer'; render();
+});
+document.getElementById('btn-onboarding').addEventListener('click', () => {
+  push(); S.side = 'onboarding'; render();
+});
+document.getElementById('btn-provider').addEventListener('click', () => {
+  push(); S.side = 'provider'; render();
+});
+document.getElementById('btn-review').addEventListener('click', () => {
+  push(); S.side = 'review'; render();
+});
+document.getElementById('btn-restart').addEventListener('click', () => {
+  history.length = 0; S = initial(); closeSheet(); render();
+});
+document.getElementById('btn-back').addEventListener('click', () => {
+  const prev = history.pop();
+  if (prev) { S = prev; closeSheet(); render(); }
+});
+
+/* Open in a realistic state rather than an empty shell: the problem is
+   already typed, so the first frame shows what the thing does. */
+S.desc = EXAMPLES[0];
+render();
+</script>

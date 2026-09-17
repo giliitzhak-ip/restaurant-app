@@ -331,7 +331,7 @@ export function AdminTower() {
                         onChange={(event) => set({ category: event.target.value })}
                         className="min-h-11 w-full rounded-lg border border-line-strong bg-surface-2 px-3 text-sm text-ink"
                       >
-                        <option value="">בחר תחום…</option>
+                        <option value="">בחרו תחום…</option>
                         {data.categories.map((c) => (
                           <option key={c.slug} value={c.slug}>
                             {c.name_he}

@@ -183,7 +183,7 @@ export function ProviderProfileSheet({
           {/* ── What they do. The requested service leads. ─────────────── */}
           {profile.services.length > 0 && (
             <section>
-              <SectionLabel>מה הוא עושה</SectionLabel>
+              <SectionLabel>שירותים ומחירים</SectionLabel>
               <div className="space-y-1.5">
                 {[...profile.services]
                   .sort((a, b) => Number(b.isRequested) - Number(a.isRequested))

@@ -64,6 +64,16 @@ writes them.
   still looked plausible. The batch now clears its own rows first, and
   `validate-seed.mjs` asserts no duplicate window or area exists.
 
+  `provider_locations` had the opposite bug: it upserted with `ON CONFLICT DO
+  NOTHING`, so a rerun kept the fixes from the first run and every one of them
+  aged past `maxLocationAgeSeconds`. The network stayed present and became
+  unmatchable — a dispatch excluded all 25 candidates with
+  `location_not_live`, and rerunning the seeder could not repair it, because
+  the seeder was the thing declining to write. It now writes the fresh fix,
+  heading, speed, accuracy and destination on conflict. The deliberately stale
+  fixes are still stale: staleness is generated per provider, not an artifact
+  of when the script last ran.
+
 ### What is varied, and why
 
 | Dimension | Shape |
@@ -73,11 +83,11 @@ writes them.
 | Rating | Generated **with** its review count in six tiers, so 4.9 comes with hundreds of reviews and 4.2 with a few dozen. A rating and a count drawn independently produce nonsense like 5.0 from two reviews sitting above 4.8 from three hundred. |
 | New providers | ~9% have `rating_avg = null` and `rating_count = 0`, so the "no rating yet" path is exercised by data rather than only by a test. They show `חדש ב-GET SERVICE`, never `0.0`. |
 | Verification | Mostly `VERIFIED`, some `PENDING`, a few `REJECTED`/`SUSPENDED`. |
-| Realtime state | ~57% `ONLINE` at seed time. |
+| Realtime state | ~59% `ONLINE` at seed time. |
 | Weekly hours | Several shapes: standard weekday, long-hours, split shift, weekend-inclusive, and ~25% with no declared hours at all. |
-| Date overrides | 272 upcoming exceptions, both blocks and replacement windows. |
+| Date overrides | 342 upcoming exceptions, both blocks and replacement windows. |
 | Locations | Some fresh, some deliberately **stale**, some absent — so the "a stale fix is not a live fix" rule is exercised by real data. |
-| Destinations / headings | 282 providers are travelling somewhere, which is what makes route opportunity testable at all. |
+| Destinations / headings | 288 providers are travelling somewhere, which is what makes route opportunity testable at all. |
 
 ## Validation
 
