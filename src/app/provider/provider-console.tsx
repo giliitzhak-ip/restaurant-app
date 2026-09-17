@@ -14,6 +14,7 @@ import {
   Minutes,
   Money,
   Rating,
+  Switch,
 } from '@/components/ui';
 import { Logo } from '@/components/brand';
 import { apiFetch, ApiRequestError } from '@/lib/client/api';
@@ -50,9 +51,18 @@ interface ActiveJob {
   service_name: string | null;
 }
 
+interface AvailabilityLine {
+  availableNow: boolean;
+  openUntil: string | null;
+  onlineUntil: string | null;
+  nextAvailableAt: string | null;
+  phrase: string;
+}
+
 interface ProviderData {
   offers: Offer[];
   active: ActiveJob | null;
+  availability: AvailabilityLine | null;
   profile: {
     state: 'OFFLINE' | 'ONLINE' | 'BUSY';
     verification: string;
@@ -236,6 +246,7 @@ export function ProviderConsole() {
   const profile = data?.profile;
   const active = data?.active ?? null;
   const offers = data?.offers ?? [];
+  const availability = data?.availability ?? null;
   const nextStep = activeStatus ? NEXT_STEP[activeStatus] : undefined;
 
   return (
@@ -252,15 +263,15 @@ export function ProviderConsole() {
 
       <ConnectionBanner state={connection} />
 
-      {/* ── Availability: the one control that matters most ─────────────── */}
+      {/* ── Availability: ONE dominant control (spec §9, §45) ──────────────
+          Everything else about hours lives one tap away. What the provider
+          needs on this screen is the current answer and the switch. */}
       <Card>
-        <p className="text-lg font-bold text-ink">שלום {profile?.full_name ?? ''}</p>
-
         {/* Setup comes before verification: verifying an account with no
             declared trade achieves nothing, because the candidate search
             would still never return it. */}
         {profile && !profile.is_configured ? (
-          <div className="mt-3 rounded-xl border border-brand/40 bg-brand/10 p-4">
+          <div className="rounded-xl border border-brand/40 bg-brand/10 p-4">
             <p className="font-semibold text-brand-bright">צריך להשלים את הפרופיל</p>
             <p className="mt-1 text-sm text-ink-2">
               בלי תחום ומחירים לא נשלח לך עבודות — המערכת לא תכלול אותך בחיפוש.
@@ -272,7 +283,7 @@ export function ProviderConsole() {
             </Link>
           </div>
         ) : profile?.verification !== 'VERIFIED' ? (
-          <div className="mt-3 rounded-xl border border-warn/40 bg-warn/10 p-4">
+          <div className="rounded-xl border border-warn/40 bg-warn/10 p-4">
             <p className="font-semibold text-warn-bright">החשבון ממתין לאימות</p>
             <p className="mt-1 text-sm text-ink-2">
               הפרופיל מוגדר. לא ניתן לקבל עבודות עד שמנהל יאמת את הפרטים והמסמכים.
@@ -283,35 +294,40 @@ export function ProviderConsole() {
               </Button>
             </Link>
           </div>
+        ) : state === 'BUSY' ? (
+          // BUSY is not a choice, so it is not shown as one.
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-lg font-bold text-ink">בעבודה</p>
+              <p className="mt-0.5 text-sm text-ink-2">לא נשלח לך עבודות נוספות עד שתסיים</p>
+            </div>
+            <Badge tone="brand">עבודה פעילה</Badge>
+          </div>
         ) : (
           <>
-            <div className="mt-4 flex items-center justify-between gap-3">
-              <div>
-                <Badge tone={state === 'ONLINE' ? 'ok' : state === 'BUSY' ? 'brand' : 'neutral'}>
-                  {state === 'ONLINE' ? 'ONLINE' : state === 'BUSY' ? 'בעבודה' : 'OFFLINE'}
-                </Badge>
-                <p className="mt-2 text-sm text-ink-2">
-                  {state === 'ONLINE'
-                    ? 'אתה זמין לקבל עבודות'
-                    : state === 'BUSY'
-                      ? 'יש לך עבודה פעילה'
-                      : 'אתה לא מקוון — לא תקבל עבודות'}
-                </p>
-              </div>
-              {state !== 'BUSY' && (
-                <Button
-                  size="lg"
-                  variant={state === 'ONLINE' ? 'secondary' : 'success'}
-                  loading={busy === 'state'}
-                  onClick={() => void setAvailability(state === 'ONLINE' ? 'OFFLINE' : 'ONLINE')}
-                >
-                  {state === 'ONLINE' ? 'סיום משמרת' : 'התחל משמרת'}
-                </Button>
-              )}
+            <Switch
+              checked={state === 'ONLINE'}
+              busy={busy === 'state'}
+              label="מקבל עבודות"
+              detail={availability?.phrase ?? (state === 'ONLINE' ? 'זמין כרגע' : 'כרגע לא מקבל עבודות')}
+              onChange={(next) => void setAvailability(next ? 'ONLINE' : 'OFFLINE')}
+            />
+
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <p className="min-w-0 truncate text-[13px] text-ink-3">
+                {profile?.full_name}
+              </p>
+              <Link
+                href="/provider/availability"
+                className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-xl px-3 text-sm font-semibold text-brand-bright hover:bg-surface-2"
+              >
+                שינוי שעות
+                <span aria-hidden="true">›</span>
+              </Link>
             </div>
 
             {locationNote && state !== 'OFFLINE' && (
-              <p className="mt-3 rounded-xl bg-warn/10 px-3 py-2 text-sm text-warn-bright">
+              <p className="mt-2 rounded-xl bg-warn/10 px-3 py-2 text-sm text-warn-bright">
                 {locationNote}
               </p>
             )}

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { ApiError, handleError, ok } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth';
 import { withSystem } from '@/lib/db';
+import { availabilityPhrase, availabilitySummary } from '@/domains/availability/summary';
 import { newRequestId } from '@/lib/logger';
 
 const paramsSchema = z.object({ id: z.uuid() });
@@ -101,19 +102,23 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         [id],
       );
 
-      // ONE availability answer, not a calendar (spec §55).
-      const availability = await db.one<{ available_now: boolean; next_at: Date | null }>(
-        `select provider_is_available_at($1, now()) as available_now,
-                provider_next_available_at($1) as next_at`,
-        [id],
-      );
-
-      return { profile, services, areas, reviews, ratingBreakdown, availability };
+      return { profile, services, areas, reviews, ratingBreakdown };
     });
 
     if (!data) throw new ApiError('NOT_FOUND', 'הפרופיל לא נמצא', 404);
 
-    const { profile, availability } = data;
+    const { profile } = data;
+
+    const ratingRows =
+      Number(data.ratingBreakdown?.five ?? 0) +
+      Number(data.ratingBreakdown?.four ?? 0) +
+      Number(data.ratingBreakdown?.three ?? 0) +
+      Number(data.ratingBreakdown?.low ?? 0);
+
+    // ONE availability answer, not a calendar (spec §55, §56). The same
+    // helper the provider's own screen uses, so both sides of the market are
+    // told the same thing.
+    const availability = await availabilitySummary(id);
 
     return ok({
       id: profile.id,
@@ -137,12 +142,22 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       isNew: profile.rating_count === 0 && profile.completed_jobs === 0,
       avgResponseSeconds: profile.avg_response_seconds,
       memberSince: profile.member_since,
-      ratingBreakdown: {
-        five: Number(data.ratingBreakdown?.five ?? 0),
-        four: Number(data.ratingBreakdown?.four ?? 0),
-        three: Number(data.ratingBreakdown?.three ?? 0),
-        low: Number(data.ratingBreakdown?.low ?? 0),
-      },
+      /**
+       * The star distribution comes from real review ROWS, while ratingAvg
+       * and ratingCount are columns on the provider record. Those can
+       * disagree — a migrated or seeded provider carries an aggregate with no
+       * individual reviews behind it — and when they do, the honest answer is
+       * null rather than a 0/0/0/0 breakdown that reads as "nobody gave five
+       * stars" (spec §27, §72).
+       */
+      ratingBreakdown: ratingRows > 0
+        ? {
+            five: Number(data.ratingBreakdown?.five ?? 0),
+            four: Number(data.ratingBreakdown?.four ?? 0),
+            three: Number(data.ratingBreakdown?.three ?? 0),
+            low: Number(data.ratingBreakdown?.low ?? 0),
+          }
+        : null,
       // All the provider's services are listed — a customer deciding who to
       // trust wants to see the breadth of what they do (spec §17) — with the
       // requested one flagged so the UI can lead with it.
@@ -167,8 +182,11 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         professionalism: r.professionalism,
       })),
       availability: {
-        availableNow: availability?.available_now ?? false,
-        nextAvailableAt: availability?.next_at ?? null,
+        availableNow: availability.availableNow,
+        nextAvailableAt: availability.nextAvailableAt,
+        // Pre-phrased on the server so every surface says it identically,
+        // and so the answer does not depend on the browser's timezone.
+        phrase: availabilityPhrase(availability, new Date()),
       },
     });
   } catch (error) {

@@ -10,7 +10,10 @@ import {
   createJob,
   createProvider,
   createScheduledJob,
+  currentLocalHHMM,
+  localDate,
   localTime,
+  setOnlineUntil,
   setOverride,
   setSchedule,
   weekdayFor,
@@ -260,5 +263,94 @@ describe('provider availability', () => {
     );
     expect(rows[0]!.dow).toBe(await weekdayFor(3));
     expect(rows[0]!.hhmm >= '09:00' && rows[0]!.hhmm <= '17:00').toBe(true);
+  });
+  /**
+   * Regression: the weekly plan used to veto the realtime switch for a NOW
+   * request, because both a date override and an uncovered hour came back
+   * from the same function as plain `false`. A provider with normal weekday
+   * hours who tapped "accepting jobs" in the evening was shown as available
+   * and matched as unavailable. Spec §11 puts REALTIME above PLANNED for
+   * exactly this reason — the switch is the more specific, more recent
+   * statement — while DATE OVERRIDE stays above both.
+   */
+  it('the realtime switch beats the weekly plan for a NOW request', async () => {
+    const provider = await createProvider({ name: 'משמרת חריגה' });
+    // Declares hours that deliberately EXCLUDE the present moment.
+    const today = await weekdayFor(0);
+    const nowHHMM = await currentLocalHHMM();
+    const windows =
+      nowHHMM < '12:00'
+        ? [{ weekday: today, startsAt: '18:00', endsAt: '22:00' }]
+        : [{ weekday: today, startsAt: '00:00', endsAt: '06:00' }];
+    await setSchedule(provider.id, windows);
+
+    // Outside planned hours, but the switch is on: available.
+    expect(await availableAt(provider.id, new Date())).toBe(true);
+
+    // ...and the plan still governs a future slot it does not cover.
+    expect(await availableAt(provider.id, await localTime(2, '13:30'))).toBe(false);
+  });
+
+  it('a date override still beats the switch, even outside planned hours', async () => {
+    const provider = await createProvider({ name: 'לא היום' });
+    await setSchedule(provider.id, [
+      { weekday: await weekdayFor(0), startsAt: '00:00', endsAt: '23:59' },
+    ]);
+    expect(await availableAt(provider.id, new Date())).toBe(true);
+
+    await setOverride(provider.id, await localDate(0), 'unavailable');
+    expect(await availableAt(provider.id, new Date())).toBe(false);
+  });
+
+  /**
+   * Temporary availability ("זמין לשעתיים", "זמין עד 18:00"). The expiry is
+   * enforced inside provider_is_available_at rather than only by the sweeper,
+   * because matching must never depend on a background job having run.
+   */
+  it('an expired "accepting jobs until" window stops matching immediately', async () => {
+    const provider = await createProvider({ name: 'משמרת שהסתיימה' });
+    await setSchedule(provider.id, [
+      { weekday: await weekdayFor(0), startsAt: '00:00', endsAt: '23:59' },
+    ]);
+
+    await setOnlineUntil(provider.id, 30);
+    expect(await availableAt(provider.id, new Date())).toBe(true);
+
+    // Already past: no sweeper has run, and matching must still refuse.
+    await setOnlineUntil(provider.id, -1);
+    expect(await availableAt(provider.id, new Date())).toBe(false);
+
+    // The provider record still SAYS online, which is precisely the state the
+    // sweeper exists to reconcile.
+    const before = await adminPool().query<{ state: string }>(
+      'select state::text as state from provider_profiles where id = $1',
+      [provider.id],
+    );
+    expect(before.rows[0]?.state).toBe('ONLINE');
+
+    const swept = await withSystem((db) =>
+      db.one<{ n: number }>('select expire_online_windows() as n'),
+    );
+    expect(swept?.n).toBeGreaterThanOrEqual(1);
+
+    const after = await adminPool().query<{ state: string; online_until: Date | null }>(
+      'select state::text as state, online_until from provider_profiles where id = $1',
+      [provider.id],
+    );
+    expect(after.rows[0]?.state).toBe('OFFLINE');
+    expect(after.rows[0]?.online_until).toBeNull();
+  });
+
+  it('does not end a shift that has not reached its declared end', async () => {
+    const provider = await createProvider({ name: 'עוד במשמרת' });
+    await setOnlineUntil(provider.id, 60);
+
+    await withSystem((db) => db.one('select expire_online_windows() as n'));
+
+    const { rows } = await adminPool().query<{ state: string }>(
+      'select state::text as state from provider_profiles where id = $1',
+      [provider.id],
+    );
+    expect(rows[0]?.state).toBe('ONLINE');
   });
 });

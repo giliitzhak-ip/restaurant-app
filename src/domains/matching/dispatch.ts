@@ -402,11 +402,20 @@ async function recordMatchingEvent(
  */
 export async function expireAndEscalate(): Promise<{
   expiredOffers: number;
+  shiftsEnded: number;
   escalated: string[];
 }> {
-  const { expired, stalled } = await withSystem(async (db) => {
+  const { expired, shiftsEnded, stalled } = await withSystem(async (db) => {
     const expiredRow = await db.one<{ expire_stale_offers: number }>(
       'select expire_stale_offers()',
+    );
+
+    // Providers whose "accepting jobs until X" window has passed. Matching
+    // already ignores them (provider_is_available_at checks online_until), so
+    // this is about the screens agreeing with matching rather than about
+    // correctness — which is why it cannot be the only enforcement.
+    const shiftRow = await db.one<{ expire_online_windows: number }>(
+      'select expire_online_windows()',
     );
 
     // Jobs that were waiting on offers, where nothing is pending any more.
@@ -423,6 +432,7 @@ export async function expireAndEscalate(): Promise<{
 
     return {
       expired: expiredRow?.expire_stale_offers ?? 0,
+      shiftsEnded: shiftRow?.expire_online_windows ?? 0,
       stalled: stalledRows.map((r) => r.id),
     };
   });
@@ -453,5 +463,5 @@ export async function expireAndEscalate(): Promise<{
     }
   }
 
-  return { expiredOffers: expired, escalated };
+  return { expiredOffers: expired, shiftsEnded, escalated };
 }

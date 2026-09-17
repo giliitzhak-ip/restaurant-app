@@ -1,6 +1,7 @@
 import { handleError, ok } from '@/lib/api';
 import { requireRole } from '@/lib/auth';
 import { withUser } from '@/lib/db';
+import { availabilityPhrase, availabilitySummary } from '@/domains/availability/summary';
 import { newRequestId } from '@/lib/logger';
 
 /**
@@ -83,7 +84,18 @@ export async function GET() {
       ),
     );
 
-    return ok({ offers, active, profile });
+    // The provider home shows availability as one line, so it ships with this
+    // payload rather than costing a second round-trip on a screen that polls.
+    const availability = profile ? await availabilitySummary(user.id) : null;
+
+    return ok({
+      offers,
+      active,
+      profile,
+      availability: availability
+        ? { ...availability, phrase: availabilityPhrase(availability, new Date()) }
+        : null,
+    });
   } catch (error) {
     return handleError(error, 'provider.offers', requestId);
   }

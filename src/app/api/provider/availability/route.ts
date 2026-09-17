@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { ApiError, handleError, ok, parseJson } from '@/lib/api';
 import { requireRole } from '@/lib/auth';
-import { withSystem, withUser } from '@/lib/db';
+import { withUser } from '@/lib/db';
+import { availabilitySummary, availabilityPhrase } from '@/domains/availability/summary';
 import { logOperation, newRequestId } from '@/lib/logger';
 
 /**
@@ -29,11 +30,30 @@ const putSchema = z.object({
 
 const overrideSchema = z.object({
   onDate: z.iso.date(),
+  /**
+   * A vacation is the same thing as "not available" repeated over a range, so
+   * it is not a third concept — it is one override per day. That keeps the
+   * precedence rules unchanged and means a single day can still be reclaimed
+   * without unpicking a range.
+   */
+  untilDate: z.iso.date().optional(),
   kind: z.enum(['unavailable', 'window']),
   startsAt: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
   endsAt: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
   note: z.string().trim().max(200).optional(),
 });
+
+/** Inclusive list of ISO dates from..to, capped so one request cannot write forever. */
+function dateRange(from: string, to: string): string[] {
+  const dates: string[] = [];
+  const cursor = new Date(`${from}T00:00:00Z`);
+  const end = new Date(`${to}T00:00:00Z`);
+  while (cursor <= end && dates.length < 120) {
+    dates.push(cursor.toISOString().slice(0, 10));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return dates;
+}
 
 const HEBREW_DAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 
@@ -75,35 +95,16 @@ export async function GET() {
       return { windows, overrides, state };
     });
 
-    // The one line the provider home screen shows. Computed server-side
-    // because it depends on overrides, conflicts and the clock.
-    const summary = await withSystem((db) =>
-      db.one<{ next_at: Date | null; open_until: string | null }>(
-        `select
-           provider_next_available_at($1) as next_at,
-           (
-             -- If they are available right now, when does the current window end?
-             select to_char(
-                      coalesce(
-                        (select o.ends_at from provider_availability_overrides o
-                          where o.provider_id = $1
-                            and o.on_date = (now() at time zone availability_timezone())::date
-                            and o.kind = 'window'),
-                        (select max(r.ends_at) from provider_availability_rules r
-                          where r.provider_id = $1 and r.is_active
-                            and r.weekday = extract(dow from now() at time zone availability_timezone())::smallint
-                            and (now() at time zone availability_timezone())::time between r.starts_at and r.ends_at)
-                      ), 'HH24:MI')
-           ) as open_until`,
-        [user.id],
-      ),
-    );
+    // The one line the provider home screen shows, from the same helper the
+    // customer-facing profile uses — so the provider can never be told
+    // something different from what a customer is told about them.
+    const summary = await availabilitySummary(user.id);
 
     return ok({
       ...data,
       dayNames: HEBREW_DAYS,
-      nextAvailableAt: summary?.next_at ?? null,
-      openUntil: summary?.open_until ?? null,
+      summary,
+      phrase: availabilityPhrase(summary, new Date()),
     });
   } catch (error) {
     return handleError(error, 'provider.availability.get', requestId);
@@ -192,31 +193,48 @@ export async function POST(request: Request) {
     if (body.kind === 'window' && body.endsAt! <= body.startsAt!) {
       throw new ApiError('INVALID_WINDOW', 'שעת הסיום חייבת להיות אחרי ההתחלה', 422);
     }
+    if (body.untilDate && body.untilDate < body.onDate) {
+      throw new ApiError('INVALID_RANGE', 'תאריך הסיום חייב להיות אחרי תאריך ההתחלה', 422);
+    }
+    if (body.untilDate && body.kind === 'window') {
+      // A repeated daily window across a range is the weekly plan's job, and
+      // offering both would give two answers to the same question.
+      throw new ApiError(
+        'RANGE_UNSUPPORTED',
+        'טווח תאריכים אפשרי רק לחסימה. לשעות קבועות יש להשתמש בתוכנית השבועית.',
+        422,
+      );
+    }
 
-    await withUser(user.id, (db) =>
-      db.query(
-        `insert into provider_availability_overrides
-           (provider_id, on_date, kind, starts_at, ends_at, note)
-         values ($1,$2::date,$3,$4::time,$5::time,$6)
-         on conflict (provider_id, on_date) do update
-           set kind = excluded.kind, starts_at = excluded.starts_at,
-               ends_at = excluded.ends_at, note = excluded.note`,
-        [
-          user.id, body.onDate, body.kind,
-          body.kind === 'window' ? (body.startsAt ?? null) : null,
-          body.kind === 'window' ? (body.endsAt ?? null) : null,
-          body.note ?? null,
-        ],
-      ),
-    );
+    const dates = body.untilDate ? dateRange(body.onDate, body.untilDate) : [body.onDate];
+
+    await withUser(user.id, async (db) => {
+      for (const onDate of dates) {
+        await db.query(
+          `insert into provider_availability_overrides
+             (provider_id, on_date, kind, starts_at, ends_at, note)
+           values ($1,$2::date,$3,$4::time,$5::time,$6)
+           on conflict (provider_id, on_date) do update
+             set kind = excluded.kind, starts_at = excluded.starts_at,
+                 ends_at = excluded.ends_at, note = excluded.note`,
+          [
+            user.id, onDate, body.kind,
+            body.kind === 'window' ? (body.startsAt ?? null) : null,
+            body.kind === 'window' ? (body.endsAt ?? null) : null,
+            body.note ?? null,
+          ],
+        );
+      }
+    });
 
     logOperation({
       requestId, userId: user.id, providerId: user.id,
       operation: 'provider.availability.override', result: 'ok',
-      meta: { onDate: body.onDate, kind: body.kind },
+      meta: { onDate: body.onDate, untilDate: body.untilDate ?? body.onDate,
+              kind: body.kind, days: dates.length },
     });
 
-    return ok({ onDate: body.onDate, kind: body.kind });
+    return ok({ onDate: body.onDate, kind: body.kind, days: dates.length });
   } catch (error) {
     return handleError(error, 'provider.availability.override', requestId);
   }

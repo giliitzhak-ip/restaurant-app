@@ -471,3 +471,34 @@ export async function createScheduledJob(options: {
   if (!id) throw new Error('Failed to create scheduled test job');
   return id;
 }
+
+/** Today's date (or an offset) as YYYY-MM-DD in the app's timezone. */
+export async function localDate(dayOffset = 0): Promise<string> {
+  const { rows } = await adminPool().query<{ d: string }>(
+    `select ((now() + make_interval(days => $1)) at time zone availability_timezone())::date::text as d`,
+    [dayOffset],
+  );
+  return rows[0]!.d;
+}
+
+/** The current wall-clock time in the app's timezone, as HH:MM. */
+export async function currentLocalHHMM(): Promise<string> {
+  const { rows } = await adminPool().query<{ t: string }>(
+    `select to_char(now() at time zone availability_timezone(), 'HH24:MI') as t`,
+  );
+  return rows[0]!.t;
+}
+
+/**
+ * Declare an end to the realtime shift, relative to now. A negative value
+ * puts it in the past, which is how the "expired but not yet swept" state is
+ * reached without waiting.
+ */
+export async function setOnlineUntil(providerId: string, minutesFromNow: number): Promise<void> {
+  await adminPool().query(
+    `update provider_profiles
+        set state = 'ONLINE', online_until = now() + make_interval(mins => $2)
+      where id = $1`,
+    [providerId, minutesFromNow],
+  );
+}

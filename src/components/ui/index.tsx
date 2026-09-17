@@ -233,6 +233,73 @@ export function Segmented<T extends string>({
   );
 }
 
+/**
+ * The one control that matters most on the provider's screen (spec §9, §45).
+ *
+ * A switch, not a pair of buttons: the provider needs to see the current
+ * answer from across a van, and change it with a thumb. The label is part of
+ * the control so the whole row is the hit target.
+ */
+export function Switch({
+  checked,
+  onChange,
+  label,
+  detail,
+  busy = false,
+  disabled = false,
+}: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  label: string;
+  detail?: React.ReactNode;
+  busy?: boolean;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-busy={busy || undefined}
+      disabled={disabled || busy}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        'flex w-full items-center justify-between gap-4 rounded-2xl border p-4 text-start transition-colors',
+        'disabled:cursor-not-allowed disabled:opacity-50',
+        checked
+          ? 'border-ok/45 bg-ok/10'
+          : 'border-line-strong bg-surface-2 hover:border-line-strong',
+      )}
+    >
+      <span className="min-w-0">
+        <span className={cn('block text-lg font-bold', checked ? 'text-ok-bright' : 'text-ink')}>
+          {label}
+        </span>
+        {detail && <span className="mt-0.5 block text-sm text-ink-2">{detail}</span>}
+      </span>
+
+      <span
+        aria-hidden="true"
+        className={cn(
+          'relative inline-flex h-8 w-14 shrink-0 items-center rounded-full transition-colors',
+          checked ? 'bg-ok' : 'bg-line-strong',
+        )}
+      >
+        <span
+          className={cn(
+            'absolute inline-flex size-6 items-center justify-center rounded-full bg-white transition-all',
+            // RTL: "on" moves the knob to the start edge, which in Hebrew is
+            // the right — so it is positioned by logical inset, not by left.
+            checked ? 'end-1' : 'start-1',
+          )}
+        >
+          {busy && <Spinner className="size-3.5 text-ink-3" />}
+        </span>
+      </span>
+    </button>
+  );
+}
+
 /* ──────────────────────────────── States ──────────────────────────────── */
 
 export function LoadingState({ label = 'טוען…' }: { label?: string }) {

@@ -5,8 +5,9 @@ import { logOperation, newRequestId } from '@/lib/logger';
 /**
  * Maintenance tick (spec §16, §44).
  *
- * Expires offers whose window closed and escalates any job still waiting to
- * its next dispatch wave. Idempotent, so it is safe to call from a cron, a
+ * Expires offers whose window closed, ends realtime shifts that have run
+ * past their declared end, and escalates any job still waiting to its next
+ * dispatch wave. Idempotent, so it is safe to call from a cron, a
  * scheduler, or the demo console.
  *
  * Protected by a shared secret rather than a user session, because it acts as
@@ -42,7 +43,11 @@ export async function POST(request: Request) {
     const result = await expireAndEscalate();
     logOperation({
       requestId, operation: 'maintenance.tick', result: 'ok',
-      meta: { expiredOffers: result.expiredOffers, escalated: result.escalated.length },
+      meta: {
+        expiredOffers: result.expiredOffers,
+        shiftsEnded: result.shiftsEnded,
+        escalated: result.escalated.length,
+      },
     });
     return ok(result);
   } catch (error) {
