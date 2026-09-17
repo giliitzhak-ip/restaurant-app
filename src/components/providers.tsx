@@ -3,6 +3,7 @@
 import * as React from "react";
 import { usePathname } from "next/navigation";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { OfflineBanner } from "@/components/offline-banner";
 import { ToastProvider } from "@/components/ui/toast";
 import { CartProvider } from "@/features/cart/cart-provider";
 import { FavoritesProvider } from "@/features/catalog/favorites-provider";
@@ -41,6 +42,7 @@ export function AppProviders({
           <FavoritesProvider initialFavorites={favorites} signedIn={Boolean(user)}>
             <CartProvider initialCart={cart}>
               <PageViewTracker />
+              <OfflineBanner />
               {children}
             </CartProvider>
           </FavoritesProvider>
