@@ -99,6 +99,8 @@ export function JobLiveView({ jobId }: { jobId: string }) {
   // ETA stay mounted behind the sheet and are exactly what closing returns
   // to (spec §47).
   const [profileOpen, setProfileOpen] = useState(false);
+  /** How many matches the customer has turned down on this job so far. */
+  const [rejections, setRejections] = useState(0);
   const [actionError, setActionError] = useState<string | null>(null);
 
   /**
@@ -170,6 +172,33 @@ export function JobLiveView({ jobId }: { jobId: string }) {
     } catch (caught) {
       setActionError(caught instanceof ApiRequestError ? caught.message : 'הפעולה נכשלה');
       // Always resync: the server may have advanced past what we believed.
+      await refetch();
+    } finally {
+      setActing(false);
+    }
+  };
+
+  /**
+   * "Not this one — keep looking."
+   *
+   * Under first-accept-wins the customer sees one match at a time, so the
+   * only way out of a match they did not want used to be cancelling the whole
+   * request and retyping it. Rejecting a person is not the same intention as
+   * abandoning the job, and the endpoint keeps the request alive: it frees
+   * the provider, excludes them, and searches again.
+   */
+  const rejectMatch = async () => {
+    setActing(true);
+    setActionError(null);
+    try {
+      const result = await apiFetch<{ rejectionsUsed: number; rejectionsAllowed: number }>(
+        `/api/jobs/${jobId}/reject-match`,
+        { method: 'POST', json: {} },
+      );
+      setRejections(result.rejectionsUsed);
+      await refetch();
+    } catch (caught) {
+      setActionError(caught instanceof ApiRequestError ? caught.message : 'הפעולה נכשלה');
       await refetch();
     } finally {
       setActing(false);
@@ -309,15 +338,39 @@ export function JobLiveView({ jobId }: { jobId: string }) {
             <Button size="xl" fullWidth loading={acting} onClick={() => void transition('CONFIRMED')}>
               הזמן עכשיו
             </Button>
+            {/* Two different intentions, no longer collapsed into one button:
+                reject this person and keep the request, or drop the request. */}
+            <Button
+              variant="secondary"
+              size="md"
+              fullWidth
+              loading={acting}
+              onClick={() => void rejectMatch()}
+            >
+              לא זה — חפשו אחר
+            </Button>
             <Button
               variant="quiet"
               size="md"
               fullWidth
               loading={acting}
-              onClick={() => void transition('CANCELLED_BY_CUSTOMER', 'הלקוח דחה את ההתאמה')}
+              onClick={() => void transition('CANCELLED_BY_CUSTOMER', 'הלקוח ביטל את הבקשה')}
             >
-              לא, תודה
+              ביטול הבקשה
             </Button>
+            {rejections > 0 && (
+              <p className="text-center text-[12.5px] text-ink-3">
+                דחית{' '}
+                <span className="ltr-nums" dir="ltr">
+                  {rejections}
+                </span>{' '}
+                מתוך{' '}
+                <span className="ltr-nums" dir="ltr">
+                  3
+                </span>{' '}
+                התאמות בבקשה הזו
+              </p>
+            )}
           </div>
         </Card>
       )}

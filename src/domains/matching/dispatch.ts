@@ -233,28 +233,85 @@ export async function runDispatchWave(
     const expiresAt = new Date(Date.now() + config.dispatch.offerTtlSeconds * 1000);
     let offersCreated = 0;
 
+    /*
+     * job_offers is UNIQUE(job_id, provider_id) — one offer row per provider
+     * per job, ever (A-010) — so a provider being offered the job a SECOND
+     * time reuses their row rather than adding one.
+     *
+     * That second time is a real case, not a theoretical one: under
+     * first-accept-wins, accept_job_offer() cancels every competing offer the
+     * moment someone wins. If the winner then withdraws, or the customer
+     * rejects them, the providers who merely lost the race are exactly who
+     * should be asked next. `on conflict do nothing` silently refused them,
+     * so re-dispatch reported a wave with zero offers and the request died in
+     * a thin market.
+     *
+     * Splitting insert from update rather than using a clever upsert, because
+     * a re-offer needs two extra things: the guard that only a race-loser row
+     * may be revived, and the old telemetry event unbound from the offer so
+     * an acceptance is not counted twice.
+     */
+    const { rows: existingOffers } = await db.query<{ provider_id: string; id: string }>(
+      `select provider_id, id from job_offers
+        where job_id = $1 and provider_id = any($2::uuid[])`,
+      [jobId, selected.map((s) => s.candidate.providerId)],
+    );
+    const existingByProvider = new Map(existingOffers.map((r) => [r.provider_id, r.id]));
+
     for (const scored of selected) {
-      const offer = await db.one<{ id: string }>(
-        `insert into job_offers
-           (job_id, provider_id, wave, price_ils, eta_minutes, eta_confidence,
-            distance_km, is_on_the_way, final_score, score_breakdown, expires_at)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-         on conflict (job_id, provider_id) do nothing
-         returning id`,
-        [
-          jobId,
-          scored.candidate.providerId,
-          wave.wave,
-          scored.priceIls,
-          scored.etaMinutes === null ? null : Math.round(scored.etaMinutes),
-          scored.etaConfidence,
-          scored.routeDistanceKm,
-          scored.routeOpportunity.isOnTheWay,
-          scored.finalScore,
-          JSON.stringify(scored.breakdown),
-          expiresAt,
-        ],
-      );
+      const offerValues = [
+        scored.priceIls,
+        scored.etaMinutes === null ? null : Math.round(scored.etaMinutes),
+        scored.etaConfidence,
+        scored.routeDistanceKm,
+        scored.routeOpportunity.isOnTheWay,
+        scored.finalScore,
+        JSON.stringify(scored.breakdown),
+        expiresAt,
+      ] as const;
+
+      const existingId = existingByProvider.get(scored.candidate.providerId);
+      let offer: { id: string } | null;
+
+      if (existingId) {
+        // Revive ONLY a race-loser: CANCELLED with no decline_reason. A
+        // declined, expired, held or customer-rejected offer must stay closed,
+        // and the guard agrees with find_candidate_providers' exclusion so
+        // neither is load-bearing on its own.
+        offer = await db.one<{ id: string }>(
+          `update job_offers
+              set status = 'PENDING', wave = $2,
+                  price_ils = $3, eta_minutes = $4, eta_confidence = $5,
+                  distance_km = $6, is_on_the_way = $7,
+                  final_score = $8, score_breakdown = $9::jsonb,
+                  expires_at = $10, notified_at = now(), responded_at = null
+            where id = $1
+              and status = 'CANCELLED'
+              and decline_reason is null
+            returning id`,
+          [existingId, wave.wave, ...offerValues],
+        );
+        if (offer) {
+          // The previous notification's telemetry stays as history, but stops
+          // pointing at this offer: accept_job_offer() marks acceptance by
+          // offer_id, and two rows sharing one id would both be marked.
+          await db.query(
+            'update matching_events set offer_id = null where offer_id = $1',
+            [existingId],
+          );
+        }
+      } else {
+        offer = await db.one<{ id: string }>(
+          `insert into job_offers
+             (job_id, provider_id, wave, price_ils, eta_minutes, eta_confidence,
+              distance_km, is_on_the_way, final_score, score_breakdown, expires_at)
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+           on conflict (job_id, provider_id) do nothing
+           returning id`,
+          [jobId, scored.candidate.providerId, wave.wave, ...offerValues],
+        );
+      }
+
       if (!offer) continue;
       offersCreated += 1;
 

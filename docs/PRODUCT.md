@@ -115,6 +115,22 @@ spends itself on the one thing still genuinely missing: location. Both
 answers survive the sign-in redirect, so a request started while signed out
 is the request you come back to.
 
+### One match at a time, and how to say no to it
+
+Offers go to several providers at once and **the first to accept gets the
+job** (D-020). That is what makes "who is already going there" usable: a
+provider two minutes from the door is the best answer for about two minutes,
+and a quote round or a shortlist spends that window asking the customer to
+redo work the ranking already did.
+
+So the customer sees one match, with a price and an ETA — a yes-or-no, not a
+research task. And because there is only one, rejecting it had to become its
+own action: `לא זה — חפשו אחר` frees that provider, excludes them from this
+job and searches again, while `ביטול הבקשה` drops the request. Collapsing
+those two into one button meant a customer who disliked a match lost their
+whole request. Three rejections per job, because each one excludes a provider
+and an uncapped button walks the ranked list — a directory by another name.
+
 At the match, one recommendation, not a list to browse:
 
 ```
@@ -123,6 +139,8 @@ At the match, one recommendation, not a list to browse:
 🚗 כבר בדרך לאזור שלך      ● ───────→ ●
 הגעה משוערת   13 דקות      מחיר   ₪290
 [ הזמן עכשיו ]             [ פרטים › ]
+[ לא זה — חפשו אחר ]
+[ ביטול הבקשה ]
 ```
 
 `כבר בדרך לאזור שלך` appears only when the accepted offer carried real route

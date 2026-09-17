@@ -7,9 +7,15 @@ but has not been demonstrated, it is scored as not demonstrated.
 Run everything in [Reproducing](QA.md#reproducing) before trusting any number
 here.
 
+**Changed since this was first scored.** Criterion 1 kept its 10, but it was
+awarded while the customer still had no way to turn down a match without
+cancelling the whole request — a product-clarity defect that only became
+visible once the multi-offer model was settled as first-accept-wins (D-020).
+It is fixed, so the 10 stands; it did not stand at the time it was written.
+
 | # | Criterion | Max | Score | Evidence, and what is missing |
 |---|---|---|---|---|
-| 1 | Product clarity — one question, no obstacles | 10 | **10** | Home asks *what* and *when*, then one button. Category grid, radius, rating and price filters, and two of three CTAs deleted (UX_PRINCIPLES 1–2). |
+| 1 | Product clarity — one question, no obstacles | 10 | **10** | Home asks *what* and *when*, then one button. Category grid, radius, rating and price filters, and two of three CTAs deleted (UX_PRINCIPLES 1–2). Rejecting a match is its own action rather than a cancellation (D-020). |
 | 2 | Route opportunity is the primary signal | 10 | **9** | 25% weight, three evidence bases, piecewise banding. Proven on live data: רם at 4.32 km outranks דן at 1.35 km. **−1:** the adversarial margin is 0.2 points (A-004, R-001) — correct, but thin. |
 | 3 | Availability: realtime **and** planned | 10 | **10** | Both, with a documented precedence and 16 integration tests. The §52 property holds: changing the requested time flips eligibility. |
 | 4 | Matching engine — configurable, inspectable | 10 | **9** | Nine-stage pipeline, Zod-validated weights summing to 1.0, per-candidate breakdown, `/matching-lab`, a per-job debugger. **−1:** weights are editable only through the settings API, not a UI. |

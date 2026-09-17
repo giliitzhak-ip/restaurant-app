@@ -228,6 +228,15 @@ expansion reaches new providers rather than re-asking the same ones.
 
 ---
 
+**Status: still holds, with a wrinkle.** The unique constraint stays, but a
+row is now **revived** rather than left closed when a provider who merely lost
+a race is re-offered the same job (D-021). So "one offer row per provider per
+job" is true, while "one notification per provider per job" is not — the
+second notification is recorded in `matching_events`, and the earlier event is
+unbound from the offer so an acceptance is counted once. If a third
+notification per provider ever becomes normal, drop the constraint instead of
+piling more state onto one row.
+
 ## A-011 — A provider's own switch is a better signal than their calendar
 
 **Assumption.** When a provider is switched on outside their declared hours,

@@ -6,7 +6,7 @@ What is verified, how, and — importantly — what is **not**.
 
 ## Test inventory
 
-181 tests, 19 files. Run: `npm test`
+190 tests, 20 files. Run: `npm test`
 (first time: `npm run test:db` to create the test database).
 
 ### Unit — pure domain logic, no I/O
@@ -32,6 +32,7 @@ What is verified, how, and — importantly — what is **not**.
 | `state-machine.test.ts` | 4 | DB↔TypeScript parity across all 240 status pairs |
 | `provider-onboarding.test.ts` | 7 | An unconfigured provider yields zero candidates; onboarded + verified yields one |
 | `availability.test.ts` | 16 | The §52 case, the precedence order, job duration and fit, conflicts, temporary shifts and their expiry |
+| `reject-match.test.ts` | 9 | Rejecting a match without abandoning the job; re-offering race losers; the cap; fairness to the rejected provider; telemetry counted once |
 | `sql-references.test.ts` | 1 | **Every relation named in every query under `src/` exists** |
 
 ### Security
@@ -319,6 +320,22 @@ Listed because each one would have shipped:
 24. **Two `סגירה` controls for one action.** The sheet's backdrop was an
     `aria-label`led button behind the dialog, so a click on "the close button"
     hit the backdrop and was intercepted. Now `aria-hidden` and untabbable.
+25. **Both re-dispatch paths were dead ends.** `find_candidate_providers`
+    excluded any provider with any offer row for the job — and under
+    first-accept-wins, `accept_job_offer()` cancels every competing offer the
+    instant someone wins. So after a provider withdrew, or after the customer
+    rejected a match, wave 1 skipped everyone who had merely lost by a second,
+    which in a thin market is everyone, and the request died. Migration `0024`
+    plus a guarded revive of the offer row (D-021). The pre-existing
+    withdrawal test asserted only that the state machine *permits*
+    `CANCELLED_BY_PROVIDER → SEARCHING`, never that re-dispatch reached
+    anyone — which is exactly how it shipped. Found by the first test written
+    for customer rejection.
+26. **A revived offer would have counted its acceptance twice.**
+    `accept_job_offer()` marks acceptance by `offer_id`, and reusing an offer
+    row meant two `matching_events` rows shared that id, so both were marked
+    accepted. The earlier event is now unbound when the offer is revived, and
+    a test asserts exactly one accepted event per provider per job.
 
 ---
 
@@ -350,9 +367,13 @@ of them online and verified), on this machine:
 
 | Radius | Execution | Rows |
 |---|---|---|
-| 5 km | 36 ms | 25 |
-| 15 km | 37 ms | 50 (capped) |
-| 50 km | 37 ms | 50 (capped) |
+| 5 km | 29 ms | 25 |
+| 15 km | 29 ms | 50 (capped) |
+| 50 km | 29 ms | 50 (capped) |
+
+(Medians of three warm runs, re-measured after migration `0024` widened the
+candidate predicate. The first call after a function is replaced costs ~400 ms
+on a cold plan cache and is not representative.)
 
 Flat across radius because the row cap bounds the work. This is after
 migration `0019`, which reordered the filters so the cheap index-backed
@@ -427,18 +448,18 @@ These are stated rather than implied to work:
   (R-008).
 - **No address geocoding.** A customer who denies location cannot proceed via
   a typed address; the flow says so instead of inventing a coordinate (A-005).
-- **Spec §10's second branch is not implemented.** One excellent match gets a
-  single recommendation, which is built. "Several genuinely different options
-  → show at most three" is not: the customer never sees the offer list, and
-  `GET /api/jobs/:id` does not return `job_offers` to them.
-- **COMPARE is not built, and is now refused rather than a dead end.** The
+- **Spec §10's second branch is decided against, not missing.** The product
+  owner confirmed first-accept-wins (D-020): offers go to several providers
+  concurrently and the first to accept gets the job, so the customer sees one
+  match rather than a shortlist. `GET /api/jobs/:id` deliberately does not
+  return `job_offers` to them. Rejecting a match is its own action
+  (`POST /api/jobs/:id/reject-match`), capped at three per job.
+- **COMPARE is not built, and is refused rather than a dead end.** The
   booking mode was accepted and validated but nothing dispatched it, so a
   COMPARE job sat in `REQUESTED` forever. It is removed from the UI and from
-  the API's accepted values (D-018). There is still no customer-side
-  offer-selection endpoint — only the provider's `accept`/`decline`. Choosing
-  between the quote model and the pick-a-candidate model is a product
-  decision with different schema consequences, so it is left open rather
-  than guessed at.
+  the API's accepted values (D-018). Quote comparison is now a decision
+  against rather than an open question (D-020), so there is deliberately no
+  customer-side offer-selection endpoint.
 - **Client behaviour is verified in one environment.** Hydration, handlers and
   effects are driven against a local production build in Chromium. There is
   no device matrix, and iOS Safari differs on `100dvh`, safe-area insets and

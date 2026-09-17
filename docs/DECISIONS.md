@@ -379,3 +379,83 @@ that it must run against `next start`.
 truth — it logged in once per page and tripped the login rate limiter, so
 later pages rendered signed out; and it counted a wrapping `<label>` as an
 unlabelled input, pushing authors towards redundant ARIA on correct markup.
+
+---
+
+## D-020 — Multi-offer model: first to accept wins
+
+**Context.** §10 left three models open, and the register recorded the choice
+as an unresolved product decision with different schema consequences:
+
+1. **Quotes** — providers bid, the customer compares and picks.
+2. **Pick-a-candidate** — the customer chooses from a ranked shortlist.
+3. **First-accept-wins** — offers go out to several providers at once, and
+   the first to accept gets the job.
+
+**Decision.** First-accept-wins, confirmed by the product owner.
+
+**Why.** It is the only one of the three that keeps the promise the product
+is built on. The strongest signal in matching is *who is already going there*,
+and that is a perishable fact: a provider two minutes from the door is the
+best answer for about two minutes. A quote round or a shortlist spends that
+window asking the customer to do work the ranking has already done, and by
+the time they choose, the reason that provider was best has expired.
+
+It is also the only model where the customer's decision is small. One match,
+with a price and an ETA, is a yes-or-no. A shortlist of three plausible
+strangers is a research task the customer is not equipped for and did not ask
+for — they wanted the leak fixed.
+
+**Consequences.**
+
+* Dispatch sends up to `maxProviders` offers per wave concurrently, and
+  `accept_job_offer()` is the race: `SELECT … FOR UPDATE` on the job plus
+  `UNIQUE(job_id)` on `job_assignments`, so exactly one provider can win and
+  the losers get `JOB_ALREADY_ASSIGNED`.
+* The customer sees one match at a time, never an offer list. `GET
+  /api/jobs/:id` deliberately does not return `job_offers` to them.
+* **Rejecting a match had to become its own action.** With one match on
+  screen, the only previous way out was cancelling the whole request and
+  retyping it — and rejecting a person is not the same intention as
+  abandoning the job. `POST /api/jobs/:id/reject-match` frees the provider,
+  excludes them from this job, and searches again. Capped at three per job,
+  because each rejection excludes a provider and without a cap the button
+  walks the ranked list — a provider directory by another name.
+* Rejecting does **not** count against the provider's `cancelled_jobs`. They
+  accepted in good faith; a reliability score that punishes them for someone
+  else's change of mind is a broken score.
+* §10's "several genuinely different options → show at most three" branch and
+  `COMPARE` mode are now decided against rather than pending (D-018).
+
+## D-021 — Losing a race is not the same as having had your chance
+
+**Context.** `find_candidate_providers()` excluded any provider with **any**
+offer row for the job. Under first-accept-wins, `accept_job_offer()` cancels
+every competing offer the instant someone wins, so that predicate excluded
+most of the wave, every time.
+
+**Decision.** Migration `0024`: a provider is out of the running only if they
+actually had their chance — an offer still live, declined, expired, held, or
+one the customer rejected them on specifically. An offer `CANCELLED` with no
+`decline_reason` means "someone else won", and those providers stay eligible.
+Migration `0010`'s `accept_job_offer()` and `rejectMatch()` are the only two
+writers of `CANCELLED`, and `decline_reason` is what tells them apart.
+
+**Why it mattered.** Both re-dispatch paths were dead ends. A provider who
+accepted and then withdrew, or a match the customer rejected, sent the job
+back to `SEARCHING` — where wave 1 skipped everyone who had merely lost by a
+second. In a thin market that is everyone, and the request died.
+
+**Consequences.** `job_offers` is still `UNIQUE(job_id, provider_id)`
+(A-010), so a re-offer **revives the existing row** rather than adding one.
+Two details follow, and both are in `runDispatchWave`:
+the revive is guarded to race-loser rows only, so it agrees with the
+candidate exclusion rather than relying on it; and the earlier telemetry
+event is unbound from the offer, because `accept_job_offer()` marks
+acceptance by `offer_id` and two events sharing one id would both be marked.
+
+**How it was found.** The first test written for customer rejection. With two
+providers in range, rejecting one produced zero offers and the second was
+never asked. The pre-existing test for provider withdrawal asserted only that
+the state machine *permits* the transition, never that re-dispatch reached
+anyone — which is exactly how the bug shipped.
