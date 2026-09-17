@@ -550,9 +550,16 @@ export function Sheet({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
+      {/*
+        The backdrop is a convenience for pointer users, not a second control:
+        exposing it to assistive technology produced two identically named
+        "סגירה" buttons for one action. Keyboard and AT users get the ✕ and
+        Escape, both of which are real controls.
+      */}
       <button
         type="button"
-        aria-label="סגירה"
+        aria-hidden="true"
+        tabIndex={-1}
         onClick={onClose}
         className="absolute inset-0 bg-black/65"
       />

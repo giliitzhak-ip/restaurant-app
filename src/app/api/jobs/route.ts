@@ -28,7 +28,14 @@ const bodySchema = z.object({
   timing: z.enum(['NOW', 'ASAP', 'SCHEDULED']).default('NOW'),
   /** Required for SCHEDULED, ignored otherwise. */
   requestedFor: z.iso.datetime().optional(),
-  bookingMode: z.enum(['NOW', 'SCHEDULE', 'COMPARE']).optional(),
+  /**
+   * Accepted so links and clients from before the timing model keep working.
+   * COMPARE is deliberately NOT accepted: quote-comparison is not built, and
+   * a job created in that mode would sit in REQUESTED with nothing dispatching
+   * it and no screen to compare anything on. Refusing is the honest answer;
+   * see DECISIONS/RISKS.
+   */
+  bookingMode: z.enum(['NOW', 'SCHEDULE']).optional(),
   scheduledFor: z.iso.datetime().optional(),
   /** Set when the customer corrected our classification. */
   categorySlug: z.string().max(60).optional(),
@@ -53,9 +60,12 @@ export async function POST(request: Request) {
     const body = await parseJson(request, bodySchema);
 
     // Accept either the timing model or the older bookingMode, and normalise.
+    // booking_mode still exists in the schema because the category
+    // configuration is expressed in those terms; timing is what the customer
+    // chose, and it is what matching evaluates.
     const timing = body.timing ?? (body.bookingMode === 'SCHEDULE' ? 'SCHEDULED' : 'NOW');
     const requestedForRaw = body.requestedFor ?? body.scheduledFor ?? null;
-    const bookingMode =
+    const bookingMode: 'NOW' | 'SCHEDULE' =
       body.bookingMode ?? (timing === 'SCHEDULED' ? 'SCHEDULE' : 'NOW');
 
     if (timing === 'SCHEDULED' && !requestedForRaw) {
@@ -95,13 +105,12 @@ export async function POST(request: Request) {
         service_id: string | null;
         supports_now: boolean;
         supports_schedule: boolean;
-        supports_compare: boolean;
         urgency: string | null;
         duration_min: number;
       }>(
         `select c.id as category_id,
                 s.id as service_id,
-                c.supports_now, c.supports_schedule, c.supports_compare,
+                c.supports_now, c.supports_schedule,
                 s.default_urgency::text as urgency,
                 coalesce(s.duration_min, c.default_duration_min, 60) as duration_min
            from categories c
@@ -120,8 +129,7 @@ export async function POST(request: Request) {
     // data, not a hard-coded branch (spec §5, §6).
     const modeSupported =
       (bookingMode === 'NOW' && resolved.supports_now) ||
-      (bookingMode === 'SCHEDULE' && resolved.supports_schedule) ||
-      (bookingMode === 'COMPARE' && resolved.supports_compare);
+      (bookingMode === 'SCHEDULE' && resolved.supports_schedule);
 
     if (!modeSupported) {
       throw new ApiError(
@@ -191,30 +199,28 @@ export async function POST(request: Request) {
     // the customer learns straight away whether the time is fillable, instead
     // of finding out later that nobody works then.
     let dispatch = null;
-    if (bookingMode !== 'COMPARE') {
-      await withSystem(
-        async (db) => {
-          await db.query(`update jobs set status = 'SEARCHING' where id = $1`, [job.id]);
-        },
-        { actorRole: 'system', transitionReason: 'Matching started' },
-      );
+    await withSystem(
+      async (db) => {
+        await db.query(`update jobs set status = 'SEARCHING' where id = $1`, [job.id]);
+      },
+      { actorRole: 'system', transitionReason: 'Matching started' },
+    );
 
-      try {
-        dispatch = await runDispatchWave(job.id);
-      } catch (error) {
-        // A dispatch failure must not lose the job: it stays SEARCHING and
-        // the maintenance tick will retry it.
-        logOperation({
-          requestId, jobId: job.id, operation: 'jobs.create.dispatch', result: 'error',
-          meta: { message: error instanceof Error ? error.message.slice(0, 200) : 'unknown' },
-        });
-      }
+    try {
+      dispatch = await runDispatchWave(job.id);
+    } catch (error) {
+      // A dispatch failure must not lose the job: it stays SEARCHING and the
+      // maintenance tick will retry it.
+      logOperation({
+        requestId, jobId: job.id, operation: 'jobs.create.dispatch', result: 'error',
+        meta: { message: error instanceof Error ? error.message.slice(0, 200) : 'unknown' },
+      });
     }
 
     return ok(
       {
         id: job.id,
-        status: bookingMode !== 'COMPARE' ? 'SEARCHING' : 'REQUESTED',
+        status: 'SEARCHING',
         timing,
         requestedFor: requestedForRaw,
         durationMin: resolved.duration_min,

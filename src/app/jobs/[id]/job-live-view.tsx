@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
+  Avatar,
   Badge,
   Button,
   Card,
@@ -18,6 +19,7 @@ import { Logo } from '@/components/brand';
 import { apiFetch, ApiRequestError } from '@/lib/client/api';
 import { usePolling, useRealtime } from '@/lib/client/use-realtime';
 import { JobTimeline } from './job-timeline';
+import { ProviderProfileSheet } from './provider-profile-sheet';
 import { PaymentPanel } from './payment-panel';
 import { ReviewPanel } from './review-panel';
 
@@ -42,6 +44,7 @@ interface JobData {
     dispatch_radius_km: string | null;
     category_name: string | null;
     service_name: string | null;
+    service_slug: string | null;
     created_at: string;
   };
   assignment: {
@@ -90,6 +93,10 @@ export function JobLiveView({ jobId }: { jobId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [acting, setActing] = useState(false);
+  // Opening a profile must not navigate away: the match, its price and its
+  // ETA stay mounted behind the sheet and are exactly what closing returns
+  // to (spec §47).
+  const [profileOpen, setProfileOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   /**
@@ -229,16 +236,33 @@ export function JobLiveView({ jobId }: { jobId: string }) {
       {assignment && job.status === 'PROVIDER_SELECTED' && (
         <Card className="border-ok/40">
           <p className="text-sm font-semibold text-ok-bright">מצאנו לך מקצוען</p>
-          <h2 className="mt-1 text-2xl font-black text-ink">{assignment.provider_name}</h2>
-          {assignment.business_name && (
-            <p className="text-sm text-ink-2">{assignment.business_name}</p>
-          )}
 
-          <div className="mt-3">
-            <Rating
-              value={assignment.rating_avg ? Number(assignment.rating_avg) : null}
-              count={assignment.rating_count}
-            />
+          <div className="mt-2 flex items-start gap-3">
+            <Avatar name={assignment.provider_name} size={48} />
+            <div className="min-w-0 flex-1">
+              <h2 className="text-[22px] font-black leading-tight text-ink">
+                {assignment.provider_name}
+              </h2>
+              {assignment.business_name && (
+                <p className="truncate text-sm text-ink-2">{assignment.business_name}</p>
+              )}
+              <div className="mt-1">
+                <Rating
+                  value={assignment.rating_avg ? Number(assignment.rating_avg) : null}
+                  count={assignment.rating_count}
+                />
+              </div>
+            </div>
+            {/* Progressive disclosure: everything else about this person is
+                one tap away, and the tap does not cost the match. */}
+            <button
+              type="button"
+              onClick={() => setProfileOpen(true)}
+              className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-xl px-2.5 text-[13px] font-semibold text-brand-bright hover:bg-surface-2"
+            >
+              פרטים
+              <span aria-hidden="true">›</span>
+            </button>
           </div>
 
           <dl className="mt-5 grid grid-cols-2 gap-4">
@@ -288,13 +312,22 @@ export function JobLiveView({ jobId }: { jobId: string }) {
       {assignment && ['CONFIRMED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS'].includes(job.status) && (
         <Card>
           <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-xl font-bold text-ink">{assignment.provider_name}</h2>
-              <div className="mt-1">
-                <Rating
-                  value={assignment.rating_avg ? Number(assignment.rating_avg) : null}
-                  count={assignment.rating_count}
-                />
+            <div className="flex min-w-0 items-start gap-2.5">
+              <Avatar name={assignment.provider_name} size={40} />
+              <div className="min-w-0">
+                <button
+                  type="button"
+                  onClick={() => setProfileOpen(true)}
+                  className="truncate text-start text-xl font-bold text-ink underline decoration-line-strong decoration-1 underline-offset-4"
+                >
+                  {assignment.provider_name}
+                </button>
+                <div className="mt-1">
+                  <Rating
+                    value={assignment.rating_avg ? Number(assignment.rating_avg) : null}
+                    count={assignment.rating_count}
+                  />
+                </div>
               </div>
             </div>
             <div className="text-end">
@@ -441,6 +474,17 @@ export function JobLiveView({ jobId }: { jobId: string }) {
       </Card>
 
       <JobTimeline jobId={jobId} refreshKey={job.status} />
+
+      {/* Mounted beside the match rather than in place of it, so closing it
+          returns to the screen the customer was deciding on. */}
+      {assignment && (
+        <ProviderProfileSheet
+          providerId={assignment.provider_id}
+          serviceSlug={job.service_slug}
+          open={profileOpen}
+          onClose={() => setProfileOpen(false)}
+        />
+      )}
     </div>
   );
 }

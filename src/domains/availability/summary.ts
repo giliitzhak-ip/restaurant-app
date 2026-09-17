@@ -18,6 +18,17 @@ export interface AvailabilitySummary {
   onlineUntil: string | null;
   /** Next moment this provider could start a job, ISO. Null if none ahead. */
   nextAvailableAt: string | null;
+  /** The realtime switch. BUSY means holding an accepted job. */
+  state: 'OFFLINE' | 'ONLINE' | 'BUSY';
+  /**
+   * Whether any weekly hours are declared at all.
+   *
+   * This is the difference between "not available then" and "we do not know",
+   * and the two must not be phrased the same way. A provider who never set
+   * hours has no future availability we can assert — saying they have none is
+   * a claim about their calendar that we have no basis for (spec §72).
+   */
+  hasPlan: boolean;
 }
 
 /**
@@ -36,10 +47,17 @@ export async function availabilitySummary(
       open_until: string | null;
       online_until: Date | null;
       next_at: Date | null;
+      state: 'OFFLINE' | 'ONLINE' | 'BUSY';
+      has_plan: boolean;
     }>(
       `select
          provider_is_available_at($1, now(), $2) as available_now,
          (select online_until from provider_profiles where id = $1) as online_until,
+         (select state::text from provider_profiles where id = $1) as state,
+         exists (
+           select 1 from provider_availability_rules r
+            where r.provider_id = $1 and r.is_active
+         ) as has_plan,
          provider_next_available_at($1, now(), $2) as next_at,
          to_char(
            coalesce(
@@ -68,6 +86,8 @@ export async function availabilitySummary(
     openUntil: row?.available_now ? (row?.open_until ?? null) : null,
     onlineUntil: row?.online_until ? row.online_until.toISOString() : null,
     nextAvailableAt: row?.next_at ? row.next_at.toISOString() : null,
+    state: row?.state ?? 'OFFLINE',
+    hasPlan: row?.has_plan ?? false,
   };
 }
 
@@ -105,17 +125,33 @@ export function availabilityPhrase(
     return until ? `זמין עד ${until}` : 'זמין כרגע';
   }
 
-  if (!summary.nextAvailableAt) return 'אין זמינות בשבועיים הקרובים';
+  const nextPhrase = (): string | null => {
+    if (!summary.nextAvailableAt) return null;
+    const next = new Date(summary.nextAvailableAt);
+    const nextDay = day(next);
+    if (nextDay === day(now)) return `פנוי מ-${clock(next)}`;
+    if (nextDay === day(new Date(now.getTime() + 86_400_000))) {
+      return `פנוי מחר מ-${clock(next)}`;
+    }
+    const short = new Intl.DateTimeFormat('en-US', { timeZone, weekday: 'short' }).format(next);
+    const name = DAYS_HE[DAYS_EN.indexOf(short)];
+    return name ? `פנוי ביום ${name} מ-${clock(next)}` : `פנוי מ-${clock(next)}`;
+  };
 
-  const next = new Date(summary.nextAvailableAt);
-  const nextDay = day(next);
-
-  if (nextDay === day(now)) return `זמין מ-${clock(next)}`;
-  if (nextDay === day(new Date(now.getTime() + 86_400_000))) {
-    return `זמין מחר מ-${clock(next)}`;
+  // Currently on a job. Saying anything about the next fortnight here would
+  // be answering a question nobody asked with a fact that is not true: they
+  // are not unavailable for two weeks, they are busy for the next hour.
+  if (summary.state === 'BUSY') {
+    const next = nextPhrase();
+    return next ? `בעבודה כרגע · ${next}` : 'בעבודה כרגע';
   }
 
-  const short = new Intl.DateTimeFormat('en-US', { timeZone, weekday: 'short' }).format(next);
-  const name = DAYS_HE[DAYS_EN.indexOf(short)];
-  return name ? `זמין ביום ${name} מ-${clock(next)}` : `זמין מ-${clock(next)}`;
+  const next = nextPhrase();
+  if (next) return next.replace(/^פנוי/, 'זמין');
+
+  // No hours declared and not switched on: we genuinely do not know when they
+  // work, which is a different statement from "they never work" (spec §72).
+  if (!summary.hasPlan) return 'לא פרסם שעות קבועות';
+
+  return 'אין זמינות בשבועיים הקרובים';
 }

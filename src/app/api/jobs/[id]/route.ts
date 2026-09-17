@@ -30,7 +30,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
                 j.customer_id,
                 c.name_he as category_name, c.slug as category_slug,
                 c.requires_before_after,
-                s.name_he as service_name, s.base_price_ils
+                s.name_he as service_name, s.slug as service_slug, s.base_price_ils
            from jobs j
            left join categories c on c.id = j.category_id
            left join services s on s.id = j.service_id
