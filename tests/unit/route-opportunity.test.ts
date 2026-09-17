@@ -120,3 +120,37 @@ describe('RouteOpportunityCalculator', () => {
     expect(result.confidence).toBe('estimated');
   });
 });
+
+describe('route opportunity score banding', () => {
+  it('keeps a genuinely on-the-way provider in the top band', async () => {
+    const result = await calculator.calculate(ON_THE_WAY);
+    expect(result.isOnTheWay).toBe(true);
+    expect(result.opportunityScore).toBeGreaterThanOrEqual(85);
+  });
+
+  it('drops a diverting provider below the on-the-way band entirely', async () => {
+    // Just past the 6-minute threshold: the flag flips, and the score must
+    // flip with it rather than drifting smoothly through the boundary.
+    const result = await calculator.calculate(DRIVING_AWAY);
+    expect(result.isOnTheWay).toBe(false);
+    expect(result.opportunityScore).toBeLessThanOrEqual(70);
+  });
+
+  it('leaves no overlap between the on-the-way and diverting bands', async () => {
+    const onTheWay = await calculator.calculate(ON_THE_WAY);
+    const diverting = await calculator.calculate(DRIVING_AWAY);
+    // The gap is what stops a small price or rating edge from quietly
+    // outvoting the product's primary signal.
+    expect(onTheWay.opportunityScore - diverting.opportunityScore).toBeGreaterThan(14);
+  });
+
+  it('scores a far-detour provider near zero', async () => {
+    const result = await calculator.calculate({
+      ...ON_THE_WAY,
+      providerLocation: { lat: 32.30, lon: 34.90 },
+      providerDestination: { lat: 32.50, lon: 35.10 },
+    });
+    expect(result.isOnTheWay).toBe(false);
+    expect(result.opportunityScore).toBeLessThan(20);
+  });
+});

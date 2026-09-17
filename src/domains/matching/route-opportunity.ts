@@ -47,6 +47,19 @@ export interface RouteOpportunityConfig {
   readonly onTheWayDeviationMinutes: number;
   /** Deviation at which the opportunity score reaches zero. */
   readonly maxDeviationMinutes: number;
+  /**
+   * Lowest score a genuinely on-the-way provider can receive, and the
+   * highest a diverting one can.
+   *
+   * The deliberate GAP between these two encodes a qualitative difference:
+   * "already passing your street" and "has to turn around" are not points on
+   * one smooth line. Without the gap, `isOnTheWay` would flip at the
+   * threshold while the score moved by almost nothing, which makes the
+   * threshold cosmetic and lets small price or rating edges quietly outvote
+   * the product's primary signal (spec §11, §15).
+   */
+  readonly onTheWayScoreFloor: number;
+  readonly divertedScoreCeiling: number;
   /** Heading within this angle of the customer counts as travelling toward. */
   readonly headingTowardDeg: number;
   /** Below this speed, a reported heading is not meaningful. */
@@ -64,6 +77,8 @@ export interface RouteOpportunityConfig {
 export const DEFAULT_ROUTE_OPPORTUNITY_CONFIG: RouteOpportunityConfig = {
   onTheWayDeviationMinutes: 6,
   maxDeviationMinutes: 25,
+  onTheWayScoreFloor: 85,
+  divertedScoreCeiling: 70,
   headingTowardDeg: 50,
   minSpeedForHeadingKmh: 8,
   headingBasisScoreCeiling: 78,
@@ -101,14 +116,26 @@ export class RouteOpportunityCalculator {
       );
 
       const isOnTheWay = deviation.deviationMinutes <= this.config.onTheWayDeviationMinutes;
+
+      // Piecewise on purpose — see onTheWayScoreFloor. Inside the on-the-way
+      // band the score stays high; past it, it falls from a distinctly lower
+      // ceiling toward zero.
       const opportunityScore = round(
-        scaleLinear(
-          deviation.deviationMinutes,
-          0,
-          this.config.maxDeviationMinutes,
-          100,
-          0,
-        ),
+        isOnTheWay
+          ? scaleLinear(
+              deviation.deviationMinutes,
+              0,
+              this.config.onTheWayDeviationMinutes,
+              100,
+              this.config.onTheWayScoreFloor,
+            )
+          : scaleLinear(
+              deviation.deviationMinutes,
+              this.config.onTheWayDeviationMinutes,
+              this.config.maxDeviationMinutes,
+              this.config.divertedScoreCeiling,
+              0,
+            ),
         2,
       );
 

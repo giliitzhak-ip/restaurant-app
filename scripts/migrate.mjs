@@ -17,7 +17,9 @@ import pg from 'pg';
 const ROOT = path.resolve(import.meta.dirname, '..');
 const RESET = process.argv.includes('--reset');
 
+// Schema work runs as the table OWNER, not as the restricted app login.
 const connectionString =
+  process.env.DATABASE_ADMIN_URL ??
   process.env.DATABASE_URL ??
   'postgresql://getservice:getservice@127.0.0.1:5432/getservice';
 

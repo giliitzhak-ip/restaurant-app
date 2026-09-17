@@ -5,6 +5,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['tests/**/*.test.ts'],
+    setupFiles: ['tests/setup.ts'],
     // Integration and security suites share one Postgres database and
     // manipulate rows globally, so they must not run concurrently.
     fileParallelism: false,

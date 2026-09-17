@@ -13,7 +13,9 @@ import process from 'node:process';
 import { randomBytes, scryptSync } from 'node:crypto';
 import pg from 'pg';
 
+// Schema work runs as the table OWNER, not as the restricted app login.
 const connectionString =
+  process.env.DATABASE_ADMIN_URL ??
   process.env.DATABASE_URL ??
   'postgresql://getservice:getservice@127.0.0.1:5432/getservice';
 
