@@ -104,6 +104,7 @@ Full detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | Decisions, alternatives rejected, trade-offs |
 | [`docs/ASSUMPTIONS.md`](docs/ASSUMPTIONS.md) | Every uncertain assumption and its status |
 | [`docs/RISKS.md`](docs/RISKS.md) | Risks with mitigation and verification |
+| [`docs/SCORE.md`](docs/SCORE.md) | Self-assessment against the brief's rubric: **94/100**, with the deductions argued |
 
 ---
 

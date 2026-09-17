@@ -63,7 +63,8 @@ export async function POST(request: Request) {
       if (!token) {
         throw new ApiError(
           'NOT_CONFIGURED',
-          'MAINTENANCE_TOKEN must be set to run the simulator in production',
+          'MAINTENANCE_TOKEN must be set, and sent as x-maintenance-token, to ' +
+            'run the simulator against a production build',
           503,
         );
       }
