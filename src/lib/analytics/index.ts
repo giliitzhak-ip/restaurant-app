@@ -20,11 +20,9 @@ declare global {
 const consoleDriver: Driver = {
   name: "console",
   track(event, payload) {
-    // eslint-disable-next-line no-console
     console.debug(`[analytics] ${event}`, payload);
   },
   pageView(path) {
-    // eslint-disable-next-line no-console
     console.debug("[analytics] page_view", path);
   },
 };

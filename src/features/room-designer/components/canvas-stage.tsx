@@ -29,10 +29,14 @@ export function CanvasStage({
   const [draft, setDraft] = React.useState<NormPoint[]>([]);
   const wrapperRef = React.useRef<HTMLDivElement>(null);
 
-  React.useEffect(() => {
+  // Switching surface abandons an in-progress outline. Adjusted during render
+  // (the documented pattern) rather than in an effect.
+  const [lastKind, setLastKind] = React.useState(activeKind);
+  if (activeKind !== lastKind) {
+    setLastKind(activeKind);
     setMode("off");
     setDraft([]);
-  }, [activeKind]);
+  }
 
   if (!image) return null;
 

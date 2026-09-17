@@ -52,14 +52,17 @@ export function CartProvider({
   children: React.ReactNode;
 }) {
   const [cart, setCart] = React.useState(initialCart);
+  const [syncedCart, setSyncedCart] = React.useState(initialCart);
   const [pending, startTransition] = React.useTransition();
   const { toast } = useToast();
   const router = useRouter();
 
-  // Keep the client cart in step with server-rendered pages.
-  React.useEffect(() => {
+  // Server-rendered pages are the source of truth: when a navigation brings a
+  // fresh cart, adopt it during render rather than in an effect.
+  if (initialCart !== syncedCart) {
+    setSyncedCart(initialCart);
     setCart(initialCart);
-  }, [initialCart]);
+  }
 
   const run = React.useCallback(
     <T,>(work: () => Promise<T>) =>

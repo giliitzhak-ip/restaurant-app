@@ -2,31 +2,26 @@
 
 import * as React from "react";
 import { toggleFavoriteAction } from "@/server/actions/favorites";
-
-const STORAGE_KEY = "tn_favorites";
+import {
+  getFavoritesServerSnapshot,
+  getFavoritesSnapshot,
+  initFavorites,
+  subscribeFavorites,
+  toggleFavoriteLocal,
+} from "./favorites-store";
 
 interface FavoritesContextValue {
-  favorites: Set<string>;
+  favorites: ReadonlySet<string>;
   isFavorite: (productId: string) => boolean;
   toggle: (productId: string) => void;
 }
 
 const FavoritesContext = React.createContext<FavoritesContextValue | null>(null);
 
-function readLocal(): string[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as string[]) : [];
-  } catch {
-    return [];
-  }
-}
-
 /**
- * Favourites work for guests too: they live in localStorage, and once the
- * visitor signs in the server copy becomes the source of truth. No sign-up
- * wall on a "save for later" click.
+ * Favourites work for guests too — they live in localStorage until the visitor
+ * signs in, at which point the server copy takes over. No sign-up wall on a
+ * "save for later" click.
  */
 export function FavoritesProvider({
   initialFavorites,
@@ -37,33 +32,22 @@ export function FavoritesProvider({
   signedIn: boolean;
   children: React.ReactNode;
 }) {
-  const [favorites, setFavorites] = React.useState<Set<string>>(
-    () => new Set(initialFavorites),
+  // Runs before the first subscription reads the snapshot, and again whenever
+  // the session or the server list changes.
+  React.useMemo(
+    () => initFavorites(initialFavorites, signedIn),
+    [initialFavorites, signedIn],
   );
 
-  React.useEffect(() => {
-    if (signedIn) {
-      setFavorites(new Set(initialFavorites));
-      return;
-    }
-    setFavorites(new Set(readLocal()));
-  }, [initialFavorites, signedIn]);
+  const favorites = React.useSyncExternalStore(
+    subscribeFavorites,
+    getFavoritesSnapshot,
+    getFavoritesServerSnapshot,
+  );
 
   const toggle = React.useCallback(
     (productId: string) => {
-      setFavorites((current) => {
-        const next = new Set(current);
-        if (next.has(productId)) next.delete(productId);
-        else next.add(productId);
-        if (!signedIn) {
-          try {
-            window.localStorage.setItem(STORAGE_KEY, JSON.stringify([...next]));
-          } catch {
-            /* private mode — favourites simply do not persist */
-          }
-        }
-        return next;
-      });
+      toggleFavoriteLocal(productId);
       if (signedIn) void toggleFavoriteAction(productId);
     },
     [signedIn],

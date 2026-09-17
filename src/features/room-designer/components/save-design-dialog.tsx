@@ -30,10 +30,12 @@ export function SaveDesignDialog({
   pending: boolean;
 }) {
   const [name, setName] = React.useState(defaultName);
-
-  React.useEffect(() => {
+  // Reopening the dialog restores the suggested name.
+  const [wasOpen, setWasOpen] = React.useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
     if (open) setName(defaultName);
-  }, [defaultName, open]);
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

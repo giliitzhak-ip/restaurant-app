@@ -457,12 +457,13 @@ export const prismaRepository: Repository = {
     return rows.map(toProduct);
   },
 
-  async listReviews(productId) {
+  async listReviews(productId, options) {
+    const approved = options?.includeUnapproved ? undefined : true;
     const rows = await getPrisma().review.findMany({
       where:
         productId === undefined
-          ? { approved: true }
-          : { approved: true, productId: productId ?? null },
+          ? { approved }
+          : { approved, productId: productId ?? null },
       orderBy: { createdAt: "desc" },
     });
     return rows.map(toReview);

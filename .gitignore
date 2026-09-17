@@ -28,3 +28,6 @@ public/uploads
 
 # generated placeholder media (npm run media:generate)
 public/media
+
+# responsive QA screenshots
+.qa

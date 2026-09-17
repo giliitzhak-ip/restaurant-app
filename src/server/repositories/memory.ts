@@ -250,14 +250,13 @@ export const memoryRepository: Repository = {
     return clone(store.products.filter((product) => wanted.has(product.id)));
   },
 
-  async listReviews(productId) {
-    const reviews = store.reviews.filter((review) =>
-      productId === undefined
-        ? true
-        : productId === null
-          ? review.productId === null
-          : review.productId === productId,
-    );
+  async listReviews(productId, options) {
+    const reviews = store.reviews.filter((review) => {
+      if (!options?.includeUnapproved && !review.approved) return false;
+      if (productId === undefined) return true;
+      if (productId === null) return review.productId === null;
+      return review.productId === productId;
+    });
     return clone(
       reviews.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)),
     );

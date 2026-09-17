@@ -206,7 +206,10 @@ export interface Repository {
   getProductBySlug(slug: string): Promise<Product | null>;
   getProductById(id: string): Promise<Product | null>;
   getProductsByIds(ids: string[]): Promise<Product[]>;
-  listReviews(productId?: string | null): Promise<Review[]>;
+  listReviews(
+    productId?: string | null,
+    options?: { includeUnapproved?: boolean },
+  ): Promise<Review[]>;
   /** Distinct facet values for the catalogue filter panel. */
   getFacets(): Promise<CatalogFacets>;
 

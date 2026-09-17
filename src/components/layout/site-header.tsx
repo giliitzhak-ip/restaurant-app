@@ -59,10 +59,6 @@ export function SiteHeader({
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  React.useEffect(() => {
-    setMenuOpen(false);
-  }, [pathname]);
-
   const itemCount = cart.totals.itemCount;
 
   return (
@@ -202,7 +198,8 @@ export function SiteHeader({
               <X className="size-4" />
             </button>
           </SheetHeader>
-          <SheetBody className="px-0 py-0">
+          {/* Any navigation inside the sheet closes it — no effect needed. */}
+          <SheetBody className="px-0 py-0" onClick={() => setMenuOpen(false)}>
             <Link
               href={routes.designer}
               onClick={() => track("start_room_designer", { entry: "nav" })}

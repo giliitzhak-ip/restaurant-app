@@ -82,6 +82,50 @@ export function useDesigner({
 
   /* ----------------------------- image intake ---------------------------- */
 
+  const applyAnalysis = React.useCallback(
+    (image: WorkingImage, analysis: RoomAnalysis) => {
+      const surfaces: SurfaceState[] = analysis.surfaces.map((mask) => {
+        const plane = buildSurfacePlane(mask, image.width, image.height, 4);
+        return {
+          mask,
+          productId: null,
+          settings: { ...defaultSettings },
+          areaSqm: estimateAreaSqm(mask, plane, image.width, image.height),
+        };
+      });
+
+      const preferred =
+        surfaces.find((surface) => surface.mask.kind === (initialSurface ?? "FLOOR")) ??
+        surfaces[0];
+
+      // A deep link from a product page ("see it in my room") applies straight
+      // away, so the customer lands on a finished visualisation.
+      const deepLinked = initialProductSlug
+        ? swatches.find((swatch) => swatch.slug === initialProductSlug)
+        : undefined;
+      if (deepLinked && preferred) {
+        preferred.productId = deepLinked.id;
+        preferred.settings = {
+          ...preferred.settings,
+          orientation: deepLinked.orientation,
+          scale: deepLinked.scaleFactor,
+        };
+      }
+
+      setState((current) => ({
+        ...current,
+        step: "design",
+        image,
+        analysis,
+        surfaces,
+        activeSurfaceId: preferred?.mask.id ?? null,
+        activeKind: preferred?.mask.kind ?? current.activeKind,
+        error: null,
+      }));
+    },
+    [initialProductSlug, initialSurface, swatches],
+  );
+
   const loadImage = React.useCallback(
     async (source: File | string, origin: "camera" | "file" | "demo") => {
       setState((current) => ({ ...current, step: "analyzing", error: null }));
@@ -106,17 +150,16 @@ export function useDesigner({
       });
 
       const started = performance.now();
+      const previewPayload = JSON.stringify({
+        width: image.preview.width,
+        height: image.preview.height,
+        rgba: Array.from(image.preview.rgba),
+      });
+
       const formData = new FormData();
       formData.set("width", String(image.width));
       formData.set("height", String(image.height));
-      formData.set(
-        "preview",
-        JSON.stringify({
-          width: image.preview.width,
-          height: image.preview.height,
-          rgba: Array.from(image.preview.rgba),
-        }),
-      );
+      formData.set("preview", previewPayload);
 
       const result = await analyzeRoomAction(formData);
 
@@ -134,26 +177,6 @@ export function useDesigner({
         return;
       }
 
-      // A provider that needs the full photo gets it in a second call, so the
-      // first (fast, local) answer is already on screen.
-      if (result.needsFullImage && image.file) {
-        const fullForm = new FormData();
-        fullForm.set("width", String(image.width));
-        fullForm.set("height", String(image.height));
-        fullForm.set(
-          "preview",
-          JSON.stringify({
-            width: image.preview.width,
-            height: image.preview.height,
-            rgba: Array.from(image.preview.rgba),
-          }),
-        );
-        fullForm.set("image", image.file);
-        void analyzeRoomAction(fullForm).then((upgraded) => {
-          if (upgraded.ok) applyAnalysis(image, upgraded.analysis);
-        });
-      }
-
       track("analyze_room", {
         provider: result.analysis.providerId,
         durationMs: Math.round(performance.now() - started),
@@ -162,40 +185,21 @@ export function useDesigner({
       });
 
       applyAnalysis(image, result.analysis);
+
+      // A provider that needs the full photo gets it in a second call, so the
+      // first (fast, local) answer is already on screen.
+      if (result.needsFullImage && image.file) {
+        const fullForm = new FormData();
+        fullForm.set("width", String(image.width));
+        fullForm.set("height", String(image.height));
+        fullForm.set("preview", previewPayload);
+        fullForm.set("image", image.file);
+        void analyzeRoomAction(fullForm).then((upgraded) => {
+          if (upgraded.ok) applyAnalysis(image, upgraded.analysis);
+        });
+      }
     },
-    // applyAnalysis is stable via useCallback below
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  );
-
-  const applyAnalysis = React.useCallback(
-    (image: WorkingImage, analysis: RoomAnalysis) => {
-      const surfaces: SurfaceState[] = analysis.surfaces.map((mask) => {
-        const plane = buildSurfacePlane(mask, image.width, image.height, 4);
-        return {
-          mask,
-          productId: null,
-          settings: { ...defaultSettings },
-          areaSqm: estimateAreaSqm(mask, plane, image.width, image.height),
-        };
-      });
-
-      const preferred =
-        surfaces.find((surface) => surface.mask.kind === (initialSurface ?? "FLOOR")) ??
-        surfaces[0];
-
-      setState((current) => ({
-        ...current,
-        step: "design",
-        image,
-        analysis,
-        surfaces,
-        activeSurfaceId: preferred?.mask.id ?? null,
-        activeKind: preferred?.mask.kind ?? current.activeKind,
-        error: null,
-      }));
-    },
-    [initialSurface],
+    [applyAnalysis],
   );
 
   /* ------------------------------ selection ------------------------------ */
@@ -509,17 +513,6 @@ export function useDesigner({
     }
     return { areaSqm: roundTo(area, 2), price: roundTo(price, 0) };
   }, [selectedProducts]);
-
-  // A product deep-link applies as soon as a surface exists.
-  const appliedInitial = React.useRef(false);
-  React.useEffect(() => {
-    if (appliedInitial.current || !initialProductSlug) return;
-    if (state.step !== "design" || !state.activeSurfaceId) return;
-    const swatch = swatches.find((entry) => entry.slug === initialProductSlug);
-    if (!swatch) return;
-    appliedInitial.current = true;
-    applyProduct(swatch.id);
-  }, [applyProduct, initialProductSlug, state.activeSurfaceId, state.step, swatches]);
 
   const reset = React.useCallback(() => {
     maskCache.current.clear();

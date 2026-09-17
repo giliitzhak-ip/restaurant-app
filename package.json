@@ -18,7 +18,8 @@
     "qa": "npm run lint && npm run typecheck && npm run build",
     "predev": "tsx scripts/generate-media.ts",
     "prebuild": "prisma generate && tsx scripts/generate-media.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "qa:responsive": "node scripts/qa-responsive.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
