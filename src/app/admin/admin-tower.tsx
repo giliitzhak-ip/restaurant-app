@@ -28,7 +28,10 @@ interface Overview {
     id: string; full_name: string; state: string; lat: number; lon: number;
     heading_deg: string | null; age_seconds: string; category_name: string | null;
   }[];
-  pendingVerification: { id: string; full_name: string; email: string; created_at: string }[];
+  pendingVerification: {
+    id: string; full_name: string; email: string; created_at: string;
+    category_name: string | null; priced_services: number; is_configured: boolean;
+  }[];
 }
 
 /** Control tower (spec §33). */
@@ -222,11 +225,24 @@ export function AdminTower() {
                 <div>
                   <p className="font-medium text-white">{provider.full_name}</p>
                   <p className="tech-id text-xs text-slate-500">{provider.email}</p>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                    {provider.is_configured ? (
+                      <>
+                        <Badge tone="accent">{provider.category_name}</Badge>
+                        <span className="ltr-nums text-xs text-slate-500" dir="ltr">
+                          {provider.priced_services} services priced
+                        </span>
+                      </>
+                    ) : (
+                      <Badge tone="warning">לא הגדיר תחום — אימות לא יועיל</Badge>
+                    )}
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <Button
                     size="md"
                     variant="success"
+                    disabled={!provider.is_configured}
                     loading={busy === `אימות ${provider.full_name}`}
                     onClick={() =>
                       void act(

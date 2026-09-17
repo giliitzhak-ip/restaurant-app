@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ApiError, handleError, ok, parseJson } from '@/lib/api';
 import { requireRole } from '@/lib/auth';
-import { withUser } from '@/lib/db';
+import { withUser, type DbSession } from '@/lib/db';
 import { invalidateSettingsCache } from '@/lib/settings';
 import { runDispatchWave } from '@/domains/matching/dispatch';
 import { logOperation, newRequestId } from '@/lib/logger';
@@ -29,27 +29,34 @@ export async function POST(request: Request) {
     const admin = await requireRole('admin');
     const body = await parseJson(request, bodySchema);
 
-    const audit = async (
+    /**
+     * Write the audit row. Takes the CALLER'S transaction rather than opening
+     * its own, so the record and the change commit together or not at all.
+     *
+     * An earlier version audited in a separate transaction. When the INSERT
+     * was denied by RLS, verify_provider had already committed: the provider
+     * was verified, no trail existed, and the caller was told it failed.
+     * Spec §33 is not satisfiable by a best-effort log.
+     */
+    const audit = (
+      db: DbSession,
       action: string,
       targetType: string,
       targetId: string | null,
       before: unknown,
       after: unknown,
       reason?: string,
-    ) => {
-      await withUser(admin.id, async (db) => {
-        await db.query(
-          `insert into admin_actions
-             (admin_id, action, target_type, target_id, reason,
-              before_state, after_state, request_id)
-           values ($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,$8)`,
-          [
-            admin.id, action, targetType, targetId, reason ?? null,
-            JSON.stringify(before ?? null), JSON.stringify(after ?? null), requestId,
-          ],
-        );
-      });
-    };
+    ) =>
+      db.query(
+        `insert into admin_actions
+           (admin_id, action, target_type, target_id, reason,
+            before_state, after_state, request_id)
+         values ($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,$8)`,
+        [
+          admin.id, action, targetType, targetId, reason ?? null,
+          JSON.stringify(before ?? null), JSON.stringify(after ?? null), requestId,
+        ],
+      );
 
     switch (body.action) {
       case 'verify_provider':
@@ -62,7 +69,7 @@ export async function POST(request: Request) {
               ? 'SUSPENDED'
               : 'REJECTED';
 
-        const result = await withUser(admin.id, async (db) => {
+        await withUser(admin.id, async (db) => {
           const before = await db.one<{ verification: string; state: string }>(
             `select verification::text as verification, state::text as state
                from provider_profiles where id = $1`,
@@ -86,14 +93,13 @@ export async function POST(request: Request) {
               [body.providerId, nextStatus === 'SUSPENDED' ? body.reason : null, body.reason, admin.id],
             );
           }
-          return before;
-        });
 
-        await audit(
-          body.action, 'provider', body.providerId,
-          result, { verification: nextStatus },
-          'reason' in body ? body.reason : undefined,
-        );
+          await audit(
+            db, body.action, 'provider', body.providerId,
+            before, { verification: nextStatus },
+            'reason' in body ? body.reason : undefined,
+          );
+        });
 
         logOperation({
           requestId, userId: admin.id, providerId: body.providerId,
@@ -103,67 +109,81 @@ export async function POST(request: Request) {
       }
 
       case 'cancel_job': {
-        const before = await withUser(admin.id, (db) =>
-          db.one<{ status: string }>(`select status::text as status from jobs where id = $1`, [
-            body.jobId,
-          ]),
-        );
-        if (!before) throw new ApiError('NOT_FOUND', 'העבודה לא נמצאה', 404);
-
         await withUser(
           admin.id,
           async (db) => {
+            const before = await db.one<{ status: string }>(
+              `select status::text as status from jobs where id = $1`,
+              [body.jobId],
+            );
+            if (!before) throw new ApiError('NOT_FOUND', 'העבודה לא נמצאה', 404);
+
             await db.query(
               `update jobs set status = 'CANCELLED_BY_SYSTEM',
                                cancellation_reason = $2, cancelled_by = $3
                 where id = $1`,
               [body.jobId, body.reason, admin.id],
             );
+
+            await audit(
+              db, 'cancel_job', 'job', body.jobId,
+              before, { status: 'CANCELLED_BY_SYSTEM' }, body.reason,
+            );
           },
           { actorRole: 'admin', transitionReason: `Admin cancelled: ${body.reason}` },
         );
 
-        await audit('cancel_job', 'job', body.jobId, before, { status: 'CANCELLED_BY_SYSTEM' }, body.reason);
         return ok({ jobId: body.jobId, status: 'CANCELLED_BY_SYSTEM' });
       }
 
       case 'redispatch_job': {
-        const before = await withUser(admin.id, (db) =>
-          db.one<{ status: string; dispatch_wave: number }>(
-            `select status::text as status, dispatch_wave from jobs where id = $1`,
-            [body.jobId],
-          ),
-        );
-        if (!before) throw new ApiError('NOT_FOUND', 'העבודה לא נמצאה', 404);
+        // The audit records the ORDER to re-dispatch, committed with the
+        // status change. The dispatch itself runs afterwards in its own
+        // transaction, so a dispatch failure still leaves a trail of who
+        // ordered it.
+        const before = await withUser(
+          admin.id,
+          async (db) => {
+            const current = await db.one<{ status: string; dispatch_wave: number }>(
+              `select status::text as status, dispatch_wave from jobs where id = $1`,
+              [body.jobId],
+            );
+            if (!current) throw new ApiError('NOT_FOUND', 'העבודה לא נמצאה', 404);
 
-        // Put the job back into SEARCHING through a legal transition, then
-        // run a fresh wave.
-        if (before.status !== 'SEARCHING') {
-          await withUser(
-            admin.id,
-            async (db) => {
+            if (current.status !== 'SEARCHING') {
               await db.query(`update jobs set status = 'SEARCHING' where id = $1`, [body.jobId]);
-            },
-            { actorRole: 'admin', transitionReason: 'Admin re-dispatch' },
-          );
-        }
+            }
+
+            await audit(
+              db, 'redispatch_job', 'job', body.jobId,
+              current, { status: 'SEARCHING', requestedWave: 1 }, body.reason,
+            );
+            return current;
+          },
+          { actorRole: 'admin', transitionReason: 'Admin re-dispatch' },
+        );
 
         const outcome = await runDispatchWave(body.jobId, { waveOverride: 1 });
-        await audit('redispatch_job', 'job', body.jobId, before, outcome, body.reason);
-        return ok(outcome);
+        return ok({ ...outcome, previousStatus: before.status });
       }
 
       case 'update_setting': {
-        const before = await withUser(admin.id, (db) =>
-          db.one<{ value: unknown }>('select value from settings where key = $1', [body.key]),
-        );
-
         await withUser(admin.id, async (db) => {
+          const before = await db.one<{ value: unknown }>(
+            'select value from settings where key = $1',
+            [body.key],
+          );
+
           await db.query(
             `insert into settings (key, value, updated_by)
              values ($1, $2::jsonb, $3)
              on conflict (key) do update set value = excluded.value, updated_by = excluded.updated_by`,
             [body.key, JSON.stringify(body.value), admin.id],
+          );
+
+          await audit(
+            db, 'update_setting', 'setting', null,
+            before?.value ?? null, body.value, body.key,
           );
         });
 
@@ -171,7 +191,6 @@ export async function POST(request: Request) {
         // change takes effect on the next dispatch rather than up to 15s later.
         invalidateSettingsCache();
 
-        await audit('update_setting', 'setting', null, before?.value ?? null, body.value, body.key);
         return ok({ key: body.key, value: body.value });
       }
     }

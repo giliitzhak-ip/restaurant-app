@@ -65,7 +65,17 @@ export async function GET() {
       db.one(
         `select pp.state::text as state, pp.verification::text as verification,
                 pp.rating_avg, pp.rating_count, pp.completed_jobs,
-                p.full_name
+                p.full_name,
+                -- Mirrors what find_candidate_providers actually requires: a
+                -- declared trade and at least one priced service. Without
+                -- both, the provider is not a weak candidate — the INNER JOIN
+                -- means they are absent from the search entirely.
+                exists (
+                  select 1 from provider_categories pc where pc.provider_id = pp.id
+                ) and exists (
+                  select 1 from provider_services ps
+                   where ps.provider_id = pp.id and ps.is_active and ps.price_ils is not null
+                ) as is_configured
            from provider_profiles pp
            join profiles p on p.id = pp.id
           where pp.id = $1`,

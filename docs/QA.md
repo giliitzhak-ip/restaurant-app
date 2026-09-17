@@ -6,7 +6,7 @@ What is verified, how, and — importantly — what is **not**.
 
 ## Test inventory
 
-140 tests, 13 files. Run: `npm test`
+152 tests, 15 files. Run: `npm test`
 (first time: `npm run test:db` to create the test database).
 
 ### Unit — pure domain logic, no I/O
@@ -29,6 +29,7 @@ What is verified, how, and — importantly — what is **not**.
 | `acceptance.test.ts` | 8 | Assignment, **the race**, expiry, competing-offer cancellation, one-job-at-a-time |
 | `failure-scenarios.test.ts` | 12 | Every §44 failure mode |
 | `state-machine.test.ts` | 4 | DB↔TypeScript parity across all 240 status pairs |
+| `provider-onboarding.test.ts` | 7 | An unconfigured provider yields zero candidates; onboarded + verified yields one |
 
 ### Security
 
@@ -36,6 +37,7 @@ What is verified, how, and — importantly — what is **not**.
 |---|---|---|
 | `rls.test.ts` | 17 | Cross-tenant reads, payout privacy, foreign offers, earnings tampering, role escalation, self-verification, audit forgery, review eligibility, location windows |
 | `enforcement.test.ts` | 8 | **Proof the harness can fail** |
+| `admin-audit.test.ts` | 5 | Audit append-only, no cross-admin forgery, change and record commit together |
 
 ---
 
@@ -239,7 +241,29 @@ Listed because each one would have shipped:
     synchronously in effects, and `new Date()` during render — the last a real
     SSR hydration mismatch. Fixed with abort-flagged effects, which also
     removed a stale-response race.
-12. **ESLint 10 incompatibility.** `eslint-config-next@16` declares
+12. **Provider registration was broken end to end.** `service_role` had only
+    SELECT on `auth.users` in the local auth shim, so `POST /api/auth/register`
+    could never insert and every signup returned 403. It went unnoticed
+    because the earlier adversarial probe only tried `role: "admin"`, which is
+    rejected at validation and never reaches the database — so no successful
+    registration was ever exercised. Fixed by migration 0015, guarded to
+    no-op on Supabase, where Supabase Auth owns that table.
+13. **An admin action changed state, logged nothing, and reported failure.**
+    `admin_actions` had a SELECT-only policy, and the audit INSERT ran in its
+    own transaction. `verify_provider` committed the change, was denied the
+    audit row by RLS, and returned 403 — the provider was verified, no trail
+    existed, and the caller was told it had failed. Both halves were wrong:
+    migration 0016 adds an INSERT policy (scoped to `admin_id = auth.uid()`,
+    so one admin cannot forge another's action), and the handler now writes
+    the audit row inside the same transaction as the change. An earlier commit
+    message claimed this was already atomic; it was not.
+14. **A registered provider could never be matched.** Registration created an
+    account with no declared trade, and `find_candidate_providers` INNER JOINs
+    `provider_categories` — so such a provider was not a weak candidate but
+    absent from the search entirely, permanently. There was no screen or
+    endpoint to declare a trade, prices or a service area. Built as
+    `/provider/onboarding` plus `PUT /api/provider/setup`.
+15. **ESLint 10 incompatibility.** `eslint-config-next@16` declares
     `eslint >= 9` but bundles a plugin using APIs removed in 10; every lint run
     crashed. Pinned to 9.39.5 (D-012).
 
@@ -253,8 +277,8 @@ Listed because each one would have shipped:
 | TypeScript passes | ✅ `tsc --noEmit` clean |
 | Lint passes | ✅ `eslint .` clean |
 | Unit tests pass | ✅ 81 |
-| Integration tests pass | ✅ 34 against real PostgreSQL + PostGIS |
-| Security verified | ✅ 25, plus a self-check proving they can fail |
+| Integration tests pass | ✅ 41 against real PostgreSQL + PostGIS |
+| Security verified | ✅ 30, plus a self-check proving they can fail |
 | RLS verified | ✅ Enforced as `authenticated`; every table covered |
 | UI inspected | ✅ `npm run ui:audit`, 6 pages, no issues |
 | Mobile inspected | ✅ 390×844, no overflow, 44px targets |
@@ -286,6 +310,20 @@ These are stated rather than implied to work:
   (R-008).
 - **No address geocoding.** A customer who denies location cannot proceed via
   a typed address; the flow says so instead of inventing a coordinate (A-005).
+- **Spec §10's second branch is not implemented.** One excellent match gets a
+  single recommendation, which is built. "Several genuinely different options
+  → show at most three" is not: the customer never sees the offer list, and
+  `GET /api/jobs/:id` does not return `job_offers` to them.
+- **COMPARE is a dead end.** The booking mode is accepted and validated, but
+  only `NOW` dispatches, so a COMPARE job is created and nothing further
+  happens. There is also no customer-side offer-selection endpoint — only the
+  provider's `accept`/`decline`. Choosing between the quote model and the
+  pick-a-candidate model is a product decision with different schema
+  consequences, so it is left open rather than guessed at.
+- **Provider documents are not uploadable.** Categories declare
+  `requires_license` / `requires_insurance` / `requires_documents`, and
+  onboarding tells the provider an admin will ask for them, but there is no
+  upload surface and no storage adapter behind `provider_documents`.
 - **No load testing.** Index choices are reasoned, not benchmarked.
 - **`npm audit` not run** as part of the gates.
 
@@ -298,7 +336,7 @@ npm install
 npm run db:roles        # create app + anon/authenticated/service_role
 npm run db:setup        # migrate and seed development
 npm run test:db         # create the dedicated test database
-npm test                # 140 tests
+npm test                # 152 tests
 
 npm start &
 SHOTS=./.ui-shots npm run ui:audit

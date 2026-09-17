@@ -27,9 +27,11 @@ export function LoginForm({ demoMode }: { demoMode: boolean }) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
 
-  const routeFor = (user: AuthResponse): string => {
+  const routeFor = (user: AuthResponse, justRegistered = false): string => {
     if (next) return next;
-    if (user.role === 'provider') return '/provider';
+    // A newly registered provider has no trade declared yet, so the console
+    // would be a dead end. Send them straight to setup.
+    if (user.role === 'provider') return justRegistered ? '/provider/onboarding' : '/provider';
     if (user.role === 'admin') return '/admin';
     return '/';
   };
@@ -52,7 +54,7 @@ export function LoginForm({ demoMode }: { demoMode: boolean }) {
               json: { email, password, fullName, role },
             });
 
-      router.replace(routeFor(user));
+      router.replace(routeFor(user, mode === 'register'));
       router.refresh();
     } catch (caught) {
       if (caught instanceof ApiRequestError) {

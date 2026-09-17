@@ -63,7 +63,7 @@ refreshes it.
 | `npm run dev` | Development server |
 | `npm run build` / `npm start` | Production build and serve |
 | `npm run lint` · `npm run typecheck` | Static checks |
-| `npm test` | All 140 tests |
+| `npm test` | All 152 tests |
 | `npm run test:unit` · `test:integration` · `test:security` | One suite |
 | `npm run db:roles` · `db:migrate` · `db:seed` · `db:setup` | Database |
 | `npm run test:db` | Create/refresh the test database |
@@ -112,7 +112,10 @@ REQUEST → UNDERSTAND → LOCATE → MATCH → OFFER → ACCEPT → CONFIRM
    → EN ROUTE → ARRIVE → WORK → COMPLETE → PAY → REVIEW
 ```
 
-**What is not done**, stated plainly: no real payment gateway is integrated
+**What is not done**, stated plainly: the customer cannot choose between
+several offers (spec §10's second branch) and the COMPARE booking mode is a
+dead end; provider documents cannot be uploaded; no real payment gateway is
+integrated
 (the mock reports `isReal = false` and the UI labels test payments as such);
 this has not been run against a live Supabase project; no push notifications;
 and the route-opportunity weighting, while it wins the adversarial case, wins

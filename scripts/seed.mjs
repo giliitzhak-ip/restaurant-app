@@ -111,8 +111,9 @@ async function main() {
   await client.connect();
   await client.query('begin');
 
-  const { rows: catRows } = await client.query('select id, slug from categories');
+  const { rows: catRows } = await client.query('select id, slug, name_he from categories');
   const categoryBySlug = new Map(catRows.map((r) => [r.slug, r.id]));
+  const categoryNameBySlug = new Map(catRows.map((r) => [r.slug, r.name_he]));
   const { rows: svcRows } = await client.query(
     'select s.id, s.slug, s.category_id, s.base_price_ils from services s',
   );
@@ -165,7 +166,11 @@ async function main() {
          cancelled_jobs = excluded.cancelled_jobs,
          verification = 'VERIFIED'`,
       [
-        id, `${name} — שירותי ${catSlug}`, 'בעל מקצוע מנוסה באזור המרכז.', years,
+        id,
+        // The Hebrew category name, not the slug: this string is shown to
+        // customers and to the provider on their own profile.
+        `${name} — שירותי ${categoryNameBySlug.get(catSlug) ?? catSlug}`,
+        'בעל מקצוע מנוסה באזור המרכז.', years,
         state, rating, ratingCount, completed, cancelled,
         completed + cancelled + 20, completed, 18 + (completed % 25),
         catSlug === 'pest_control' || catSlug === 'gardening' ? 30 : 18,

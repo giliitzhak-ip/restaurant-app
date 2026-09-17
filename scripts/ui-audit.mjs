@@ -114,6 +114,8 @@ await inspect('03-request', `${B}/request?q=${encodeURIComponent('יש לי נז
   { login: { email: 'rotem@demo.local', password: 'demo1234' } });
 await inspect('04-provider', `${B}/provider`,
   { login: { email: 'ram-on-the-way@demo.local', password: 'demo1234' } });
+await inspect('04b-provider-onboarding', `${B}/provider/onboarding`,
+  { login: { email: 'ram-on-the-way@demo.local', password: 'demo1234' } });
 await inspect('05-admin', `${B}/admin`,
   { login: { email: 'admin@demo.local', password: 'demo1234' }, viewport: { width: 1440, height: 900 } });
 await inspect('06-matching-lab', `${B}/matching-lab`,

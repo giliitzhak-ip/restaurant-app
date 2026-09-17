@@ -280,6 +280,17 @@ export async function cleanupTestData(): Promise<void> {
     [jobIds],
   );
   await db.query(`delete from jobs where customer_id = any($1::uuid[])`, [ids]);
+  // admin_actions.admin_id is ON DELETE RESTRICT, so the audit log refuses to
+  // let an admin be deleted out from under it. Correct for production — in
+  // tests the trail goes with the fixture.
+  await db.query(
+    `delete from admin_actions where admin_id = any($1::uuid[]) or target_id = any($1::uuid[])`,
+    [ids],
+  );
+  await db.query(
+    `delete from provider_admin_notes where provider_id = any($1::uuid[]) or author_id = any($1::uuid[])`,
+    [ids],
+  );
   await db.query(`delete from auth.users where id = any($1::uuid[])`, [ids]);
 }
 
@@ -338,4 +349,32 @@ function shortestPath(from: JobStatus, to: JobStatus): JobStatus[] | null {
     }
   }
   return null;
+}
+
+/**
+ * A provider as REGISTRATION leaves them: an account and a profile, but no
+ * declared trade, no prices and no service area.
+ *
+ * Deliberately distinct from createProvider(), which produces a fully
+ * configured provider. This is the state a real signup actually reaches.
+ */
+export async function createBareProvider(
+  options: { name?: string; verification?: 'PENDING' | 'VERIFIED' } = {},
+): Promise<TestProvider> {
+  const { name = 'מקצוען חדש', verification = 'PENDING' } = options;
+  const id = randomUUID();
+  const email = `${TEST_TAG}-bare-${id.slice(0, 8)}@test.local`;
+  const db = adminPool();
+
+  await db.query('insert into auth.users (id, email) values ($1,$2)', [id, email]);
+  await db.query(
+    `insert into profiles (id, role, full_name, email, is_demo) values ($1,'provider',$2,$3,true)`,
+    [id, name, email],
+  );
+  await db.query(
+    `insert into provider_profiles (id, verification, state, is_demo)
+     values ($1, $2::verification_status, 'OFFLINE', true)`,
+    [id, verification],
+  );
+  return { id, email };
 }

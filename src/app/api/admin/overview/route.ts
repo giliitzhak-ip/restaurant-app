@@ -109,9 +109,19 @@ export async function GET() {
 
       const pendingVerification = await db.many(`
         select pp.id, p.full_name, p.email, pp.created_at,
-               pp.verification::text as verification
+               pp.verification::text as verification,
+               c.name_he as category_name,
+               (select count(*) from provider_services ps
+                 where ps.provider_id = pp.id and ps.is_active
+                   and ps.price_ils is not null)::int as priced_services,
+               -- Verifying a provider who has declared no trade changes
+               -- nothing: the candidate search would still never return them.
+               -- Surfaced so an admin is not approving a dead account.
+               (c.id is not null) as is_configured
           from provider_profiles pp
           join profiles p on p.id = pp.id
+          left join provider_categories pc on pc.provider_id = pp.id and pc.is_primary
+          left join categories c on c.id = pc.category_id
          where pp.verification = 'PENDING'
          order by pp.created_at
          limit 50

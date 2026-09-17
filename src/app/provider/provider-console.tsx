@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Badge,
@@ -59,6 +60,7 @@ interface ProviderData {
     rating_count: number;
     completed_jobs: number;
     full_name: string;
+    is_configured: boolean;
   } | null;
 }
 
@@ -254,12 +256,32 @@ export function ProviderConsole() {
       <Card>
         <p className="text-lg font-bold text-white">שלום {profile?.full_name ?? ''}</p>
 
-        {profile?.verification !== 'VERIFIED' ? (
+        {/* Setup comes before verification: verifying an account with no
+            declared trade achieves nothing, because the candidate search
+            would still never return it. */}
+        {profile && !profile.is_configured ? (
+          <div className="mt-3 rounded-xl border border-accent-500/40 bg-accent-500/10 p-4">
+            <p className="font-semibold text-accent-400">צריך להשלים את הפרופיל</p>
+            <p className="mt-1 text-sm text-slate-400">
+              בלי תחום ומחירים לא נשלח לך עבודות — המערכת לא תכלול אותך בחיפוש.
+            </p>
+            <Link href="/provider/onboarding" className="mt-3 block">
+              <Button fullWidth size="md">
+                הגדר את הפרופיל
+              </Button>
+            </Link>
+          </div>
+        ) : profile?.verification !== 'VERIFIED' ? (
           <div className="mt-3 rounded-xl border border-warning-500/40 bg-warning-500/10 p-4">
             <p className="font-semibold text-warning-400">החשבון ממתין לאימות</p>
             <p className="mt-1 text-sm text-slate-400">
-              לא ניתן לקבל עבודות עד שמנהל יאמת את הפרטים והמסמכים.
+              הפרופיל מוגדר. לא ניתן לקבל עבודות עד שמנהל יאמת את הפרטים והמסמכים.
             </p>
+            <Link href="/provider/onboarding" className="mt-3 block">
+              <Button fullWidth size="md" variant="secondary">
+                עדכן את הפרטים
+              </Button>
+            </Link>
           </div>
         ) : (
           <>
@@ -465,7 +487,17 @@ export function ProviderConsole() {
       )}
 
       {!active && state === 'OFFLINE' && profile?.verification === 'VERIFIED' && (
-        <EmptyState title="אתה לא מקוון" message="התחל משמרת כדי לקבל עבודות." />
+        <EmptyState
+          title="אתה לא מקוון"
+          message="התחל משמרת כדי לקבל עבודות."
+          action={
+            <Link href="/provider/onboarding">
+              <Button variant="secondary" size="md">
+                עדכן תחומים ומחירים
+              </Button>
+            </Link>
+          }
+        />
       )}
     </div>
   );
