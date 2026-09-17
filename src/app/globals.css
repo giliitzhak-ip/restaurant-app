@@ -1,0 +1,124 @@
+@import 'tailwindcss';
+
+/* ---------------------------------------------------------------------------
+   GET SERVICE design tokens (spec §38–§39)
+   Base: deep navy / near black. Accent: electric blue / cyan.
+   Deliberately restrained: no glassmorphism, no gradient noise, no neon.
+   --------------------------------------------------------------------------- */
+@theme {
+  --color-navy-950: #060a14;
+  --color-navy-900: #0b1120;
+  --color-navy-850: #0f172a;
+  --color-navy-800: #151f36;
+  --color-navy-700: #1e2b47;
+  --color-navy-600: #2c3c5e;
+
+  --color-accent-400: #38bdf8;
+  --color-accent-500: #0ea5e9;
+  --color-accent-600: #0284c7;
+
+  --color-success-400: #34d399;
+  --color-success-500: #10b981;
+  --color-success-600: #059669;
+
+  --color-warning-400: #fbbf24;
+  --color-warning-500: #f59e0b;
+
+  --color-danger-400: #f87171;
+  --color-danger-500: #ef4444;
+  --color-danger-600: #dc2626;
+
+  --font-sans: 'Heebo', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  --radius-card: 1rem;
+}
+
+:root {
+  color-scheme: dark;
+  --bg: var(--color-navy-950);
+  --surface: var(--color-navy-900);
+  --surface-raised: var(--color-navy-850);
+  --border: var(--color-navy-700);
+  --text: #f8fafc;
+  --text-muted: #94a3b8;
+}
+
+html {
+  background-color: var(--bg);
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Accessibility: always-visible focus ring (spec §41) */
+:focus-visible {
+  outline: 2px solid var(--color-accent-400);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* RTL correctness (spec §40): the document direction is set on <html dir>.
+   Content that must stay LTR-readable — numbers, prices, phone numbers,
+   coordinates, identifiers — is wrapped in these helpers rather than being
+   force-flipped. */
+.ltr-nums {
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-variant-numeric: tabular-nums;
+}
+
+.tech-id {
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-family: var(--font-mono);
+}
+
+/* Respect users who ask for less motion (spec §41) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes gs-pulse-ring {
+  0% { transform: scale(0.85); opacity: 0.7; }
+  70% { transform: scale(1.6); opacity: 0; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+.gs-pulse-ring {
+  animation: gs-pulse-ring 1.9s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
+}
+
+@keyframes gs-sweep {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.gs-sweep {
+  animation: gs-sweep 2.4s linear infinite;
+}
+
+/* Screen-reader-only utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
