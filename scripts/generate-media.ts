@@ -193,7 +193,9 @@ function renderDetail(slug: string, width = 900, height = 620): Raster {
   const built = textures.get(slug)!;
   const out = new Raster(width, height);
   const noise = makeNoise2D(hashSeed(`detail-${slug}`));
-  const zoom = 0.34;
+  // Enough zoom to read the material, not so much that a 576px tile has to be
+  // upscaled into mush.
+  const zoom = 0.8;
 
   for (let y = 0; y < height; y += 1) {
     const ny = y / height;
@@ -219,6 +221,8 @@ function renderDetail(slug: string, width = 900, height = 620): Raster {
 
 const DEFAULT_FLOOR = "oak-natural-classic";
 const DEFAULT_WALL = "wall-travertine-cream";
+/** Floor products get a quiet feature wall so the room is not a bare box. */
+const BACKDROP_WALL = "wall-microtopping-ash";
 
 function roomFor(product: SeedProduct) {
   const herringbone =
@@ -235,7 +239,7 @@ function roomFor(product: SeedProduct) {
   if (product.category === "accessories") {
     return { floor: sceneTexture(DEFAULT_FLOOR), wall: sceneTexture(DEFAULT_WALL) };
   }
-  return { floor: sceneTexture(product.slug, rotate), wall: null };
+  return { floor: sceneTexture(product.slug, rotate), wall: sceneTexture(BACKDROP_WALL) };
 }
 
 console.log(`▸ product shots (${seedProducts.length * 3})`);
@@ -289,21 +293,11 @@ for (const scene of seedScenes) {
 }
 
 console.log(`▸ category tiles (${Object.keys(categoryTileProduct).length})`);
+// Category tiles are sample boards rather than rooms: six near-identical room
+// renders in a grid read as a template, while a board of each material does
+// not — and it puts the actual surface in front of the customer.
 for (const [slug, productSlug] of Object.entries(categoryTileProduct)) {
-  const product = seedProducts.find((p) => p.slug === productSlug)!;
-  const { floor, wall } = roomFor(product);
-  write(
-    join(dirs.categories, `${slug}.png`),
-    renderScene({
-      width: 880,
-      height: 1100,
-      floor,
-      wall,
-      light: 0,
-      seed: `category-${slug}`,
-    }),
-    5,
-  );
+  write(join(dirs.categories, `${slug}.png`), renderStudio(productSlug, 880, 1100), 6);
 }
 
 console.log(`▸ collection covers (${Object.keys(collectionCoverProduct).length})`);
@@ -313,10 +307,10 @@ for (const [slug, productSlug] of Object.entries(collectionCoverProduct)) {
   write(
     join(dirs.collections, `${slug}.png`),
     renderScene({
-      width: 1000,
-      height: 720,
+      width: 880,
+      height: 1150,
       floor,
-      wall,
+      wall: wall ?? sceneTexture(BACKDROP_WALL),
       light: 1,
       seed: `collection-${slug}`,
     }),

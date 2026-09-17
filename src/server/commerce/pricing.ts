@@ -25,6 +25,8 @@ export interface CartItemRecord {
   productId: string;
   units: number;
   requestedSqm: number | null;
+  /** Sample pieces are charged at the flat sample fee, not by coverage. */
+  sample: boolean;
   designId: string | null;
   designLabel: string | null;
 }
@@ -137,20 +139,22 @@ export function hydrateCart(
     // cart rather than breaking checkout.
     if (!product || !product.active) continue;
     const units = Math.max(1, Math.round(line.units));
+    const unitPrice = line.sample ? commerce.samplePrice : product.pricePerUnit;
     items.push({
       id: line.id,
       productId: product.id,
       productSlug: product.slug,
-      name: product.name,
+      name: line.sample ? `${product.name} — דוגמה` : product.name,
       subtitle: product.subtitle,
       imageUrl: product.images[0]?.url ?? "",
       units,
-      unitPrice: product.pricePerUnit,
-      pricingUnit: product.pricingUnit,
-      packageCoverageSqm: product.packageCoverageSqm,
-      requestedSqm: line.requestedSqm,
-      coveredSqm: coveredSqmFor(product, units),
-      lineTotal: roundTo(units * product.pricePerUnit, 2),
+      unitPrice,
+      pricingUnit: line.sample ? "ITEM" : product.pricingUnit,
+      packageCoverageSqm: line.sample ? null : product.packageCoverageSqm,
+      requestedSqm: line.sample ? null : line.requestedSqm,
+      coveredSqm: line.sample ? null : coveredSqmFor(product, units),
+      lineTotal: roundTo(units * unitPrice, 2),
+      sample: line.sample,
       designId: line.designId,
       designLabel: line.designLabel,
     });

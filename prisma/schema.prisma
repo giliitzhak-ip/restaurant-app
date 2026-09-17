@@ -372,6 +372,7 @@ model CartItem {
   productId    String
   units        Int
   requestedSqm Float?
+  sample       Boolean  @default(false)
   designId     String?
   designLabel  String?
   createdAt    DateTime @default(now())

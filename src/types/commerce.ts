@@ -27,6 +27,8 @@ export interface CartItem {
   /** m² delivered by `units` packages. */
   coveredSqm: number | null;
   lineTotal: number;
+  /** A physical sample piece rather than sellable coverage. */
+  sample: boolean;
   /** Set when the line was created from a saved room design. */
   designId: string | null;
   designLabel: string | null;
