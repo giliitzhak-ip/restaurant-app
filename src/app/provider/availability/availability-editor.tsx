@@ -57,6 +57,61 @@ interface Payload {
 
 const DEFAULT_WINDOW = { startsAt: '08:00', endsAt: '17:00' };
 
+/**
+ * Hours are chosen from a list, not typed into <input type="time">.
+ *
+ * The native control renders in the BROWSER's locale, so on a device set to
+ * en-US it shows "08:00 AM" — which needs half again the width, and clips to
+ * "08:00 A" at the width a day row can spare. Israel runs on a 24-hour clock
+ * and the provider is choosing a shift boundary, not an instant, so a list of
+ * quarter-hours is both narrower and more certain. 15-minute steps are finer
+ * than provider_next_available_at's 30-minute scan, so a shift starting at
+ * 08:15 can be reported as available from 08:30 — late, never early.
+ */
+const TIME_OPTIONS = Array.from({ length: 24 * 4 }, (_, index) => {
+  const hour = Math.floor(index / 4);
+  const minute = (index % 4) * 15;
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+});
+
+function TimeSelect({
+  value,
+  onChange,
+  label,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  label: string;
+}) {
+  // A saved value that is not on the quarter-hour grid must still be
+  // selectable, or opening this screen would silently round someone's hours.
+  const options = TIME_OPTIONS.includes(value)
+    ? TIME_OPTIONS
+    : [...TIME_OPTIONS, value].sort();
+
+  return (
+    <select
+      value={value}
+      aria-label={label}
+      onChange={(event) => onChange(event.target.value)}
+      dir="ltr"
+      className="ltr-nums h-11 min-w-0 flex-1 rounded-lg border border-line-strong bg-surface-2 px-1 text-center text-[15px] text-ink"
+    >
+      {options.map((option) => (
+        <option key={option} value={option}>
+          {option}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+/** Sunday–Thursday, 08:00–17:00 — the Israeli working week. */
+const WEEKDAY_DEFAULT: Window[] = [0, 1, 2, 3, 4].map((weekday) => ({
+  weekday,
+  ...DEFAULT_WINDOW,
+}));
+
 /** Today's date in the platform timezone — the same zone the server evaluates in. */
 function localToday(): string {
   return new Intl.DateTimeFormat('en-CA', {
@@ -136,6 +191,12 @@ export function AvailabilityEditor() {
   }, [draft]);
 
   const untilTarget = plannedEndToday ?? '18:00';
+
+  /** The day whose hours the "apply to the whole week" action copies. */
+  const firstPopulatedDay = useMemo(() => {
+    const days = draft.map((w) => w.weekday).sort((a, b) => a - b);
+    return days.length > 0 ? (days[0] ?? null) : null;
+  }, [draft]);
 
   const run = async (key: string, action: () => Promise<string>) => {
     setBusy(key);
@@ -304,30 +365,34 @@ export function AvailabilityEditor() {
               onChange={setSwitch}
             />
 
-            <div className="mt-2 flex flex-wrap gap-2">
+            <div className="mt-2 grid grid-cols-3 gap-2">
               <Button
                 size="md"
                 variant="secondary"
+                className="px-2 text-[13.5px]"
                 loading={busy === 'for-120'}
                 onClick={() => onlineFor(120)}
               >
-                זמין לשעתיים
+                לשעתיים
               </Button>
               <Button
                 size="md"
                 variant="secondary"
+                className="px-2 text-[13.5px]"
                 loading={busy === 'until'}
                 onClick={() => onlineUntil(untilTarget)}
               >
-                זמין עד <span className="ltr-nums" dir="ltr">{untilTarget}</span>
+                עד&nbsp;
+                <span className="ltr-nums" dir="ltr">{untilTarget}</span>
               </Button>
               <Button
                 size="md"
                 variant="secondary"
+                className="px-2 text-[13.5px]"
                 loading={busy === 'block-today'}
                 onClick={blockToday}
               >
-                לא זמין היום
+                לא היום
               </Button>
             </div>
 
@@ -343,12 +408,25 @@ export function AvailabilityEditor() {
       {/* ── Layer 2: the weekly plan ───────────────────────────────────── */}
       <section>
         <SectionLabel>התוכנית השבועית</SectionLabel>
-        <Card className="space-y-2.5">
+        <Card className="space-y-1">
           {draft.length === 0 && (
-            <p className="text-sm text-ink-2">
-              לא הגדרת שעות. במצב הזה הזמינות שלך נקבעת לפי המפסק למעלה בלבד,
-              ולא נוכל לשבץ לך תורים מתוכננים.
-            </p>
+            <div className="pb-2">
+              <p className="text-sm text-ink-2">
+                לא הגדרת שעות. כרגע הזמינות שלך נקבעת לפי המפסק למעלה בלבד, ולא
+                נוכל לשבץ לך תורים מתוכננים.
+              </p>
+              {/* The plan almost everyone wants, in one tap. Editing it after
+                  is far easier than building it row by row. */}
+              <Button
+                fullWidth
+                size="md"
+                variant="secondary"
+                className="mt-3"
+                onClick={() => setDraft(WEEKDAY_DEFAULT)}
+              >
+                א׳–ה׳, 08:00–17:00
+              </Button>
+            </div>
           )}
 
           {dayNames.map((name, weekday) => {
@@ -357,81 +435,76 @@ export function AvailabilityEditor() {
               .filter((w) => w.weekday === weekday);
 
             return (
-              <div key={weekday} className="border-b border-line pb-2.5 last:border-0 last:pb-0">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-ink">{name}</p>
-                  <div className="flex items-center gap-1">
-                    {windows.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => copyToAllDays(weekday)}
-                        className="min-h-11 rounded-lg px-2 text-[12.5px] font-medium text-ink-3 hover:bg-surface-2 hover:text-ink"
-                      >
-                        לכל הימים
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => addWindow(weekday)}
-                      aria-label={`הוספת חלון ביום ${name}`}
-                      className="inline-flex size-11 items-center justify-center rounded-lg text-brand-bright hover:bg-surface-2"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
+              <div key={weekday} className="border-b border-line py-1 last:border-0">
+                <div className="flex min-h-11 items-center gap-1.5">
+                  <p className="w-12 shrink-0 text-[13px] font-semibold text-ink">{name}</p>
 
-                {windows.length === 0 ? (
-                  <p className="text-[13px] text-ink-3">לא עובד</p>
-                ) : (
-                  <div className="mt-1 space-y-1.5">
-                    {windows.map((w) => (
-                      <div key={w.index} className="flex items-center gap-2">
-                        <input
-                          type="time"
-                          value={w.startsAt}
-                          aria-label={`שעת התחלה ביום ${name}`}
-                          onChange={(event) =>
-                            editWindow(w.index, { startsAt: event.target.value })
-                          }
-                          className="ltr-nums min-h-11 flex-1 rounded-lg border border-line-strong bg-surface-2 px-2 text-center text-[15px] text-ink"
-                          dir="ltr"
-                        />
-                        <span aria-hidden="true" className="text-ink-3">–</span>
-                        <input
-                          type="time"
-                          value={w.endsAt}
-                          aria-label={`שעת סיום ביום ${name}`}
-                          onChange={(event) => editWindow(w.index, { endsAt: event.target.value })}
-                          className="ltr-nums min-h-11 flex-1 rounded-lg border border-line-strong bg-surface-2 px-2 text-center text-[15px] text-ink"
-                          dir="ltr"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeWindow(w.index)}
-                          aria-label={`הסרת החלון ${w.startsAt} עד ${w.endsAt} ביום ${name}`}
-                          className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-ink-3 hover:bg-surface-2 hover:text-bad-bright"
-                        >
-                          ✕
-                        </button>
+                  <div className="min-w-0 flex-1">
+                    {windows.length === 0 ? (
+                      <p className="text-[13px] text-ink-3">לא עובד</p>
+                    ) : (
+                      <div className="space-y-1">
+                        {windows.map((w) => (
+                          <div key={w.index} className="flex items-center gap-1">
+                            <TimeSelect
+                              value={w.startsAt}
+                              label={`שעת התחלה ביום ${name}`}
+                              onChange={(startsAt) => editWindow(w.index, { startsAt })}
+                            />
+                            <span aria-hidden="true" className="shrink-0 text-ink-3">–</span>
+                            <TimeSelect
+                              value={w.endsAt}
+                              label={`שעת סיום ביום ${name}`}
+                              onChange={(endsAt) => editWindow(w.index, { endsAt })}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeWindow(w.index)}
+                              aria-label={`הסרת ${w.startsAt}–${w.endsAt} ביום ${name}`}
+                              className="inline-flex h-11 w-7 shrink-0 items-center justify-center rounded-lg text-ink-3 hover:bg-surface-2 hover:text-bad-bright"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
-                )}
+
+                  <button
+                    type="button"
+                    onClick={() => addWindow(weekday)}
+                    aria-label={`הוספת חלון ביום ${name}`}
+                    className="inline-flex h-11 w-7 shrink-0 items-center justify-center rounded-lg text-lg text-brand-bright hover:bg-surface-2"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
             );
           })}
+
+          {/* "Use these hours every day" belongs once, not seven times: it is
+              a single intention, and repeating it per row is what pushed the
+              time fields down to an unreadable width. */}
+          {firstPopulatedDay !== null && (
+            <button
+              type="button"
+              onClick={() => copyToAllDays(firstPopulatedDay)}
+              className="min-h-11 w-full rounded-lg text-start text-[13px] font-medium text-brand-bright hover:bg-surface-2"
+            >
+              החל את שעות יום {dayNames[firstPopulatedDay]} על כל השבוע
+            </button>
+          )}
         </Card>
 
-        <Button
-          fullWidth
-          className="mt-3"
-          disabled={!dirty}
-          loading={busy === 'plan'}
-          onClick={savePlan}
-        >
-          {dirty ? 'שמור תוכנית' : 'התוכנית שמורה'}
-        </Button>
+        {/* Shown only when there is something to save. A permanently visible
+            disabled button is weight on the screen that does nothing. */}
+        {dirty && (
+          <Button fullWidth className="mt-3" loading={busy === 'plan'} onClick={savePlan}>
+            שמור תוכנית
+          </Button>
+        )}
       </section>
 
       {/* ── Exceptions ─────────────────────────────────────────────────── */}
@@ -444,6 +517,7 @@ export function AvailabilityEditor() {
               <input
                 type="date"
                 value={vacationFrom}
+                aria-label="חסימת יומן — מתאריך"
                 min={localToday()}
                 onChange={(event) => setVacationFrom(event.target.value)}
                 className="ltr-nums mt-1 min-h-11 w-full rounded-lg border border-line-strong bg-surface-2 px-2 text-[15px] text-ink"
@@ -455,6 +529,7 @@ export function AvailabilityEditor() {
               <input
                 type="date"
                 value={vacationTo}
+                aria-label="חסימת יומן — עד תאריך"
                 min={vacationFrom || localToday()}
                 onChange={(event) => setVacationTo(event.target.value)}
                 className="ltr-nums mt-1 min-h-11 w-full rounded-lg border border-line-strong bg-surface-2 px-2 text-[15px] text-ink"

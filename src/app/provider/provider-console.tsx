@@ -266,12 +266,12 @@ export function ProviderConsole() {
       {/* ── Availability: ONE dominant control (spec §9, §45) ──────────────
           Everything else about hours lives one tap away. What the provider
           needs on this screen is the current answer and the switch. */}
-      <Card>
+      <div>
         {/* Setup comes before verification: verifying an account with no
             declared trade achieves nothing, because the candidate search
             would still never return it. */}
         {profile && !profile.is_configured ? (
-          <div className="rounded-xl border border-brand/40 bg-brand/10 p-4">
+          <div className="rounded-2xl border border-brand/40 bg-brand/10 p-4">
             <p className="font-semibold text-brand-bright">צריך להשלים את הפרופיל</p>
             <p className="mt-1 text-sm text-ink-2">
               בלי תחום ומחירים לא נשלח לך עבודות — המערכת לא תכלול אותך בחיפוש.
@@ -283,7 +283,7 @@ export function ProviderConsole() {
             </Link>
           </div>
         ) : profile?.verification !== 'VERIFIED' ? (
-          <div className="rounded-xl border border-warn/40 bg-warn/10 p-4">
+          <div className="rounded-2xl border border-warn/40 bg-warn/10 p-4">
             <p className="font-semibold text-warn-bright">החשבון ממתין לאימות</p>
             <p className="mt-1 text-sm text-ink-2">
               הפרופיל מוגדר. לא ניתן לקבל עבודות עד שמנהל יאמת את הפרטים והמסמכים.
@@ -296,7 +296,7 @@ export function ProviderConsole() {
           </div>
         ) : state === 'BUSY' ? (
           // BUSY is not a choice, so it is not shown as one.
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-brand/40 bg-brand/10 p-4">
             <div>
               <p className="text-lg font-bold text-ink">בעבודה</p>
               <p className="mt-0.5 text-sm text-ink-2">לא נשלח לך עבודות נוספות עד שתסיים</p>
@@ -333,7 +333,7 @@ export function ProviderConsole() {
             )}
           </>
         )}
-      </Card>
+      </div>
 
       {actionError && (
         <p role="alert" className="rounded-xl bg-bad/10 px-4 py-3 text-sm text-bad-bright">
