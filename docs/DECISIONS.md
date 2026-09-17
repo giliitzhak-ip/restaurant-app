@@ -459,3 +459,79 @@ providers in range, rejecting one produced zero offers and the second was
 never asked. The pre-existing test for provider withdrawal asserted only that
 the state machine *permits* the transition, never that re-dispatch reached
 anyone — which is exactly how the bug shipped.
+
+---
+
+## D-022 — A provider may propose their own trade; an admin resolves it
+
+**Context.** The catalog ships 7 categories and 23 services. That is not the
+set of trades people do, and a provider whose work is absent had no way in at
+all: `find_candidate_providers` INNER JOINs `provider_categories`, so with no
+declared trade they are not a weak candidate — they are absent from every
+search, permanently. The same failure as D-016's invisible provider, one
+layer up.
+
+**Decision.** Free text, held as a **proposal** with no effect on matching
+until an admin resolves it. Approval creates a **service under an existing
+category**, links the provider to both, and carries the trigger phrases that
+make it reachable. Rejection records a reason the provider can read.
+
+**Why a service and not a new category.** `jobs.category_id` drives the
+candidate search, and a category carries behaviour configuration: which
+booking modes it supports, its default radius and duration, whether it
+requires a licence or insurance. A category invented per proposal arrives
+with none of that and no customers, so it would be a category nobody is ever
+matched into. Creating whole categories stays an out-of-band operation.
+
+**Why phrases are required, not optional.** This is the part that was
+tempting to skip. The classifier routes a customer's description to a service
+by matching phrasings, and those phrasings were hard-coded in TypeScript. A
+service created without them can never be reached by any description: the
+provider would be told "approved" and would still never receive a job. So
+`services.strong_phrases` / `weak_phrases` moved the phrasings into data, the
+classifier merges them with its built-in rules, and `phrases` is a required
+field on the approve action — at the Zod schema, and again inside
+`approveTradeProposal`. A fake approval is unrepresentable rather than
+discouraged.
+
+The merge is additive and the built-in rules are unchanged, so adding a trade
+cannot silently break an existing classification. A test asserts the four
+canonical descriptions still resolve exactly as before.
+
+**Consequences and guards.**
+
+* The provider is told, in those words, that no jobs will arrive until it is
+  approved — on the form, and on every pending row.
+* `trade_proposals` has **no UPDATE policy for the owning provider**. An
+  "own row" policy would have let them write their own `APPROVED`. Tested
+  both through the domain function and by raw SQL.
+* Approval runs entirely as the admin, so RLS is the gate: `services` is
+  writable only where `is_admin()`.
+* One live proposal per trade per provider, and at most 5 pending — a review
+  queue a human reads is a shared resource.
+* A near-duplicate count is shown to the reviewer, because approving one
+  creates a second service meaning the same thing and splits providers
+  between them.
+* Price guidance on the new service is a band around what the provider asked
+  for. No price means no guidance, rather than a band invented around
+  nothing.
+
+## D-023 — Notifications are written by the system, never by an admin
+
+**Context.** The first version of `approve_trade` inserted the provider's
+notification inside the admin's transaction. `notifications` has **no INSERT
+policy at all** — it is a table users read and the system writes — so the
+insert was refused and the entire approval rolled back. The action could
+never succeed.
+
+**Decision.** Notifications are sent through `withSystem` after the
+transaction commits, and a failure is logged rather than raised.
+
+**Why the asymmetry with the audit row.** D-013's rule was that the audit row
+commits with the change, and that still holds: the audit is the record of
+authority, and an unaudited admin action must be impossible. A notification
+is a courtesy. Losing one must not undo a decision that was correctly made
+and correctly recorded — the provider still sees the outcome on their own
+screen. Adding an INSERT policy so admins could write notifications was the
+alternative, and it would let an admin forge a message that appears to come
+from the system.

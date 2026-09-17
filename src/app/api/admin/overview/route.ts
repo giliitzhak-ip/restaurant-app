@@ -127,6 +127,34 @@ export async function GET() {
          limit 50
       `);
 
+      /* Provider-proposed trades awaiting a decision. Ordered oldest first:
+         a review queue that is not FIFO quietly abandons its tail. */
+      const tradeProposals = await db.many(`
+        select tp.id, tp.proposed_name, tp.description, tp.price_ils, tp.created_at,
+               p.full_name as provider_name, p.email as provider_email,
+               pp.verification::text as provider_verification,
+               sc.name_he as suggested_category_name,
+               sc.slug as suggested_category_slug,
+               -- Does the catalog already cover this? A near-duplicate is the
+               -- most likely outcome, and approving one creates a second
+               -- service meaning the same thing.
+               (select count(*)::int from services s
+                 where s.is_active and s.name_he ilike '%' || btrim(tp.proposed_name) || '%') as similar_services
+          from trade_proposals tp
+          join provider_profiles pp on pp.id = tp.provider_id
+          join profiles p on p.id = tp.provider_id
+          left join categories sc on sc.id = tp.suggested_category_id
+         where tp.status = 'PENDING'
+         order by tp.created_at
+         limit 50
+      `);
+
+      // The categories a proposal may be filed under. Needed by the review
+      // form, and small enough to ship with the page it is used on.
+      const categories = await db.many(
+        `select slug, name_he from categories where is_active order by sort_order`,
+      );
+
       /*
        * Every list above is capped. Without the totals the admin cannot tell
        * "50 providers awaiting verification" from "the first 50 of 300" — and
@@ -134,12 +162,15 @@ export async function GET() {
        */
       const totals = await db.one<{
         pending_verification: number;
+        pending_trades: number;
         live_providers: number;
         live_jobs: number;
       }>(`
         select
           (select count(*) from provider_profiles where verification = 'PENDING')::int
             as pending_verification,
+          (select count(*) from trade_proposals where status = 'PENDING')::int
+            as pending_trades,
           (select count(*) from provider_profiles pp
              join provider_locations pl on pl.provider_id = pp.id
             where pp.state <> 'OFFLINE')::int as live_providers,
@@ -156,13 +187,17 @@ export async function GET() {
         liveJobs,
         liveProviders,
         pendingVerification,
+        tradeProposals,
+        categories,
         totals: {
           pendingVerification: totals?.pending_verification ?? 0,
+          pendingTrades: totals?.pending_trades ?? 0,
           liveProviders: totals?.live_providers ?? 0,
           liveJobs: totals?.live_jobs ?? 0,
         },
         shown: {
           pendingVerification: pendingVerification.length,
+          tradeProposals: tradeProposals.length,
           liveProviders: liveProviders.length,
           liveJobs: liveJobs.length,
         },

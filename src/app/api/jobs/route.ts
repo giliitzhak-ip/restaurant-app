@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { ApiError, fail, handleError, ok, parseJson } from '@/lib/api';
 import { requireUser } from '@/lib/auth';
 import { withSystem, withUser } from '@/lib/db';
-import { jobUnderstanding } from '@/domains/jobs/understanding';
+import { loadJobUnderstanding } from '@/domains/jobs/understanding-catalog';
 import { runDispatchWave } from '@/domains/matching/dispatch';
 import { logOperation, newRequestId } from '@/lib/logger';
 import { rateLimit } from '@/lib/rate-limit';
@@ -86,6 +86,9 @@ export async function POST(request: Request) {
 
     // Classification happens on the server. A client-supplied slug is only a
     // correction hint and is still validated against the catalog below.
+    // The catalog-aware classifier: built-in rules plus the trigger phrases
+    // an admin attached when approving a provider-proposed trade.
+    const jobUnderstanding = await loadJobUnderstanding();
     const understanding = await jobUnderstanding.understand(body.description);
     const categorySlug = body.categorySlug ?? understanding.category;
     const serviceSlug = body.serviceSlug ?? understanding.service;

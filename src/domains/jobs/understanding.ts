@@ -33,7 +33,7 @@ export interface UnderstandingAdapter {
   understand(text: string): Promise<UnderstandingResult>;
 }
 
-interface ServiceRule {
+export interface ServiceRule {
   readonly category: string;
   readonly service: string;
   /** Terms that strongly indicate this exact service. */
@@ -223,6 +223,22 @@ function phraseScore(phrase: string, base: number, perExtraToken: number): numbe
 export class RuleBasedUnderstanding implements UnderstandingAdapter {
   readonly name = 'rules';
 
+  private readonly rules: readonly ServiceRule[];
+
+  /**
+   * `extraRules` come from the catalog in the database — the trigger phrases
+   * an admin attached when approving a provider-proposed trade. They are
+   * ADDITIVE: the built-in rules below still apply, and both compete on
+   * score, so adding a trade can never silently break an existing one.
+   *
+   * They are passed in rather than loaded here so this class stays pure and
+   * synchronous, and so the 17 unit tests keep testing the built-in rules
+   * without a database.
+   */
+  constructor(extraRules: readonly ServiceRule[] = []) {
+    this.rules = extraRules.length > 0 ? [...extraRules, ...SERVICE_RULES] : SERVICE_RULES;
+  }
+
   async understand(text: string): Promise<UnderstandingResult> {
     return this.understandSync(text);
   }
@@ -239,7 +255,7 @@ export class RuleBasedUnderstanding implements UnderstandingAdapter {
 
     let best: { rule: ServiceRule; score: number; signals: string[] } | null = null;
 
-    for (const rule of SERVICE_RULES) {
+    for (const rule of this.rules) {
       const signals: string[] = [];
       let score = 0;
 

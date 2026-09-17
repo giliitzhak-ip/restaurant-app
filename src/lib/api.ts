@@ -45,6 +45,25 @@ export class ApiError extends Error {
  * Map errors raised by our SQL functions onto stable API codes.
  * These are the concurrency and lifecycle failures from spec §44.
  */
+/**
+ * Unique constraints whose violation has a meaning worth telling the user.
+ * Keyed by the constraint name so the message tracks the schema.
+ */
+const UNIQUE_VIOLATIONS: Record<string, { code: string; message: string }> = {
+  trade_proposals_unique_pending: {
+    code: 'DUPLICATE_PROPOSAL',
+    message: 'כבר שלחת את המקצוע הזה לאישור. הבקשה ממתינה לטיפול.',
+  },
+  provider_services_provider_id_service_id_key: {
+    code: 'SERVICE_ALREADY_PRICED',
+    message: 'השירות הזה כבר מופיע אצלך עם מחיר',
+  },
+  job_offers_job_id_provider_id_key: {
+    code: 'OFFER_ALREADY_SENT',
+    message: 'ההצעה הזו כבר נשלחה',
+  },
+};
+
 const DB_ERROR_MAP: Record<string, { code: string; message: string; status: number }> = {
   JOB_ALREADY_ASSIGNED: {
     code: 'JOB_ALREADY_ASSIGNED',
@@ -167,6 +186,28 @@ export function handleError(
     const mapped = DB_ERROR_MAP[name];
     logOperation({ requestId, operation, result: 'invalid', errorCode: mapped.code, durationMs });
     return fail(mapped.code, mapped.message, mapped.status, requestId);
+  }
+
+  /*
+   * A unique-constraint violation is a statement about the REQUEST, not a
+   * fault on our side. Reported as a 500 it reads "something failed on our
+   * end" — which is both untrue and useless to the person who just submitted
+   * the same thing twice. Named constraints carry their own message; anything
+   * else gets a generic conflict rather than a fabricated explanation.
+   */
+  if (isPgError(error) && error.code === '23505') {
+    const mapped = UNIQUE_VIOLATIONS[error.constraint ?? ''];
+    logOperation({
+      requestId, operation, result: 'invalid',
+      errorCode: mapped?.code ?? 'ALREADY_EXISTS',
+      durationMs, meta: { constraint: error.constraint ?? 'unknown' },
+    });
+    return fail(
+      mapped?.code ?? 'ALREADY_EXISTS',
+      mapped?.message ?? 'הפריט הזה כבר קיים',
+      409,
+      requestId,
+    );
   }
 
   // RLS refusals and privilege errors must not reveal whether the row exists.

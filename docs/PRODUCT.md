@@ -86,6 +86,28 @@ pays for.
 
 ---
 
+## The catalog is not the world
+
+Seven categories and twenty-three services do not cover the trades people
+actually do, and a provider whose work is missing has no way in at all: the
+candidate search requires a declared trade, so without one they are absent
+from every search rather than merely ranked low.
+
+So a provider can search the catalog by **the work** ("מזגן", "אסלה") rather
+than by our category names, and when nothing fits they write it in their own
+words. That is a **proposal**: it changes nothing about matching, and the
+screen says so on the form and on every pending row. An admin resolves it,
+and approval creates a service under an existing category, links the provider
+to it, and — necessarily — carries the phrases a customer would type.
+
+Those phrases are the part that makes approval real. The classifier routes a
+description to a service by matching phrasings; a service approved without
+any can never be reached, so the provider would be told "approved" and still
+never get a job. They are a required field, enforced twice, so the fake
+approval cannot be expressed. See [DECISIONS D-022](DECISIONS.md).
+
+---
+
 ## MVP categories
 
 Plumbing · Electrical · Air conditioning · Locksmith · Pest control ·

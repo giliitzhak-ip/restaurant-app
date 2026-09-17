@@ -6,7 +6,7 @@ What is verified, how, and — importantly — what is **not**.
 
 ## Test inventory
 
-190 tests, 20 files. Run: `npm test`
+200 tests, 21 files. Run: `npm test`
 (first time: `npm run test:db` to create the test database).
 
 ### Unit — pure domain logic, no I/O
@@ -33,6 +33,7 @@ What is verified, how, and — importantly — what is **not**.
 | `provider-onboarding.test.ts` | 7 | An unconfigured provider yields zero candidates; onboarded + verified yields one |
 | `availability.test.ts` | 16 | The §52 case, the precedence order, job duration and fit, conflicts, temporary shifts and their expiry |
 | `reject-match.test.ts` | 9 | Rejecting a match without abandoning the job; re-offering race losers; the cap; fairness to the rejected provider; telemetry counted once |
+| `trade-proposals.test.ts` | 10 | A pending proposal changes nothing; approval makes the trade both classifiable and dispatchable; built-in classifications undisturbed; approval without phrases refused; a provider cannot approve themselves or see another's proposal; duplicates refused; rejection recorded; no invented price |
 | `sql-references.test.ts` | 1 | **Every relation named in every query under `src/` exists** |
 
 ### Security
@@ -331,7 +332,33 @@ Listed because each one would have shipped:
     `CANCELLED_BY_PROVIDER → SEARCHING`, never that re-dispatch reached
     anyone — which is exactly how it shipped. Found by the first test written
     for customer rejection.
-26. **A revived offer would have counted its acceptance twice.**
+26. **The trade-approval action could never succeed.** It inserted the
+    provider's notification inside the admin's transaction, and
+    `notifications` has no INSERT policy at all — a table users read and the
+    system writes. The insert was refused and the whole approval rolled back.
+    Found by running the action, not by reading it (D-023).
+27. **`services.name_en` was NOT NULL,** so creating a service from a Hebrew
+    trade name failed. The options were to invent a translation, to put the
+    Hebrew string in an English column, or to admit the value is absent;
+    migration 0026 makes it nullable. The structured log named the constraint
+    immediately.
+28. **A resolved proposal could not outlive its reviewer.**
+    `reviewed_by ... on delete set null` contradicted a check constraint
+    requiring a resolved row to have both `reviewed_by` and `reviewed_at`, so
+    deleting an admin who had reviewed anything failed — and surfaced as an
+    unrelated test-cleanup error. Migration 0027 keeps the invariant that
+    matters (when it was resolved) and leaves who to `admin_actions`, which
+    is the record of authority.
+29. **A duplicate proposal was reported as a server fault.** The unique
+    constraint refused it correctly and the API returned
+    `INTERNAL_ERROR: משהו נכשל אצלנו` — untrue, and useless to someone who
+    just submitted the same thing twice. `handleError` now maps 23505 by
+    constraint name to a 409 with a specific message.
+30. **Approved trades leaked between tests.** A service created by approving
+    a proposal is not tied to a test user, so fixture cleanup left it behind —
+    and it carries classifier phrases, so a leftover could change what an
+    unrelated test's description classifies to. Cleanup now removes them.
+31. **A revived offer would have counted its acceptance twice.**
     `accept_job_offer()` marks acceptance by `offer_id`, and reusing an offer
     row meant two `matching_events` rows shared that id, so both were marked
     accepted. The earlier event is now unbound when the offer is revived, and

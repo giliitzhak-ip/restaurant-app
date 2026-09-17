@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { clientKey, fail, handleError, ok, parseJson } from '@/lib/api';
-import { jobUnderstanding } from '@/domains/jobs/understanding';
+import { loadJobUnderstanding } from '@/domains/jobs/understanding-catalog';
 import { withAnon } from '@/lib/db';
 import { newRequestId } from '@/lib/logger';
 import { rateLimit } from '@/lib/rate-limit';
@@ -22,6 +22,9 @@ export async function POST(request: Request) {
     }
 
     const { text } = await parseJson(request, bodySchema);
+    // Same classifier the job-creation path uses, so the trade the customer
+    // is shown before committing is the trade they actually get.
+    const jobUnderstanding = await loadJobUnderstanding();
     const understanding = await jobUnderstanding.understand(text);
 
     // Attach the display names for whatever was recognised.

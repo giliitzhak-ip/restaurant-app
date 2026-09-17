@@ -292,6 +292,15 @@ export async function cleanupTestData(): Promise<void> {
     [ids],
   );
   await db.query(`delete from auth.users where id = any($1::uuid[])`, [ids]);
+
+  /*
+   * Catalog rows created by approving a provider-proposed trade are NOT tied
+   * to a test user, so deleting the fixtures leaves them behind. That is not
+   * merely untidy: such a service carries classifier phrases, so a leftover
+   * one can change what an unrelated test's description classifies to. The
+   * `custom_` prefix is only ever produced by that approval path.
+   */
+  await db.query(`delete from services where slug like 'custom_%'`);
 }
 
 /**

@@ -354,3 +354,47 @@ duplicate checks would now catch it.
 
 **What would reduce it.** Tag the generated stale fixes explicitly, so the
 check can assert the *intent* survived rather than the current timestamps.
+
+---
+
+## R-018 — The catalog grows by human review, and reviews are a bottleneck
+
+**Risk.** Every provider-proposed trade waits on one person. A provider
+cannot earn in that trade until it is resolved, and there is no SLA, no
+reminder and no escalation.
+
+**Why it matters.** The people most likely to propose a trade are the ones
+the catalog serves worst, so a slow queue falls hardest on exactly the
+providers the feature exists for. A week of silence reads as rejection.
+
+**Mitigation now.** The queue is FIFO and surfaced on the admin home with its
+total, so a truncated list cannot look finished. At most 5 pending per
+provider keeps one account from burying the rest. The provider sees their
+own status at all times and is told plainly that nothing will arrive until
+approval.
+
+**What would reduce it.** An age indicator on the queue and an alert past a
+threshold; and auto-approval for a proposal whose phrases already
+overwhelmingly match an existing service, which is a merge rather than a new
+trade.
+
+## R-019 — Approved phrases can capture descriptions they should not
+
+**Risk.** A reviewer types a broad phrase — "מים", "חשמל" — and that service
+starts winning classifications away from the curated ones. The classifier
+scores by phrase specificity, so a broad single-word phrase is weak, but a
+broad multi-word phrase is not.
+
+**Why it matters.** A misrouted job reaches providers of the wrong trade,
+which wastes the customer's time and the providers' attention, and the cause
+is invisible from the customer's side.
+
+**Mitigation now.** The merge is additive, so built-in rules still compete
+rather than being replaced, and scoring favours the more specific phrase. A
+test asserts the four canonical descriptions are unchanged after an approval.
+Every approval is audited with the exact phrases, so a bad one is traceable
+to a decision.
+
+**What would reduce it.** Show the reviewer, before they approve, which
+existing descriptions their phrases would newly capture — the matching lab
+already has the machinery to answer that.

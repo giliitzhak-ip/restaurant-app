@@ -32,9 +32,17 @@ interface Overview {
     id: string; full_name: string; email: string; created_at: string;
     category_name: string | null; priced_services: number; is_configured: boolean;
   }[];
+  tradeProposals: {
+    id: string; proposed_name: string; description: string | null;
+    price_ils: string | null; created_at: string;
+    provider_name: string; provider_email: string; provider_verification: string;
+    suggested_category_name: string | null; suggested_category_slug: string | null;
+    similar_services: number;
+  }[];
+  categories: { slug: string; name_he: string }[];
   /** Totals behind the capped lists, so a truncated queue says so. */
-  totals: { pendingVerification: number; liveProviders: number; liveJobs: number };
-  shown: { pendingVerification: number; liveProviders: number; liveJobs: number };
+  totals: { pendingVerification: number; pendingTrades: number; liveProviders: number; liveJobs: number };
+  shown: { pendingVerification: number; tradeProposals: number; liveProviders: number; liveJobs: number };
 }
 
 /** "12" when everything is shown, "50 מתוך 137" when it is not. */
@@ -49,6 +57,9 @@ export function AdminTower() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  /** Per-proposal review form: which category, and the phrases that make it
+   *  reachable. Keyed by proposal id so two reviews cannot cross over. */
+  const [review, setReview] = useState<Record<string, { category: string; phrases: string; reason: string }>>({});
 
   const refetch = useCallback(async () => {
     const fresh = await apiFetch<Overview>('/api/admin/overview').catch((caught: unknown) => {
@@ -233,6 +244,173 @@ export function AdminTower() {
         </span>{' '}
         עבודות פעילות. המפה מוגבלת בכוונה — היא כלי מבט, לא רשימה מלאה.
       </p>
+
+      {/* ── Provider-proposed trades ─────────────────────────────────────
+          A provider whose trade is missing from the catalog cannot be found
+          at all, so this queue is how the catalog grows. Approving REQUIRES
+          the phrases a customer would type: the classifier routes on them,
+          and a service approved without any can never be reached by any
+          description — the provider would be told "approved" and still never
+          get a job. */}
+      {data.tradeProposals.length > 0 && (
+        <Card>
+          <h2 className="text-sm font-semibold text-ink-2">
+            מקצועות שהוצעו{' '}
+            <span className="ltr-nums text-ink-3" dir="ltr">
+              ({countLabel(data.shown.tradeProposals, data.totals.pendingTrades)})
+            </span>
+          </h2>
+
+          <div className="mt-3 space-y-3">
+            {data.tradeProposals.map((proposal) => {
+              const form = review[proposal.id] ?? {
+                category: proposal.suggested_category_slug ?? '',
+                phrases: '',
+                reason: '',
+              };
+              const set = (patch: Partial<typeof form>) =>
+                setReview((current) => ({ ...current, [proposal.id]: { ...form, ...patch } }));
+              const phrases = form.phrases
+                .split(',')
+                .map((phrase) => phrase.trim())
+                .filter((phrase) => phrase.length >= 2);
+
+              return (
+                <div key={proposal.id} className="rounded-xl border border-line bg-bg p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-bold text-ink">{proposal.proposed_name}</p>
+                      <p className="text-xs text-ink-3">
+                        {proposal.provider_name} ·{' '}
+                        <span className="tech-id">{proposal.provider_email}</span>
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {proposal.price_ils && (
+                        <Badge>
+                          <Money shekels={Number(proposal.price_ils)} />
+                        </Badge>
+                      )}
+                      {proposal.suggested_category_name && (
+                        <Badge tone="neutral">הציע: {proposal.suggested_category_name}</Badge>
+                      )}
+                      <Badge tone={proposal.provider_verification === 'VERIFIED' ? 'ok' : 'warn'}>
+                        {proposal.provider_verification === 'VERIFIED' ? 'מאומת' : 'לא מאומת'}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {proposal.description && (
+                    <p className="mt-2 text-sm text-ink-2">{proposal.description}</p>
+                  )}
+
+                  {/* Approving a near-duplicate creates a second service that
+                      means the same thing, and splits the providers between
+                      them. Worth seeing before deciding. */}
+                  {proposal.similar_services > 0 && (
+                    <p className="mt-2 rounded-lg bg-warn/10 px-3 py-2 text-xs text-warn-bright">
+                      יש כבר{' '}
+                      <span className="ltr-nums" dir="ltr">
+                        {proposal.similar_services}
+                      </span>{' '}
+                      שירותים עם שם דומה — שווה לבדוק אם זה כבר קיים.
+                    </p>
+                  )}
+
+                  <div className="mt-3 grid gap-2 md:grid-cols-2">
+                    <div>
+                      <label
+                        className="mb-1 block text-xs text-ink-3"
+                        htmlFor={`cat-${proposal.id}`}
+                      >
+                        תחום שאליו ייכנס
+                      </label>
+                      <select
+                        id={`cat-${proposal.id}`}
+                        value={form.category}
+                        onChange={(event) => set({ category: event.target.value })}
+                        className="min-h-11 w-full rounded-lg border border-line-strong bg-surface-2 px-3 text-sm text-ink"
+                      >
+                        <option value="">בחר תחום…</option>
+                        {data.categories.map((c) => (
+                          <option key={c.slug} value={c.slug}>
+                            {c.name_he}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label
+                        className="mb-1 block text-xs text-ink-3"
+                        htmlFor={`ph-${proposal.id}`}
+                      >
+                        ביטויים שלקוח יכתוב (מופרדים בפסיק) — חובה
+                      </label>
+                      <input
+                        id={`ph-${proposal.id}`}
+                        value={form.phrases}
+                        onChange={(event) => set({ phrases: event.target.value })}
+                        placeholder="מכונת כביסה, מייבש כבסים"
+                        className="min-h-11 w-full rounded-lg border border-line-strong bg-surface-2 px-3 text-sm text-ink"
+                      />
+                    </div>
+                  </div>
+
+                  <p className="mt-2 text-xs text-ink-3">
+                    בלי ביטויים אף תיאור של לקוח לא ינותב לשירות הזה, והאישור יהיה חסר משמעות.
+                  </p>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <Button
+                      size="md"
+                      loading={busy === `approve-${proposal.id}`}
+                      disabled={form.category === '' || phrases.length === 0}
+                      onClick={() =>
+                        void act(
+                          {
+                            action: 'approve_trade',
+                            proposalId: proposal.id,
+                            categorySlug: form.category,
+                            phrases,
+                          },
+                          `approve-${proposal.id}`,
+                        )
+                      }
+                    >
+                      אשר והוסף לקטלוג
+                    </Button>
+                    <input
+                      value={form.reason}
+                      onChange={(event) => set({ reason: event.target.value })}
+                      placeholder="סיבת דחייה"
+                      aria-label={`סיבת דחייה עבור ${proposal.proposed_name}`}
+                      className="min-h-11 flex-1 rounded-lg border border-line-strong bg-surface-2 px-3 text-sm text-ink"
+                    />
+                    <Button
+                      size="md"
+                      variant="danger"
+                      loading={busy === `reject-${proposal.id}`}
+                      disabled={form.reason.trim().length < 3}
+                      onClick={() =>
+                        void act(
+                          {
+                            action: 'reject_trade',
+                            proposalId: proposal.id,
+                            reason: form.reason.trim(),
+                          },
+                          `reject-${proposal.id}`,
+                        )
+                      }
+                    >
+                      דחה
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
       {/* ── Verification queue ───────────────────────────────────────── */}
       {data.pendingVerification.length > 0 && (

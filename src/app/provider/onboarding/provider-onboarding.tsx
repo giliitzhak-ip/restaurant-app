@@ -11,6 +11,7 @@ import {
   inputClasses,
   LoadingState,
   Money,
+  SectionLabel,
 } from '@/components/ui';
 import { Logo } from '@/components/brand';
 import { apiFetch, ApiRequestError } from '@/lib/client/api';
@@ -32,6 +33,19 @@ interface Service {
   base_price_ils: string | null;
   min_price_ils: string | null;
   max_price_ils: string | null;
+}
+
+interface TradeProposal {
+  id: string;
+  proposed_name: string;
+  description: string | null;
+  price_ils: string | null;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  review_note: string | null;
+  created_at: string;
+  suggested_category_name: string | null;
+  resolved_service_name: string | null;
+  resolved_category_name: string | null;
 }
 
 interface ProfileResponse {
@@ -75,6 +89,17 @@ export function ProviderOnboarding() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
+  /* ── Searching the catalog, and proposing a trade it does not have ──── */
+  const [search, setSearch] = useState('');
+  const [proposals, setProposals] = useState<TradeProposal[]>([]);
+  const [proposing, setProposing] = useState(false);
+  const [proposalName, setProposalName] = useState('');
+  const [proposalDesc, setProposalDesc] = useState('');
+  const [proposalPrice, setProposalPrice] = useState('');
+  const [proposalBusy, setProposalBusy] = useState(false);
+  const [proposalError, setProposalError] = useState<string | null>(null);
+  const [proposalNotice, setProposalNotice] = useState<string | null>(null);
+
   useEffect(() => {
     let active = true;
     void (async () => {
@@ -107,6 +132,12 @@ export function ProviderOnboarding() {
           setAreaLon(fresh.serviceArea.lon);
         }
       }
+      // The provider's own proposals. Fetched separately because a failure
+      // here must not cost them the setup screen.
+      const mine = await apiFetch<{ proposals: TradeProposal[] }>(
+        '/api/provider/trades',
+      ).catch(() => null);
+      if (active && mine) setProposals(mine.proposals);
       setLoading(false);
     })();
     return () => {
@@ -117,6 +148,43 @@ export function ProviderOnboarding() {
   const category = data?.catalog.categories.find((c) => c.slug === categorySlug) ?? null;
   const services = data?.catalog.services.filter((s) => s.category_slug === categorySlug) ?? [];
   const chosen = services.filter((s) => (prices[s.slug] ?? '').trim() !== '');
+
+  /**
+   * Search the catalog by the work, not by our category names.
+   *
+   * A provider thinks "מכונת כביסה", not "חשמל", so matching only category
+   * titles would send them straight to the free-text form and fill the review
+   * queue with things the catalog already covers. Services are searched too,
+   * and a service hit shows which category it belongs to.
+   */
+  const searchHits = (() => {
+    const query = search.trim();
+    if (query.length < 2 || !data) return [];
+    const hits: {
+      categorySlug: string;
+      categoryName: string;
+      serviceSlug: string | null;
+      serviceName: string | null;
+    }[] = [];
+
+    for (const c of data.catalog.categories) {
+      if (c.name_he.includes(query)) {
+        hits.push({ categorySlug: c.slug, categoryName: c.name_he, serviceSlug: null, serviceName: null });
+      }
+    }
+    for (const service of data.catalog.services) {
+      if (!service.name_he.includes(query)) continue;
+      const parent = data.catalog.categories.find((c) => c.slug === service.category_slug);
+      if (!parent) continue;
+      hits.push({
+        categorySlug: parent.slug,
+        categoryName: parent.name_he,
+        serviceSlug: service.slug,
+        serviceName: service.name_he,
+      });
+    }
+    return hits.slice(0, 6);
+  })();
 
   // Not named use* on purpose: that prefix is reserved for hooks.
   const applyCurrentLocation = async () => {
@@ -160,6 +228,54 @@ export function ProviderOnboarding() {
       );
     } finally {
       setSaving(false);
+    }
+  };
+
+  const submitProposal = async () => {
+    setProposalError(null);
+    setProposalNotice(null);
+    setProposalBusy(true);
+    try {
+      const price = proposalPrice.trim() === '' ? undefined : Number(proposalPrice);
+      const result = await apiFetch<{ message: string }>('/api/provider/trades', {
+        method: 'POST',
+        json: {
+          name: proposalName.trim(),
+          description: proposalDesc.trim() || undefined,
+          priceIls: price !== undefined && Number.isFinite(price) ? price : undefined,
+          // The provider's guess helps whoever reviews it; it is not binding.
+          suggestedCategorySlug: categorySlug ?? undefined,
+        },
+      });
+      const mine = await apiFetch<{ proposals: TradeProposal[] }>('/api/provider/trades');
+      setProposals(mine.proposals);
+      setProposalName('');
+      setProposalDesc('');
+      setProposalPrice('');
+      setProposing(false);
+      setProposalNotice(result.message);
+    } catch (caught) {
+      setProposalError(
+        caught instanceof ApiRequestError ? caught.message : 'לא הצלחנו לשלוח את הבקשה',
+      );
+    } finally {
+      setProposalBusy(false);
+    }
+  };
+
+  const withdrawProposal = async (id: string) => {
+    setProposalError(null);
+    setProposalBusy(true);
+    try {
+      await apiFetch(`/api/provider/trades?id=${id}`, { method: 'DELETE' });
+      const mine = await apiFetch<{ proposals: TradeProposal[] }>('/api/provider/trades');
+      setProposals(mine.proposals);
+    } catch (caught) {
+      setProposalError(
+        caught instanceof ApiRequestError ? caught.message : 'לא הצלחנו לבטל את הבקשה',
+      );
+    } finally {
+      setProposalBusy(false);
     }
   };
 
@@ -223,7 +339,56 @@ export function ProviderOnboarding() {
         <h2 className="text-base font-bold text-ink">
           <span className="ltr-nums text-ink-3" dir="ltr">1</span> באיזה תחום אתה עובד?
         </h2>
-        <div className="mt-3 flex flex-wrap gap-2">
+
+        {/* Search across categories AND services, because a provider thinks
+            in terms of the work they do ("מכונת כביסה"), not in terms of our
+            seven category names. Finding an existing match is better for
+            everyone than proposing a duplicate. */}
+        <label htmlFor="trade-search" className="sr-only">חיפוש מקצוע</label>
+        <input
+          id="trade-search"
+          className={`${inputClasses} mt-3`}
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="חפש את המקצוע שלך — למשל מזגן, אסלה, גינה…"
+        />
+
+        {searchHits.length > 0 && (
+          <div className="mt-3 space-y-1.5">
+            <SectionLabel>נמצא בקטלוג</SectionLabel>
+            {searchHits.map((hit) => (
+              <button
+                key={`${hit.categorySlug}-${hit.serviceSlug ?? 'cat'}`}
+                type="button"
+                onClick={() => {
+                  setCategorySlug(hit.categorySlug);
+                  const category = data?.catalog.categories.find((c) => c.slug === hit.categorySlug);
+                  if (category) setRadiusKm(String(Number(category.default_radius_km)));
+                  setSearch('');
+                }}
+                className="flex w-full items-center justify-between gap-3 rounded-xl border border-line bg-bg px-3 py-2.5 text-start hover:border-brand"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium text-ink">
+                    {hit.serviceName ?? hit.categoryName}
+                  </span>
+                  {hit.serviceName && (
+                    <span className="block text-xs text-ink-3">{hit.categoryName}</span>
+                  )}
+                </span>
+                <span aria-hidden="true" className="shrink-0 text-ink-3">›</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {search.trim().length >= 2 && searchHits.length === 0 && (
+          <p className="mt-3 rounded-xl bg-surface-2 px-3 py-2.5 text-sm text-ink-2">
+            לא מצאנו את זה בקטלוג. אפשר להציע אותו למטה — נבדוק ונאשר.
+          </p>
+        )}
+
+        <div className="mt-4 flex flex-wrap gap-2">
           {data?.catalog.categories.map((c) => (
             <button
               key={c.slug}
@@ -256,6 +421,171 @@ export function ProviderOnboarding() {
             . המנהל יבקש את המסמכים לפני האימות.
           </p>
         )}
+
+        {/* ── The catalog is not the world ────────────────────────────────
+            Seven categories and twenty-three services do not cover the
+            trades people actually do, and a provider whose work is missing
+            has no way in at all: the candidate search requires a declared
+            trade, so without one they are absent from every search. */}
+        <div className="mt-4 border-t border-line pt-4">
+          {!proposing ? (
+            <button
+              type="button"
+              onClick={() => {
+                setProposing(true);
+                if (search.trim().length >= 2) setProposalName(search.trim());
+              }}
+              className="min-h-11 rounded-lg text-sm font-semibold text-brand-bright hover:bg-surface-2"
+            >
+              המקצוע שלי לא ברשימה — אני רוצה להוסיף אותו
+            </button>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm font-bold text-ink">הוספת מקצוע חדש</p>
+                <p className="mt-1 text-sm text-ink-2">
+                  כתוב מה אתה עושה במילים שלך. נבדוק ונאשר, ורק אחרי האישור
+                  תתחיל לקבל עבודות בו.
+                </p>
+              </div>
+
+              <Field label="שם המקצוע" htmlFor="proposal-name">
+                <input
+                  id="proposal-name"
+                  className={inputClasses}
+                  value={proposalName}
+                  maxLength={80}
+                  onChange={(event) => setProposalName(event.target.value)}
+                  placeholder="לדוגמה: תיקון מכונות כביסה"
+                />
+              </Field>
+
+              <Field
+                label="מה אתה עושה בפועל (לא חובה)"
+                htmlFor="proposal-desc"
+                hint="כמה מילים יעזרו לנו לאשר מהר ולנתב אליך את הלקוחות הנכונים"
+              >
+                <textarea
+                  id="proposal-desc"
+                  rows={3}
+                  maxLength={500}
+                  className={`${inputClasses} resize-none`}
+                  value={proposalDesc}
+                  onChange={(event) => setProposalDesc(event.target.value)}
+                  placeholder="תיקון והתקנה של מכונות כביסה ומייבשים, כולל החלפת חלקים"
+                />
+              </Field>
+
+              <Field label="המחיר שלך לעבודה כזו (לא חובה)" htmlFor="proposal-price">
+                <input
+                  id="proposal-price"
+                  type="number"
+                  min={0}
+                  dir="ltr"
+                  inputMode="numeric"
+                  className={`${inputClasses} ltr-nums`}
+                  value={proposalPrice}
+                  onChange={(event) => setProposalPrice(event.target.value)}
+                  placeholder="320"
+                />
+              </Field>
+
+              {proposalError && (
+                <p role="alert" className="rounded-xl bg-bad/10 px-3 py-2 text-sm text-bad-bright">
+                  {proposalError}
+                </p>
+              )}
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="md"
+                  loading={proposalBusy}
+                  disabled={proposalName.trim().length < 2}
+                  onClick={() => void submitProposal()}
+                >
+                  שלח לאישור
+                </Button>
+                <Button
+                  size="md"
+                  variant="quiet"
+                  onClick={() => {
+                    setProposing(false);
+                    setProposalError(null);
+                  }}
+                >
+                  ביטול
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {proposalNotice && (
+            <p role="status" className="mt-3 rounded-xl bg-ok/10 px-3 py-2 text-sm text-ok-bright">
+              {proposalNotice}
+            </p>
+          )}
+
+          {proposals.length > 0 && (
+            <div className="mt-4 space-y-2">
+              <SectionLabel>המקצועות שהצעת</SectionLabel>
+              {proposals.map((proposal) => (
+                <div key={proposal.id} className="rounded-xl bg-surface-2 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-ink">{proposal.proposed_name}</p>
+                      {proposal.price_ils && (
+                        <p className="mt-0.5 text-xs text-ink-3">
+                          <Money shekels={Number(proposal.price_ils)} />
+                        </p>
+                      )}
+                    </div>
+                    <Badge
+                      tone={
+                        proposal.status === 'APPROVED'
+                          ? 'ok'
+                          : proposal.status === 'REJECTED'
+                            ? 'bad'
+                            : 'warn'
+                      }
+                    >
+                      {proposal.status === 'APPROVED'
+                        ? 'אושר'
+                        : proposal.status === 'REJECTED'
+                          ? 'לא אושר'
+                          : 'ממתין לאישור'}
+                    </Badge>
+                  </div>
+
+                  {/* Said in plain words, because the opposite belief — that
+                      submitting was enough — is the expensive one. */}
+                  {proposal.status === 'PENDING' && (
+                    <div className="mt-2 flex items-center justify-between gap-3">
+                      <p className="text-xs text-ink-3">
+                        עדיין לא יישלחו לך עבודות במקצוע הזה.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => void withdrawProposal(proposal.id)}
+                        disabled={proposalBusy}
+                        className="min-h-11 shrink-0 rounded-lg px-2 text-xs font-medium text-ink-3 hover:text-bad-bright"
+                      >
+                        בטל בקשה
+                      </button>
+                    </div>
+                  )}
+                  {proposal.status === 'APPROVED' && proposal.resolved_category_name && (
+                    <p className="mt-2 text-xs text-ok-bright">
+                      נוסף תחת {proposal.resolved_category_name} — אתה יכול לקבל עבודות בו.
+                    </p>
+                  )}
+                  {proposal.status === 'REJECTED' && proposal.review_note && (
+                    <p className="mt-2 text-xs text-ink-2">{proposal.review_note}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </Card>
 
       {/* ── 2. Services and prices ───────────────────────────────────── */}
