@@ -301,6 +301,22 @@ export async function cleanupTestData(): Promise<void> {
    * `custom_` prefix is only ever produced by that approval path.
    */
   await db.query(`delete from services where slug like 'custom_%'`);
+
+  /*
+   * And the categories created the same way. A leftover one has no phrases of
+   * its own, so it cannot change a classification — but it does show up in
+   * the admin's category list and in the registration form, and it carries a
+   * required skill, so a test that counts the catalog or asserts what a
+   * provider can register for starts depending on what an earlier test
+   * approved. The `cat_` prefix is only ever produced by that path.
+   *
+   * The services above go first: they reference the category.
+   */
+  await db.query(
+    `delete from provider_categories
+      where category_id in (select id from categories where slug like 'cat_%')`,
+  );
+  await db.query(`delete from categories where slug like 'cat_%'`);
 }
 
 /**

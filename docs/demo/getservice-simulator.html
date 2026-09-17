@@ -648,80 +648,92 @@ const EXAMPLES = ['יש לי נזילה מתחת לכיור', 'המזגן לא �
 
 /* The real catalog, read out of `categories` and `services`: seven
    categories with their document requirements and default working radius,
-   and all 62 shipped services with the platform's reference price and the
-   range a provider may price inside. A provider whose trade is not here
-   proposes it in the registration form, and it reaches this list only after
-   it is approved with the words a customer would use to ask for it. */
+   and all 62 shipped services.
+
+   Each service row is
+     [ customer name, base price, min, max, [trigger phrases], provider label ]
+
+   The two names are the point. `name_he` is the customer's words for the
+   problem — "מזגן לא מקרר" is what a person types — and the classifier and
+   every customer-facing screen use it. `provider_label` is what a
+   professional calls the work, and the registration form uses that, because
+   showing a technician a list of symptoms and asking them to price it reads
+   as though the platform does not know what the trade is. See migration
+   0030.
+
+   A provider whose trade is in neither list proposes it in the registration
+   form, and it reaches the catalog only after it is approved with the words
+   a customer would use to ask for it. */
 const CATALOG = [
-  { slug: 'plumbing', name: 'אינסטלציה', lic: true, ins: true, radius: 12, services: [
-    ['החלפת צנרת', 1800, 1000, 4000],
-    ['החלפת דוד', 1400, 900, 2600],
-    ['פתיחת סתימה בביוב ראשי', 650, 450, 1200],
-    ['פיצוץ צינור', 480, 350, 900],
-    ['איתור נזילה', 450, 320, 800],
-    ['בעיה בדוד', 390, 300, 650],
-    ['סתימה בצינור', 320, 250, 480],
-    ['נזילה מתחת לכיור', 290, 220, 420],
-    ['תיקון אסלה', 280, 200, 400],
-    ['חיבור מדיח או מכונת כביסה', 280, 200, 450],
-    ['החלפת ברז', 240, 180, 400]] },
-  { slug: 'electrical', name: 'חשמל', lic: true, ins: true, radius: 12, services: [
-    ['התקנת עמדת טעינה לרכב חשמלי', 2200, 1400, 4000],
-    ['החלפת לוח חשמל', 1500, 900, 3000],
-    ['בדיקת חשמל ודוח בודק', 450, 300, 800],
-    ['התקנת מפסק פחת', 420, 300, 700],
-    ['תיקון תריס חשמלי', 380, 260, 650],
-    ['קצר חשמלי', 350, 260, 550],
-    ['תיקון אינטרקום', 350, 250, 600],
-    ['הפסקת חשמל בדירה', 320, 250, 500],
-    ['התקנת נקודת חשמל', 320, 220, 550],
-    ['התקנת גוף תאורה', 240, 180, 380],
-    ['תיקון שקע', 220, 160, 320]] },
-  { slug: 'air_conditioning', name: 'מיזוג אוויר', lic: true, ins: false, radius: 15, services: [
-    ['פירוק והתקנת מזגן מחדש', 1100, 700, 2000],
-    ['התקנת מזגן', 900, 650, 1800],
-    ['תיקון מיני מרכזי', 480, 350, 900],
-    ['מילוי גז למזגן', 420, 300, 700],
-    ['מזגן לא מקרר', 340, 260, 520],
-    ['המזגן לא נדלק', 320, 240, 520],
-    ['מזגן מטפטף', 300, 230, 460],
-    ['ריח רע מהמזגן', 280, 200, 420],
-    ['ניקוי וטיפול למזגן', 260, 200, 380]] },
-  { slug: 'locksmith', name: 'מנעולנות', lic: false, ins: false, radius: 8, services: [
-    ['פריצת כספת', 650, 400, 1500],
-    ['שכפול מפתח לרכב', 550, 350, 1200],
-    ['תיקון מנעול רב בריח', 480, 320, 900],
-    ['ננעלתי מחוץ לרכב', 380, 280, 600],
-    ['שחרור דלת תקועה', 350, 250, 600],
-    ['ננעלתי מחוץ לבית', 350, 250, 550],
-    ['החלפת צילינדר', 320, 240, 480]] },
-  { slug: 'pest_control', name: 'הדברה', lic: true, ins: true, radius: 20, services: [
-    ['טיפול בטרמיטים', 900, 600, 2000],
-    ['מיגון מפני יונים', 750, 500, 1500],
-    ['הדברת מזיקים / מכרסמים', 520, 380, 850],
-    ['טיפול בקן צרעות', 450, 300, 800],
-    ['הדברת פרעושים וקרציות', 450, 320, 700],
-    ['הדברת תיקנים', 420, 320, 650],
-    ['הדברת יתושים', 380, 280, 600],
-    ['הדברת נמלים', 350, 260, 520]] },
-  { slug: 'cleaning', name: 'ניקיון', lic: false, ins: false, radius: 20, services: [
-    ['ניקיון אחרי שיפוץ', 900, 600, 2000],
-    ['ניקיון לפני או אחרי מעבר דירה', 800, 500, 1600],
-    ['פינוי גרוטאות ופסולת', 700, 450, 1500],
-    ['פוליש לרצפה', 600, 400, 1200],
-    ['ניקיון משרדים', 550, 350, 1200],
-    ['ניקוי ספות ושטיחים', 450, 300, 900],
-    ['ניקיון דירה', 450, 300, 900],
-    ['ניקוי חלונות', 350, 250, 700]] },
-  { slug: 'gardening', name: 'גינון', lic: false, ins: false, radius: 25, services: [
-    ['התקנת דשא סינתטי', 2200, 1200, 5000],
-    ['עיצוב והקמת גינה', 1500, 800, 4000],
-    ['כריתת עץ', 1200, 700, 3000],
-    ['התקנת מערכת השקיה', 900, 600, 2000],
-    ['גיזום עצים', 650, 400, 1500],
-    ['דישון והדברת עשבייה', 400, 280, 700],
-    ['תחזוקת גינה', 400, 280, 800],
-    ['כיסוח דשא', 280, 200, 500]] }
+  { slug: 'plumbing', name: 'אינסטלציה', lic: true, ins: true, radius: 12.00, services: [
+    ['החלפת צנרת', 1800, 1000, 4000, ['החלפת צנרת', 'להחליף צנרת', 'צנרת מיושנת', 'שיפוץ צנרת'], 'החלפת צנרת'],
+    ['החלפת דוד', 1400, 900, 2600, ['החלפת דוד', 'להחליף דוד', 'דוד חדש', 'הדוד מחליד'], 'החלפת דודים'],
+    ['פתיחת סתימה בביוב ראשי', 650, 450, 1200, ['סתימה בביוב הראשי', 'ביוב ראשי סתום', 'ניקוי צינורות בלחץ', 'הביוב עולה בכל הבית'], 'פתיחת סתימות בביוב ראשי'],
+    ['פיצוץ צינור', 480, 350, 900, [], 'תיקון פיצוץ צינור'],
+    ['איתור נזילה', 450, 320, 800, ['איתור נזילה', 'נזילה בקיר', 'רטיבות בקיר', 'לא מוצאים מאיפה הנזילה'], 'איתור נזילות'],
+    ['בעיה בדוד', 390, 300, 650, [], 'תיקון דודים'],
+    ['סתימה בצינור', 320, 250, 480, [], 'פתיחת סתימות'],
+    ['נזילה מתחת לכיור', 290, 220, 420, [], 'תיקון נזילות בכיור'],
+    ['חיבור מדיח או מכונת כביסה', 280, 200, 450, ['חיבור מכונת כביסה', 'לחבר מכונת כביסה', 'התקנת מדיח', 'חיבור מדיח כלים'], 'חיבור מדיח ומכונת כביסה'],
+    ['תיקון אסלה', 280, 200, 400, [], 'תיקון אסלות'],
+    ['החלפת ברז', 240, 180, 400, ['החלפת ברז', 'להחליף ברז', 'הברז דולף', 'ברז מטפטף'], 'החלפת ברזים']] },
+  { slug: 'electrical', name: 'חשמל', lic: true, ins: true, radius: 12.00, services: [
+    ['התקנת עמדת טעינה לרכב חשמלי', 2200, 1400, 4000, ['עמדת טעינה', 'טעינה לרכב חשמלי', 'עמוד טעינה לרכב'], 'התקנת עמדות טעינה לרכב חשמלי'],
+    ['החלפת לוח חשמל', 1500, 900, 3000, ['החלפת לוח חשמל', 'להחליף לוח חשמל', 'לוח חשמל מיושן', 'ארון חשמל'], 'החלפת לוחות חשמל'],
+    ['בדיקת חשמל ודוח בודק', 450, 300, 800, ['בדיקת חשמל', 'דוח בודק חשמל', 'אישור בודק חשמל'], 'בדיקת חשמל ודוח בודק'],
+    ['התקנת מפסק פחת', 420, 300, 700, ['מפסק פחת', 'הפחת קופץ', 'התקנת מפסק פחת'], 'התקנת מפסקי פחת'],
+    ['תיקון תריס חשמלי', 380, 260, 650, ['תריס חשמלי לא עובד', 'תיקון תריס חשמלי', 'התריס לא נסגר', 'התריס לא עולה'], 'תיקון תריסים חשמליים'],
+    ['תיקון אינטרקום', 350, 250, 600, ['אינטרקום לא עובד', 'תיקון אינטרקום', 'הדלת לא נפתחת מהאינטרקום'], 'תיקון אינטרקום'],
+    ['קצר חשמלי', 350, 260, 550, [], 'איתור ותיקון קצר חשמלי'],
+    ['הפסקת חשמל בדירה', 320, 250, 500, [], 'טיפול בהפסקות חשמל'],
+    ['התקנת נקודת חשמל', 320, 220, 550, ['התקנת שקע', 'להוסיף שקע', 'נקודת חשמל חדשה', 'שקע חדש'], 'התקנת נקודות חשמל'],
+    ['התקנת גוף תאורה', 240, 180, 380, [], 'התקנת גופי תאורה'],
+    ['תיקון שקע', 220, 160, 320, [], 'תיקון שקעים']] },
+  { slug: 'air_conditioning', name: 'מיזוג אוויר', lic: true, ins: false, radius: 15.00, services: [
+    ['פירוק והתקנת מזגן מחדש', 1100, 700, 2000, ['פירוק והתקנת מזגן', 'פירוק מזגן', 'להעביר מזגן לדירה חדשה'], 'פירוק והתקנת מזגנים'],
+    ['התקנת מזגן', 900, 650, 1800, [], 'התקנת מזגנים'],
+    ['תיקון מיני מרכזי', 480, 350, 900, ['מיני מרכזי לא עובד', 'תיקון מיני מרכזי', 'מזגן מיני מרכזי'], 'תיקון מיני מרכזי'],
+    ['מילוי גז למזגן', 420, 300, 700, ['מילוי גז למזגן', 'תוספת גז למזגן', 'נגמר הגז במזגן'], 'מילוי גז למזגן'],
+    ['מזגן לא מקרר', 340, 260, 520, [], 'תיקון מזגן שלא מקרר'],
+    ['המזגן לא נדלק', 320, 240, 520, ['המזגן לא נדלק', 'מזגן לא עובד בכלל', 'המזגן לא מגיב לשלט'], 'תיקון מזגן שלא נדלק'],
+    ['מזגן מטפטף', 300, 230, 460, [], 'תיקון נזילות ממזגן'],
+    ['ריח רע מהמזגן', 280, 200, 420, ['ריח רע מהמזגן', 'המזגן מריח', 'ריח מהמזגן'], 'טיפול בריחות מהמזגן'],
+    ['ניקוי וטיפול למזגן', 260, 200, 380, [], 'ניקוי וטיפול תקופתי למזגן']] },
+  { slug: 'locksmith', name: 'מנעולנות', lic: false, ins: false, radius: 8.00, services: [
+    ['פריצת כספת', 650, 400, 1500, ['פריצת כספת', 'כספת נעולה', 'שכחתי קוד לכספת'], 'פריצת כספות'],
+    ['שכפול מפתח לרכב', 550, 350, 1200, ['שכפול מפתח לרכב', 'אבד מפתח הרכב', 'קודן לרכב לא עובד'], 'שכפול מפתחות לרכב'],
+    ['תיקון מנעול רב בריח', 480, 320, 900, ['רב בריח', 'מנעול רב בריח', 'הדלת לא ננעלת'], 'תיקון מנעולי רב בריח'],
+    ['ננעלתי מחוץ לרכב', 380, 280, 600, [], 'פתיחת רכבים נעולים'],
+    ['ננעלתי מחוץ לבית', 350, 250, 550, [], 'פתיחת דלתות נעולות'],
+    ['שחרור דלת תקועה', 350, 250, 600, ['דלת תקועה', 'המנעול לא מסתובב', 'המפתח נשבר במנעול'], 'שחרור דלתות תקועות'],
+    ['החלפת צילינדר', 320, 240, 480, [], 'החלפת צילינדרים']] },
+  { slug: 'pest_control', name: 'הדברה', lic: true, ins: true, radius: 20.00, services: [
+    ['טיפול בטרמיטים', 900, 600, 2000, ['טרמיטים', 'נמלים לבנות'], 'טיפול בטרמיטים'],
+    ['מיגון מפני יונים', 750, 500, 1500, ['מיגון מפני יונים', 'יונים במרפסת', 'קן יונים'], 'מיגון מפני יונים'],
+    ['הדברת מזיקים / מכרסמים', 520, 380, 850, [], 'הדברת מכרסמים'],
+    ['הדברת פרעושים וקרציות', 450, 320, 700, ['הדברת פרעושים', 'פרעושים בבית', 'קרציות'], 'הדברת פרעושים וקרציות'],
+    ['טיפול בקן צרעות', 450, 300, 800, ['קן צרעות', 'צרעות במרפסת', 'כוורת דבורים'], 'טיפול בקיני צרעות'],
+    ['הדברת תיקנים', 420, 320, 650, [], 'הדברת תיקנים'],
+    ['הדברת יתושים', 380, 280, 600, ['הדברת יתושים', 'המון יתושים', 'יתושים בבית'], 'הדברת יתושים'],
+    ['הדברת נמלים', 350, 260, 520, [], 'הדברת נמלים']] },
+  { slug: 'cleaning', name: 'ניקיון', lic: false, ins: false, radius: 20.00, services: [
+    ['ניקיון אחרי שיפוץ', 900, 600, 2000, [], 'ניקיון אחרי שיפוץ'],
+    ['ניקיון לפני או אחרי מעבר דירה', 800, 500, 1600, ['ניקיון לפני מעבר דירה', 'ניקיון אחרי מעבר', 'ניקיון דירה ריקה'], 'ניקיון לפני ואחרי מעבר דירה'],
+    ['פינוי גרוטאות ופסולת', 700, 450, 1500, ['פינוי גרוטאות', 'פינוי פסולת', 'לפנות מחסן'], 'פינוי גרוטאות ופסולת'],
+    ['פוליש לרצפה', 600, 400, 1200, ['פוליש', 'הברקת רצפה', 'ניקוי רצפות לעומק'], 'פוליש לרצפות'],
+    ['ניקיון משרדים', 550, 350, 1200, ['ניקיון משרד', 'ניקיון משרדים', 'ניקוי משרד'], 'ניקיון משרדים'],
+    ['ניקוי ספות ושטיחים', 450, 300, 900, ['ניקוי ספות', 'ניקוי שטיחים', 'ניקוי ספה בקיטור'], 'ניקוי ספות ושטיחים'],
+    ['ניקיון דירה', 450, 300, 900, [], 'ניקיון דירות'],
+    ['ניקוי חלונות', 350, 250, 700, ['ניקוי חלונות', 'לנקות חלונות', 'ניקוי תריסים וחלונות'], 'ניקוי חלונות']] },
+  { slug: 'gardening', name: 'גינון', lic: false, ins: false, radius: 25.00, services: [
+    ['התקנת דשא סינתטי', 2200, 1200, 5000, ['דשא סינתטי', 'להתקין דשא סינתטי'], 'התקנת דשא סינתטי'],
+    ['עיצוב והקמת גינה', 1500, 800, 4000, ['עיצוב גינה', 'הקמת גינה', 'לתכנן גינה חדשה'], 'עיצוב והקמת גינות'],
+    ['כריתת עץ', 1200, 700, 3000, ['כריתת עץ', 'לכרות עץ', 'עץ מסוכן שצריך להוריד'], 'כריתת עצים'],
+    ['התקנת מערכת השקיה', 900, 600, 2000, ['מערכת השקיה', 'טפטפות בגינה', 'ממטרות לא עובדות'], 'התקנת מערכות השקיה'],
+    ['גיזום עצים', 650, 400, 1500, [], 'גיזום עצים'],
+    ['דישון והדברת עשבייה', 400, 280, 700, ['הדברת עשבייה', 'עשבים שוטים', 'דישון הגינה'], 'דישון והדברת עשבייה'],
+    ['תחזוקת גינה', 400, 280, 800, [], 'תחזוקת גינות'],
+    ['כיסוח דשא', 280, 200, 500, ['כיסוח דשא', 'לכסח את הדשא', 'הדשא גבוה'], 'כיסוח דשא']] }
 ];
 
 /* The classifier's rules, both halves of them.
@@ -1105,6 +1117,31 @@ function servicePrice(serviceSlug) {
     }
   }
   return null;
+}
+
+/* ── The reviewer's form ────────────────────────────────────────────────
+   `category` is a catalog slug, or NEW_CATEGORY when the reviewer is naming a
+   trade that is none of the seven. Kept in one shape, read by the markup, the
+   input handler and the approve handler alike, because three copies of the
+   default is how they drift apart.
+
+   The licence and insurance answers are not pre-ticked. A category decides
+   what a provider must produce before verification, and neither default is
+   safe: false lets a regulated trade in without papers, true demands papers
+   from a mover. */
+const NEW_CATEGORY = '__new__';
+
+const blankReviewForm = () => ({
+  category: '', phrases: '', reason: '',
+  newName: '', newLicense: false, newInsurance: false, newRadius: '15',
+});
+
+const reviewFormOf = (id) => ({ ...blankReviewForm(), ...(S.reviewForm[id] ?? {}) });
+
+function categoryReady(form) {
+  if (form.category !== NEW_CATEGORY) return form.category !== '';
+  const km = Number(form.newRadius);
+  return form.newName.trim().length >= 2 && Number.isFinite(km) && km >= 1 && km <= 200;
 }
 
 /* The candidate pool below is a recording of one dispatch — the leak. Say so
@@ -1666,8 +1703,13 @@ function screenOnboarding() {
         const hits = [];
         for (const c of CATALOG) {
           if (c.name.includes(q)) hits.push({ cat: c, service: null });
-          for (const [name] of c.services) {
-            if (name.includes(q)) hits.push({ cat: c, service: name });
+          for (const [name, , , , , label] of c.services) {
+            /* Matched on both names — a technician searching "מזגן" should
+               find the work whichever way it is written — and shown as the
+               provider's. */
+            if (name.includes(q) || (label && label.includes(q))) {
+              hits.push({ cat: c, service: label || name });
+            }
           }
         }
         if (hits.length === 0) {
@@ -1779,7 +1821,10 @@ function screenOnboarding() {
         סמנו רק את מה שאתם מבצעים. המחיר שתזינו הוא המחיר שיוצג ללקוח.
       </p>
       <div style="margin-top:16px;display:grid;gap:12px">
-        ${cat.services.map(([n, base, min, max]) => {
+        ${cat.services.map(([n, base, min, max, , label]) => {
+          /* Keyed on the customer name, which is unique and stable, and
+             LABELLED with the provider's — the provider prices "פתיחת דלתות
+             נעולות", not "ננעלתי מחוץ לבית". */
           const val = String(S.onbPrices[n] ?? '');
           const active = val.trim() !== '';
           const num = Number(val);
@@ -1788,7 +1833,7 @@ function screenOnboarding() {
             <div class="onb-row" data-row="${esc(n)}"
               style="border-radius:12px;border:1px solid ${bad ? 'rgba(239,68,68,.5)' : active ? 'rgba(59,130,246,.5)' : 'var(--line)'};background:var(--bg);padding:12px">
               <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
-                <label style="font-size:14px;font-weight:500" for="onb-${esc(n)}">${esc(n)}</label>
+                <label style="font-size:14px;font-weight:500" for="onb-${esc(n)}">${esc(label || n)}</label>
                 <span style="display:flex;align-items:center;gap:8px;flex:none">
                   <span style="font-size:14px;color:var(--p-ink-2)">₪</span>
                   <input id="onb-${esc(n)}" class="ltr" data-price="${esc(n)}" type="number"
@@ -1876,13 +1921,17 @@ function screenReview() {
           עבור ל<b style="color:var(--p-ink)">טופס ההרשמה</b> והצע אחד כדי לראות את זה.
         </p>
       </div>` : pending.map((prop) => {
-      const form = S.reviewForm[prop.id] ?? { category: '', phrases: '', reason: '' };
+      const form = reviewFormOf(prop.id);
       const phrases = form.phrases.split(',').map((x) => x.trim()).filter((x) => x.length >= 2);
-      const ready = form.category !== '' && phrases.length > 0;
+      const creating = form.category === NEW_CATEGORY;
+      const ready = categoryReady(form) && phrases.length > 0;
       // Approving a near-duplicate creates a second service meaning the same
       // thing and splits the providers between them.
+      const proposed = prop.name.trim();
       const similar = CATALOG.flatMap((c) => c.services)
-        .filter(([name]) => name.includes(prop.name.trim()) || prop.name.includes(name)).length;
+        .filter(([name, , , , , label]) => [name, label].some(
+          (candidate) => candidate && (candidate.includes(proposed) || proposed.includes(candidate)),
+        )).length;
 
       return `
         <div class="gs-card" style="margin-bottom:12px">
@@ -1910,8 +1959,41 @@ function screenReview() {
               style="min-height:44px;width:100%;border-radius:10px;border:1px solid var(--line-strong);background:var(--surface-2);color:var(--p-ink);padding:0 12px;font-family:var(--sans);font-size:15px">
               <option value="">בחרו תחום…</option>
               ${CATALOG.map((c) => `<option value="${c.slug}" ${form.category === c.slug ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
+              <option value="${NEW_CATEGORY}" ${creating ? 'selected' : ''}>+ תחום חדש…</option>
             </select>
           </div>
+
+          ${creating ? `
+            <div style="margin-top:12px;border-radius:12px;border:1px solid rgba(59,130,246,.4);background:rgba(59,130,246,.06);padding:12px">
+              <p style="margin:0;font-size:12px;font-weight:600;color:var(--brand-bright)">תחום חדש</p>
+
+              <label for="rv-newname-${prop.id}" style="display:block;font-size:12px;color:var(--p-ink-3);margin:10px 0 6px">שם התחום</label>
+              <input id="rv-newname-${prop.id}" data-rv-newname="${prop.id}" class="gs-input"
+                value="${esc(form.newName)}" placeholder="הובלות">
+
+              <label for="rv-newrad-${prop.id}" style="display:block;font-size:12px;color:var(--p-ink-3);margin:10px 0 6px">רדיוס עבודה ברירת מחדל (ק״מ)</label>
+              <input id="rv-newrad-${prop.id}" data-rv-newrad="${prop.id}" class="gs-input ltr"
+                inputmode="numeric" value="${esc(form.newRadius)}">
+
+              <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:16px">
+                <label style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--p-ink-2)">
+                  <input type="checkbox" data-rv-newlic="${prop.id}" ${form.newLicense ? 'checked' : ''}
+                    style="width:16px;height:16px;accent-color:var(--brand)">
+                  דורש רישיון
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--p-ink-2)">
+                  <input type="checkbox" data-rv-newins="${prop.id}" ${form.newInsurance ? 'checked' : ''}
+                    style="width:16px;height:16px;accent-color:var(--brand)">
+                  דורש ביטוח
+                </label>
+              </div>
+
+              <p style="margin:10px 0 0;font-size:12px;color:var(--p-ink-3);line-height:1.5">
+                התחום קובע מה מקצוען צריך להציג לפני אימות, כמה רחוק הוא נוסע וכמה
+                זמן עבודה מוקצב. אם כבר קיים תחום בשם הזה — הוא ישויך אליו ולא
+                ייווצר כפול.
+              </p>
+            </div>` : ''}
 
           <div style="margin-top:12px">
             <label for="rv-ph-${prop.id}" style="display:block;font-size:12px;color:var(--p-ink-3);margin-bottom:6px">
@@ -1926,7 +2008,7 @@ function screenReview() {
 
           <div style="margin-top:14px;display:grid;gap:8px">
             <button class="gs-btn" data-rv-approve="${prop.id}" ${ready ? '' : 'disabled'}>
-              אשר והוסף לקטלוג
+              ${creating ? 'צור תחום ואשר' : 'אשר והוסף לקטלוג'}
             </button>
             <input data-rv-reason="${prop.id}" class="gs-input"
               value="${esc(form.reason)}" placeholder="סיבת דחייה"
@@ -2375,14 +2457,18 @@ document.getElementById('viewport').addEventListener('input', (ev) => {
 
   // The reviewer's form, same rule: update the buttons, never the field.
   const rvPh = t.dataset.rvPh, rvReason = t.dataset.rvReason;
-  if (rvPh || rvReason) {
-    const id = rvPh ?? rvReason;
-    const form = S.reviewForm[id] ?? { category: '', phrases: '', reason: '' };
-    if (rvPh) form.phrases = t.value; else form.reason = t.value;
+  const rvNewName = t.dataset.rvNewname, rvNewRad = t.dataset.rvNewrad;
+  if (rvPh || rvReason || rvNewName || rvNewRad) {
+    const id = rvPh ?? rvReason ?? rvNewName ?? rvNewRad;
+    const form = reviewFormOf(id);
+    if (rvPh) form.phrases = t.value;
+    else if (rvReason) form.reason = t.value;
+    else if (rvNewName) form.newName = t.value;
+    else form.newRadius = t.value;
     S.reviewForm = { ...S.reviewForm, [id]: form };
     const phrases = form.phrases.split(',').map((x) => x.trim()).filter((x) => x.length >= 2);
     const approve = document.querySelector(`[data-rv-approve="${id}"]`);
-    if (approve) approve.disabled = !(form.category !== '' && phrases.length > 0);
+    if (approve) approve.disabled = !(categoryReady(form) && phrases.length > 0);
     const reject = document.querySelector(`[data-rv-reject="${id}"]`);
     if (reject) reject.disabled = form.reason.trim().length < 3;
     return;
@@ -2394,10 +2480,14 @@ document.getElementById('viewport').addEventListener('input', (ev) => {
 });
 
 document.getElementById('viewport').addEventListener('change', (ev) => {
-  const id = ev.target?.dataset?.rvCat;
+  const d = ev.target?.dataset ?? {};
+  const id = d.rvCat ?? d.rvNewlic ?? d.rvNewins;
   if (!id) return;
-  const form = S.reviewForm[id] ?? { category: '', phrases: '', reason: '' };
-  S.reviewForm = { ...S.reviewForm, [id]: { ...form, category: ev.target.value } };
+  const form = reviewFormOf(id);
+  if (d.rvCat) form.category = ev.target.value;
+  else if (d.rvNewlic) form.newLicense = ev.target.checked;
+  else form.newInsurance = ev.target.checked;
+  S.reviewForm = { ...S.reviewForm, [id]: form };
   render();
 });
 
@@ -2423,21 +2513,58 @@ document.getElementById('viewport').addEventListener('click', (ev) => {
 
   if (t.dataset.rvApprove) {
     const id = t.dataset.rvApprove;
-    const form = S.reviewForm[id] ?? { category: '', phrases: '', reason: '' };
+    const form = reviewFormOf(id);
     const phrases = form.phrases.split(',').map((x) => x.trim()).filter((x) => x.length >= 2);
-    if (form.category === '' || phrases.length === 0) return;
+    if (!categoryReady(form) || phrases.length === 0) return;
     push();
-    const category = CATALOG.find((c) => c.slug === form.category);
-    S.proposals = S.proposals.map((prop) => prop.id === id
-      ? { ...prop, status: 'APPROVED', approvedCategory: category.name, approvedSlug: category.slug, phrases }
-      : prop);
+
+    let category;
+    if (form.category === NEW_CATEGORY) {
+      const name = form.newName.trim();
+      /* Find-or-reuse on the folded name, as the server does. A second
+         category called "הובלות" is not a new category, it is a split:
+         providers register under one and customers are routed to the other. */
+      category = CATALOG.find((c) => c.name.trim() === name);
+      if (!category) {
+        category = {
+          slug: `cat_${id}`, name, lic: form.newLicense, ins: form.newInsurance,
+          radius: Number(form.newRadius), services: [],
+        };
+        CATALOG.push(category);
+      }
+    } else {
+      category = CATALOG.find((c) => c.slug === form.category);
+    }
+
+    const prop = S.proposals.find((p) => p.id === id);
+    /* The approved trade becomes a real catalog row, priced and reachable —
+       so the registration form can find it from now on, which is the whole
+       point of the gate. */
+    if (prop && !category.services.some(([n]) => n === prop.name)) {
+      const price = prop.price;
+      category.services.push([
+        prop.name, price, price === null ? null : Math.round(price * 0.7),
+        price === null ? null : Math.round(price * 1.6), phrases, prop.name,
+      ]);
+      CATALOG_RULES.push({
+        category: category.slug, service: `custom_${id}`, urgency: 'normal',
+        strong: phrases, weak: [],
+      });
+      RULES.unshift(CATALOG_RULES[CATALOG_RULES.length - 1]);
+      SERVICE_NAMES[`custom_${id}`] = prop.name;
+      CATEGORY_NAMES[category.slug] = category.name;
+    }
+
+    S.proposals = S.proposals.map((p) => p.id === id
+      ? { ...p, status: 'APPROVED', approvedCategory: category.name, approvedSlug: category.slug, phrases }
+      : p);
     render();
     return;
   }
 
   if (t.dataset.rvReject) {
     const id = t.dataset.rvReject;
-    const form = S.reviewForm[id] ?? { category: '', phrases: '', reason: '' };
+    const form = reviewFormOf(id);
     if (form.reason.trim().length < 3) return;
     push();
     S.proposals = S.proposals.map((prop) => prop.id === id

@@ -111,6 +111,20 @@ approval. A service without phrases is unreachable by every description, so
 `catalog-reachability.test.ts` asserts each phrase resolves to the service
 that declares it, and migration `0028` refuses to add a silent one.
 
+### A service has two names
+
+`name_he` is the **customer's** words for the problem — "מזגן לא מקרר",
+"ננעלתי מחוץ לבית" — because that is what a person types, and the classifier,
+the request screen and the job all speak in those terms.
+
+`provider_label` is what a **professional** calls the work: "תיקון מזגן שלא
+מקרר", "פתיחת דלתות נעולות". The registration form showed the customer's list
+and asked "מה אתם עושים, ובכמה?", so a technician searching "גז" was offered
+a column of symptoms and asked to price somebody else's sentence. Both names
+point at one service row, so nothing about matching, pricing or
+classification changes — only which of the two a screen shows. See
+[DECISIONS D-028](DECISIONS.md).
+
 ---
 
 ## The catalog is not the world
@@ -124,8 +138,20 @@ So a provider can search the catalog by **the work** ("מזגן", "אסלה") ra
 than by our category names, and when nothing fits they write it in their own
 words. That is a **proposal**: it changes nothing about matching, and the
 screen says so on the form and on every pending row. An admin resolves it,
-and approval creates a service under an existing category, links the provider
-to it, and — necessarily — carries the phrases a customer would type.
+and approval creates a service, links the provider to it, and — necessarily —
+carries the phrases a customer would type.
+
+The category it goes under can be one that does not exist yet. A trade that
+is genuinely none of the seven — moving, painting, carpentry — used to leave
+the reviewer with two bad options: reject something real, or file it
+somewhere wrong. Wrong is not cosmetic, because the category carries the
+working radius, the default duration and whether a licence and insurance are
+demanded before verification, so a mover filed under plumbing inherits a
+plumber's paperwork. The reviewer can now name the category in the same
+form, and states those two flags rather than inheriting a guess. A name that
+already exists resolves to that category instead of creating a twin, which
+would split providers and customers between two identical trades. See
+[DECISIONS D-027](DECISIONS.md).
 
 Those phrases are the part that makes approval real. The classifier routes a
 description to a service by matching phrasings; a service approved without
@@ -138,9 +164,10 @@ approval cannot be expressed. See [DECISIONS D-022](DECISIONS.md).
 ## MVP categories
 
 Plumbing · Electrical · Air conditioning · Locksmith · Pest control ·
-Cleaning · Gardening — 23 services between them.
+Cleaning · Gardening — 62 services between them.
 
-Adding a category is an `INSERT` into `categories`. Its behaviour is data:
+Adding a category is an `INSERT` into `categories`, which an admin can now do
+from the review form as part of approving a trade. Its behaviour is data:
 pricing model, which booking modes it allows, whether it needs a licence,
 insurance, documents or before/after photos, default duration and radius,
 required skills.

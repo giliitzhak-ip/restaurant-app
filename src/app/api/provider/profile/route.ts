@@ -29,16 +29,24 @@ export async function GET() {
                 requires_license, requires_insurance, requires_documents
            from categories where is_active order by sort_order`,
       );
+      /*
+       * `name_he` is the customer's words for the problem, and this list is
+       * read by a PROVIDER pricing their own work — so it carries the
+       * provider's name for it instead (migration 0030). Without this the
+       * registration form asked a technician to price "מזגן לא מקרר": a
+       * symptom where a service belonged.
+       */
       const services = await db.many<{
         category_slug: string; slug: string; name_he: string;
         base_price_ils: string | null; min_price_ils: string | null; max_price_ils: string | null;
       }>(
-        `select c.slug as category_slug, s.slug, s.name_he,
+        `select c.slug as category_slug, s.slug,
+                coalesce(s.provider_label, s.name_he) as name_he,
                 s.base_price_ils, s.min_price_ils, s.max_price_ils
            from services s
            join categories c on c.id = s.category_id
           where s.is_active and c.is_active
-          order by c.sort_order, s.name_he`,
+          order by c.sort_order, coalesce(s.provider_label, s.name_he)`,
       );
       return { categories, services };
     });

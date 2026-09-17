@@ -29,7 +29,27 @@ const bodySchema = z.discriminatedUnion('action', [
     action: z.literal('approve_trade'),
     proposalId: z.uuid(),
     /** Which existing category it becomes a service of. */
-    categorySlug: z.string().min(1).max(60),
+    categorySlug: z.string().min(1).max(60).optional(),
+    /**
+     * Or a category the admin is naming now, for a trade that genuinely is
+     * none of the existing ones.
+     *
+     * The licence and insurance flags are required rather than defaulted,
+     * because a category decides what a provider must produce before they
+     * can be verified. Defaulting them to false would quietly let a new
+     * regulated trade in without papers; defaulting them to true would demand
+     * papers from a mover. Neither is a safe guess, so the reviewer states
+     * it.
+     */
+    newCategory: z
+      .object({
+        nameHe: z.string().trim().min(2).max(60),
+        requiresLicense: z.boolean(),
+        requiresInsurance: z.boolean(),
+        defaultRadiusKm: z.number().min(1).max(200).optional(),
+        defaultDurationMin: z.number().int().min(15).max(600).optional(),
+      })
+      .optional(),
     /** Customer phrasings that should route here. At least one. */
     phrases: z.array(z.string().trim().min(2).max(80)).min(1).max(20),
     /** Supporting phrasings, never decisive on their own. */
@@ -39,7 +59,10 @@ const bodySchema = z.discriminatedUnion('action', [
     urgency: z.enum(['low', 'normal', 'high', 'emergency']).optional(),
     durationMin: z.number().int().min(15).max(600).optional(),
     note: z.string().max(500).optional(),
-  }),
+  }).refine(
+    (body) => (body.categorySlug === undefined) !== (body.newCategory === undefined),
+    { message: 'יש לבחור תחום קיים או ליצור חדש — לא שניהם ולא אף אחד' },
+  ),
   z.object({
     action: z.literal('reject_trade'),
     proposalId: z.uuid(),
@@ -277,6 +300,7 @@ export async function POST(request: Request) {
           proposalId: body.proposalId,
           adminId: admin.id,
           categorySlug: body.categorySlug,
+          newCategory: body.newCategory,
           phrases: body.phrases,
           weakPhrases: body.weakPhrases,
           serviceName: body.serviceName,
@@ -290,14 +314,23 @@ export async function POST(request: Request) {
           result.providerId,
           'trade.approved',
           'המקצוע שהצעת אושר',
-          `${result.name} נוסף תחת ${result.categoryName}. מעכשיו תוכל לקבל עבודות בו.`,
-          { serviceId: result.serviceId, categorySlug: result.categorySlug },
+          `${result.name} נוסף תחת ${result.categoryName}. מעכשיו אפשר לקבל עבודות בו.`,
+          {
+            serviceId: result.serviceId,
+            categorySlug: result.categorySlug,
+            categoryCreated: result.categoryCreated,
+          },
         );
 
         logOperation({
           requestId, userId: admin.id,
           operation: 'admin.approve_trade', result: 'ok',
-          meta: { proposalId: body.proposalId, slug: result.slug, phrases: body.phrases.length },
+          meta: {
+            proposalId: body.proposalId, slug: result.slug,
+            phrases: body.phrases.length,
+            categorySlug: result.categorySlug,
+            categoryCreated: result.categoryCreated,
+          },
         });
 
         return ok(result);

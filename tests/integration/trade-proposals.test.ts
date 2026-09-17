@@ -248,6 +248,167 @@ describe('provider-proposed trades', () => {
     await expect(propose(provider.id, '  תיקון מכונות כביסה  ')).rejects.toThrow();
   });
 
+  /* ── A trade that is none of the seven categories ──────────────────────
+     Before this the reviewer's only options were to reject something real or
+     to file it somewhere wrong, and wrong is not cosmetic: the category
+     carries the working radius, the default duration and whether a licence
+     and insurance are demanded before verification. */
+  it('approval can create the category, with the flags the reviewer stated', async () => {
+    const admin = await createAdmin();
+    const customer = await createCustomer();
+    const provider = await createProvider({ name: 'מוביל', lat: 32.075, lon: 34.775 });
+    const proposalId = await propose(provider.id, 'הובלת דירה', 1200);
+
+    const approved = await approveTradeProposal({
+      proposalId,
+      adminId: admin.id,
+      newCategory: {
+        nameHe: 'הובלות',
+        requiresLicense: false,
+        requiresInsurance: true,
+        defaultRadiusKm: 60,
+      },
+      phrases: ['הובלת דירה', 'להעביר דירה', 'מוביל'],
+      audit,
+    });
+
+    expect(approved.categoryCreated).toBe(true);
+    expect(approved.categoryName).toBe('הובלות');
+
+    const { rows } = await adminPool().query<{
+      slug: string; name_he: string; name_en: string | null;
+      requires_license: boolean; requires_insurance: boolean; requires_documents: boolean;
+      default_radius_km: string; required_skills: string[]; sort_order: number;
+    }>(
+      `select slug, name_he, name_en, requires_license, requires_insurance,
+              requires_documents, default_radius_km, required_skills, sort_order
+         from categories where slug = $1`,
+      [approved.categorySlug],
+    );
+    const category = rows[0]!;
+    expect(category.name_he).toBe('הובלות');
+    // No English name was invented for it (migration 0029).
+    expect(category.name_en).toBeNull();
+    expect(category.requires_license).toBe(false);
+    expect(category.requires_insurance).toBe(true);
+    // Insurance alone is still a document to produce before verification.
+    expect(category.requires_documents).toBe(true);
+    expect(Number(category.default_radius_km)).toBe(60);
+    // A category with no required skill scores everyone in it the same
+    // neutral 80, so a new trade gets one of its own.
+    expect(category.required_skills).toEqual([approved.categorySlug]);
+    // It sorts after the seven shipped ones rather than jumping the list.
+    expect(category.sort_order).toBeGreaterThan(70);
+
+    // And the whole point: a customer describing the work reaches this
+    // provider through a real dispatch.
+    const understood = await classify('אני צריך להעביר דירה');
+    expect(understood.category).toBe(approved.categorySlug);
+    expect(understood.service).toBe(approved.slug);
+
+    const jobId = await createJob({
+      customerId: customer.id, ...LOC,
+      categorySlug: approved.categorySlug, serviceSlug: approved.slug,
+    });
+    const outcome = await runDispatchWave(jobId);
+    expect(outcome.offersCreated).toBeGreaterThan(0);
+  });
+
+  it('a second proposal under the same name joins that category, not a twin', async () => {
+    const admin = await createAdmin();
+    const first = await createProvider({ name: 'מוביל א', lat: 32.075, lon: 34.775 });
+    const second = await createProvider({ name: 'מוביל ב', lat: 32.076, lon: 34.776 });
+
+    const one = await approveTradeProposal({
+      proposalId: await propose(first.id, 'הובלת דירה', 1200),
+      adminId: admin.id,
+      newCategory: { nameHe: 'הובלות', requiresLicense: false, requiresInsurance: true },
+      phrases: ['הובלת דירה'],
+      audit,
+    });
+
+    // Same name, differently cased and padded — still the same trade.
+    const two = await approveTradeProposal({
+      proposalId: await propose(second.id, 'פינוי מחסן', 600),
+      adminId: admin.id,
+      newCategory: { nameHe: '  הובלות ', requiresLicense: true, requiresInsurance: false },
+      phrases: ['פינוי מחסן'],
+      audit,
+    });
+
+    expect(two.categoryCreated).toBe(false);
+    expect(two.categorySlug).toBe(one.categorySlug);
+
+    const { rows } = await adminPool().query<{ n: string }>(
+      `select count(*)::text as n from categories
+        where is_active and lower(btrim(name_he)) = 'הובלות'`,
+    );
+    expect(rows[0]!.n).toBe('1');
+  });
+
+  it('refuses both a category and a new one, and refuses neither', async () => {
+    const admin = await createAdmin();
+    const provider = await createProvider({ name: 'מציע', lat: 32.075, lon: 34.775 });
+
+    await expect(
+      approveTradeProposal({
+        proposalId: await propose(provider.id, 'הובלת פסנתר', 900),
+        adminId: admin.id,
+        categorySlug: 'plumbing',
+        newCategory: { nameHe: 'הובלות', requiresLicense: false, requiresInsurance: false },
+        phrases: ['הובלת פסנתר'],
+        audit,
+      }),
+    ).rejects.toThrow(/CATEGORY_AMBIGUOUS|תחום/);
+
+    await expect(
+      approveTradeProposal({
+        proposalId: await propose(provider.id, 'הובלת כספת', 900),
+        adminId: admin.id,
+        phrases: ['הובלת כספת'],
+        audit,
+      }),
+    ).rejects.toThrow(/CATEGORY_REQUIRED|תחום/);
+  });
+
+  /* The bug this asserts against was invisible: the provider was findable,
+     and then ranked ~18 points below every competitor forever, for a skill
+     the approval had just asserted they have. */
+  it('an approved provider holds the category skill, so skill match is not zero', async () => {
+    const admin = await createAdmin();
+    const customer = await createCustomer();
+    const provider = await createProvider({ name: 'טכנאי', lat: 32.075, lon: 34.775 });
+
+    const approved = await approveTradeProposal({
+      proposalId: await propose(provider.id, 'תיקון תנור', 400),
+      adminId: admin.id,
+      categorySlug: 'electrical',
+      phrases: ['תיקון תנור', 'התנור לא מתחמם'],
+      audit,
+    });
+
+    const { rows: skillRows } = await adminPool().query<{ skills: string[] }>(
+      `select pc.skills from provider_categories pc
+         join categories c on c.id = pc.category_id
+        where pc.provider_id = $1 and c.slug = 'electrical'`,
+      [provider.id],
+    );
+    expect(skillRows[0]!.skills).toContain('electrical');
+
+    const jobId = await createJob({
+      customerId: customer.id, ...LOC,
+      categorySlug: 'electrical', serviceSlug: approved.slug,
+    });
+    await runDispatchWave(jobId);
+
+    const { rows } = await adminPool().query<{ skill_score: string }>(
+      `select skill_score::text from matching_events
+        where job_id = $1 and provider_id = $2`,
+      [jobId, provider.id],
+    );
+    expect(Number(rows[0]!.skill_score)).toBe(100);
+  });
+
   it('a rejection is recorded with its reason, and does not touch the catalog', async () => {
     const admin = await createAdmin();
     const provider = await createProvider({ lat: 32.075, lon: 34.775 });

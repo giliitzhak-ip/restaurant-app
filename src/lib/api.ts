@@ -62,6 +62,12 @@ const UNIQUE_VIOLATIONS: Record<string, { code: string; message: string }> = {
     code: 'OFFER_ALREADY_SENT',
     message: 'ההצעה הזו כבר נשלחה',
   },
+  // Two reviewers naming the same new category at the same time. The loser
+  // should retry and find it in the list, not read INTERNAL_ERROR.
+  categories_unique_active_name: {
+    code: 'CATEGORY_EXISTS',
+    message: 'תחום בשם הזה כבר קיים — בחרו אותו מהרשימה',
+  },
 };
 
 const DB_ERROR_MAP: Record<string, { code: string; message: string; status: number }> = {

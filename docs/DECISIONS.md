@@ -623,3 +623,90 @@ a matter of style, and it is visible on the first screen a provider sees.
 
 **Consequences.** Nine strings in four files, and the simulator follows them,
 because it promises the same text as the app. No API, schema or test change.
+
+## D-027 — An admin can create the category, and must state what it demands
+
+**Context.** Approving a provider-proposed trade required picking one of the
+seven shipped categories. A trade that is genuinely none of them — moving,
+painting, carpentry, appliance repair — left the reviewer with two bad
+options: reject something real, or file it somewhere wrong. Filing it wrong
+is not cosmetic. The category carries the working radius, the default
+duration and whether a licence and insurance are required before
+verification, so a mover filed under `plumbing` inherits a plumber's
+paperwork and a plumber's radius.
+
+**Decision.** `approve_trade` takes either `categorySlug` or `newCategory`,
+never both and never neither, and the new-category payload requires
+`requiresLicense` and `requiresInsurance` as booleans rather than defaulting
+them. The category is created in the same transaction as the service, the
+provider link and the audit row.
+
+**Why the two flags are required.** Neither default is safe. False quietly
+admits a new regulated trade with no documents; true demands documents from a
+cleaner. There is no value that is right when unspecified, so the reviewer
+states it. `requires_documents` is then derived — either flag means there is
+something to produce — rather than being a third thing to get wrong.
+
+**Why find-or-reuse rather than insert.** A second category named "הובלות" is
+not a new category, it is a split: some providers register under one,
+customers are routed to the other, and nothing on either screen explains why
+the work never arrives. The lookup folds case and trims, and migration `0029`
+adds a unique index on `lower(btrim(name_he))` where active, so two reviewers
+racing end in a constraint violation the API maps to "that category already
+exists — pick it from the list" rather than in two categories.
+
+**Consequences.** `categories.name_en` became nullable, for the same reason
+`services.name_en` did in `0026`: an admin typing "הובלות" has no English
+name, and inventing one or storing Hebrew in a column labelled English both
+put false data in a named field. A created category is tagged with its own
+slug as its `required_skills`, because a category with none scores every
+provider in it the same neutral 80 and nobody in a new trade could ever be
+distinguished by competence. Its `sort_order` places it after the shipped
+seven. `cleanupTestData` removes `cat_%` categories for the same reason it
+removes `custom_%` services.
+
+**A bug this surfaced.** The approval linked the provider with
+`skills = '{}'`. Dispatch takes a job's required skills from the service or,
+failing that, the category, and scores them against that row — so an approved
+provider matched none of them and scored 10 out of 100 on skill match, 20% of
+the decision. They were findable and then ranked about eighteen points below
+every competitor, permanently, for a skill the approval had just asserted
+they have. It is now the category's own skill set, unioned on conflict, which
+is what `/api/provider/setup` already did on the ordinary path. Asserted by a
+test that reads `skill_score` from `matching_events` after a real dispatch,
+and confirmed to fail on the reverted fix.
+
+## D-028 — A service carries two names, because two different people read it
+
+**Context.** `services.name_he` is the customer's words for a problem:
+"מזגן לא מקרר", "ננעלתי מחוץ לבית", "סתימה בצינור". That is deliberate and it
+has to stay — the classifier routes a typed description to a service, and the
+request screen shows the customer what we understood.
+
+The registration form then showed that same list to a provider under "מה אתם
+עושים, ובכמה?". A technician searching "גז" was offered "מזגן לא מקרר",
+"המזגן לא נדלק", "מזגן מטפטף": a column of symptoms where a list of services
+belonged. It reads as though the platform does not know what the trade is,
+and a professional pricing "ננעלתי מחוץ לבית" is being asked to price someone
+else's sentence.
+
+**Decision.** `services.provider_label` (migration `0030`), populated for all
+62 shipped services, read through `coalesce(provider_label, name_he)`.
+Customer-facing surfaces keep `name_he`. The registration form, the
+provider's own service list and the profile's "what they do" list use the
+label — including on the customer's screen, because a list of what a person
+does is a list of services whoever is reading it.
+
+**Why not rename the rows.** The names are not interchangeable and neither is
+wrong. Renaming `ac_not_cooling` to "תיקון מזגן שלא מקרר" would push trade
+phrasing into the customer's screen and into the classifier's vocabulary,
+where the customer's own words belong. Two columns on one row keeps matching,
+pricing and classification untouched: only which name a given screen reads
+changes.
+
+**Consequences.** Nullable and coalesced, so a row created before the
+migration still renders. An approved trade stores the provider's own words as
+the label and the reviewer's name, if they set one, as the customer-facing
+name. Migration `0030` fails if any shipped service is left without a label,
+because a missing one silently falls back to the customer's words — exactly
+the mixed list this exists to end.

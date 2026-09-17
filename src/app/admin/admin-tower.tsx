@@ -45,6 +45,29 @@ interface Overview {
   shown: { pendingVerification: number; tradeProposals: number; liveProviders: number; liveJobs: number };
 }
 
+/**
+ * The reviewer's form for one proposal.
+ *
+ * `category` is a slug, or NEW_CATEGORY when the reviewer is naming a trade
+ * that is none of the existing ones. The licence and insurance answers only
+ * exist in that case, and they are deliberately not pre-ticked: a category
+ * decides what a provider must produce before verification, and neither
+ * default is safe — false lets a regulated trade in without papers, true
+ * demands papers from a mover.
+ */
+interface ReviewForm {
+  category: string;
+  phrases: string;
+  reason: string;
+  newName: string;
+  newLicense: boolean;
+  newInsurance: boolean;
+  newRadius: string;
+}
+
+/** The sentinel the category select uses for "a trade I am naming now". */
+const NEW_CATEGORY = '__new__';
+
 /** "12" when everything is shown, "50 מתוך 137" when it is not. */
 function countLabel(shown: number, total: number): string {
   return shown < total ? `${shown} מתוך ${total}` : `${total}`;
@@ -59,7 +82,7 @@ export function AdminTower() {
   const [notice, setNotice] = useState<string | null>(null);
   /** Per-proposal review form: which category, and the phrases that make it
    *  reachable. Keyed by proposal id so two reviews cannot cross over. */
-  const [review, setReview] = useState<Record<string, { category: string; phrases: string; reason: string }>>({});
+  const [review, setReview] = useState<Record<string, ReviewForm>>({});
 
   const refetch = useCallback(async () => {
     const fresh = await apiFetch<Overview>('/api/admin/overview').catch((caught: unknown) => {
@@ -263,17 +286,27 @@ export function AdminTower() {
 
           <div className="mt-3 space-y-3">
             {data.tradeProposals.map((proposal) => {
-              const form = review[proposal.id] ?? {
+              const form: ReviewForm = review[proposal.id] ?? {
                 category: proposal.suggested_category_slug ?? '',
                 phrases: '',
                 reason: '',
+                newName: '',
+                newLicense: false,
+                newInsurance: false,
+                newRadius: '15',
               };
-              const set = (patch: Partial<typeof form>) =>
+              const set = (patch: Partial<ReviewForm>) =>
                 setReview((current) => ({ ...current, [proposal.id]: { ...form, ...patch } }));
               const phrases = form.phrases
                 .split(',')
                 .map((phrase) => phrase.trim())
                 .filter((phrase) => phrase.length >= 2);
+              const creatingCategory = form.category === NEW_CATEGORY;
+              const newName = form.newName.trim();
+              const radiusKm = Number(form.newRadius);
+              const categoryReady = creatingCategory
+                ? newName.length >= 2 && Number.isFinite(radiusKm) && radiusKm >= 1 && radiusKm <= 200
+                : form.category !== '';
 
               return (
                 <div key={proposal.id} className="rounded-xl border border-line bg-bg p-4">
@@ -337,6 +370,13 @@ export function AdminTower() {
                             {c.name_he}
                           </option>
                         ))}
+                        {/* A trade that is none of the seven. Without this the
+                            reviewer's only options were to reject something
+                            real or to file it somewhere wrong — and filing it
+                            wrong is not cosmetic, because the category
+                            carries the radius, the duration and the document
+                            requirements. */}
+                        <option value={NEW_CATEGORY}>+ תחום חדש…</option>
                       </select>
                     </div>
                     <div>
@@ -360,24 +400,99 @@ export function AdminTower() {
                     בלי ביטויים אף תיאור של לקוח לא ינותב לשירות הזה, והאישור יהיה חסר משמעות.
                   </p>
 
+                  {creatingCategory && (
+                    <div className="mt-3 rounded-xl border border-brand/40 bg-brand/5 p-3">
+                      <p className="text-xs font-semibold text-brand-bright">תחום חדש</p>
+                      <div className="mt-2 grid gap-2 md:grid-cols-2">
+                        <div>
+                          <label
+                            className="mb-1 block text-xs text-ink-3"
+                            htmlFor={`newcat-${proposal.id}`}
+                          >
+                            שם התחום
+                          </label>
+                          <input
+                            id={`newcat-${proposal.id}`}
+                            value={form.newName}
+                            onChange={(event) => set({ newName: event.target.value })}
+                            placeholder="הובלות"
+                            className="min-h-11 w-full rounded-lg border border-line-strong bg-surface-2 px-3 text-sm text-ink"
+                          />
+                        </div>
+                        <div>
+                          <label
+                            className="mb-1 block text-xs text-ink-3"
+                            htmlFor={`newrad-${proposal.id}`}
+                          >
+                            רדיוס עבודה ברירת מחדל (ק״מ)
+                          </label>
+                          <input
+                            id={`newrad-${proposal.id}`}
+                            value={form.newRadius}
+                            onChange={(event) => set({ newRadius: event.target.value })}
+                            inputMode="numeric"
+                            dir="ltr"
+                            className="ltr-nums min-h-11 w-full rounded-lg border border-line-strong bg-surface-2 px-3 text-sm text-ink"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap gap-4">
+                        <label className="flex items-center gap-2 text-sm text-ink-2">
+                          <input
+                            type="checkbox"
+                            checked={form.newLicense}
+                            onChange={(event) => set({ newLicense: event.target.checked })}
+                            className="size-4 accent-brand"
+                          />
+                          דורש רישיון
+                        </label>
+                        <label className="flex items-center gap-2 text-sm text-ink-2">
+                          <input
+                            type="checkbox"
+                            checked={form.newInsurance}
+                            onChange={(event) => set({ newInsurance: event.target.checked })}
+                            className="size-4 accent-brand"
+                          />
+                          דורש ביטוח
+                        </label>
+                      </div>
+
+                      <p className="mt-2 text-xs text-ink-3">
+                        התחום קובע מה מקצוען צריך להציג לפני אימות, כמה רחוק הוא נוסע
+                        וכמה זמן עבודה מוקצב. אם כבר קיים תחום בשם הזה — הוא ישויך אליו
+                        ולא ייווצר כפול.
+                      </p>
+                    </div>
+                  )}
+
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <Button
                       size="md"
                       loading={busy === `approve-${proposal.id}`}
-                      disabled={form.category === '' || phrases.length === 0}
+                      disabled={!categoryReady || phrases.length === 0}
                       onClick={() =>
                         void act(
                           {
                             action: 'approve_trade',
                             proposalId: proposal.id,
-                            categorySlug: form.category,
+                            ...(creatingCategory
+                              ? {
+                                  newCategory: {
+                                    nameHe: newName,
+                                    requiresLicense: form.newLicense,
+                                    requiresInsurance: form.newInsurance,
+                                    defaultRadiusKm: radiusKm,
+                                  },
+                                }
+                              : { categorySlug: form.category }),
                             phrases,
                           },
                           `approve-${proposal.id}`,
                         )
                       }
                     >
-                      אשר והוסף לקטלוג
+                      {creatingCategory ? 'צור תחום ואשר' : 'אשר והוסף לקטלוג'}
                     </Button>
                     <input
                       value={form.reason}

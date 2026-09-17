@@ -25,7 +25,10 @@ imitation of the engine:
 4. Profile facts came from `GET /api/providers/{id}` — the same
    customer-facing endpoint the app calls, including its
    `ratingBreakdown: null` for a provider with no review rows.
-5. `CATALOG` was read from `categories` and `services`.
+5. `CATALOG` was read from `categories` and `services`, carrying both names
+   per service: the customer's words for the problem, which the classifier and
+   every customer screen use, and the provider's name for the work, which the
+   registration form uses (migration `0030`).
 
 The page recomputes only the total, as `Σ score × weight` with the weights
 from `settings.matching.weights`, which is what `engine.ts` does; it
@@ -45,6 +48,12 @@ There is no server and no payment. The candidate list is one dispatch, so it
 does not change when a different description classifies elsewhere; the page
 says so on screen when that happens. Nobody in it is a real person: every
 provider is a synthetic row tagged `is_demo`.
+
+The review view's writes are local to the page: approving a proposal there
+pushes the new service and its trigger phrases into the page's own catalog and
+rule set, so the registration form can then find it and a description can then
+route to it — which is the behaviour of the real approval, done in memory. It
+touches no database.
 
 ## Refreshing the recording
 

@@ -69,12 +69,15 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       if (!profile) return null;
 
       const services = await db.many<{ slug: string; name_he: string; price_ils: string | null; category_name: string }>(
-        `select s.slug, s.name_he, ps.price_ils, c.name_he as category_name
+        // "What this person does" is a list of services, not of symptoms,
+        // even when a customer is the one reading it (migration 0030).
+        `select s.slug, coalesce(s.provider_label, s.name_he) as name_he,
+                ps.price_ils, c.name_he as category_name
            from provider_services ps
            join services s on s.id = ps.service_id
            join categories c on c.id = s.category_id
           where ps.provider_id = $1 and ps.is_active and ps.price_ils is not null
-          order by c.sort_order, s.name_he`,
+          order by c.sort_order, coalesce(s.provider_label, s.name_he)`,
         [id],
       );
 

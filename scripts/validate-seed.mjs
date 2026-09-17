@@ -176,10 +176,22 @@ async function main() {
     'negative or absurd price',
     'select count(*) as n from provider_services where price_ils is not null and (price_ils < 0 or price_ils > 100000)',
   );
+  /*
+   * Scoped to the synthetic network, which is what this script validates.
+   *
+   * Unscoped it also flagged hand-registered accounts, and for them the state
+   * is not a defect: a provider who has declared a trade and not yet entered
+   * prices is mid-onboarding, and a provider whose only priced service was an
+   * approved trade that was later removed is a consequence of that removal.
+   * A seed validator that goes red because somebody registered an account by
+   * hand is a validator people learn to ignore.
+   */
   await mustBeEmpty(
-    'provider with a trade but no priced service',
+    'synthetic provider with a trade but no priced service',
     `select count(*) as n from provider_profiles pp
-      where exists (select 1 from provider_categories pc where pc.provider_id = pp.id)
+       join profiles p on p.id = pp.id
+      where p.email like 'gsnet-%@synthetic.local'
+        and exists (select 1 from provider_categories pc where pc.provider_id = pp.id)
         and not exists (
           select 1 from provider_services ps
            where ps.provider_id = pp.id and ps.is_active and ps.price_ils is not null
