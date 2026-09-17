@@ -1,0 +1,97 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import Image from "next/image";
+import { Package } from "lucide-react";
+import { routes } from "@/config/site";
+import { t } from "@/i18n";
+import { formatDate, formatPrice } from "@/lib/format";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { getSessionUser } from "@/server/auth/session";
+import { getRepository } from "@/server/repositories";
+import type { OrderStatus } from "@/types/commerce";
+
+export const metadata: Metadata = {
+  title: t.account.orders,
+  robots: { index: false, follow: false },
+};
+
+const statusLabels: Record<OrderStatus, string> = {
+  PENDING: "ממתינה לתשלום",
+  PAID: "שולמה",
+  PROCESSING: "בהכנה",
+  SHIPPED: "נשלחה",
+  COMPLETED: "הושלמה",
+  CANCELLED: "בוטלה",
+};
+
+export default async function AccountOrdersPage() {
+  const user = await getSessionUser();
+  if (!user) return null;
+  const orders = await getRepository().listOrders(user.id);
+
+  if (!orders.length) {
+    return (
+      <EmptyState
+        icon={<Package />}
+        title={t.account.ordersEmpty}
+        action={
+          <Button asChild>
+            <Link href={routes.catalog}>{t.cart.emptyCta}</Link>
+          </Button>
+        }
+      />
+    );
+  }
+
+  return (
+    <div>
+      <h2 className="text-xl">{t.account.orders}</h2>
+      <ul className="mt-6 space-y-5">
+        {orders.map((order) => (
+          <li key={order.id} className="rounded-lg border border-line bg-surface p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <Link
+                  href={routes.order(order.number)}
+                  className="link-quiet num text-[0.9375rem] font-medium text-ink"
+                >
+                  {order.number}
+                </Link>
+                <p className="num mt-0.5 text-xs text-muted">
+                  {formatDate(order.createdAt)}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Badge
+                  variant={
+                    order.status === "CANCELLED"
+                      ? "danger"
+                      : order.status === "COMPLETED"
+                        ? "success"
+                        : "neutral"
+                  }
+                >
+                  {statusLabels[order.status]}
+                </Badge>
+                <span className="num font-display text-lg text-ink">
+                  {formatPrice(order.total)}
+                </span>
+              </div>
+            </div>
+            <ul className="mt-4 flex flex-wrap gap-2">
+              {order.items.map((item) => (
+                <li key={item.id} className="relative size-14 overflow-hidden rounded-xs bg-surface-2">
+                  {item.imageUrl ? (
+                    <Image src={item.imageUrl} alt={item.name} fill sizes="56px" className="object-cover" />
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
