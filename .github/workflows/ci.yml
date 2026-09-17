@@ -1,0 +1,138 @@
+name: CI
+
+# Everything that had only ever been run by hand.
+#
+# The project's gates were real — lint, types, 230 tests, 32 seed checks, a
+# measured contrast pass — and nothing enforced any of them. A regression got
+# caught only if somebody remembered to look, which for the two structural
+# guards in this repo (SQL inside template literals, a dev server that never
+# hydrates) is exactly the class of bug they exist to catch.
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  # A second push supersedes the first: nobody needs the CI result for a
+  # commit that is already history.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      # PostGIS, not plain Postgres: the schema creates the extension in
+      # migration 0001 and every distance query depends on it.
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: getservice
+          POSTGRES_PASSWORD: getservice
+          POSTGRES_DB: getservice
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U getservice"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      # The owner runs migrations; the app connects as the restricted role, so
+      # RLS is genuinely in force during the tests rather than bypassed by a
+      # superuser connection. Local-only credentials for a throwaway service
+      # container — nothing here is a secret.
+      DATABASE_ADMIN_URL: postgresql://getservice:getservice@127.0.0.1:5432/getservice
+      DATABASE_URL: postgresql://getservice_app:getservice_app@127.0.0.1:5432/getservice
+      TEST_DATABASE_URL: postgresql://getservice_app:getservice_app@127.0.0.1:5432/getservice_test
+      SESSION_SECRET: ci-only-session-secret-not-used-anywhere-else
+      MAP_PROVIDER: estimate
+      PAYMENT_PROVIDER: mock
+      DEMO_MODE: 'true'
+      # The clock is off in CI: a test that depends on a background sweep
+      # firing mid-run is a flaky test, and every tick is called explicitly by
+      # the suites that care.
+      MAINTENANCE_INTERVAL_SECONDS: '0'
+      NEXT_TELEMETRY_DISABLED: '1'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Database roles and schema
+        run: |
+          npm run db:roles
+          npm run db:migrate
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Types
+        run: npm run typecheck
+
+      - name: Test database
+        run: npm run test:db
+
+      - name: Tests
+        run: npm test
+
+      - name: Contrast
+        run: npm run check:contrast
+
+      - name: Build
+        run: npm run build
+
+  # Separate job: it seeds a thousand providers, so it is slower than the
+  # gates and there is no reason to make a lint failure wait for it.
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: getservice
+          POSTGRES_PASSWORD: getservice
+          POSTGRES_DB: getservice
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U getservice"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      DATABASE_ADMIN_URL: postgresql://getservice:getservice@127.0.0.1:5432/getservice
+      DATABASE_URL: postgresql://getservice_app:getservice_app@127.0.0.1:5432/getservice
+      SESSION_SECRET: ci-only-session-secret-not-used-anywhere-else
+      DEMO_MODE: 'true'
+      MAINTENANCE_INTERVAL_SECONDS: '0'
+      NEXT_TELEMETRY_DISABLED: '1'
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run db:roles
+      - run: npm run db:migrate
+      - run: npm run db:seed
+      - name: Seed the synthetic network
+        run: npm run db:network
+      - name: Validate the seed
+        # 32 invariants over the generated data. This is the check that caught
+        # a rerun silently doubling every schedule while the row counts still
+        # looked plausible.
+        run: npm run db:validate

@@ -26,7 +26,7 @@ export async function GET(
 
     // Documents are identity papers. A loop over ids from any authenticated
     // session should cost something even though RLS already denies it.
-    const limit = rateLimit(`document-file:${user.id}`, 60, 300);
+    const limit = await rateLimit(`document-file:${user.id}`, 60, 300);
     if (!limit.allowed) {
       return new Response('Too many requests', { status: 429 });
     }

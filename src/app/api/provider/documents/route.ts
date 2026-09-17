@@ -95,7 +95,7 @@ export async function POST(request: Request) {
   try {
     const user = await requireRole('provider');
 
-    const limit = rateLimit(`documents:${user.id}`, 20, 3600);
+    const limit = await rateLimit(`documents:${user.id}`, 20, 3600);
     if (!limit.allowed) {
       return fail('RATE_LIMITED', 'הועלו יותר מדי מסמכים. נסו בעוד שעה.', 429, requestId);
     }

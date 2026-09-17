@@ -22,6 +22,8 @@ export interface MaintenanceResult {
   expiryWarnings: number;
   /** Rejected document files deleted under the retention rule. */
   purgedDocumentFiles: number;
+  /** Closed rate-limit windows dropped. */
+  purgedRateLimits: number;
   /** Steps that threw, by name. Empty on a clean tick. */
   failures: string[];
 }
@@ -40,6 +42,7 @@ export async function runMaintenanceTick(): Promise<MaintenanceResult> {
     lapsedProviders: 0,
     expiryWarnings: 0,
     purgedDocumentFiles: 0,
+    purgedRateLimits: 0,
     failures: [],
   };
 
@@ -78,6 +81,15 @@ export async function runMaintenanceTick(): Promise<MaintenanceResult> {
 
   await step('documents.purge', async () => {
     result.purgedDocumentFiles = await purgeRejectedDocumentFiles();
+  });
+
+  await step('ratelimits.purge', async () => {
+    result.purgedRateLimits = await withSystem(async (db) => {
+      const row = await db.one<{ purge_expired_rate_limits: number }>(
+        'select purge_expired_rate_limits()',
+      );
+      return row?.purge_expired_rate_limits ?? 0;
+    });
   });
 
   return result;

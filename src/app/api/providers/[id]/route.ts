@@ -36,7 +36,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
      * enumerate every verified provider's prices and service list by id. The
      * ceiling is well above real use and well below a scrape.
      */
-    const limit = rateLimit(`providers:${user.id}`, 60, 300);
+    const limit = await rateLimit(`providers:${user.id}`, 60, 300);
     if (!limit.allowed) {
       return fail('RATE_LIMITED', 'יותר מדי בקשות. נסו בעוד כמה דקות.', 429, requestId);
     }

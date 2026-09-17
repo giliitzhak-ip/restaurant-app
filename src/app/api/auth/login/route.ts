@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
   try {
     // Throttled per client to blunt credential stuffing (spec §45).
-    const limit = rateLimit(clientKey(request, 'login'), 10, 300);
+    const limit = await rateLimit(clientKey(request, 'login'), 10, 300);
     if (!limit.allowed) {
       return fail(
         'RATE_LIMITED',

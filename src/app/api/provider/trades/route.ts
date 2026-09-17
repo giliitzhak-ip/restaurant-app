@@ -70,7 +70,7 @@ export async function POST(request: Request) {
     const user = await requireRole('provider');
     const body = await parseJson(request, createSchema);
 
-    const limit = rateLimit(`trades:${user.id}`, 10, 900);
+    const limit = await rateLimit(`trades:${user.id}`, 10, 900);
     if (!limit.allowed) {
       return fail('RATE_LIMITED', 'יותר מדי בקשות. נסו בעוד כמה דקות.', 429, requestId);
     }

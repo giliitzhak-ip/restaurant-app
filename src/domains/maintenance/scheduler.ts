@@ -40,12 +40,22 @@ let running = false;
 let inFlight = false;
 
 export function maintenanceIntervalSeconds(): number {
-  const raw = process.env.MAINTENANCE_INTERVAL_SECONDS;
-  if (raw === undefined) return DEFAULT_INTERVAL_SECONDS;
+  const raw = process.env.MAINTENANCE_INTERVAL_SECONDS?.trim();
+
+  /*
+   * An empty value is absent, not zero.
+   *
+   * `Number('')` is 0 and 0 means "an external cron owns the clock", so
+   * `MAINTENANCE_INTERVAL_SECONDS=` in an env file — or a key listed in a
+   * compose file with nothing after it — would silently switch off every
+   * time-based behaviour in the platform and reintroduce precisely the bug
+   * this module exists to fix. Only an explicit numeric 0 may stop the clock.
+   */
+  if (raw === undefined || raw === '') return DEFAULT_INTERVAL_SECONDS;
+
   const parsed = Number(raw);
   // Anything unparseable falls back rather than silently disabling the clock.
   if (!Number.isFinite(parsed) || parsed < 0) return DEFAULT_INTERVAL_SECONDS;
-  // 0 is a deliberate "an external cron owns this".
   if (parsed === 0) return 0;
   return Math.max(5, Math.min(3600, parsed));
 }
@@ -74,7 +84,8 @@ export function startMaintenanceScheduler(): void {
       // a line every thirty seconds and bury everything that matters.
       const did =
         result.expiredOffers + result.shiftsEnded + result.escalated.length +
-        result.lapsedProviders + result.expiryWarnings + result.purgedDocumentFiles;
+        result.lapsedProviders + result.expiryWarnings + result.purgedDocumentFiles +
+        result.purgedRateLimits;
       if (did > 0 || result.failures.length > 0) {
         logOperation({
           operation: 'maintenance.tick',
@@ -87,6 +98,7 @@ export function startMaintenanceScheduler(): void {
             lapsedProviders: result.lapsedProviders,
             expiryWarnings: result.expiryWarnings,
             purgedDocumentFiles: result.purgedDocumentFiles,
+            purgedRateLimits: result.purgedRateLimits,
             failures: result.failures.join(',') || null,
           },
         });

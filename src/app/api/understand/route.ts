@@ -16,7 +16,7 @@ const bodySchema = z.object({ text: z.string().min(1).max(2000) });
 export async function POST(request: Request) {
   const requestId = newRequestId();
   try {
-    const limit = rateLimit(clientKey(request, 'understand'), 60, 60);
+    const limit = await rateLimit(clientKey(request, 'understand'), 60, 60);
     if (!limit.allowed) {
       return fail('RATE_LIMITED', 'יותר מדי בקשות. נסו שוב בעוד רגע.', 429, requestId);
     }

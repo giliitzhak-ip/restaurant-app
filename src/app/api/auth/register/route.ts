@@ -25,7 +25,7 @@ export async function POST(request: Request) {
   const startedAt = Date.now();
 
   try {
-    const limit = rateLimit(clientKey(request, 'register'), 5, 600);
+    const limit = await rateLimit(clientKey(request, 'register'), 5, 600);
     if (!limit.allowed) {
       return fail('RATE_LIMITED', 'יותר מדי נסיונות. נסו בעוד כמה דקות.', 429, requestId);
     }

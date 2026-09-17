@@ -1,56 +1,69 @@
+import { withSystem } from './db';
+import { logOperation } from './logger';
+
 /**
  * Rate limiting (spec §45).
  *
- * In-process fixed-window counter. Adequate for a single-instance MVP and
- * deliberately simple.
+ * Backed by the `rate_limits` table, because the previous implementation was
+ * a Map in the Node process and that meant the limits did not actually hold:
+ * a restart cleared every window, so ten failed logins followed by a deploy
+ * were ten more failed logins, and behind two instances each got its own full
+ * allowance — the real limit was the configured one times the instance count.
+ * It was documented as a limitation rather than hidden (R-008), which is
+ * better than pretending, but a documented hole is still a hole.
  *
- * LIMITATION, stated rather than hidden: this is per-process memory, so with
- * multiple instances each gets its own allowance, and it resets on restart.
- * Production behind more than one instance needs a shared store (Redis, or a
- * Postgres table). Tracked as R-008 in docs/RISKS.md.
+ * The decision is one statement in `rate_limit_hit`, atomic under
+ * concurrency, and the window resets by comparing a stored timestamp rather
+ * than by anybody sweeping.
  */
-interface Window {
-  count: number;
-  resetAt: number;
-}
-
-const windows = new Map<string, Window>();
-let lastSweep = Date.now();
-
-function sweep(now: number): void {
-  if (now - lastSweep < 60_000) return;
-  lastSweep = now;
-  for (const [key, window] of windows) {
-    if (window.resetAt <= now) windows.delete(key);
-  }
-}
-
 export interface RateLimitResult {
   readonly allowed: boolean;
   readonly remaining: number;
   readonly retryAfterSeconds: number;
 }
 
-export function rateLimit(key: string, limit: number, windowSeconds: number): RateLimitResult {
-  const now = Date.now();
-  sweep(now);
+/**
+ * A rate limiter should never be the reason a request fails.
+ *
+ * If the database is unreachable the caller has bigger problems, and the next
+ * statement in the handler is going to hit the same database and report it
+ * properly. Failing OPEN is the deliberate choice: the alternative turns a
+ * blip into a total outage of login, and denies service in the name of
+ * preventing denial of service. It is logged so the blindness is visible.
+ */
+const FAIL_OPEN: RateLimitResult = { allowed: true, remaining: 0, retryAfterSeconds: 0 };
 
-  const existing = windows.get(key);
-  if (!existing || existing.resetAt <= now) {
-    windows.set(key, { count: 1, resetAt: now + windowSeconds * 1000 });
-    return { allowed: true, remaining: limit - 1, retryAfterSeconds: 0 };
+export async function rateLimit(
+  key: string,
+  limit: number,
+  windowSeconds: number,
+): Promise<RateLimitResult> {
+  try {
+    const row = await withSystem((db) =>
+      db.one<{ allowed: boolean; remaining: number; retry_after_seconds: number }>(
+        'select allowed, remaining, retry_after_seconds from rate_limit_hit($1,$2,$3)',
+        [key, limit, windowSeconds],
+      ),
+    );
+    if (!row) return FAIL_OPEN;
+    return {
+      allowed: row.allowed,
+      remaining: row.remaining,
+      retryAfterSeconds: row.retry_after_seconds,
+    };
+  } catch (error) {
+    logOperation({
+      operation: 'rate_limit.unavailable',
+      result: 'error',
+      meta: {
+        message: error instanceof Error ? error.message.slice(0, 200) : 'unknown',
+      },
+    });
+    return FAIL_OPEN;
   }
-
-  existing.count += 1;
-  const allowed = existing.count <= limit;
-  return {
-    allowed,
-    remaining: Math.max(0, limit - existing.count),
-    retryAfterSeconds: allowed ? 0 : Math.ceil((existing.resetAt - now) / 1000),
-  };
 }
 
-/** Test seam. */
-export function resetRateLimits(): void {
-  windows.clear();
+/** Test seam: forget every window. */
+export async function resetRateLimits(): Promise<void> {
+  await withSystem((db) => db.query('delete from rate_limits'));
 }

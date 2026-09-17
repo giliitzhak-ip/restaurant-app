@@ -28,7 +28,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const { id } = paramsSchema.parse(await context.params);
     const body = await parseJson(request, bodySchema).catch(() => ({ reason: undefined }));
 
-    const limit = rateLimit(`reject:${user.id}`, 10, 300);
+    const limit = await rateLimit(`reject:${user.id}`, 10, 300);
     if (!limit.allowed) {
       return fail('RATE_LIMITED', 'יותר מדי בקשות. נסו בעוד כמה דקות.', 429, requestId);
     }

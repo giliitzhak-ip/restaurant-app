@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       throw new ApiError('FORBIDDEN', 'רק לקוחות יכולים לפתוח קריאת שירות', 403);
     }
 
-    const limit = rateLimit(`jobs:${user.id}`, 10, 300);
+    const limit = await rateLimit(`jobs:${user.id}`, 10, 300);
     if (!limit.allowed) {
       return fail('RATE_LIMITED', 'נפתחו יותר מדי קריאות. נסו בעוד כמה דקות.', 429, requestId);
     }
