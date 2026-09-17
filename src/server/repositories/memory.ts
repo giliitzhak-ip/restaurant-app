@@ -1,0 +1,661 @@
+import { hashSync } from "bcryptjs";
+import {
+  buildCategories,
+  buildCollections,
+  buildCoupons,
+  buildProducts,
+  buildReviews,
+  categoryId,
+  collectionId,
+  availabilityFor,
+  pricePerSqmFor,
+} from "@/data/build-catalog";
+import { createId } from "@/lib/utils";
+import {
+  generateOrderNumber,
+  generateQuoteNumber,
+  type CartRecord,
+} from "@/server/commerce/pricing";
+import type {
+  Category,
+  Collection,
+  Coupon,
+  Product,
+  Review,
+} from "@/types/catalog";
+import type {
+  Address,
+  Order,
+  OrderStatus,
+  Quote,
+  QuoteStatus,
+  User,
+} from "@/types/commerce";
+import type { RoomDesignRecord, SurfaceSelection } from "@/types/design";
+import { buildFacets, matchesFilter, sortProducts } from "./filter";
+import type {
+  AdminStats,
+  CatalogFacets,
+  DesignInput,
+  ProductInput,
+  ProductPage,
+  ProductQuery,
+  QuoteInput,
+  Repository,
+} from "./types";
+
+interface MemoryStore {
+  categories: Category[];
+  collections: Collection[];
+  products: Product[];
+  reviews: Review[];
+  coupons: Coupon[];
+  carts: Map<string, CartRecord>;
+  orders: Order[];
+  quotes: Quote[];
+  designs: RoomDesignRecord[];
+  designSurfaces: Map<string, DesignInput["surfaces"]>;
+  users: (User & { passwordHash: string })[];
+  addresses: Address[];
+  favorites: Map<string, Set<string>>;
+  newsletter: Set<string>;
+}
+
+/**
+ * Demo accounts for the in-memory driver. Documented in README.md — they exist
+ * only when the app runs without a database.
+ */
+const demoAccounts = [
+  {
+    email: "admin@terranova.example",
+    password: "TerraNova!2026",
+    fullName: "צוות הניהול",
+    role: "ADMIN" as const,
+  },
+  {
+    email: "noa@example.com",
+    password: "Demo!2026",
+    fullName: "נועה ברקוביץ׳",
+    role: "CUSTOMER" as const,
+  },
+];
+
+function createStore(): MemoryStore {
+  const products = buildProducts();
+  return {
+    categories: buildCategories(),
+    collections: buildCollections(),
+    products,
+    reviews: buildReviews(),
+    coupons: buildCoupons(),
+    carts: new Map(),
+    orders: [],
+    quotes: [],
+    designs: [],
+    designSurfaces: new Map(),
+    users: demoAccounts.map((account, index) => ({
+      id: `usr_${index + 1}`,
+      email: account.email,
+      fullName: account.fullName,
+      phone: null,
+      role: account.role,
+      createdAt: new Date("2026-01-01T09:00:00.000Z").toISOString(),
+      passwordHash: hashSync(account.password, 10),
+    })),
+    addresses: [],
+    favorites: new Map(),
+    newsletter: new Set(),
+  };
+}
+
+// Survives Next.js hot reloads so a cart does not vanish between edits.
+const globalStore = globalThis as unknown as { __terraNovaStore?: MemoryStore };
+const store: MemoryStore = (globalStore.__terraNovaStore ??= createStore());
+
+const clone = <T>(value: T): T => structuredClone(value);
+
+function productFromInput(input: ProductInput, id: string, createdAt: string): Product {
+  const category = store.categories.find((c) => c.slug === input.categorySlug);
+  if (!category) throw new Error(`Unknown category ${input.categorySlug}`);
+  const collection = input.collectionSlug
+    ? store.collections.find((c) => c.slug === input.collectionSlug)
+    : undefined;
+
+  return {
+    id,
+    slug: input.slug,
+    sku: input.sku,
+    name: input.name,
+    subtitle: input.subtitle,
+    brand: input.brand,
+    categoryId: category.id,
+    categorySlug: category.slug,
+    categoryName: category.name,
+    collectionId: collection?.id ?? null,
+    collectionSlug: collection?.slug ?? null,
+    collectionName: collection?.name ?? null,
+    description: input.description,
+    installationNotes: input.installationNotes,
+    maintenanceNotes: input.maintenanceNotes,
+    pricePerUnit: input.pricePerUnit,
+    compareAtPrice: input.compareAtPrice,
+    pricingUnit: input.pricingUnit,
+    packageCoverageSqm: input.packageCoverageSqm,
+    pricePerSqm: pricePerSqmFor(input),
+    stockUnits: input.stockUnits,
+    availability: availabilityFor(input),
+    leadTimeDays: input.leadTimeDays,
+    sampleAvailable: input.sampleAvailable,
+    quoteOnly: input.quoteOnly,
+    specs: input.specs,
+    images: input.images.map((image, index) => ({
+      id: `img_${id}_${index}`,
+      url: image.url,
+      alt: image.alt,
+      kind: image.kind,
+      position: index,
+    })),
+    texture: input.texture
+      ? { id: `tex_${id}`, productId: id, ...input.texture }
+      : null,
+    featured: input.featured,
+    isNew: input.isNew,
+    bestSeller: input.bestSeller,
+    active: input.active,
+    popularity: 50,
+    ratingAverage: 0,
+    ratingCount: 0,
+    createdAt,
+  };
+}
+
+function selectionsFrom(surfaces: DesignInput["surfaces"]): SurfaceSelection[] {
+  return surfaces
+    .filter((surface) => surface.productId)
+    .map((surface) => ({
+      surfaceId: surface.surfaceId,
+      productId: surface.productId!,
+      settings: surface.settings,
+    }));
+}
+
+function designFrom(input: DesignInput, id: string, createdAt: string): RoomDesignRecord {
+  const floor = input.surfaces.find((s) => s.kind === "FLOOR" && s.productId);
+  const wall = input.surfaces.find((s) => s.kind === "WALL" && s.productId);
+  const nameOf = (productId: string | null | undefined) =>
+    productId ? (store.products.find((p) => p.id === productId)?.name ?? null) : null;
+
+  return {
+    id,
+    name: input.name,
+    userId: input.userId,
+    originalImageUrl: input.originalImageUrl,
+    renderedImageUrl: input.renderedImageUrl,
+    floorProductId: floor?.productId ?? null,
+    floorProductName: nameOf(floor?.productId),
+    wallProductId: wall?.productId ?? null,
+    wallProductName: nameOf(wall?.productId),
+    estimatedAreaSqm: input.estimatedAreaSqm,
+    estimatedPrice: input.estimatedPrice,
+    createdAt,
+    updatedAt: new Date().toISOString(),
+    expiresAt: input.expiresAt,
+    analysis: input.analysis,
+    selections: selectionsFrom(input.surfaces),
+  };
+}
+
+export const memoryRepository: Repository = {
+  driver: "memory",
+
+  async listCategories() {
+    return clone(
+      [...store.categories].sort((a, b) => a.position - b.position),
+    );
+  },
+
+  async getCategory(slug) {
+    return clone(store.categories.find((category) => category.slug === slug) ?? null);
+  },
+
+  async listCollections() {
+    return clone([...store.collections].sort((a, b) => a.position - b.position));
+  },
+
+  async getCollection(slug) {
+    return clone(store.collections.find((collection) => collection.slug === slug) ?? null);
+  },
+
+  async listProducts(query: ProductQuery = {}): Promise<ProductPage> {
+    const matched = store.products.filter((product) => matchesFilter(product, query));
+    const sorted = sortProducts(matched, query.sort);
+    const offset = query.offset ?? 0;
+    const limit = query.limit ?? sorted.length;
+    return {
+      items: clone(sorted.slice(offset, offset + limit)),
+      total: sorted.length,
+    };
+  },
+
+  async getProductBySlug(slug) {
+    return clone(store.products.find((product) => product.slug === slug) ?? null);
+  },
+
+  async getProductById(id) {
+    return clone(store.products.find((product) => product.id === id) ?? null);
+  },
+
+  async getProductsByIds(ids) {
+    const wanted = new Set(ids);
+    return clone(store.products.filter((product) => wanted.has(product.id)));
+  },
+
+  async listReviews(productId) {
+    const reviews = store.reviews.filter((review) =>
+      productId === undefined
+        ? true
+        : productId === null
+          ? review.productId === null
+          : review.productId === productId,
+    );
+    return clone(
+      reviews.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)),
+    );
+  },
+
+  async getFacets(): Promise<CatalogFacets> {
+    return buildFacets(store.products);
+  },
+
+  async createProduct(input) {
+    const id = createId("prd");
+    const product = productFromInput(input, id, new Date().toISOString());
+    store.products.unshift(product);
+    return clone(product);
+  },
+
+  async updateProduct(id, input) {
+    const index = store.products.findIndex((product) => product.id === id);
+    if (index === -1) throw new Error(`Product ${id} not found`);
+    const previous = store.products[index]!;
+    const product = productFromInput(input, id, previous.createdAt);
+    product.popularity = previous.popularity;
+    product.ratingAverage = previous.ratingAverage;
+    product.ratingCount = previous.ratingCount;
+    store.products[index] = product;
+    return clone(product);
+  },
+
+  async deleteProduct(id) {
+    store.products = store.products.filter((product) => product.id !== id);
+  },
+
+  async duplicateProduct(id) {
+    const source = store.products.find((product) => product.id === id);
+    if (!source) throw new Error(`Product ${id} not found`);
+    const newId = createId("prd");
+    const copy: Product = {
+      ...clone(source),
+      id: newId,
+      slug: `${source.slug}-copy`,
+      sku: `${source.sku}-C`,
+      name: `${source.name} (עותק)`,
+      active: false,
+      featured: false,
+      createdAt: new Date().toISOString(),
+      texture: source.texture ? { ...source.texture, productId: newId } : null,
+    };
+    store.products.unshift(copy);
+    return clone(copy);
+  },
+
+  async setProductStock(id, stockUnits) {
+    const product = store.products.find((item) => item.id === id);
+    if (!product) return;
+    product.stockUnits = stockUnits;
+    product.availability = availabilityFor({
+      stockUnits,
+      leadTimeDays: product.leadTimeDays,
+      quoteOnly: product.quoteOnly,
+    });
+  },
+
+  async setReviewApproval(id, approved) {
+    const review = store.reviews.find((item) => item.id === id);
+    if (review) review.approved = approved;
+  },
+
+  async upsertCategory(input) {
+    const id = input.id ?? categoryId(input.slug);
+    const existing = store.categories.findIndex((category) => category.id === id);
+    const category: Category = { ...input, id };
+    if (existing === -1) store.categories.push(category);
+    else store.categories[existing] = category;
+    return clone(category);
+  },
+
+  async upsertCollection(input) {
+    const id = input.id ?? collectionId(input.slug);
+    const existing = store.collections.findIndex((collection) => collection.id === id);
+    const collection: Collection = { ...input, id };
+    if (existing === -1) store.collections.push(collection);
+    else store.collections[existing] = collection;
+    return clone(collection);
+  },
+
+  async listCoupons() {
+    return clone(store.coupons);
+  },
+
+  async getCoupon(code) {
+    const normalised = code.trim().toUpperCase();
+    return clone(
+      store.coupons.find((coupon) => coupon.code.toUpperCase() === normalised) ?? null,
+    );
+  },
+
+  async upsertCoupon(input) {
+    const id = input.id ?? createId("cpn");
+    const index = store.coupons.findIndex((coupon) => coupon.id === id);
+    const coupon: Coupon = {
+      ...input,
+      id,
+      usageCount: index === -1 ? 0 : (store.coupons[index]!.usageCount ?? 0),
+    };
+    if (index === -1) store.coupons.push(coupon);
+    else store.coupons[index] = coupon;
+    return clone(coupon);
+  },
+
+  async getCart(id) {
+    return clone(store.carts.get(id) ?? null);
+  },
+
+  async saveCart(record) {
+    const next = { ...record, updatedAt: new Date().toISOString() };
+    store.carts.set(record.id, next);
+    return clone(next);
+  },
+
+  async deleteCart(id) {
+    store.carts.delete(id);
+  },
+
+  async createOrder(input) {
+    const order: Order = {
+      id: createId("ord"),
+      number: generateOrderNumber(),
+      status: "PENDING",
+      createdAt: new Date().toISOString(),
+      userId: input.userId,
+      customerName: input.customerName,
+      phone: input.phone,
+      email: input.email,
+      fulfilment: input.fulfilment,
+      street: input.street,
+      city: input.city,
+      zip: input.zip,
+      floor: input.floor,
+      notes: input.notes,
+      installation: input.installation,
+      items: input.items.map((item, index) => ({
+        id: `oit_${index}`,
+        productId: item.productId,
+        productSlug:
+          store.products.find((product) => product.id === item.productId)?.slug ?? "",
+        name: item.name,
+        imageUrl: item.imageUrl,
+        units: item.units,
+        unitPrice: item.unitPrice,
+        coveredSqm: item.coveredSqm,
+        lineTotal: item.lineTotal,
+        designId: item.designId,
+      })),
+      subtotal: input.subtotal,
+      discount: input.discount,
+      shipping: input.shipping,
+      installationTotal: input.installationTotal,
+      total: input.total,
+      couponCode: input.couponCode,
+      paymentProvider: input.paymentProvider,
+      paymentReference: input.paymentReference,
+    };
+
+    // Stock moves as soon as the order is placed.
+    for (const item of order.items) {
+      const product = store.products.find((entry) => entry.id === item.productId);
+      if (!product) continue;
+      product.stockUnits = Math.max(0, product.stockUnits - item.units);
+      product.availability = availabilityFor({
+        stockUnits: product.stockUnits,
+        leadTimeDays: product.leadTimeDays,
+        quoteOnly: product.quoteOnly,
+      });
+    }
+    if (input.couponCode) {
+      const coupon = store.coupons.find(
+        (entry) => entry.code.toUpperCase() === input.couponCode!.toUpperCase(),
+      );
+      if (coupon) coupon.usageCount += 1;
+    }
+
+    store.orders.unshift(order);
+    return clone(order);
+  },
+
+  async getOrderByNumber(number) {
+    return clone(store.orders.find((order) => order.number === number) ?? null);
+  },
+
+  async listOrders(userId) {
+    const orders = userId ? store.orders.filter((order) => order.userId === userId) : store.orders;
+    return clone(orders);
+  },
+
+  async setOrderStatus(id, status: OrderStatus) {
+    const order = store.orders.find((entry) => entry.id === id);
+    if (order) order.status = status;
+  },
+
+  async createQuote(input: QuoteInput) {
+    const product = input.productId
+      ? store.products.find((entry) => entry.id === input.productId)
+      : undefined;
+    const quote: Quote = {
+      id: createId("qte"),
+      number: generateQuoteNumber(),
+      status: "NEW",
+      createdAt: new Date().toISOString(),
+      userId: input.userId,
+      customerName: input.customerName,
+      phone: input.phone,
+      email: input.email,
+      city: input.city,
+      areaSqm: input.areaSqm,
+      productId: input.productId,
+      productName: product?.name ?? null,
+      designId: input.designId,
+      imageUrl: input.imageUrl,
+      wantsInstallation: input.wantsInstallation,
+      notes: input.notes,
+    };
+    store.quotes.unshift(quote);
+    return clone(quote);
+  },
+
+  async listQuotes(userId) {
+    const quotes = userId ? store.quotes.filter((quote) => quote.userId === userId) : store.quotes;
+    return clone(quotes);
+  },
+
+  async setQuoteStatus(id, status: QuoteStatus) {
+    const quote = store.quotes.find((entry) => entry.id === id);
+    if (quote) quote.status = status;
+  },
+
+  async saveDesign(input) {
+    const existingIndex = input.id
+      ? store.designs.findIndex((design) => design.id === input.id)
+      : -1;
+    const id = input.id ?? createId("dsg");
+    const createdAt =
+      existingIndex === -1
+        ? new Date().toISOString()
+        : store.designs[existingIndex]!.createdAt;
+    const record = designFrom(input, id, createdAt);
+    store.designSurfaces.set(id, clone(input.surfaces));
+    if (existingIndex === -1) store.designs.unshift(record);
+    else store.designs[existingIndex] = record;
+    return clone(record);
+  },
+
+  async getDesign(id) {
+    return clone(store.designs.find((design) => design.id === id) ?? null);
+  },
+
+  async listDesigns({ userId, guestToken }) {
+    const designs = store.designs.filter((design) => {
+      if (userId) return design.userId === userId;
+      if (guestToken) return design.userId === null;
+      return false;
+    });
+    return clone(designs);
+  },
+
+  async deleteDesign(id) {
+    store.designs = store.designs.filter((design) => design.id !== id);
+    store.designSurfaces.delete(id);
+  },
+
+  async renameDesign(id, name) {
+    const design = store.designs.find((entry) => entry.id === id);
+    if (design) {
+      design.name = name;
+      design.updatedAt = new Date().toISOString();
+    }
+  },
+
+  async deleteDesignImage(id) {
+    const design = store.designs.find((entry) => entry.id === id);
+    if (design) {
+      design.originalImageUrl = "";
+      design.renderedImageUrl = null;
+      design.analysis = null;
+      design.updatedAt = new Date().toISOString();
+    }
+  },
+
+  async claimGuestDesigns(_guestToken, userId) {
+    let claimed = 0;
+    for (const design of store.designs) {
+      if (design.userId === null) {
+        design.userId = userId;
+        claimed += 1;
+      }
+    }
+    return claimed;
+  },
+
+  async purgeExpiredDesigns(now = new Date()) {
+    const before = store.designs.length;
+    store.designs = store.designs.filter(
+      (design) => !design.expiresAt || new Date(design.expiresAt) > now,
+    );
+    return before - store.designs.length;
+  },
+
+  async createUser(input) {
+    const email = input.email.trim().toLowerCase();
+    if (store.users.some((user) => user.email === email)) {
+      throw new Error("EMAIL_TAKEN");
+    }
+    const user = {
+      id: createId("usr"),
+      email,
+      fullName: input.fullName,
+      phone: input.phone,
+      role: input.role ?? ("CUSTOMER" as const),
+      createdAt: new Date().toISOString(),
+      passwordHash: input.passwordHash,
+    };
+    store.users.push(user);
+    const { passwordHash: _hash, ...rest } = user;
+    return clone(rest);
+  },
+
+  async getUserByEmail(email) {
+    const normalised = email.trim().toLowerCase();
+    return clone(store.users.find((user) => user.email === normalised) ?? null);
+  },
+
+  async getUserById(id) {
+    const user = store.users.find((entry) => entry.id === id);
+    if (!user) return null;
+    const { passwordHash: _hash, ...rest } = user;
+    return clone(rest);
+  },
+
+  async listUsers() {
+    return clone(
+      store.users.map(({ passwordHash: _hash, ...user }) => user),
+    );
+  },
+
+  async updateUser(id, input) {
+    const user = store.users.find((entry) => entry.id === id);
+    if (!user) throw new Error(`User ${id} not found`);
+    if (input.fullName !== undefined) user.fullName = input.fullName;
+    if (input.phone !== undefined) user.phone = input.phone;
+    const { passwordHash: _hash, ...rest } = user;
+    return clone(rest);
+  },
+
+  async listAddresses(userId) {
+    return clone(store.addresses.filter((address) => address.userId === userId));
+  },
+
+  async addAddress(input) {
+    const address: Address = { ...input, id: createId("adr") };
+    store.addresses.push(address);
+    return clone(address);
+  },
+
+  async listFavorites(userId) {
+    return [...(store.favorites.get(userId) ?? new Set<string>())];
+  },
+
+  async toggleFavorite(userId, productId) {
+    const set = store.favorites.get(userId) ?? new Set<string>();
+    const has = set.has(productId);
+    if (has) set.delete(productId);
+    else set.add(productId);
+    store.favorites.set(userId, set);
+    return !has;
+  },
+
+  async getAdminStats(): Promise<AdminStats> {
+    const revenue = store.orders
+      .filter((order) => order.status !== "CANCELLED")
+      .reduce((sum, order) => sum + order.total, 0);
+    return {
+      revenue,
+      orders: store.orders.length,
+      openQuotes: store.quotes.filter(
+        (quote) => quote.status === "NEW" || quote.status === "IN_PROGRESS",
+      ).length,
+      designs: store.designs.length,
+      lowStock: store.products.filter(
+        (product) => product.availability === "LOW_STOCK" || product.availability === "OUT_OF_STOCK",
+      ).length,
+      customers: store.users.filter((user) => user.role === "CUSTOMER").length,
+    };
+  },
+
+  async listDesignsForAdmin() {
+    return clone(store.designs);
+  },
+
+  async addNewsletterSignup(email) {
+    store.newsletter.add(email.trim().toLowerCase());
+  },
+};

@@ -11,7 +11,7 @@
  * in git. Replace a file (or point the record at a CDN URL) and the app picks
  * up the real photography with no code change. See docs/MEDIA.md.
  */
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   categoryTileProduct,
@@ -34,6 +34,18 @@ import { renderTexture } from "./lib/textures";
 
 const root = process.cwd();
 const mediaDir = join(root, "public", "media");
+const sentinel = join(mediaDir, ".generated");
+const MEDIA_VERSION = "1";
+
+// `predev` / `prebuild` call this script on every run; regenerating 250 files
+// each time would be wasteful, so bail out unless the sentinel is stale.
+if (!process.argv.includes("--force") && existsSync(sentinel)) {
+  const current = readFileSync(sentinel, "utf8").trim();
+  if (current === MEDIA_VERSION) {
+    console.log("✓ media already generated (run `npm run media:generate` to rebuild)");
+    process.exit(0);
+  }
+}
 const dirs = {
   textures: join(mediaDir, "textures"),
   products: join(mediaDir, "products"),
@@ -312,4 +324,5 @@ for (const [slug, productSlug] of Object.entries(collectionCoverProduct)) {
   );
 }
 
+writeFileSync(sentinel, MEDIA_VERSION);
 console.log("✓ media generated into public/media");

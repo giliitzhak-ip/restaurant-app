@@ -11,17 +11,21 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "media:generate": "node scripts/generate-media.mjs",
+    "media:generate": "tsx scripts/generate-media.ts --force",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
-    "qa": "npm run lint && npm run typecheck && npm run build"
+    "qa": "npm run lint && npm run typecheck && npm run build",
+    "predev": "tsx scripts/generate-media.ts",
+    "prebuild": "prisma generate && tsx scripts/generate-media.ts",
+    "postinstall": "prisma generate"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
+    "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-checkbox": "^1.3.3",

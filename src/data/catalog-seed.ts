@@ -1,5 +1,4 @@
 import type {
-  Availability,
   MaterialFamily,
   PatternType,
   ProductSpecs,
@@ -567,7 +566,7 @@ export const seedProducts: SeedProduct[] = [
     pricePerUnit: 1044,
     pricingUnit: "PACKAGE",
     packageCoverageSqm: 1.8,
-    stockUnits: 62,
+    stockUnits: 0,
     leadTimeDays: 14,
     sampleAvailable: true,
     specs: specs({
@@ -1261,7 +1260,7 @@ export const seedProducts: SeedProduct[] = [
     pricePerUnit: 278,
     pricingUnit: "PACKAGE",
     packageCoverageSqm: 1.92,
-    stockUnits: 168,
+    stockUnits: 0,
     leadTimeDays: 4,
     sampleAvailable: true,
     specs: specs({
@@ -1386,7 +1385,7 @@ export const seedProducts: SeedProduct[] = [
     pricePerUnit: 1290,
     pricingUnit: "ITEM",
     packageCoverageSqm: 2.88,
-    stockUnits: 46,
+    stockUnits: 14,
     leadTimeDays: 10,
     sampleAvailable: true,
     isNew: true,
@@ -2474,7 +2473,7 @@ export const seedProducts: SeedProduct[] = [
     pricePerUnit: 198,
     pricingUnit: "ITEM",
     packageCoverageSqm: 0.336,
-    stockUnits: 92,
+    stockUnits: 18,
     leadTimeDays: 14,
     sampleAvailable: true,
     isNew: true,

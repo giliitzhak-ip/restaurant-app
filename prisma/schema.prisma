@@ -1,0 +1,540 @@
+// Terra Nova — surfaces storefront
+// PostgreSQL + Prisma. Run `npm run db:push && npm run db:seed` after setting
+// DATABASE_URL. Without DATABASE_URL the app falls back to the in-memory
+// repository (see src/server/repositories/README.md), so local development and
+// CI work with no database at all.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/**
+ * ----------------------------- enums -----------------------------
+ */
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+enum SurfaceTarget {
+  FLOOR
+  WALL
+  BOTH
+}
+
+enum WaterResistance {
+  WATERPROOF
+  SPLASH_PROOF
+  NOT_RESISTANT
+}
+
+enum UsageArea {
+  INDOOR
+  OUTDOOR
+  BOTH
+}
+
+enum Tone {
+  LIGHT
+  NATURAL
+  WARM
+  COLD
+  DARK
+}
+
+enum MaterialFamily {
+  WOOD
+  SPC
+  LAMINATE
+  MDF
+  STONE
+  CONCRETE
+  PVC
+  METAL
+}
+
+enum StyleTag {
+  MODERN
+  MINIMAL
+  LUXURY
+  WARM
+  SCANDINAVIAN
+  INDUSTRIAL
+  CLASSIC
+}
+
+enum PatternType {
+  PLANK
+  TILE
+  PANEL
+  STONE
+  CUSTOM
+}
+
+enum TextureOrientation {
+  HORIZONTAL
+  VERTICAL
+  DIAGONAL
+}
+
+enum PricingUnit {
+  PACKAGE
+  ITEM
+}
+
+enum ImageKind {
+  STUDIO
+  ROOM
+  DETAIL
+}
+
+enum FulfilmentMethod {
+  SHIPPING
+  PICKUP
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PROCESSING
+  SHIPPED
+  COMPLETED
+  CANCELLED
+}
+
+enum QuoteStatus {
+  NEW
+  IN_PROGRESS
+  SENT
+  WON
+  LOST
+}
+
+enum CouponKind {
+  PERCENT
+  FIXED
+}
+
+enum SurfaceKind {
+  FLOOR
+  WALL
+  CEILING
+}
+
+/**
+ * ----------------------------- people ----------------------------
+ */
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  fullName     String
+  phone        String?
+  role         Role     @default(CUSTOMER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  addresses Address[]
+  carts     Cart[]
+  orders    Order[]
+  quotes    Quote[]
+  designs   RoomDesign[]
+  favorites Favorite[]
+  reviews   Review[]
+
+  @@index([role])
+}
+
+model Address {
+  id        String   @id @default(cuid())
+  userId    String
+  fullName  String
+  phone     String
+  street    String
+  city      String
+  zip       String?
+  floor     String?
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/**
+ * ---------------------------- catalogue --------------------------
+ */
+
+model Category {
+  id               String        @id @default(cuid())
+  slug             String        @unique
+  name             String
+  shortDescription String
+  longDescription  String
+  heroImage        String
+  tileImage        String
+  surface          SurfaceTarget @default(BOTH)
+  position         Int           @default(0)
+  seoTitle         String
+  seoDescription   String
+  active           Boolean       @default(true)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  products Product[]
+}
+
+model Collection {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String
+  story       String
+  heroImage   String
+  featured    Boolean  @default(false)
+  position    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products Product[]
+}
+
+model Product {
+  id                String @id @default(cuid())
+  slug              String @unique
+  sku               String @unique
+  name              String
+  subtitle          String
+  brand             String
+  description       String
+  installationNotes String
+  maintenanceNotes  String
+
+  categoryId   String
+  collectionId String?
+
+  pricePerUnit       Float
+  compareAtPrice     Float?
+  pricingUnit        PricingUnit @default(PACKAGE)
+  packageCoverageSqm Float?
+  pricePerSqm        Float?
+
+  stockUnits      Int     @default(0)
+  lowStockAt      Int     @default(20)
+  leadTimeDays    Int     @default(5)
+  sampleAvailable Boolean @default(true)
+  quoteOnly       Boolean @default(false)
+
+  // --- specification
+  material          MaterialFamily
+  materialLabel     String
+  widthMm           Int
+  lengthMm          Int
+  thicknessMm       Float
+  wearLayerMm       Float?
+  colorName         String
+  colorHex          String
+  tone              Tone
+  style             StyleTag[]
+  textureLabel      String
+  durability        String
+  warrantyYears     Int
+  installationType  String
+  waterResistance   WaterResistance
+  usage             UsageArea
+  surface           SurfaceTarget
+  underfloorHeating Boolean         @default(false)
+  acousticRating    String?
+
+  featured      Boolean @default(false)
+  isNew         Boolean @default(false)
+  bestSeller    Boolean @default(false)
+  active        Boolean @default(true)
+  popularity    Int     @default(0)
+  ratingAverage Float   @default(0)
+  ratingCount   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  category   Category        @relation(fields: [categoryId], references: [id])
+  collection Collection?     @relation(fields: [collectionId], references: [id])
+  images     ProductImage[]
+  texture    ProductTexture?
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+  favorites  Favorite[]
+  reviews    Review[]
+  quotes     Quote[]
+  surfaces   RoomSurface[]
+
+  @@index([categoryId])
+  @@index([collectionId])
+  @@index([active, featured])
+  @@index([pricePerSqm])
+}
+
+model ProductImage {
+  id        String    @id @default(cuid())
+  productId String
+  url       String
+  alt       String
+  kind      ImageKind @default(STUDIO)
+  position  Int       @default(0)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+/// The texture the room designer tiles into a customer photo.
+/// widthCm/heightCm are the real-world footprint of the whole image;
+/// repeatX/repeatY say how many product units are visible inside it.
+model ProductTexture {
+  id           String             @id @default(cuid())
+  productId    String             @unique
+  imageUrl     String
+  thumbnailUrl String
+  widthCm      Float
+  heightCm     Float
+  patternType  PatternType
+  repeatX      Int                @default(1)
+  repeatY      Int                @default(1)
+  orientation  TextureOrientation @default(HORIZONTAL)
+  scaleFactor  Float              @default(1)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  productId  String?
+  userId     String?
+  authorName String
+  city       String
+  rating     Int
+  title      String
+  body       String
+  approved   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([productId, approved])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+}
+
+/**
+ * ------------------------------ cart -----------------------------
+ */
+
+model Cart {
+  id              String           @id @default(cuid())
+  userId          String?
+  couponCode      String?
+  installation    Boolean          @default(false)
+  installationSqm Float            @default(0)
+  fulfilment      FulfilmentMethod @default(SHIPPING)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  user  User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items CartItem[]
+
+  @@index([userId])
+}
+
+model CartItem {
+  id           String   @id @default(cuid())
+  cartId       String
+  productId    String
+  units        Int
+  requestedSqm Float?
+  designId     String?
+  designLabel  String?
+  createdAt    DateTime @default(now())
+
+  cart    Cart        @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product     @relation(fields: [productId], references: [id])
+  design  RoomDesign? @relation(fields: [designId], references: [id], onDelete: SetNull)
+
+  @@index([cartId])
+}
+
+/**
+ * ----------------------------- orders ----------------------------
+ */
+
+model Order {
+  id                String           @id @default(cuid())
+  number            String           @unique
+  userId            String?
+  status            OrderStatus      @default(PENDING)
+  customerName      String
+  phone             String
+  email             String
+  fulfilment        FulfilmentMethod
+  street            String?
+  city              String?
+  zip               String?
+  floor             String?
+  notes             String?
+  installation      Boolean          @default(false)
+  subtotal          Float
+  discount          Float            @default(0)
+  shipping          Float            @default(0)
+  installationTotal Float            @default(0)
+  total             Float
+  couponCode        String?
+  paymentProvider   String           @default("manual")
+  paymentReference  String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  user  User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items OrderItem[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model OrderItem {
+  id         String  @id @default(cuid())
+  orderId    String
+  productId  String
+  name       String
+  imageUrl   String
+  units      Int
+  unitPrice  Float
+  coveredSqm Float?
+  lineTotal  Float
+  designId   String?
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+}
+
+/**
+ * ----------------------------- quotes ----------------------------
+ */
+
+model Quote {
+  id                String      @id @default(cuid())
+  number            String      @unique
+  userId            String?
+  status            QuoteStatus @default(NEW)
+  customerName      String
+  phone             String
+  email             String?
+  city              String
+  areaSqm           Float?
+  productId         String?
+  designId          String?
+  imageUrl          String?
+  wantsInstallation Boolean     @default(false)
+  notes             String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  user    User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  product Product?    @relation(fields: [productId], references: [id], onDelete: SetNull)
+  design  RoomDesign? @relation(fields: [designId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+}
+
+/**
+ * -------------------------- room designs -------------------------
+ */
+
+model RoomDesign {
+  id               String    @id @default(cuid())
+  userId           String?
+  /// Set for guest designs so they can be claimed after sign-up.
+  guestToken       String?
+  name             String
+  originalImageUrl String
+  renderedImageUrl String?
+  estimatedAreaSqm Float     @default(0)
+  estimatedPrice   Float     @default(0)
+  /// Raw provider output (masks, detected objects, quality metrics).
+  analysis         Json?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  /// Privacy by design: the retention job deletes images past this date.
+  expiresAt        DateTime?
+
+  user      User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  surfaces  RoomSurface[]
+  cartItems CartItem[]
+  quotes    Quote[]
+
+  @@index([userId])
+  @@index([guestToken])
+  @@index([expiresAt])
+}
+
+model RoomSurface {
+  id        String      @id @default(cuid())
+  designId  String
+  kind      SurfaceKind
+  label     String
+  productId String?
+  /// Normalised polygon + holes, so a mask stays valid at any resolution.
+  mask      Json
+  /// Orientation, scale, brightness, offsets, lighting strength.
+  settings  Json
+  areaSqm   Float       @default(0)
+
+  design  RoomDesign @relation(fields: [designId], references: [id], onDelete: Cascade)
+  product Product?   @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([designId])
+}
+
+/**
+ * ---------------------------- marketing --------------------------
+ */
+
+model Coupon {
+  id          String     @id @default(cuid())
+  code        String     @unique
+  kind        CouponKind
+  value       Float
+  minSubtotal Float?
+  active      Boolean    @default(true)
+  expiresAt   DateTime?
+  usageCount  Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model NewsletterSignup {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
