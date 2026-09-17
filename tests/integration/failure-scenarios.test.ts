@@ -100,7 +100,7 @@ describe('failure scenarios (spec §44)', () => {
           skills: ['plumbing'], priceIls: 290, ratingAvg: 4.8, ratingCount: 100,
           completedJobs: 100, cancelledJobs: 2, offersReceived: 120, offersAccepted: 100,
           avgResponseSeconds: 20, yearsExperience: 8, maxRadiusKm: 20,
-          inServiceArea: true, straightDistanceKm: 1,
+          inServiceArea: true, locationIsLive: true, straightDistanceKm: 1,
         },
       ],
       {

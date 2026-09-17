@@ -50,7 +50,23 @@ export function scoreSkillMatch(
 export function scoreAvailability(
   candidate: ProviderCandidate,
   maxLocationAgeSeconds: number,
+  requireLiveLocation = true,
 ): SignalScore {
+  const areaBonus = candidate.inServiceArea ? 0 : -25;
+
+  // Scheduled job: eligibility already came from the provider's planned hours
+  // in SQL. Being switched off right now says nothing about a slot tomorrow,
+  // so it must not be scored as unavailability (spec §52).
+  if (!requireLiveLocation) {
+    const base = candidate.locationIsLive ? 92 : 84;
+    return {
+      score: round(clamp(base + areaBonus, 0, 100), 2),
+      reason: candidate.inServiceArea
+        ? 'זמין במועד המבוקש לפי שעות העבודה שהגדיר'
+        : 'זמין במועד המבוקש אך מחוץ לאזור השירות שהגדיר',
+    };
+  }
+
   if (candidate.state !== 'ONLINE') {
     return { score: 0, reason: `אינו פנוי (${candidate.state})` };
   }
@@ -58,7 +74,6 @@ export function scoreAvailability(
   // Freshness of the location fix is part of availability: a provider we
   // cannot currently locate is not dependably available (spec §18).
   const freshness = scaleLinear(candidate.locationAgeSeconds, 0, maxLocationAgeSeconds, 100, 40);
-  const areaBonus = candidate.inServiceArea ? 0 : -25;
   const score = clamp(freshness + areaBonus, 0, 100);
 
   return {

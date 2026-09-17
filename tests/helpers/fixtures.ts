@@ -378,3 +378,96 @@ export async function createBareProvider(
   );
   return { id, email };
 }
+
+/** Weekly availability window. weekday 0 = Sunday. */
+export interface ScheduleWindow {
+  weekday: number;
+  startsAt: string;
+  endsAt: string;
+}
+
+/** Declare a provider's planned weekly hours. */
+export async function setSchedule(
+  providerId: string,
+  windows: readonly ScheduleWindow[],
+): Promise<void> {
+  const db = adminPool();
+  await db.query('delete from provider_availability_rules where provider_id = $1', [providerId]);
+  for (const w of windows) {
+    await db.query(
+      `insert into provider_availability_rules (provider_id, weekday, starts_at, ends_at)
+       values ($1,$2,$3::time,$4::time)`,
+      [providerId, w.weekday, w.startsAt, w.endsAt],
+    );
+  }
+}
+
+/** Add a date-specific override. */
+export async function setOverride(
+  providerId: string,
+  onDate: string,
+  kind: 'unavailable' | 'window',
+  startsAt?: string,
+  endsAt?: string,
+): Promise<void> {
+  await adminPool().query(
+    `insert into provider_availability_overrides (provider_id, on_date, kind, starts_at, ends_at)
+     values ($1,$2::date,$3,$4::time,$5::time)
+     on conflict (provider_id, on_date) do update
+       set kind = excluded.kind, starts_at = excluded.starts_at, ends_at = excluded.ends_at`,
+    [providerId, onDate, kind, startsAt ?? null, endsAt ?? null],
+  );
+}
+
+/** A local wall-clock time on a day offset from today, as an instant. */
+export async function localTime(dayOffset: number, hhmm: string): Promise<Date> {
+  const { rows } = await adminPool().query<{ ts: Date }>(
+    `select ((((now() + make_interval(days => $1)) at time zone availability_timezone())::date
+              + $2::time) at time zone availability_timezone()) as ts`,
+    [dayOffset, hhmm],
+  );
+  return rows[0]!.ts;
+}
+
+/** Weekday (0 = Sunday) for a day offset from today, in the app's timezone. */
+export async function weekdayFor(dayOffset: number): Promise<number> {
+  const { rows } = await adminPool().query<{ dow: number }>(
+    `select extract(dow from ((now() + make_interval(days => $1)) at time zone availability_timezone()))::int as dow`,
+    [dayOffset],
+  );
+  return rows[0]!.dow;
+}
+
+/** Create a job asking for a specific time. */
+export async function createScheduledJob(options: {
+  customerId: string;
+  requestedFor: Date;
+  durationMin?: number;
+  lat?: number;
+  lon?: number;
+  categorySlug?: string;
+  serviceSlug?: string;
+}): Promise<string> {
+  const {
+    customerId, requestedFor, durationMin = 60,
+    lat = 32.0742, lon = 34.7749,
+    categorySlug = 'plumbing', serviceSlug = 'sink_leak',
+  } = options;
+
+  const { rows } = await adminPool().query<{ id: string }>(
+    `insert into jobs
+       (customer_id, raw_description, category_id, service_id, urgency, status,
+        location, location_accuracy_m, timing_intent, requested_for, scheduled_for,
+        duration_min, booking_mode, is_demo)
+     select $1, 'יש לי נזילה מתחת לכיור', c.id, s.id, 'normal', 'SEARCHING',
+            st_point($3,$2)::geography, 12, 'SCHEDULED', $4, $4, $5, 'SCHEDULE', true
+       from categories c
+       left join services s on s.category_id = c.id and s.slug = $7
+      where c.slug = $6
+     returning id`,
+    [customerId, lat, lon, requestedFor, durationMin, categorySlug, serviceSlug],
+  );
+  const id = rows[0]?.id;
+  if (!id) throw new Error('Failed to create scheduled test job');
+  return id;
+}

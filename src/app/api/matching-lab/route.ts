@@ -43,6 +43,9 @@ const providerSchema = z.object({
   cancelledJobs: z.number().int().min(0).max(100_000).default(5),
   yearsExperience: z.number().int().min(0).max(70).default(8),
   locationAgeSeconds: z.number().min(0).max(100_000).default(15),
+  // Lets the lab simulate a provider matched on their service area rather
+  // than a live fix — the scheduled-job case.
+  locationIsLive: z.boolean().default(true),
   accuracyM: z.number().min(0).max(100_000).nullable().default(15),
   maxRadiusKm: z.number().min(0.1).max(200).default(25),
   inServiceArea: z.boolean().default(true),
@@ -56,6 +59,8 @@ const bodySchema = z.object({
   requiredSkills: z.array(z.string().max(40)).max(10).default(['plumbing']),
   referencePriceIls: z.number().min(0).max(100_000).nullable().default(290),
   urgency: z.enum(['low', 'normal', 'high', 'emergency']).default('high'),
+  /** False simulates a scheduled job, where a live fix is not required. */
+  requireLiveLocation: z.boolean().default(true),
   providers: z.array(providerSchema).min(1).max(25),
   /** Override the weights to explore sensitivity. Must still sum to 1. */
   weights: matchingWeightsSchema.optional(),
@@ -98,6 +103,7 @@ export async function POST(request: Request) {
       yearsExperience: p.yearsExperience,
       maxRadiusKm: p.maxRadiusKm,
       inServiceArea: p.inServiceArea,
+      locationIsLive: p.locationIsLive,
       straightDistanceKm: 0, // recomputed below from the coordinates
     }));
 
@@ -127,6 +133,7 @@ export async function POST(request: Request) {
     const engine = new MatchingEngine(maps, {
       weights: body.weights ?? DEFAULT_MATCHING_WEIGHTS,
       thresholds: DEFAULT_MATCHING_THRESHOLDS,
+      requireLiveLocation: body.requireLiveLocation,
     });
 
     const result = await engine.match(withDistance, request_);

@@ -17,7 +17,18 @@ const bodySchema = z.object({
   accuracyM: z.number().nonnegative().max(100_000).nullable().optional(),
   addressText: z.string().trim().max(300).optional(),
   addressNotes: z.string().trim().max(500).optional(),
-  bookingMode: z.enum(['NOW', 'SCHEDULE', 'COMPARE']).default('NOW'),
+  /**
+   * What the customer said about WHEN (spec §6). This is the customer-facing
+   * model; booking_mode is derived from it for the category configuration.
+   *
+   *   NOW       — needs someone now; matched against live availability.
+   *   ASAP      — today / soon; matched now, and the next open slot counts too.
+   *   SCHEDULED — a specific time; matched against planned availability.
+   */
+  timing: z.enum(['NOW', 'ASAP', 'SCHEDULED']).default('NOW'),
+  /** Required for SCHEDULED, ignored otherwise. */
+  requestedFor: z.iso.datetime().optional(),
+  bookingMode: z.enum(['NOW', 'SCHEDULE', 'COMPARE']).optional(),
   scheduledFor: z.iso.datetime().optional(),
   /** Set when the customer corrected our classification. */
   categorySlug: z.string().max(60).optional(),
@@ -41,8 +52,26 @@ export async function POST(request: Request) {
 
     const body = await parseJson(request, bodySchema);
 
-    if (body.bookingMode === 'SCHEDULE' && !body.scheduledFor) {
+    // Accept either the timing model or the older bookingMode, and normalise.
+    const timing = body.timing ?? (body.bookingMode === 'SCHEDULE' ? 'SCHEDULED' : 'NOW');
+    const requestedForRaw = body.requestedFor ?? body.scheduledFor ?? null;
+    const bookingMode =
+      body.bookingMode ?? (timing === 'SCHEDULED' ? 'SCHEDULE' : 'NOW');
+
+    if (timing === 'SCHEDULED' && !requestedForRaw) {
       throw new ApiError('SCHEDULE_TIME_REQUIRED', 'יש לבחור מועד לתור', 422);
+    }
+
+    if (requestedForRaw) {
+      const when = new Date(requestedForRaw);
+      if (Number.isNaN(when.getTime())) {
+        throw new ApiError('INVALID_TIME', 'המועד שנבחר אינו תקין', 422);
+      }
+      // A time in the past cannot be served, and silently shifting it to now
+      // would quietly change what the customer asked for.
+      if (when.getTime() < Date.now() - 60_000) {
+        throw new ApiError('TIME_IN_PAST', 'המועד שנבחר כבר עבר. בחרו מועד אחר.', 422);
+      }
     }
 
     // Classification happens on the server. A client-supplied slug is only a
@@ -68,11 +97,13 @@ export async function POST(request: Request) {
         supports_schedule: boolean;
         supports_compare: boolean;
         urgency: string | null;
+        duration_min: number;
       }>(
         `select c.id as category_id,
                 s.id as service_id,
                 c.supports_now, c.supports_schedule, c.supports_compare,
-                s.default_urgency::text as urgency
+                s.default_urgency::text as urgency,
+                coalesce(s.duration_min, c.default_duration_min, 60) as duration_min
            from categories c
            left join services s
                   on s.category_id = c.id and s.slug = $2 and s.is_active
@@ -88,16 +119,16 @@ export async function POST(request: Request) {
     // Category configuration decides which booking modes are legal — this is
     // data, not a hard-coded branch (spec §5, §6).
     const modeSupported =
-      (body.bookingMode === 'NOW' && resolved.supports_now) ||
-      (body.bookingMode === 'SCHEDULE' && resolved.supports_schedule) ||
-      (body.bookingMode === 'COMPARE' && resolved.supports_compare);
+      (bookingMode === 'NOW' && resolved.supports_now) ||
+      (bookingMode === 'SCHEDULE' && resolved.supports_schedule) ||
+      (bookingMode === 'COMPARE' && resolved.supports_compare);
 
     if (!modeSupported) {
       throw new ApiError(
         'MODE_NOT_SUPPORTED',
         'סוג ההזמנה הזה אינו זמין בתחום הנבחר',
         422,
-        { bookingMode: body.bookingMode },
+        { bookingMode, timing },
       );
     }
 
@@ -111,10 +142,12 @@ export async function POST(request: Request) {
         db.one<{ id: string; status: string }>(
           `insert into jobs
              (customer_id, raw_description, category_id, service_id, urgency,
-              understanding, booking_mode, scheduled_for, location,
+              understanding, booking_mode, timing_intent, requested_for,
+              scheduled_for, duration_min, location,
               location_accuracy_m, address_text, address_notes, status)
-           values ($1,$2,$3,$4,$5::urgency_level,$6::jsonb,$7::booking_mode,$8,
-                   st_point($10,$9)::geography,$11,$12,$13,'REQUESTED')
+           values ($1,$2,$3,$4,$5::urgency_level,$6::jsonb,$7::booking_mode,
+                   $8::timing_intent,$9,$10,$11,
+                   st_point($13,$12)::geography,$14,$15,$16,'REQUESTED')
            returning id, status::text as status`,
           [
             user.id,
@@ -123,8 +156,11 @@ export async function POST(request: Request) {
             resolved.service_id,
             urgency,
             JSON.stringify(understanding),
-            body.bookingMode,
-            body.scheduledFor ?? null,
+            bookingMode,
+            timing,
+            requestedForRaw,
+            timing === 'SCHEDULED' ? requestedForRaw : null,
+            resolved.duration_min,
             body.lat,
             body.lon,
             body.accuracyM ?? null,
@@ -141,13 +177,21 @@ export async function POST(request: Request) {
       requestId, userId: user.id, jobId: job.id,
       operation: 'jobs.create', result: 'ok',
       durationMs: Date.now() - startedAt,
-      meta: { category: categorySlug, mode: body.bookingMode, urgency },
+      meta: {
+        category: categorySlug,
+        mode: bookingMode,
+        timing,
+        requestedFor: requestedForRaw ?? 'now',
+        urgency,
+      },
     });
 
-    // Immediate dispatch for NOW jobs (spec §6). Scheduled and compare jobs
-    // are not dispatched on creation.
+    // NOW and ASAP dispatch immediately. A SCHEDULED job also dispatches now,
+    // but matching evaluates the requested slot rather than the present — so
+    // the customer learns straight away whether the time is fillable, instead
+    // of finding out later that nobody works then.
     let dispatch = null;
-    if (body.bookingMode === 'NOW') {
+    if (bookingMode !== 'COMPARE') {
       await withSystem(
         async (db) => {
           await db.query(`update jobs set status = 'SEARCHING' where id = $1`, [job.id]);
@@ -170,7 +214,10 @@ export async function POST(request: Request) {
     return ok(
       {
         id: job.id,
-        status: body.bookingMode === 'NOW' ? 'SEARCHING' : 'REQUESTED',
+        status: bookingMode !== 'COMPARE' ? 'SEARCHING' : 'REQUESTED',
+        timing,
+        requestedFor: requestedForRaw,
+        durationMin: resolved.duration_min,
         understanding,
         dispatch: dispatch
           ? {

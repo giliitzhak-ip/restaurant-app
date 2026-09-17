@@ -40,6 +40,16 @@ export interface RouteOpportunityInput {
   readonly providerDestination: LatLng | null;
   /** Ignore heading below this speed: a parked device's heading is noise. */
   readonly providerSpeedKmh?: number | null;
+  /**
+   * False when `providerLocation` is not a live fix — e.g. the centre of the
+   * provider's declared service area, used for a scheduled job where they are
+   * not currently reporting.
+   *
+   * When false, no route judgement is made at all: heading and destination
+   * are ignored and the basis is proximity_only. A direction inferred from a
+   * centroid would be a fabricated route claim (spec §29, §70).
+   */
+  readonly locationIsLive?: boolean;
 }
 
 export interface RouteOpportunityConfig {
@@ -105,10 +115,14 @@ export class RouteOpportunityCalculator {
     const approach = await this.maps.getRoute(providerLocation, customerLocation);
     const approachKm = approach.distanceKm;
 
-    const headingOffsetDeg = this.resolveHeadingOffset(input);
+    // A non-live position carries no direction information, so every
+    // directional branch below is skipped rather than fed a centroid.
+    const isLive = input.locationIsLive !== false;
+
+    const headingOffsetDeg = isLive ? this.resolveHeadingOffset(input) : null;
 
     // ── Strongest case: we know where they are going, so measure the detour.
-    if (providerDestination) {
+    if (isLive && providerDestination) {
       const deviation = await this.maps.calculateRouteDeviation(
         providerLocation,
         customerLocation,

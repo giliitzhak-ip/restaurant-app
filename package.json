@@ -21,6 +21,8 @@
     "test:db": "node scripts/setup-test-db.mjs",
     "ui:audit": "node scripts/ui-audit.mjs",
     "demo:tick": "curl -s -X POST http://127.0.0.1:3000/api/demo/tick -H 'Content-Type: application/json' -d '{}'",
+    "db:network": "node scripts/seed-network.mjs",
+    "db:validate": "node scripts/validate-seed.mjs",
     "db:setup": "node scripts/setup-roles.mjs && node scripts/migrate.mjs --reset && node scripts/seed.mjs"
   },
   "dependencies": {

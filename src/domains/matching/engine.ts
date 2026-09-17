@@ -35,6 +35,15 @@ export interface MatchingEngineOptions {
   readonly weights?: MatchingWeights;
   readonly thresholds?: MatchingThresholds;
   readonly routeOpportunity?: RouteOpportunityConfig;
+  /**
+   * Whether a live GPS fix is required.
+   *
+   * True for an immediate job: someone has to actually arrive in minutes.
+   * False for a scheduled job, where matching on the provider's declared
+   * service area is correct and demanding a live fix would exclude every
+   * provider who is simply off duty right now (spec §52).
+   */
+  readonly requireLiveLocation?: boolean;
 }
 
 /**
@@ -59,6 +68,7 @@ export class MatchingEngine {
   private readonly weights: MatchingWeights;
   private readonly thresholds: MatchingThresholds;
   private readonly routeCalculator: RouteOpportunityCalculator;
+  private readonly requireLiveLocation: boolean;
 
   constructor(
     private readonly maps: MapProvider,
@@ -66,6 +76,7 @@ export class MatchingEngine {
   ) {
     this.weights = options.weights ?? DEFAULT_MATCHING_WEIGHTS;
     this.thresholds = options.thresholds ?? DEFAULT_MATCHING_THRESHOLDS;
+    this.requireLiveLocation = options.requireLiveLocation ?? true;
     this.routeCalculator = new RouteOpportunityCalculator(
       maps,
       options.routeOpportunity ?? DEFAULT_ROUTE_OPPORTUNITY_CONFIG,
@@ -109,21 +120,35 @@ export class MatchingEngine {
     };
   }
 
-  /** GeoFilter + availability gate. Returns a reason, or null if eligible. */
+  /**
+   * GeoFilter + availability gate. Returns a reason, or null if eligible.
+   *
+   * Availability itself (realtime status, planned hours, overrides, job
+   * conflicts) is decided in SQL by provider_is_available_at before a
+   * candidate reaches here, because it depends on the requested time. What
+   * remains are the signal-quality gates.
+   */
   private disqualify(candidate: ProviderCandidate): string | null {
-    if (candidate.state !== 'ONLINE') {
-      return `provider_state_${candidate.state.toLowerCase()}`;
-    }
-    // A stale fix is never treated as live (spec §18).
-    if (candidate.locationAgeSeconds > this.thresholds.maxLocationAgeSeconds) {
-      return 'location_stale';
-    }
-    // A very imprecise fix cannot support a route judgement (spec §44).
-    if (
-      candidate.accuracyM !== null &&
-      candidate.accuracyM > this.thresholds.maxLocationAccuracyMeters
-    ) {
-      return 'location_inaccurate';
+    // For an immediate job the provider must be reporting a live, usable fix:
+    // dispatching someone we cannot locate is how a customer gets no arrival.
+    if (this.requireLiveLocation) {
+      if (candidate.state !== 'ONLINE') {
+        return `provider_state_${candidate.state.toLowerCase()}`;
+      }
+      if (!candidate.locationIsLive) {
+        return 'location_not_live';
+      }
+      // A stale fix is never treated as live (spec §18).
+      if (candidate.locationAgeSeconds > this.thresholds.maxLocationAgeSeconds) {
+        return 'location_stale';
+      }
+      // A very imprecise fix cannot support a route judgement (spec §44).
+      if (
+        candidate.accuracyM !== null &&
+        candidate.accuracyM > this.thresholds.maxLocationAccuracyMeters
+      ) {
+        return 'location_inaccurate';
+      }
     }
     if (candidate.straightDistanceKm > candidate.maxRadiusKm) {
       return 'outside_provider_radius';
@@ -141,6 +166,7 @@ export class MatchingEngine {
       providerHeadingDeg: candidate.headingDeg,
       providerDestination: candidate.destination,
       providerSpeedKmh: candidate.speedKmh,
+      locationIsLive: candidate.locationIsLive,
     });
 
     const approach = await this.maps.getRoute(candidate.location, request.customerLocation);
@@ -152,7 +178,11 @@ export class MatchingEngine {
         reason: this.describeRouteOpportunity(routeOpportunity),
       },
       skillMatch: scoreSkillMatch(candidate, request),
-      availability: scoreAvailability(candidate, this.thresholds.maxLocationAgeSeconds),
+      availability: scoreAvailability(
+        candidate,
+        this.thresholds.maxLocationAgeSeconds,
+        this.requireLiveLocation,
+      ),
       eta: scoreEta(etaMinutes),
       reliability: scoreReliability(candidate),
       rating: scoreRating(candidate),

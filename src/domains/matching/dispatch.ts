@@ -46,6 +46,7 @@ interface CandidateRow {
   dest_lon: number | null;
   straight_distance_km: string;
   in_service_area: boolean;
+  location_is_live: boolean;
 }
 
 const num = (value: string | number | null): number | null =>
@@ -79,6 +80,10 @@ function toCandidate(row: CandidateRow): ProviderCandidate {
     maxRadiusKm: num(row.max_radius_km) ?? 15,
     inServiceArea: row.in_service_area,
     straightDistanceKm: num(row.straight_distance_km) ?? 0,
+    // False when the reference point is the provider's declared service-area
+    // centre rather than a live fix. Route opportunity must not be claimed on
+    // that basis (spec §70: route claims are not fabricated).
+    locationIsLive: row.location_is_live,
   };
 }
 
@@ -97,6 +102,9 @@ interface JobRow {
   urgency: 'low' | 'normal' | 'high' | 'emergency';
   base_price_ils: string | null;
   dispatch_wave: number;
+  timing_intent: 'NOW' | 'ASAP' | 'SCHEDULED';
+  requested_for: string | null;
+  duration_min: number | null;
 }
 
 export interface DispatchOutcome {
@@ -117,7 +125,10 @@ async function loadJob(db: DbSession, jobId: string): Promise<JobRow | null> {
             j.location_accuracy_m, j.category_id, j.service_id,
             c.slug as category_slug, s.slug as service_slug,
             coalesce(nullif(s.required_skills, '{}'), c.required_skills) as required_skills,
-            j.urgency, s.base_price_ils, j.dispatch_wave
+            j.urgency, s.base_price_ils, j.dispatch_wave,
+            j.timing_intent::text as timing_intent,
+            j.requested_for,
+            coalesce(j.duration_min, s.duration_min, c.default_duration_min, 60) as duration_min
        from jobs j
        left join categories c on c.id = j.category_id
        left join services s on s.id = j.service_id
@@ -172,9 +183,21 @@ export async function runDispatchWave(
     }
 
     // ── CandidateFinder + GeoFilter (PostGIS, with the staleness cutoff) ──
+    // The instant the customer asked for. NOW/ASAP resolve to now(); a
+    // SCHEDULED job is matched against its slot, so who is eligible genuinely
+    // depends on the requested time (spec §52).
+    const requestedFor = job.requested_for ?? null;
+
     const rows = await db.many<CandidateRow>(
-      'select * from find_candidate_providers($1, $2, $3, $4)',
-      [jobId, wave.radiusKm, config.thresholds.maxLocationAgeSeconds, config.thresholds.candidateHardLimit],
+      'select * from find_candidate_providers($1, $2, $3, $4, $5, $6)',
+      [
+        jobId,
+        wave.radiusKm,
+        config.thresholds.maxLocationAgeSeconds,
+        config.thresholds.candidateHardLimit,
+        requestedFor,
+        job.duration_min,
+      ],
     );
     const candidates = rows.map(toCandidate);
 
@@ -189,9 +212,15 @@ export async function runDispatchWave(
       referencePriceIls: num(job.base_price_ils),
     };
 
+    // An immediate job needs someone who is switched on and locatable now.
+    // A scheduled job is matched on declared hours and service area, so
+    // demanding a live fix would exclude everyone simply off duty (spec §52).
+    const isImmediate = job.timing_intent !== 'SCHEDULED' || requestedFor === null;
+
     const engine = new MatchingEngine(getMapProvider(), {
       weights: config.weights,
       thresholds: config.thresholds,
+      requireLiveLocation: isImmediate,
     });
     const result = await engine.match(candidates, request);
 
@@ -301,6 +330,9 @@ export async function runDispatchWave(
         considered: candidates.length,
         offers: offersCreated,
         excluded: result.excluded.length,
+        timingIntent: job.timing_intent,
+        requestedFor: job.requested_for ?? 'now',
+        durationMin: job.duration_min ?? 60,
       },
     });
 

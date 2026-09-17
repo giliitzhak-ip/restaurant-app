@@ -34,6 +34,7 @@ const baseCandidate: ProviderCandidate = {
   yearsExperience: 10,
   maxRadiusKm: 18,
   inServiceArea: true,
+  locationIsLive: true,
   straightDistanceKm: 1.0,
 };
 

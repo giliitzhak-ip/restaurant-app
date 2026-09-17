@@ -15,6 +15,15 @@ export interface ProviderCandidate {
   readonly accuracyM: number | null;
   readonly locationAgeSeconds: number;
   readonly destination: LatLng | null;
+  /**
+   * True when `location` is a live GPS fix. False when it is the centre of the
+   * provider's declared service area, used as a fallback for a scheduled job
+   * where the provider is not currently reporting.
+   *
+   * Route opportunity is only meaningful on a live fix, so the calculator
+   * refuses to infer direction when this is false (spec §29, §70).
+   */
+  readonly locationIsLive: boolean;
 
   /** Skills the provider holds in the job's category. */
   readonly skills: readonly string[];
