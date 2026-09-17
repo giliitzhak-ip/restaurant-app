@@ -1,0 +1,143 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /*
+   * GET SERVICE brand tokens.
+   * Ink (near-black navy) + white, a turquoise accent for interaction and a
+   * distinct green reserved for positive/confirming actions.
+   */
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 222 47% 11%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --accent: 187 92% 38%;
+    --accent-foreground: 0 0% 100%;
+
+    --success: 152 69% 36%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 222 47% 11%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 187 92% 38%;
+
+    --brand-ink: 222 47% 11%;
+    --brand-surface: 210 40% 98%;
+
+    --radius: 0.875rem;
+  }
+
+  .dark {
+    --background: 222 47% 7%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 45% 10%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 45% 10%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+
+    --accent: 187 85% 45%;
+    --accent-foreground: 222 47% 11%;
+
+    --success: 152 60% 45%;
+    --success-foreground: 222 47% 11%;
+
+    --warning: 38 92% 55%;
+    --warning-foreground: 222 47% 11%;
+
+    --destructive: 0 63% 50%;
+    --destructive-foreground: 210 40% 98%;
+
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+
+    --border: 217 33% 20%;
+    --input: 217 33% 20%;
+    --ring: 187 85% 45%;
+
+    --brand-ink: 222 47% 7%;
+    --brand-surface: 222 45% 10%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'kern';
+  }
+
+  /* Visible focus for keyboard users on every interactive element. */
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* Numbers stay LTR inside RTL text (prices, phone numbers, distances). */
+  .num {
+    direction: ltr;
+    unicode-bidi: isolate;
+    display: inline-block;
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-3xl px-4;
+  }
+
+  .container-wide {
+    @apply mx-auto w-full max-w-7xl px-4;
+  }
+
+  /* Bottom navigation clearance on mobile. */
+  .pb-nav {
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
+
+  .skeleton {
+    @apply animate-pulse rounded-md bg-muted;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
