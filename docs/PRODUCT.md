@@ -86,6 +86,33 @@ pays for.
 
 ---
 
+## The catalog
+
+62 services across 7 categories. It started at 23, which was thin enough that
+a provider's actual trade was often missing — and a missing trade is not a
+small inconvenience: with nothing declared, the candidate search cannot
+return them at all.
+
+| Category | Services |
+|---|---|
+| אינסטלציה | 11 |
+| חשמל | 11 |
+| מיזוג אוויר | 9 |
+| הדברה | 8 |
+| ניקיון | 8 |
+| גינון | 8 |
+| מנעולנות | 7 |
+
+Every service carries the phrasings a customer would actually type, and those
+live in the database (`services.strong_phrases` / `weak_phrases`) rather than
+in code — the same mechanism an admin-approved trade uses, so the path is
+exercised by the bulk of the catalog instead of only by the occasional
+approval. A service without phrases is unreachable by every description, so
+`catalog-reachability.test.ts` asserts each phrase resolves to the service
+that declares it, and migration `0028` refuses to add a silent one.
+
+---
+
 ## The catalog is not the world
 
 Seven categories and twenty-three services do not cover the trades people

@@ -6,7 +6,7 @@ What is verified, how, and — importantly — what is **not**.
 
 ## Test inventory
 
-200 tests, 21 files. Run: `npm test`
+204 tests, 22 files. Run: `npm test`
 (first time: `npm run test:db` to create the test database).
 
 ### Unit — pure domain logic, no I/O
@@ -33,6 +33,7 @@ What is verified, how, and — importantly — what is **not**.
 | `provider-onboarding.test.ts` | 7 | An unconfigured provider yields zero candidates; onboarded + verified yields one |
 | `availability.test.ts` | 16 | The §52 case, the precedence order, job duration and fit, conflicts, temporary shifts and their expiry |
 | `reject-match.test.ts` | 9 | Rejecting a match without abandoning the job; re-offering race losers; the cap; fairness to the rejected provider; telemetry counted once |
+| `catalog-reachability.test.ts` | 4 | **Every trigger phrase resolves to the service that declares it**, in isolation and inside a sentence; the 16 canonical originals unmoved; no shipped service left unreachable |
 | `trade-proposals.test.ts` | 10 | A pending proposal changes nothing; approval makes the trade both classifiable and dispatchable; built-in classifications undisturbed; approval without phrases refused; a provider cannot approve themselves or see another's proposal; duplicates refused; rejection recorded; no invented price |
 | `sql-references.test.ts` | 1 | **Every relation named in every query under `src/` exists** |
 

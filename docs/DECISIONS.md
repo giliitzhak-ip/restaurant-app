@@ -535,3 +535,30 @@ and correctly recorded — the provider still sees the outcome on their own
 screen. Adding an INSERT policy so admins could write notifications was the
 alternative, and it would let an admin forge a message that appears to come
 from the system.
+
+---
+
+## D-024 — The bulk of the catalog carries its phrases in data, not in code
+
+**Context.** Migration `0028` added 39 services to the 7 existing categories,
+taking the catalog from 23 to 62. Each needed the phrasings that let the
+classifier route a description to it. Those could have gone into
+`SERVICE_RULES` in TypeScript, beside the original 23.
+
+**Decision.** They went into `services.strong_phrases` / `weak_phrases`, read
+by the same merge D-022 built for admin-approved trades.
+
+**Why.** It puts most of the catalog through the path an approval uses, so
+that path is exercised constantly rather than only when someone proposes a
+trade. A mechanism used once a month is a mechanism nobody notices is broken.
+It also means editing coverage is a data change rather than a deploy, which is
+what a growing catalog needs.
+
+**Consequences.** The classifier now iterates the 23 built-in rules plus ~40
+from data. Both compete on score and the more specific phrase wins, so adding
+a service cannot silently capture an existing one — asserted for the 16
+canonical descriptions. Phrase authoring has rules of its own, because token
+matching is by substring and morphology does not carry: `החלפת דוד` does not
+match "צריך להחליף דוד", so each plausible form is listed rather than assumed.
+Migration `0028` and `catalog-reachability.test.ts` both refuse a service with
+no way to be found.
