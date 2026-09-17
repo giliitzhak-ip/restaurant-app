@@ -511,8 +511,15 @@ export function AvailabilityEditor() {
       <section>
         <SectionLabel>חופשה וחריגים</SectionLabel>
         <Card className="space-y-3">
-          <div className="flex items-end gap-2">
-            <label className="flex-1 text-[13px] text-ink-2">
+          {/* Stacked below 360px, side by side above it.
+
+              A native date input has an intrinsic minimum width of about
+              150px that `flex-1` cannot shrink past, so two of them plus the
+              gap overflowed a 320px screen by 39px — found the first time the
+              UI audit ran at more than one width. `min-w-0` lets them shrink
+              where they do fit. */}
+          <div className="grid grid-cols-1 items-end gap-2 min-[360px]:grid-cols-2">
+            <label className="min-w-0 text-[13px] text-ink-2">
               מתאריך
               <input
                 type="date"
@@ -524,7 +531,7 @@ export function AvailabilityEditor() {
                 dir="ltr"
               />
             </label>
-            <label className="flex-1 text-[13px] text-ink-2">
+            <label className="min-w-0 text-[13px] text-ink-2">
               עד
               <input
                 type="date"

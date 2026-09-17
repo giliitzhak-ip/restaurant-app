@@ -532,3 +532,33 @@ Demo accounts (password `demo1234`): `rotem@demo.local` (customer),
 Demo fixes go stale after 120s by design, because the matcher refuses stale
 locations. `npm run demo:tick` moves the demo fleet and refreshes it, which is
 what makes a live demo behave like a live network.
+
+
+---
+
+## The clock, the limits, the papers and the photos
+
+A pass over everything the product promised and did not do. Each of these was
+found by looking for the gap between what a screen or a schema says and what
+the code does, which is the same method that found the licence problem.
+
+| Found | How | Fix |
+|---|---|---|
+| Nothing called the maintenance tick, so offers never expired and jobs never escalated | Reading the endpoint's own comment ("safe to call from a cron") and then looking for the cron | In-process scheduler; the first tick expired 7 stale offers |
+| `MAINTENANCE_INTERVAL_SECONDS=""` silently disabled the clock | A unit test for the parser | Empty is absent; only an explicit 0 stops it |
+| Rate limits reset on restart and multiplied per instance | Restarting the server mid-window | Postgres-backed counter, one atomic statement |
+| The document gate never looked at a document again after approval | Asking what happens the day a licence expires | Expiry sweep; the provider goes back to PENDING and is told why |
+| `job_images` had no writer while `requires_before_after` was sent to both screens | Grepping for writers of every table | Photo upload, and completion refuses without them |
+| An uploaded document was stored with an empty `storage_path` and could never be read | A test that asserted the path | Id and locator decided before the INSERT |
+| `expires_on` came back as `"2028-06-30T00:00:00.000Z"` | Reading the rendered screen, not the API | Returned as text |
+| A wrong verification code cost nothing, because the attempt counter rolled back with the failure | A test that asserted the counter | Counted in its own transaction |
+| A code sent to one number verified whichever number was on the profile at confirm time | Writing the attack down as a test | Verified against the recorded destination |
+| Seeded ratings had no review rows behind them | The score's own deduction (A-013) | Capped counts, real history, derived aggregates |
+| A rerun left 91 profiles claiming up to 1,964 reviews | Running the seeder twice | Derive for every synthetic provider, not only those with history |
+| Every top-tier provider drew 24 five-star reviews | Looking at the resulting distribution | Two-point draw with a tail |
+| The availability editor overflowed 320px by 39px | Widening the UI audit to four widths | The date range stacks below 360px |
+| The UI audit could not find Chromium and exited | Running it | Resolves whatever build is on disk |
+
+Two of these — the clock and the rate limiter — were "documented limitations"
+before they were bugs. A hole with a paragraph next to it is still a hole; the
+paragraph only means nobody can be surprised by it.

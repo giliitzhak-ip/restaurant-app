@@ -191,9 +191,32 @@ export function scheduleFor(shape, random) {
 }
 
 /**
+ * The most reviews any synthetic provider carries.
+ *
+ * Every review is a real row, and every row needs a completed job, an offer
+ * and an assignment behind it. At the old counts — the top tier claimed up to
+ * 2,400 reviews — that is well over a million rows for one seed, so the
+ * numbers were written to the profile with nothing underneath them: a 4.9
+ * from 2,292 reviews, and `ratingBreakdown` returning null because there were
+ * no reviews to break down. Disclosed in the API and on the screen (A-013),
+ * and still a number with nothing behind it.
+ *
+ * So the counts are capped at what can genuinely exist. The network now looks
+ * like a young marketplace rather than an established one, which is less
+ * impressive and true — and it exercises the rating scorer's Bayesian
+ * shrinkage at the sample sizes shrinkage is actually for.
+ */
+export const MAX_REVIEW_HISTORY = 24;
+
+/**
  * Rating and review count, generated together so they stay consistent
  * (spec §26): a long record cannot carry a wild average, and a brand-new
  * provider gets no rating at all rather than a misleading 0.0.
+ *
+ * `ratingCount` here is a TARGET. The seeder writes that many review rows and
+ * then recomputes `rating_avg` and `rating_count` from the rows it actually
+ * wrote, so the aggregate can never disagree with its own detail —
+ * `validate-seed` asserts exactly that.
  */
 export function reputationFor(random) {
   const tier = random.weighted([
@@ -209,58 +232,58 @@ export function reputationFor(random) {
     case 'new':
       return { tier, ratingAvg: null, ratingCount: 0, completedJobs: 0, cancelledJobs: 0, years: random.int(0, 3) };
     case 'fresh': {
-      const count = random.int(1, 9);
+      const count = random.int(1, 4);
       return {
         tier,
         ratingAvg: Number(random.gaussian(4.6, 0.45, 3.2, 5).toFixed(2)),
         ratingCount: count,
-        completedJobs: count + random.int(0, 4),
+        completedJobs: count + random.int(0, 3),
         cancelledJobs: random.int(0, 1),
         years: random.int(0, 4),
       };
     }
     case 'solid': {
-      const count = random.int(10, 120);
+      const count = random.int(5, 11);
       return {
         tier,
         ratingAvg: Number(random.gaussian(4.5, 0.3, 3.6, 5).toFixed(2)),
         ratingCount: count,
-        completedJobs: Math.round(count * random.float(1.1, 1.6)),
-        cancelledJobs: random.int(1, 12),
+        completedJobs: count + random.int(1, 6),
+        cancelledJobs: random.int(0, 2),
         years: random.int(2, 12),
       };
     }
     case 'strong': {
-      const count = random.int(120, 600);
+      const count = random.int(12, 18);
       return {
         tier,
         ratingAvg: Number(random.gaussian(4.7, 0.2, 4.0, 5).toFixed(2)),
         ratingCount: count,
-        completedJobs: Math.round(count * random.float(1.1, 1.5)),
-        cancelledJobs: random.int(4, 40),
+        completedJobs: count + random.int(2, 8),
+        cancelledJobs: random.int(0, 3),
         years: random.int(5, 20),
       };
     }
     case 'excellent': {
-      const count = random.int(600, 2400);
+      const count = random.int(19, MAX_REVIEW_HISTORY);
       return {
         tier,
         ratingAvg: Number(random.gaussian(4.85, 0.1, 4.5, 5).toFixed(2)),
         ratingCount: count,
-        completedJobs: Math.round(count * random.float(1.1, 1.4)),
-        cancelledJobs: random.int(10, 90),
+        completedJobs: count + random.int(3, 10),
+        cancelledJobs: random.int(0, 4),
         years: random.int(8, 30),
       };
     }
     case 'struggling':
     default: {
-      const count = random.int(15, 200);
+      const count = random.int(3, 9);
       return {
         tier,
         ratingAvg: Number(random.gaussian(3.7, 0.4, 2.6, 4.3).toFixed(2)),
         ratingCount: count,
-        completedJobs: Math.round(count * random.float(1.0, 1.3)),
-        cancelledJobs: random.int(15, 70),
+        completedJobs: count + random.int(0, 4),
+        cancelledJobs: random.int(2, 8),
         years: random.int(1, 15),
       };
     }

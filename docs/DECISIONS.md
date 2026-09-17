@@ -784,3 +784,92 @@ data — but rather than leave the ambiguity, the screen echoes what it
 understood in words: "כלומר: 30 ביוני 2028". Same family as the time input in
 the availability editor (D-018), and the same conclusion: a native control
 whose chrome is not ours needs either replacing or explaining.
+
+## D-030 — The platform owns its own clock
+
+**Context.** Nothing called the maintenance tick. The endpoint's comment said
+"safe to call from a cron, a scheduler, or the demo console" and there was no
+cron, no scheduler and nobody pressing the button. Everything time-based —
+an offer's window closing, a job escalating to a wider radius, a declared
+shift ending — simply never happened. Pages served, jobs dispatched, and then
+a job sat in `OFFERS_AVAILABLE` for ever while a customer watched a spinner
+that could not resolve. Nothing logged an error, because nothing went wrong:
+nothing happened at all.
+
+**Decision.** The server schedules itself in `instrumentation.ts`, every 30
+seconds, with overlap protection and a failure that cannot take the interval
+down with it. `MAINTENANCE_INTERVAL_SECONDS=0` hands the clock to an external
+cron instead, and the HTTP endpoint reports whether the process is also
+ticking so an operator can see they are about to double up. Both paths run one
+entry point, because "it works in production but not in the demo" starts with
+two.
+
+**Why not just document the cron requirement.** It was documented. A
+deployment that is correct only if somebody reads a comment is a deployment
+that is usually wrong, and the failure is silent — the worst combination.
+Proof: the first tick after this change expired seven offers that had been
+sitting in the dev database.
+
+**Consequences.** Several instances each run a scheduler; the tick is
+idempotent and claims work with `SKIP LOCKED`, so duplicates are safe, and an
+operator who wants exactly one owner sets the interval to zero. One hazard
+found by testing the parser: `MAINTENANCE_INTERVAL_SECONDS=""` parsed to 0,
+and 0 means "off" — so an empty value in an env file would have silently
+disabled every time-based behaviour in the platform. Empty is now absent; only
+an explicit numeric 0 stops the clock.
+
+## D-031 — Rate limits live in the database
+
+**Context.** The limiter was a `Map` in the Node process, documented as a
+limitation rather than hidden (R-008). But the limits did not hold: a restart
+cleared every window, so ten failed logins followed by a deploy were ten more
+failed logins, and behind two instances each got its own full allowance — the
+real limit was the configured one times the instance count.
+
+**Decision.** A `rate_limits` table and one `INSERT ... ON CONFLICT`, so
+concurrent hits serialise on the row instead of all reading the same stale
+count, and the window resets by comparing a stored timestamp rather than by a
+sweeper — a sweeper that does not run is a limiter that never forgives.
+Verified by restarting the server mid-window: the next attempt was still
+refused, with 282 seconds left of 300.
+
+**It fails open.** If the database is unreachable the limiter allows the
+request and logs that it was blind. The alternative denies service in the name
+of preventing denial of service, and the next statement in the handler is
+going to hit the same database and report the outage properly.
+
+## D-032 — A synthetic provider's rating is computed from reviews that exist
+
+**Context.** Every seeded provider carried a `rating_avg` and a `rating_count`
+written straight to the profile — up to 2,400 reviews — with no review rows
+behind them. `ratingBreakdown` returned null because there was nothing to
+break down, and the profile said so in words. Disclosed rather than hidden
+(A-013), and still a number the database could not support.
+
+**Decision.** The counts are capped at what can genuinely exist
+(`MAX_REVIEW_HISTORY = 24`), the seeder writes the completed job, offer,
+assignment and review behind each one — 14,757 jobs and 10,908 reviews — and
+then **derives** `rating_avg`, `rating_count` and `completed_jobs` from those
+rows. The aggregate cannot disagree with its detail because it is a function
+of it, and `validate-seed` asserts that for every synthetic provider.
+
+**What this costs.** The network now looks like a young marketplace: a strong
+provider shows 24 reviews rather than 2,741. Less impressive, true, and it
+exercises the rating scorer's Bayesian shrinkage at the sample sizes shrinkage
+is actually for.
+
+**Two things it surfaced.** The derived update first covered only providers
+with assignments, and the profile insert is `on conflict do nothing` — so a
+rerun over a network seeded before the cap left 91 profiles still claiming up
+to 1,964 reviews. It now derives for every synthetic provider, including those
+with no history, so the aggregate is a function of the rows rather than a
+memory of a previous run. And drawing each rating from a gaussian around the
+target produced 24 fives and nothing else for every top-tier provider, because
+the scale is clamped at 5 — a distribution no real professional has, and the
+kind of too-clean detail that reads as fabricated precisely because it is. The
+draw now splits between the two stars either side of the target with the
+weight that makes the mean the target, plus a one-in-eight further drop.
+
+**What was NOT added.** Review comments. Invented testimonials are the most
+persuasive kind of fake content, so the numeric breakdown is real and the
+"what customers wrote" section stays empty, which the screen already says.

@@ -398,3 +398,33 @@ to a decision.
 **What would reduce it.** Show the reviewer, before they approve, which
 existing descriptions their phrases would newly capture — the matching lab
 already has the machinery to answer that.
+
+## R-020 — Notification delivery is real machinery behind a stand-in adapter
+
+**What could go wrong.** The outbox, the retry, the backoff and the abandon
+path all work; the adapter at the end of them writes a log line and reaches
+nobody. `assertNotifierIsSafe` refuses to boot in production without
+`DEMO_MODE=true`, so this cannot ship silently — but in a demo it means a
+provider still only learns about an offer if the tab is open.
+
+**Why it is ranked here.** Unlike a failed payment, an undelivered
+notification produces no complaint. Customers wait, providers never answer,
+and the dashboard shows a marketplace with no liquidity rather than a
+marketplace with no notifications.
+
+**What would close it.** A real push and SMS gateway registered in
+`getNotifier()`. Nothing else changes: the interface, the outbox and the
+retries are already exercised by seven integration tests using a scripted
+adapter.
+
+## R-021 — One browser engine, four widths
+
+**What could go wrong.** The UI audit now runs at 320, 390, 768 and 1440 px
+and it found a 39px overflow in the availability editor on its first run — but
+it is still Chromium. iOS Safari is the single largest share of this
+product's likely traffic and it is untested: `100vh`, date inputs, `sticky`
+and the file picker all behave differently there.
+
+**What would close it.** A device matrix in CI against a real iOS Safari, or
+at least a WebKit run. Neither is available in this environment, which is why
+this is written down rather than implied to be covered.

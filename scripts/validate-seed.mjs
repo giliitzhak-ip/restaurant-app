@@ -111,6 +111,52 @@ async function main() {
     'rating without reviews',
     'select count(*) as n from provider_profiles where rating_avg is not null and rating_count = 0',
   );
+  /*
+   * The aggregate must equal its own detail.
+   *
+   * This is the check that makes A-013 impossible to reintroduce. Every
+   * synthetic provider used to carry a rating_count with no review rows
+   * behind it — up to 2,400 of them — which the API disclosed by returning a
+   * null breakdown and the screen disclosed in words, and which was still a
+   * number the database could not support. The counters are now derived from
+   * the rows, so this asserts they stayed that way.
+   */
+  await mustBeEmpty(
+    'rating_count disagrees with the review rows',
+    `select count(*) as n from provider_profiles pp
+       join profiles p on p.id = pp.id
+      where p.email like 'gsnet-%@synthetic.local'
+        and pp.rating_count <> (
+          select count(*) from reviews r
+           where r.subject_id = pp.id and r.direction = 'customer_to_provider'
+        )`,
+  );
+  await mustBeEmpty(
+    'rating_avg disagrees with the review rows',
+    `select count(*) as n from provider_profiles pp
+       join profiles p on p.id = pp.id
+      where p.email like 'gsnet-%@synthetic.local'
+        and pp.rating_count > 0
+        and pp.rating_avg <> (
+          select round(avg(r.rating)::numeric, 2) from reviews r
+           where r.subject_id = pp.id and r.direction = 'customer_to_provider'
+        )`,
+  );
+  await mustBeEmpty(
+    'completed_jobs disagrees with the assignment rows',
+    `select count(*) as n from provider_profiles pp
+       join profiles p on p.id = pp.id
+      where p.email like 'gsnet-%@synthetic.local'
+        and pp.completed_jobs <> (
+          select count(*) from job_assignments a where a.provider_id = pp.id
+        )`,
+  );
+  await mustBeAtLeast(
+    'reviews behind the ratings', 2000,
+    `select count(*) as n from reviews r
+       join profiles p on p.id = r.subject_id
+      where p.email like 'gsnet-%@synthetic.local'`,
+  );
   await mustBeEmpty(
     'reviews without rating',
     'select count(*) as n from provider_profiles where rating_count > 0 and rating_avg is null',

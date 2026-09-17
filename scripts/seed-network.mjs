@@ -103,6 +103,11 @@ async function main() {
     await insertProviders(client, generated);
     await client.query('commit');
 
+    await client.query('begin');
+    const history = await insertHistory(client, generated, random);
+    await client.query('commit');
+    log(`• wrote ${history.jobs} completed jobs and ${history.reviews} reviews behind the ratings`);
+
     const stats = await summarise(client);
     log('');
     log('✅ synthetic network seeded');
@@ -297,6 +302,247 @@ function buildOverrides(shape, random) {
 }
 
 /* ── Bulk insert ────────────────────────────────────────────────────────── */
+/**
+ * The jobs and reviews the profile counters describe.
+ *
+ * Every `rating_count` and `completed_jobs` on a synthetic provider used to be
+ * a number with nothing behind it: 4.9 from 2,292 reviews, and
+ * `ratingBreakdown` returning null because there were no review rows to break
+ * down. Disclosed rather than hidden (A-013), and still a claim the database
+ * could not support.
+ *
+ * So the counters are now capped at what can genuinely exist and this writes
+ * it: a completed job with its offer and its assignment, a review on most of
+ * them, and then `rating_avg` / `rating_count` / `completed_jobs` recomputed
+ * FROM those rows. The aggregate cannot disagree with its own detail because
+ * it is derived from it, and `validate-seed` asserts that it still matches.
+ *
+ * The reviews need authors. A pool of synthetic customers is created for the
+ * purpose rather than reusing the three demo customers, so no demo person
+ * appears to have hired a thousand professionals.
+ */
+async function insertHistory(client, providers, random) {
+  const CUSTOMER_POOL = 60;
+  const BATCH = 60;
+
+  // ── The customers who left the reviews ──────────────────────────────────
+  const customers = [];
+  for (let index = 0; index < CUSTOMER_POOL; index += 1) {
+    const key = `gsnet-hist-c${index}`;
+    customers.push({
+      id: deterministicUuid(key),
+      email: `${key}@synthetic.local`,
+      name: `לקוח ${index + 1}`,
+    });
+  }
+
+  await client.query(
+    `insert into auth.users (id, email)
+     select (v->>0)::uuid, v->>1 from jsonb_array_elements($1::jsonb) v
+     on conflict (id) do nothing`,
+    [JSON.stringify(customers.map((c) => [c.id, c.email]))],
+  );
+  await client.query(
+    `insert into profiles (id, role, full_name, email, is_demo)
+     select (v->>0)::uuid, 'customer'::user_role, v->>2, v->>1, true
+       from jsonb_array_elements($1::jsonb) v
+     on conflict (id) do nothing`,
+    [JSON.stringify(customers.map((c) => [c.id, c.email, c.name]))],
+  );
+  await client.query(
+    `insert into customer_profiles (id, default_address, default_location)
+     select (v->>0)::uuid, 'תל אביב', st_point(34.78, 32.08)::geography
+       from jsonb_array_elements($1::jsonb) v
+     on conflict (id) do nothing`,
+    [JSON.stringify(customers.map((c) => [c.id]))],
+  );
+
+  /*
+   * Rerun safety, the lesson from the schedules: these rows have no natural
+   * unique key, so ON CONFLICT cannot help and a second run would double the
+   * history. The batch clears its own providers' rows first.
+   */
+  let totalJobs = 0;
+  let totalReviews = 0;
+
+  for (let start = 0; start < providers.length; start += BATCH) {
+    const batch = providers
+      .slice(start, start + BATCH)
+      .filter((p) => p.reputation.completedJobs > 0);
+    if (batch.length === 0) continue;
+
+    const providerIds = batch.map((p) => p.id);
+    await client.query(
+      `delete from jobs
+        where id in (select job_id from job_assignments where provider_id = any($1::uuid[]))`,
+      [providerIds],
+    );
+
+    const jobs = [];
+    const offers = [];
+    const assignments = [];
+    const reviews = [];
+
+    for (const provider of batch) {
+      const primary = provider.categories[0];
+      const service = provider.services[0];
+      if (!primary || !service) continue;
+
+      const jobCount = provider.reputation.completedJobs;
+      const reviewCount = Math.min(provider.reputation.ratingCount, jobCount);
+
+      for (let n = 0; n < jobCount; n += 1) {
+        const jobId = deterministicUuid(`${provider.key}-job-${n}`);
+        const offerId = deterministicUuid(`${provider.key}-offer-${n}`);
+        const customer = customers[random.int(0, CUSTOMER_POOL - 1)];
+        // Spread over the past two years so "member since" and the review
+        // dates are not all the same instant.
+        const daysAgo = random.int(1, 720);
+        const price = service.priceIls;
+
+        jobs.push([
+          jobId, customer.id, primary.id, service.id,
+          provider.position.lat, provider.position.lon, price, daysAgo,
+        ]);
+        offers.push([offerId, jobId, provider.id, price, daysAgo]);
+        assignments.push([jobId, provider.id, offerId, price, daysAgo]);
+
+        if (n < reviewCount) {
+          /*
+           * A rating drawn so the mean of the rows lands on the tier's target.
+           *
+           * A gaussian around the target, rounded, does not work here: the
+           * scale is clamped at 5, so every provider in the top tier drew 5
+           * every time and their breakdown read 24 fives and nothing else —
+           * a distribution no real professional has, and the kind of too-clean
+           * detail that reads as fabricated precisely because it is.
+           *
+           * Instead: split between the two stars either side of the target
+           * with the weight that makes the expected value the target
+           * (P(⌈t⌉) = t − ⌊t⌋), and one in eight ratings drops a further star.
+           * That gives the long left tail a real record has.
+           */
+          const target = provider.reputation.ratingAvg ?? 4.5;
+          const lower = Math.floor(target);
+          const rating = Math.max(
+            1,
+            Math.min(
+              5,
+              (random.next() < target - lower ? lower + 1 : lower)
+                - (random.next() < 0.125 ? 1 : 0),
+            ),
+          );
+          reviews.push([
+            jobId, customer.id, provider.id, rating, daysAgo,
+          ]);
+        }
+      }
+    }
+
+    if (jobs.length === 0) continue;
+
+    await client.query(
+      `insert into jobs
+         (id, customer_id, category_id, service_id, raw_description, urgency,
+          booking_mode, timing_intent, status, location,
+          quoted_price_ils, final_price_ils, matched_at, created_at, is_demo)
+       select (v->>0)::uuid, (v->>1)::uuid, (v->>2)::uuid, (v->>3)::uuid,
+              'עבודה שהושלמה', 'normal'::urgency_level, 'NOW'::booking_mode,
+              'NOW'::timing_intent, 'REVIEWED'::job_status,
+              st_point((v->>5)::double precision, (v->>4)::double precision)::geography,
+              (v->>6)::numeric, (v->>6)::numeric,
+              now() - make_interval(days => (v->>7)::int),
+              now() - make_interval(days => (v->>7)::int), true
+         from jsonb_array_elements($1::jsonb) v`,
+      [JSON.stringify(jobs)],
+    );
+    await client.query(
+      `insert into job_offers
+         (id, job_id, provider_id, wave, status, price_ils,
+          is_on_the_way, final_score, score_breakdown,
+          expires_at, notified_at, responded_at, created_at)
+       select (v->>0)::uuid, (v->>1)::uuid, (v->>2)::uuid, 1, 'ACCEPTED'::offer_status,
+              (v->>3)::numeric,
+              false, 0, '{}'::jsonb,
+              -- expires_at must be after notified_at (job_offers_expiry), so
+              -- the historical offer gets the two-minute window it would
+              -- really have had rather than the same instant for both.
+              now() - make_interval(days => (v->>4)::int) + interval '2 minutes',
+              now() - make_interval(days => (v->>4)::int),
+              now() - make_interval(days => (v->>4)::int) + interval '30 seconds',
+              now() - make_interval(days => (v->>4)::int)
+         from jsonb_array_elements($1::jsonb) v`,
+      [JSON.stringify(offers)],
+    );
+    await client.query(
+      `insert into job_assignments
+         (job_id, provider_id, offer_id, price_ils, assigned_at, completed_at, created_at)
+       select (v->>0)::uuid, (v->>1)::uuid, (v->>2)::uuid, (v->>3)::numeric,
+              now() - make_interval(days => (v->>4)::int),
+              now() - make_interval(days => (v->>4)::int),
+              now() - make_interval(days => (v->>4)::int)
+         from jsonb_array_elements($1::jsonb) v`,
+      [JSON.stringify(assignments)],
+    );
+    if (reviews.length > 0) {
+      await client.query(
+        `insert into reviews
+           (job_id, author_id, subject_id, direction, rating, created_at)
+         select (v->>0)::uuid, (v->>1)::uuid, (v->>2)::uuid,
+                'customer_to_provider', (v->>3)::int,
+                now() - make_interval(days => (v->>4)::int)
+           from jsonb_array_elements($1::jsonb) v
+         on conflict (job_id, direction) do nothing`,
+        [JSON.stringify(reviews)],
+      );
+    }
+
+    totalJobs += jobs.length;
+    totalReviews += reviews.length;
+  }
+
+  /*
+   * The aggregate is now DERIVED, not asserted. Whatever the draw produced,
+   * the profile matches the rows — which is the property validate-seed
+   * checks, and the reason this cannot drift back into a claim with nothing
+   * behind it.
+   */
+  /*
+   * Every synthetic provider, not only the ones that got history.
+   *
+   * A LEFT JOIN rather than a join, because the profile insert is
+   * `on conflict do nothing` — so on a rerun an existing provider keeps
+   * whatever counters it already had. The first version of this update
+   * touched only providers with assignments, and a rerun over a network
+   * seeded before the cap left 91 profiles claiming up to 1,964 reviews with
+   * a handful of rows behind them. Deriving for everybody, including the ones
+   * with no history at all, makes the aggregate a function of the rows rather
+   * than a memory of a previous run.
+   */
+  await client.query(`
+    update provider_profiles pp
+       set rating_avg = agg.avg_rating,
+           rating_count = agg.n,
+           completed_jobs = agg.completed
+      from (
+        select p.id as provider_id,
+               (select count(*) from job_assignments a
+                 where a.provider_id = p.id)::int as completed,
+               (select count(*) from reviews r
+                 where r.subject_id = p.id
+                   and r.direction = 'customer_to_provider')::int as n,
+               (select round(avg(r.rating)::numeric, 2) from reviews r
+                 where r.subject_id = p.id
+                   and r.direction = 'customer_to_provider') as avg_rating
+          from profiles p
+         where p.email like 'gsnet-%@synthetic.local'
+      ) agg
+     where pp.id = agg.provider_id
+  `);
+
+  return { jobs: totalJobs, reviews: totalReviews };
+}
+
 async function insertProviders(client, providers) {
   const BATCH = 200;
 

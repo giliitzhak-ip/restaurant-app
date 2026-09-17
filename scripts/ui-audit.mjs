@@ -6,7 +6,7 @@
  * would not catch:
  *   * the document is genuinely RTL (dir="rtl", lang="he") — not faked with
  *     text-align (spec §40);
- *   * no horizontal overflow at phone width (390px);
+ *   * no horizontal overflow at 320, 390, 768 and 1440 px;
  *   * every interactive element is at least 40px tall (spec §41, §42);
  *   * every input is labelled;
  *   * numbers are wrapped in LTR-isolated runs;
@@ -34,14 +34,52 @@ const B = process.env.BASE_URL ?? 'http://127.0.0.1:3000';
 const OUT = process.env.SHOTS ?? './.ui-shots';
 const issues = [];
 
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync } from 'node:fs';
+import path from 'node:path';
 mkdirSync(OUT, { recursive: true });
 
-// PLAYWRIGHT_BROWSERS_PATH is respected when set; otherwise Playwright's
-// own resolution applies.
-const browser = await chromium.launch(
-  process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {},
-);
+/**
+ * Find a Chromium that actually exists.
+ *
+ * Playwright resolves a browser by the build number its version pins, and an
+ * environment that has 1194 on disk when the library wants 1200 fails with an
+ * instruction to run `playwright install` — which is the wrong answer where
+ * the browsers are provisioned outside npm. So: an explicit CHROMIUM_PATH
+ * wins, then whatever chromium-* build is present, then Playwright's own
+ * resolution. The audit refusing to run is the same as the audit passing
+ * vacuously, which is the failure this whole script exists to prevent.
+ */
+function resolveChromium() {
+  if (process.env.CHROMIUM_PATH) return process.env.CHROMIUM_PATH;
+
+  const root = process.env.PLAYWRIGHT_BROWSERS_PATH ?? '/opt/pw-browsers';
+  let entries = [];
+  try {
+    entries = readdirSync(root).filter((name) => name.startsWith('chromium'));
+  } catch {
+    return null;
+  }
+
+  // Prefer the full browser over the headless shell: this audit screenshots.
+  const ordered = [
+    ...entries.filter((n) => !n.includes('headless')).sort().reverse(),
+    ...entries.filter((n) => n.includes('headless')).sort().reverse(),
+  ];
+  for (const entry of ordered) {
+    for (const suffix of [
+      'chrome-linux/chrome',
+      'chrome-headless-shell-linux64/chrome-headless-shell',
+    ]) {
+      const candidate = path.join(root, entry, suffix);
+      if (existsSync(candidate)) return candidate;
+    }
+  }
+  return null;
+}
+
+const executablePath = resolveChromium();
+if (executablePath) console.log(`• chromium: ${executablePath}`);
+const browser = await chromium.launch(executablePath ? { executablePath } : {});
 
 /**
  * Sessions are established ONCE per account and reused.
@@ -185,16 +223,50 @@ async function inspect(name, url, { login, viewport = { width: 390, height: 844 
   await context.close();
 }
 
-await inspect('01-home', `${B}/`);
-await inspect('02-login', `${B}/login`);
-await inspect('03-request', `${B}/request?q=${encodeURIComponent('יש לי נזילה מתחת לכיור')}&mode=NOW`,
-  { login: { email: 'rotem@demo.local', password: 'demo1234' } });
-await inspect('04-provider', `${B}/provider`,
-  { login: { email: 'ram-on-the-way@demo.local', password: 'demo1234' } });
-await inspect('04b-provider-availability', `${B}/provider/availability`,
-  { login: { email: 'ram-on-the-way@demo.local', password: 'demo1234' } });
-await inspect('04c-provider-onboarding', `${B}/provider/onboarding`,
-  { login: { email: 'ram-on-the-way@demo.local', password: 'demo1234' } });
+/*
+ * More than one width.
+ *
+ * Every page was only ever checked at 390px, and the score deducted two
+ * points for it (R-014): a layout that survives one viewport is a layout
+ * nobody has tested. These four are the ones that actually break things — the
+ * narrowest phone still in use, a standard phone, the tablet width where a
+ * two-column grid first appears, and a laptop.
+ *
+ * It is still Chromium. A real device matrix needs iOS Safari, which this
+ * environment cannot run, and that remains stated in RISKS rather than
+ * quietly implied to be covered.
+ */
+const WIDTHS = [
+  { label: '320', viewport: { width: 320, height: 720 } },
+  { label: '390', viewport: { width: 390, height: 844 } },
+  { label: '768', viewport: { width: 768, height: 1024 } },
+  { label: '1440', viewport: { width: 1440, height: 900 } },
+];
+
+/** Customer- and provider-facing pages, at every width. */
+const RESPONSIVE = [
+  ['01-home', `${B}/`, undefined],
+  ['02-login', `${B}/login`, undefined],
+  ['03-request', `${B}/request?q=${encodeURIComponent('יש לי נזילה מתחת לכיור')}&mode=NOW`,
+    { email: 'rotem@demo.local', password: 'demo1234' }],
+  ['04-provider', `${B}/provider`,
+    { email: 'ram-on-the-way@demo.local', password: 'demo1234' }],
+  ['04b-provider-availability', `${B}/provider/availability`,
+    { email: 'ram-on-the-way@demo.local', password: 'demo1234' }],
+  ['04c-provider-onboarding', `${B}/provider/onboarding`,
+    { email: 'ram-on-the-way@demo.local', password: 'demo1234' }],
+];
+
+for (const { label, viewport } of WIDTHS) {
+  console.log(`\n--- ${label}px ---`);
+  for (const [name, url, login] of RESPONSIVE) {
+    await inspect(`${name}@${label}`, url, { login, viewport });
+  }
+}
+
+// Operator screens are desktop-first by design and are not claimed to work on
+// a phone, so they are checked where they are used.
+console.log('\n--- operator screens ---');
 await inspect('05-admin', `${B}/admin`,
   { login: { email: 'admin@demo.local', password: 'demo1234' }, viewport: { width: 1440, height: 900 } });
 await inspect('06-matching-lab', `${B}/matching-lab`,
