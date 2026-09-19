@@ -201,20 +201,48 @@ async function main() {
     });
   }
 
-  console.log("▸ staff + demo accounts");
+  /*
+   * Accounts.
+   *
+   * In production the admin credentials must be supplied explicitly and the
+   * demo customer is not created at all — a published store with a documented
+   * login is an open door, and "we meant to change it" is how it stays open.
+   */
+  const isProductionSeed =
+    process.env.NODE_ENV === "production" || process.env.SEED_MODE === "production";
+
+  const adminEmail = process.env.SEED_ADMIN_EMAIL;
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD;
+
+  if (isProductionSeed) {
+    if (!adminEmail || !adminPassword) {
+      throw new Error(
+        "SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD are required for a production seed.",
+      );
+    }
+    if (adminPassword.length < 12) {
+      throw new Error("SEED_ADMIN_PASSWORD must be at least 12 characters.");
+    }
+  }
+
+  console.log(isProductionSeed ? "▸ admin account" : "▸ staff + demo accounts");
   const accounts = [
     {
-      email: process.env.SEED_ADMIN_EMAIL ?? "admin@terranova.example",
-      password: process.env.SEED_ADMIN_PASSWORD ?? "TerraNova!2026",
+      email: adminEmail ?? "admin@terranova.example",
+      password: adminPassword ?? "TerraNova!2026",
       fullName: "צוות הניהול",
       role: "ADMIN" as const,
     },
-    {
-      email: "noa@example.com",
-      password: "Demo!2026",
-      fullName: "נועה ברקוביץ׳",
-      role: "CUSTOMER" as const,
-    },
+    ...(isProductionSeed
+      ? []
+      : [
+          {
+            email: "noa@example.com",
+            password: "Demo!2026",
+            fullName: "נועה ברקוביץ׳",
+            role: "CUSTOMER" as const,
+          },
+        ]),
   ];
   for (const account of accounts) {
     const data = {

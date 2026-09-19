@@ -7,7 +7,8 @@ import { requireAdmin } from "@/server/auth/session";
 import { ADMIN_SETTABLE } from "@/server/commerce/order-flow";
 import { getRepository } from "@/server/repositories";
 import { clientKey } from "@/server/security/rate-limit";
-import { getStorage, readUploadedImage } from "@/server/storage";
+import { sanitiseImageUpload } from "@/server/security/images";
+import { getStorage } from "@/server/storage";
 import type { ProductInput } from "@/server/repositories/types";
 import type { OrderStatus, SessionUser } from "@/types/commerce";
 
@@ -338,10 +339,12 @@ export async function uploadAdminImageAction(
     return { ok: false, error: "NO_FILE" };
   }
   try {
-    const bytes = await readUploadedImage(file);
+    // Admin uploads get the same treatment as customer ones: an authenticated
+    // account is not a reason to write unvalidated bytes into public storage.
+    const safe = await sanitiseImageUpload(file, { maxEdge: 2400, format: "webp", quality: 86 });
     const stored = await getStorage().save({
-      data: bytes,
-      contentType: file.type,
+      data: safe.data,
+      contentType: safe.contentType,
       keyHint: hint.replace(/[^a-z0-9-]/gi, "").slice(0, 40) || "product",
     });
     return { ok: true, url: stored.url };

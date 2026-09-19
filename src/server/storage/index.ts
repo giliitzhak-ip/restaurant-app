@@ -1,23 +1,25 @@
-import { designerConfig } from "@/config/brand";
+import { isServingProduction } from "@/config/env";
 import { localStorageDriver } from "./local";
 import { remoteStorageDriver } from "./remote";
 import type { StorageDriver } from "./types";
 
+/**
+ * Picks the storage driver.
+ *
+ * Production may only use the remote driver. The local one writes into
+ * `public/uploads`, which on any container platform is an ephemeral disk that
+ * is not shared between instances — a customer's room photo would upload to
+ * one container and 404 from the next, and vanish on the next deploy. Failing
+ * loudly here beats discovering that from a support ticket.
+ */
 export function getStorage(): StorageDriver {
-  return process.env.STORAGE_DRIVER === "remote"
-    ? remoteStorageDriver
-    : localStorageDriver;
-}
-
-/** Guards an uploaded image before it ever reaches a driver. */
-export async function readUploadedImage(file: File) {
-  if (!designerConfig.acceptedMimeTypes.includes(file.type as "image/jpeg")) {
-    throw new Error("UNSUPPORTED_TYPE");
+  if (process.env.STORAGE_DRIVER === "remote") return remoteStorageDriver;
+  if (isServingProduction) {
+    throw new Error(
+      "STORAGE_DRIVER must be 'remote' in production — the local driver cannot persist customer uploads.",
+    );
   }
-  if (file.size > designerConfig.maxUploadBytes) {
-    throw new Error("FILE_TOO_LARGE");
-  }
-  return new Uint8Array(await file.arrayBuffer());
+  return localStorageDriver;
 }
 
 /**

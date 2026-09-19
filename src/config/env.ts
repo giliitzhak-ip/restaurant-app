@@ -10,7 +10,16 @@
 
 export const isProduction = process.env.NODE_ENV === "production";
 /** Set by `next build`; a build must not demand runtime-only secrets. */
-const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+export const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+/**
+ * True only while actually serving traffic.
+ *
+ * `next build` runs with NODE_ENV=production and prerenders pages, so the
+ * runtime guards (no memory repository, no local storage driver) have to sit
+ * behind this rather than behind `isProduction` — otherwise a perfectly valid
+ * build of a DATABASE_URL-less preview fails at page-collection time.
+ */
+export const isServingProduction = isProduction && !isBuildPhase;
 
 export type EnvProblem = { key: string; message: string };
 

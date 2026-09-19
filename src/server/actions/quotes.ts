@@ -3,7 +3,10 @@
 import { z } from "zod";
 import { getSessionUser } from "@/server/auth/session";
 import { getRepository } from "@/server/repositories";
-import { getStorage, readUploadedImage } from "@/server/storage";
+import { ImageRejected, sanitiseImageUpload } from "@/server/security/images";
+import { requireDesignOwnership } from "@/server/security/ownership";
+import { rateLimit } from "@/server/security/rate-limit";
+import { log } from "@/server/observability/logger";
 
 const quoteSchema = z.object({
   fullName: z.string().trim().min(2, "נדרש שם מלא"),
@@ -25,6 +28,9 @@ export type QuoteResult =
   | { ok: false; error: string; fieldErrors?: Record<string, string[]> };
 
 export async function submitQuoteAction(formData: FormData): Promise<QuoteResult> {
+  const limited = await rateLimit("quote");
+  if (!limited.ok) return { ok: false, error: "RATE_LIMITED" };
+
   const parsed = quoteSchema.safeParse({
     fullName: formData.get("fullName"),
     phone: formData.get("phone"),
@@ -55,22 +61,34 @@ export async function submitQuoteAction(formData: FormData): Promise<QuoteResult
   const upload = formData.get("image");
   if (upload instanceof File && upload.size > 0) {
     try {
-      const bytes = await readUploadedImage(upload);
+      const safe = await sanitiseImageUpload(upload);
+      const { getStorage } = await import("@/server/storage");
       const stored = await getStorage().save({
-        data: bytes,
-        contentType: upload.type,
+        data: safe.data,
+        contentType: safe.contentType,
         keyHint: "quote",
       });
       imageUrl = stored.url;
     } catch (error) {
-      const reason = error instanceof Error ? error.message : "UPLOAD_FAILED";
-      return { ok: false, error: reason };
+      if (error instanceof ImageRejected) return { ok: false, error: error.reason };
+      log.error("quotes.upload_failed", { error });
+      return { ok: false, error: "UPLOAD_FAILED" };
     }
   }
 
-  if (!imageUrl && data.designId) {
-    const design = await repository.getDesign(data.designId);
-    imageUrl = design?.renderedImageUrl ?? design?.originalImageUrl ?? null;
+  /*
+   * A design id in the form is a claim about someone else's row until it is
+   * checked. Attaching an unowned design would leak its rendered photo into a
+   * quote the attacker can then read.
+   */
+  let designId: string | null = null;
+  if (data.designId) {
+    const owned = await requireDesignOwnership(data.designId);
+    if (!owned.ok) return { ok: false, error: "DESIGN_NOT_FOUND" };
+    designId = owned.design.id;
+    if (!imageUrl) {
+      imageUrl = owned.design.renderedImageUrl ?? owned.design.originalImageUrl ?? null;
+    }
   }
 
   const quote = await repository.createQuote({
@@ -81,7 +99,7 @@ export async function submitQuoteAction(formData: FormData): Promise<QuoteResult
     city: data.city,
     areaSqm: data.areaSqm ?? null,
     productId: data.productId ?? null,
-    designId: data.designId ?? null,
+    designId,
     imageUrl,
     wantsInstallation: data.wantsInstallation,
     notes: data.notes ?? null,

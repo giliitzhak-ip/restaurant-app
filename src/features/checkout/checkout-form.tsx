@@ -4,7 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Lock, ShoppingBag } from "lucide-react";
 import { routes } from "@/config/site";
@@ -52,7 +52,14 @@ export function CheckoutForm({
     },
   });
 
-  const fulfilment = form.watch("fulfilment");
+  /*
+   * `useWatch` subscribes to one field through the form's store; `form.watch()`
+   * hands back a fresh function on every render, which the React Compiler
+   * cannot memoize and which quietly opts this whole component out of
+   * optimisation.
+   */
+  const fulfilment = useWatch({ control: form.control, name: "fulfilment" });
+  const termsAccepted = useWatch({ control: form.control, name: "terms" });
 
   React.useEffect(() => {
     if (fulfilment !== cart.fulfilment) void setFulfilment(fulfilment);
@@ -74,6 +81,13 @@ export function CheckoutForm({
   }
 
   const onSubmit = form.handleSubmit(async (values) => {
+    /*
+     * No client nonce is sent: the server derives the idempotency key from the
+     * basket itself (cart id, lines, prices, contact details), which already
+     * collapses a double-clicked button or a retried request into one order.
+     * A nonce would have to be minted during render to be stable, and random
+     * values during render are impure.
+     */
     const result = await placeOrderAction(values);
     if (!result.ok) {
       if (result.fieldErrors) {
@@ -83,14 +97,33 @@ export function CheckoutForm({
           });
         }
       }
-      toast({
-        tone: "error",
-        title: result.error === "PAYMENT_FAILED" ? "התשלום נכשל" : t.states.errorTitle,
-        description:
-          result.error === "PAYMENT_FAILED"
-            ? "לא הצלחנו לפתוח את עמוד הסליקה. נסו שוב או התקשרו אלינו ונשלים את ההזמנה."
-            : t.states.errorBody,
-      });
+      // Each failure names what to do about it, rather than "something went wrong".
+      const messages: Record<string, { title: string; description: string }> = {
+        PAYMENT_FAILED: {
+          title: "התשלום נכשל",
+          description:
+            "לא הצלחנו לפתוח את עמוד הסליקה ולא בוצע חיוב. נסו שוב או התקשרו אלינו ונשלים את ההזמנה.",
+        },
+        OUT_OF_STOCK: {
+          title: "המלאי השתנה",
+          description: result.shortages?.length
+            ? `נשאר פחות ממה שביקשתם מ־${result.shortages
+                .map((item) => `${item.name} (${item.available} במקום ${item.requested})`)
+                .join(", ")}. עדכנו את הכמות בסל ונמשיך.`
+            : "חלק מהפריטים אזלו בזמן ההזמנה. עדכנו את הסל ונמשיך.",
+        },
+        EMPTY_CART: { title: t.cart.empty, description: t.cart.emptyBody },
+        RATE_LIMITED: {
+          title: "רגע אחד",
+          description: "נשלחו יותר מדי ניסיונות. נסו שוב בעוד כמה דקות.",
+        },
+      };
+      const copy = messages[result.error] ?? {
+        title: t.states.errorTitle,
+        description: t.states.errorBody,
+      };
+      toast({ tone: "error", ...copy });
+      if (result.error === "OUT_OF_STOCK") router.push(routes.cart);
       return;
     }
 
@@ -101,10 +134,13 @@ export function CheckoutForm({
     });
 
     if (result.redirectUrl) {
-      window.location.href = result.redirectUrl;
+      // assign() rather than `location.href = …`: the same navigation, but a
+      // method call instead of mutating a value the component does not own.
+      window.location.assign(result.redirectUrl);
       return;
     }
-    router.push(routes.order(result.orderNumber));
+    // The token is what authorises the confirmation page for a guest.
+    router.push(`${routes.order(result.orderNumber)}?token=${encodeURIComponent(result.token)}`);
   });
 
   return (
@@ -278,7 +314,7 @@ export function CheckoutForm({
 
             <label className="flex cursor-pointer items-start gap-2.5 text-xs leading-relaxed text-ink-soft">
               <Checkbox
-                checked={form.watch("terms") === true}
+                checked={termsAccepted === true}
                 onCheckedChange={(checked) =>
                   form.setValue("terms", (checked === true) as true, {
                     shouldValidate: true,

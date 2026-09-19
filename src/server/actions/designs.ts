@@ -8,7 +8,11 @@ import { roundTo } from "@/lib/format";
 import { ensureGuestToken, getSessionUser } from "@/server/auth/session";
 import { addToCart } from "@/server/cart/cart-service";
 import { getRepository } from "@/server/repositories";
-import { getStorage, readUploadedImage, removeStoredImage } from "@/server/storage";
+import { rateLimit } from "@/server/security/rate-limit";
+import { requireDesignOwnership } from "@/server/security/ownership";
+import { ImageRejected, sanitiseImageUpload } from "@/server/security/images";
+import { getStorage, removeStoredImage } from "@/server/storage";
+import { log } from "@/server/observability/logger";
 import type { RoomDesignRecord } from "@/types/design";
 
 const pointSchema = z.object({ x: z.number(), y: z.number() });
@@ -94,30 +98,46 @@ export type SaveDesignInput = z.input<typeof saveSchema>;
 
 export type UploadResult =
   | { ok: true; url: string }
-  | { ok: false; error: "UNSUPPORTED_TYPE" | "FILE_TOO_LARGE" | "UPLOAD_FAILED" };
+  | {
+      ok: false;
+      error:
+        | "UNSUPPORTED_TYPE"
+        | "FILE_TOO_LARGE"
+        | "CORRUPT_IMAGE"
+        | "RATE_LIMITED"
+        | "UPLOAD_FAILED";
+    };
 
 /**
- * Stores a room photo. Guests get a retention window; signed-in customers keep
- * the photo with their saved design until they delete it (see docs/PRIVACY.md).
+ * Stores a room photo.
+ *
+ * The uploaded bytes are never written through: they are identified by magic
+ * number, decoded, and re-encoded by us. What lands in storage is our own
+ * WebP, which means no polyglot file survives the trip and no EXIF — GPS
+ * coordinates of the customer's home very much included — goes with it.
+ *
+ * Guests get a retention window; signed-in customers keep the photo with their
+ * saved design until they delete it (see docs/PRIVACY.md).
  */
 export async function uploadRoomImageAction(formData: FormData): Promise<UploadResult> {
+  const limited = await rateLimit("upload");
+  if (!limited.ok) return { ok: false, error: "RATE_LIMITED" };
+
   const file = formData.get("image");
   if (!(file instanceof File) || file.size === 0) {
     return { ok: false, error: "UPLOAD_FAILED" };
   }
   try {
-    const bytes = await readUploadedImage(file);
+    const safe = await sanitiseImageUpload(file);
     const stored = await getStorage().save({
-      data: bytes,
-      contentType: file.type,
+      data: safe.data,
+      contentType: safe.contentType,
       keyHint: "room",
     });
     return { ok: true, url: stored.url };
   } catch (error) {
-    const reason = error instanceof Error ? error.message : "UPLOAD_FAILED";
-    if (reason === "UNSUPPORTED_TYPE" || reason === "FILE_TOO_LARGE") {
-      return { ok: false, error: reason };
-    }
+    if (error instanceof ImageRejected) return { ok: false, error: error.reason };
+    log.error("designs.upload_failed", { error });
     return { ok: false, error: "UPLOAD_FAILED" };
   }
 }
@@ -129,8 +149,20 @@ export type SaveDesignResult =
 export async function saveDesignAction(
   input: SaveDesignInput,
 ): Promise<SaveDesignResult> {
+  const limited = await rateLimit("designWrite");
+  if (!limited.ok) return { ok: false, error: "RATE_LIMITED" };
+
   const parsed = saveSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "INVALID_INPUT" };
+
+  /*
+   * An id in the payload means "update". Without this check it means "update
+   * anybody's design", because the id is the only thing identifying the row.
+   */
+  if (parsed.data.id) {
+    const owned = await requireDesignOwnership(parsed.data.id);
+    if (!owned.ok) return { ok: false, error: owned.error };
+  }
 
   const user = await getSessionUser();
   const guestToken = user ? null : await ensureGuestToken();
@@ -156,67 +188,75 @@ export async function saveDesignAction(
   return { ok: true, design };
 }
 
-/** Stores the rendered canvas as an image file and returns its URL. */
+/**
+ * Stores the rendered canvas.
+ *
+ * Same treatment as a customer photo: this arrives as a canvas blob from the
+ * browser, which is to say from anywhere, so it is size-checked, sniffed and
+ * re-encoded rather than written through.
+ */
 export async function saveRenderAction(formData: FormData): Promise<UploadResult> {
+  const limited = await rateLimit("upload");
+  if (!limited.ok) return { ok: false, error: "RATE_LIMITED" };
+
   const file = formData.get("render");
   if (!(file instanceof File) || file.size === 0) {
     return { ok: false, error: "UPLOAD_FAILED" };
   }
   try {
+    const safe = await sanitiseImageUpload(file, {
+      maxEdge: designerConfig.maxRenderEdge,
+      format: "webp",
+      quality: 80,
+    });
     const stored = await getStorage().save({
-      data: new Uint8Array(await file.arrayBuffer()),
-      contentType: file.type || "image/jpeg",
+      data: safe.data,
+      contentType: safe.contentType,
       keyHint: "render",
     });
     return { ok: true, url: stored.url };
-  } catch {
+  } catch (error) {
+    if (error instanceof ImageRejected) return { ok: false, error: error.reason };
+    log.error("designs.render_failed", { error });
     return { ok: false, error: "UPLOAD_FAILED" };
   }
 }
 
-async function assertOwnership(designId: string) {
-  const repository = getRepository();
-  const design = await repository.getDesign(designId);
-  if (!design) return null;
-  const user = await getSessionUser();
-  if (design.userId && design.userId !== user?.id) return null;
-  return design;
-}
-
 export async function renameDesignAction(designId: string, name: string) {
-  const design = await assertOwnership(designId);
-  if (!design) return { ok: false as const };
+  const owned = await requireDesignOwnership(designId);
+  if (!owned.ok) return { ok: false as const, error: owned.error };
   await getRepository().renameDesign(designId, name.trim().slice(0, 80));
   revalidatePath(routes.account.designs);
   return { ok: true as const };
 }
 
 export async function deleteDesignAction(designId: string) {
-  const design = await assertOwnership(designId);
-  if (!design) return { ok: false as const };
+  const owned = await requireDesignOwnership(designId);
+  if (!owned.ok) return { ok: false as const, error: owned.error };
   await getRepository().deleteDesign(designId);
   // The row and the bytes go together.
-  await removeStoredImage(design.originalImageUrl);
-  await removeStoredImage(design.renderedImageUrl);
+  await removeStoredImage(owned.design.originalImageUrl);
+  await removeStoredImage(owned.design.renderedImageUrl);
   revalidatePath(routes.account.designs);
   return { ok: true as const };
 }
 
 /** Privacy: removes the stored photo but keeps the product selection. */
 export async function deleteDesignImageAction(designId: string) {
-  const design = await assertOwnership(designId);
-  if (!design) return { ok: false as const };
+  const owned = await requireDesignOwnership(designId);
+  if (!owned.ok) return { ok: false as const, error: owned.error };
   await getRepository().deleteDesignImage(designId);
-  await removeStoredImage(design.originalImageUrl);
-  await removeStoredImage(design.renderedImageUrl);
+  await removeStoredImage(owned.design.originalImageUrl);
+  await removeStoredImage(owned.design.renderedImageUrl);
   revalidatePath(routes.account.designs);
   return { ok: true as const };
 }
 
 export async function duplicateDesignAction(designId: string) {
   const repository = getRepository();
-  const design = await assertOwnership(designId);
-  if (!design) return { ok: false as const };
+  const owned = await requireDesignOwnership(designId);
+  if (!owned.ok) return { ok: false as const, error: owned.error };
+  const design = owned.design;
   const user = await getSessionUser();
 
   await repository.saveDesign({
@@ -239,8 +279,9 @@ export async function duplicateDesignAction(designId: string) {
 /** Adds every product used in a design, sized by the estimated surface area. */
 export async function addDesignToCartAction(designId: string) {
   const repository = getRepository();
-  const design = await repository.getDesign(designId);
-  if (!design) return { ok: false as const, error: "NOT_FOUND" };
+  const owned = await requireDesignOwnership(designId);
+  if (!owned.ok) return { ok: false as const, error: owned.error };
+  const design = owned.design;
 
   let added = 0;
   for (const surface of design.surfaces) {

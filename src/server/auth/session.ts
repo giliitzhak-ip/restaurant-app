@@ -115,11 +115,22 @@ export async function ensureGuestToken(): Promise<string> {
   return token;
 }
 
+/**
+ * A bcrypt hash of a value nobody knows, used to burn the same CPU on a
+ * missing account as on a real one. Without it, "no such user" answers in
+ * microseconds and "wrong password" takes ~100ms, which is a free account
+ * enumeration oracle.
+ */
+const DUMMY_HASH = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO1rL0XHvJmeQ0VVQfL7Q0R9cEdI8pUzS";
+
 /** Signs in and adopts anything the visitor created while browsing as a guest. */
 export async function signInUser(email: string, password: string) {
   const repository = getRepository();
   const user = await repository.getUserByEmail(email);
-  if (!user) return null;
+  if (!user) {
+    await compare(password, DUMMY_HASH);
+    return null;
+  }
   const valid = await verifyPassword(password, user.passwordHash);
   if (!valid) return null;
 

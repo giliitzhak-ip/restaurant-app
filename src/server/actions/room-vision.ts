@@ -2,6 +2,9 @@
 
 import { z } from "zod";
 import { designerConfig } from "@/config/brand";
+import { rateLimit } from "@/server/security/rate-limit";
+import { sniffImageFormat } from "@/server/security/images";
+import { log } from "@/server/observability/logger";
 import {
   getVisionProvider,
   providerNeedsFullImage,
@@ -16,7 +19,7 @@ const previewSchema = z.object({
 
 export type AnalyzeResult =
   | { ok: true; analysis: RoomAnalysis; needsFullImage: boolean }
-  | { ok: false; error: "INVALID_INPUT" | "PROVIDER_FAILED" };
+  | { ok: false; error: "INVALID_INPUT" | "PROVIDER_FAILED" | "RATE_LIMITED" };
 
 /**
  * Analyses a room photo.
@@ -27,6 +30,10 @@ export type AnalyzeResult =
  * happens only when the customer chooses to save the design.
  */
 export async function analyzeRoomAction(formData: FormData): Promise<AnalyzeResult> {
+  // Analysis is the most expensive endpoint in the app and it is unauthenticated.
+  const limited = await rateLimit("roomAnalysis");
+  if (!limited.ok) return { ok: false, error: "RATE_LIMITED" };
+
   const rawPreview = formData.get("preview");
   const width = Number(formData.get("width"));
   const height = Number(formData.get("height"));
@@ -52,8 +59,13 @@ export async function analyzeRoomAction(formData: FormData): Promise<AnalyzeResu
     if (image.size > designerConfig.maxUploadBytes) {
       return { ok: false, error: "INVALID_INPUT" };
     }
-    bytes = new Uint8Array(await image.arrayBuffer());
-    contentType = image.type;
+    const raw = new Uint8Array(await image.arrayBuffer());
+    // Even though this image is never stored, it is forwarded to a third-party
+    // provider — so it still has to be a real image and not a disguised blob.
+    const format = sniffImageFormat(raw);
+    if (!format) return { ok: false, error: "INVALID_INPUT" };
+    bytes = raw;
+    contentType = `image/${format}`;
   }
 
   try {
@@ -66,7 +78,7 @@ export async function analyzeRoomAction(formData: FormData): Promise<AnalyzeResu
     });
     return { ok: true, analysis, needsFullImage: providerNeedsFullImage() };
   } catch (error) {
-    console.error("[vision] analyze failed", error);
+    log.error("vision.analyze_failed", { error });
     return { ok: false, error: "PROVIDER_FAILED" };
   }
 }
