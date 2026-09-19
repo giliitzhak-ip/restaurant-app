@@ -6,9 +6,10 @@
  * forced, and every row it writes is tagged is_demo = true so synthetic
  * professionals can never be silently mistaken for real ones.
  *
- *   npm run db:network                  # 1000 providers, seed 20260917
- *   COUNT=2500 SEED=7 npm run db:network
- *   npm run db:network -- --reset       # remove the synthetic network first
+ *   npm run db:network                        # 1000 providers, seed 20260917
+ *   npm run db:network -- --count 10000       # a bigger network
+ *   npm run db:network -- --reset             # remove the synthetic one first
+ *   COUNT=2500 SEED=7 npm run db:network      # the same, from the environment
  *
  * Deterministic: the same SEED reproduces the same network exactly, so a
  * changed matching result means the code changed, not the fixtures.
@@ -26,10 +27,74 @@ import {
   weightedRegion,
 } from './lib/synthetic.mjs';
 
-const SEED = Number(process.env.SEED ?? 20260917);
-const COUNT = Number(process.env.COUNT ?? 1000);
-const RESET = process.argv.includes('--reset');
-const FORCE = process.argv.includes('--force-production');
+/*
+ * Flags, and why they are parsed strictly.
+ *
+ * `--count` used to exist only as the COUNT environment variable, so
+ * `npm run db:network -- --count 10000 --reset` did something worse than
+ * fail: it reset the network and reseeded it with the DEFAULT 1000, then
+ * printed a cheerful success line. The operator asked for ten thousand
+ * providers, watched a seed run, and got a tenth of it with nothing saying
+ * so. Same class of bug as MAINTENANCE_INTERVAL_SECONDS="" parsing to zero —
+ * a value quietly not being what it appears to be.
+ *
+ * So: the flag is real now, AND an unrecognised one is a hard error rather
+ * than something skipped. A seeding script that silently ignores half its
+ * command line cannot be trusted to have done what was asked.
+ */
+const KNOWN_FLAGS = new Set(['--reset', '--force-production']);
+const VALUE_FLAGS = new Set(['--count', '--seed']);
+
+function parseArgs(argv) {
+  const values = {};
+  const flags = new Set();
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (!arg.startsWith('--')) {
+      throw new Error(`Unexpected argument "${arg}". Try --count <n>, --reset.`);
+    }
+
+    const eq = arg.indexOf('=');
+    const name = eq === -1 ? arg : arg.slice(0, eq);
+
+    if (VALUE_FLAGS.has(name)) {
+      const raw = eq === -1 ? argv[i + 1] : arg.slice(eq + 1);
+      if (raw === undefined || raw.startsWith('--')) {
+        throw new Error(`${name} needs a number, e.g. ${name} 10000.`);
+      }
+      values[name.slice(2)] = raw;
+      if (eq === -1) i += 1;
+      continue;
+    }
+
+    if (!KNOWN_FLAGS.has(name)) {
+      const known = [...VALUE_FLAGS, ...KNOWN_FLAGS].join(', ');
+      throw new Error(`Unknown flag "${name}". Known flags: ${known}.`);
+    }
+    flags.add(name);
+  }
+
+  return { values, flags };
+}
+
+// `npm run x -- --flag` passes everything after `--`; slice off node and the
+// script path so only the operator's own arguments are parsed. A parse error
+// is the operator's typo, so it prints the one line that explains it rather
+// than a stack trace from module load.
+let args;
+try {
+  args = parseArgs(process.argv.slice(2));
+} catch (error) {
+  process.stderr.write(`\n❌ ${error.message}\n`);
+  process.exit(1);
+}
+
+// An explicit flag beats the environment, which beats the default.
+const SEED = Number(args.values.seed ?? process.env.SEED ?? 20260917);
+const COUNT = Number(args.values.count ?? process.env.COUNT ?? 1000);
+const RESET = args.flags.has('--reset');
+const FORCE = args.flags.has('--force-production');
 
 const connectionString =
   process.env.DATABASE_ADMIN_URL ??
@@ -63,6 +128,9 @@ async function main() {
 
   if (!Number.isInteger(COUNT) || COUNT < 1 || COUNT > 20000) {
     throw new Error(`COUNT must be between 1 and 20000, got ${COUNT}`);
+  }
+  if (!Number.isInteger(SEED)) {
+    throw new Error(`SEED must be a whole number, got ${SEED}`);
   }
 
   const client = new pg.Client({ connectionString });
@@ -115,7 +183,7 @@ async function main() {
       log(`   ${label.padEnd(26)} ${value}`);
     }
     log('');
-    log(`   Regenerate identically with: SEED=${SEED} COUNT=${COUNT} npm run db:network -- --reset`);
+    log(`   Regenerate identically with: npm run db:network -- --seed ${SEED} --count ${COUNT} --reset`);
   } finally {
     await client.end();
   }

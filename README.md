@@ -83,6 +83,7 @@ refreshes it.
 | `npm test` | All 282 tests — the integration and security suites need a live PostgreSQL + PostGIS |
 | `npm run test:unit` · `test:integration` · `test:security` | One suite |
 | `npm run db:roles` · `db:migrate` · `db:seed` · `db:setup` | Database |
+| `npm run db:network -- --count 10000 --reset` | Reseed the synthetic network at any size up to 20,000 |
 | `npm run test:db` | Create/refresh the test database |
 | `npm run ui:audit` | RTL, mobile, touch-target and console audit in Chromium |
 | `npm run demo:tick` | Advance the demo fleet |
