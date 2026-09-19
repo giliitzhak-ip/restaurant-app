@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Generated imagery is not in git. It is built once here and reused by
+      # both the budget check and the end-to-end run.
+      - name: Generate media
+        run: npm run media:generate
+
+      - name: Asset budget
+        run: npm run assets:check
+
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run build
+
+      - name: Install browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end and accessibility tests
+        run: npm test
+        env:
+          # No DATABASE_URL: the suite runs against the in-memory driver, which
+          # is seeded from the same catalogue data as production.
+          NODE_ENV: test
+
+      - name: Upload test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

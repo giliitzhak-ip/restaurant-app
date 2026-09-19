@@ -1153,7 +1153,9 @@ export const prismaRepository: Repository = {
       include: designInclude,
       orderBy: { updatedAt: "desc" },
     });
-    return rows.map(toDesign);
+    // The listing feeds pages that render in the browser; the guest token is
+    // an httpOnly cookie value and must not ride along.
+    return rows.map((row) => ({ ...toDesign(row), guestToken: null }));
   },
 
   async deleteDesign(id) {
@@ -1332,7 +1334,7 @@ export const prismaRepository: Repository = {
       orderBy: { updatedAt: "desc" },
       take: 200,
     });
-    return rows.map(toDesign);
+    return rows.map((row) => ({ ...toDesign(row), guestToken: null }));
   },
 
   async addNewsletterSignup(email) {

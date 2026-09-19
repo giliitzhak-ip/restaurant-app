@@ -11,13 +11,13 @@ export const mediaRoot = "/media";
 export type ProductShot = "studio" | "room" | "detail";
 
 export const media = {
-  texture: (slug: string) => `${mediaRoot}/textures/${slug}.png`,
-  textureThumb: (slug: string) => `${mediaRoot}/textures/${slug}-thumb.png`,
+  texture: (slug: string) => `${mediaRoot}/textures/${slug}.webp`,
+  textureThumb: (slug: string) => `${mediaRoot}/textures/${slug}-thumb.webp`,
   product: (slug: string, shot: ProductShot) =>
-    `${mediaRoot}/products/${slug}-${shot}.png`,
-  scene: (name: string) => `${mediaRoot}/scenes/${name}.png`,
-  category: (slug: string) => `${mediaRoot}/categories/${slug}.png`,
-  collection: (slug: string) => `${mediaRoot}/collections/${slug}.png`,
+    `${mediaRoot}/products/${slug}-${shot}.webp`,
+  scene: (name: string) => `${mediaRoot}/scenes/${name}.webp`,
+  category: (slug: string) => `${mediaRoot}/categories/${slug}.webp`,
+  collection: (slug: string) => `${mediaRoot}/collections/${slug}.webp`,
 } as const;
 
 /** Blur placeholder used while large imagery streams in. */

@@ -65,3 +65,14 @@ export async function ownsDesign(designId: string | null | undefined): Promise<b
   const result = await requireDesignOwnership(designId);
   return result.ok;
 }
+
+/**
+ * Strips server-only fields before a design crosses into a client component.
+ *
+ * `guestToken` is the value of an httpOnly cookie. Serialising it into props
+ * would hand it to page JavaScript — and therefore to any XSS — which is
+ * exactly the exposure httpOnly exists to prevent.
+ */
+export function stripDesignSecrets(design: RoomDesignRecord): RoomDesignRecord {
+  return { ...design, guestToken: null };
+}

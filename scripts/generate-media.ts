@@ -12,7 +12,8 @@
  * up the real photography with no code change. See docs/MEDIA.md.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
+import sharp from "sharp";
 import {
   categoryTileProduct,
   collectionCoverProduct,
@@ -28,14 +29,24 @@ import {
 } from "../src/data/texture-geometry";
 import { clamp01, hexToRgb, mix, shade, type Rgb } from "./lib/color";
 import { fbm, hashSeed, makeNoise2D } from "./lib/noise";
-import { encodePng, Raster, resize } from "./lib/png";
+import { Raster, resize } from "./lib/png";
 import { renderScene, type SceneTexture } from "./lib/scene";
 import { renderTexture } from "./lib/textures";
 
 const root = process.cwd();
 const mediaDir = join(root, "public", "media");
 const sentinel = join(mediaDir, ".generated");
-const MEDIA_VERSION = "1";
+const manifestPath = join(mediaDir, "manifest.json");
+// Bump when the output changes shape, so a stale cache regenerates.
+const MEDIA_VERSION = "2-webp";
+
+/** Written next to the assets so a budget check has something to read. */
+const manifest: {
+  path: string;
+  bytes: number;
+  width: number;
+  height: number;
+}[] = [];
 
 // `predev` / `prebuild` call this script on every run; regenerating 250 files
 // each time would be wasteful, so bail out unless the sentinel is stale.
@@ -61,8 +72,37 @@ const smoothstep = (a: number, b: number, x: number) => {
   return t * t * (3 - 2 * t);
 };
 
-function write(path: string, raster: Raster, level = 6) {
-  writeFileSync(path, encodePng(raster, level));
+/**
+ * Writes a raster as WebP.
+ *
+ * The generator still composes pixels itself — that is the point of it — but
+ * the bytes on disk are WebP rather than PNG. For flat, procedurally shaded
+ * interiors that is roughly a five-fold saving over the hand-rolled PNG
+ * encoder, and Next's image optimiser has a smaller source to work from.
+ *
+ * Call sites keep their `.png` names; the extension is swapped here so the
+ * change stays in one function.
+ */
+const pending: Promise<void>[] = [];
+
+function write(path: string, raster: Raster, quality = 82) {
+  const target = path.replace(/\.png$/, ".webp");
+  const { width, height, data } = raster;
+  pending.push(
+    sharp(Buffer.from(data.buffer, data.byteOffset, data.byteLength), {
+      raw: { width, height, channels: 4 },
+    })
+      .webp({ quality, effort: 5 })
+      .toFile(target)
+      .then((info) => {
+        manifest.push({
+          path: `/${relative(join(root, "public"), target).split(/[\\/]/).join("/")}`,
+          bytes: info.size,
+          width: info.width,
+          height: info.height,
+        });
+      }),
+  );
 }
 
 /** Every product needs imagery, even the ones without a visualiser texture. */
@@ -318,5 +358,30 @@ for (const [slug, productSlug] of Object.entries(collectionCoverProduct)) {
   );
 }
 
-writeFileSync(sentinel, MEDIA_VERSION);
-console.log("✓ media generated into public/media");
+async function finish() {
+  await Promise.all(pending);
+
+  manifest.sort((a, b) => a.path.localeCompare(b.path));
+  const totalBytes = manifest.reduce((sum, entry) => sum + entry.bytes, 0);
+  writeFileSync(
+    manifestPath,
+    `${JSON.stringify(
+      {
+        version: MEDIA_VERSION,
+        generatedAt: new Date().toISOString(),
+        count: manifest.length,
+        totalBytes,
+        assets: manifest,
+      },
+      null,
+      2,
+    )}\n`,
+  );
+
+  writeFileSync(sentinel, MEDIA_VERSION);
+  console.log(
+    `✓ media generated into public/media — ${manifest.length} files, ${(totalBytes / 1024 / 1024).toFixed(1)} MB`,
+  );
+}
+
+void finish();
