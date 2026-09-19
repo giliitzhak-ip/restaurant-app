@@ -2,7 +2,7 @@
  * AIController — a finite state machine that plays street football.
  *
  * It reads the same MatchState the renderer reads and emits the same
- * InputCommand a human produces. Nothing here touches the engine, and no
+ * PlayerCommand a human produces. Nothing here touches the engine, and no
  * external AI service is involved: it is plain, deterministic logic plus a
  * seeded RNG that keeps every possession slightly different.
  */
@@ -10,7 +10,13 @@ import { GameConfig, type Difficulty, type DifficultyProfile } from '../config/G
 import { Rng } from '../core/Rng';
 import { clamp, horizontalDistance, yawFromXZ } from '../core/math';
 import type { Vec3 } from '../core/math';
-import { createCommand, resetCommand, type InputCommand } from '../input/Command';
+import type { ControlContext, PlayerController } from '../input/PlayerController';
+import { SequenceCounter } from '../input/PlayerController';
+import {
+  createPlayerCommand,
+  resetPlayerCommand,
+  type PlayerCommand,
+} from '../input/PlayerCommand';
 import {
   attackingGoalZ,
   defendingGoalZ,
@@ -32,13 +38,17 @@ interface ShotPlan {
   chargeSeconds: number;
 }
 
-export class AIController {
+export class AIController implements PlayerController {
+  readonly kind = 'ai' as const;
+  readonly deviceId: string;
+  readonly label: string;
+  private readonly sequence = new SequenceCounter();
   private state: AIState = 'Kickoff';
   private stateTime = 0;
   private reactionTimer = 0;
   private chargeTime = 0;
   private plan: ShotPlan;
-  private readonly command: InputCommand;
+  private readonly command: PlayerCommand;
   private profile: DifficultyProfile;
   /** Per-possession personality: small, persistent biases so it never feels scripted. */
   private wanderPhase: number;
@@ -50,8 +60,10 @@ export class AIController {
     difficulty: Difficulty,
     private readonly rng: Rng = new Rng(0x51a6a),
   ) {
+    this.deviceId = `ai:${playerId}`;
+    this.label = 'מחשב';
     this.profile = GameConfig.difficulty[difficulty];
-    this.command = createCommand(playerId);
+    this.command = createPlayerCommand(playerId);
     this.plan = this.makePlan();
     this.wanderPhase = this.rng.range(0, Math.PI * 2);
     this.wanderStrength = this.rng.range(0.1, 0.3);
@@ -61,11 +73,22 @@ export class AIController {
     return this.state;
   }
 
+  isConnected(): boolean {
+    return true;
+  }
+
+  /** PlayerController entry point. The AI ignores the camera entirely. */
+  poll(playerId: string, tickId: number, context: ControlContext): PlayerCommand {
+    this.command.playerId = playerId;
+    return this.update(context.state, context.dt, tickId);
+  }
+
   setDifficulty(difficulty: Difficulty): void {
     this.profile = GameConfig.difficulty[difficulty];
   }
 
   reset(): void {
+    this.sequence.reset();
     this.state = 'Kickoff';
     this.stateTime = 0;
     this.chargeTime = 0;
@@ -76,9 +99,8 @@ export class AIController {
   }
 
   /** Produces the command for one simulation tick. */
-  update(state: MatchState, dt: number, tick: number): InputCommand {
-    resetCommand(this.command, tick);
-    this.command.lofted = false;
+  update(state: MatchState, dt: number, tick: number): PlayerCommand {
+    resetPlayerCommand(this.command, tick, this.sequence.next());
 
     const me = state.players.find((player) => player.id === this.playerId);
     if (!me) return this.command;
@@ -233,15 +255,15 @@ export class AIController {
           GameConfig.goal.width * 0.45,
         );
         this.faceTowards(me, { x: aimX, y: 0, z: attackZ }, this.profile.aimError);
-        this.command.chargeKick = true;
-        this.command.lofted = this.plan.lofted;
+        this.command.shootHeld = true;
+        this.command.shootPressed = this.chargeTime <= dt * 1.5;
+        this.command.lobToggle = this.wantsLobToggle(me);
         break;
       }
 
       case 'Shoot': {
-        this.command.chargeKick = false;
-        this.command.releaseKick = this.stateTime <= dt * 1.5;
-        this.command.lofted = this.plan.lofted;
+        this.command.shootHeld = false;
+        this.command.shootReleased = this.stateTime <= dt * 1.5;
         const aimX = this.plan.aimOffsetX;
         this.faceTowards(me, { x: aimX, y: 0, z: attackZ }, this.profile.aimError);
         if (this.stateTime > 0.3) this.transition('Recover');
@@ -266,18 +288,22 @@ export class AIController {
     const distance = Math.hypot(dx, dz);
     if (distance < 0.14) {
       this.command.moveX = 0;
-      this.command.moveZ = 0;
+      this.command.moveY = 0;
       return;
     }
     const scale = Math.min(1, distance / 0.7) * this.profile.speedMultiplier;
     this.command.moveX = (dx / distance) * scale;
-    this.command.moveZ = (dz / distance) * scale;
-    this.command.sprint = sprint && me.stamina > GameConfig.player.staminaMax * 0.25;
+    this.command.moveY = (dz / distance) * scale;
+    this.command.sprintPressed = sprint && me.stamina > GameConfig.player.staminaMax * 0.25;
   }
 
   private faceTowards(me: PlayerState, target: Vec3, error = 0): void {
-    const yaw = yawFromXZ(target.x - me.position.x, target.z - me.position.z);
-    this.command.aimYaw = yaw + (error > 0 ? this.rng.jitter(error) : 0);
+    const yaw =
+      yawFromXZ(target.x - me.position.x, target.z - me.position.z) +
+      (error > 0 ? this.rng.jitter(error) : 0);
+    // The contract carries a world-space direction, not an angle.
+    this.command.aimX = Math.sin(yaw);
+    this.command.aimY = Math.cos(yaw);
   }
 
   private maybeTackle(me: PlayerState, ball: Vec3, opponent: PlayerState | undefined): void {
@@ -287,7 +313,15 @@ export class AIController {
       horizontalDistance(opponent.position, ball) <= GameConfig.ball.controlRadius * 1.3;
     if (!opponentHasBall) return;
     if (horizontalDistance(me.position, opponent.position) > GameConfig.tackle.range) return;
-    this.command.tackle = this.rng.chance(this.profile.tackleAggression);
+    this.command.tacklePressed = this.rng.chance(this.profile.tackleAggression);
+  }
+
+  /**
+   * Asks for a shot-type change only when the player's current type differs from
+   * the plan, since the command carries a toggle request rather than a state.
+   */
+  private wantsLobToggle(me: PlayerState): boolean {
+    return me.lofted !== this.plan.lofted && this.chargeTime <= 0.08;
   }
 
   /** Slow, smooth noise so movement targets breathe instead of snapping. */

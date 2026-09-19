@@ -9,10 +9,11 @@ import type { Scene } from '@babylonjs/core/scene';
 import { GameConfig, kindForGoalPart, type GoalPart } from '../config/GameConfig';
 import { EventBus } from '../core/EventBus';
 import { Rng } from '../core/Rng';
-import { clamp, horizontalDistance, rotateTowards, yawFromXZ } from '../core/math';
+import { angleDelta, clamp, horizontalDistance, rotateTowards, yawFromXZ } from '../core/math';
 import { BallEntity } from '../entities/BallEntity';
 import { PlayerEntity } from '../entities/PlayerEntity';
-import type { InputCommand } from '../input/Command';
+import type { PlayerCommand } from '../input/PlayerCommand';
+import { yawOf } from '../input/PlayerCommand';
 import type { PhysicsWorld, RawCollision } from '../physics/PhysicsWorld';
 import {
   advancePhases,
@@ -25,18 +26,24 @@ import {
   startMatch,
 } from './MatchRules';
 import {
+  attackingGoalZ,
   createMatchState,
   opponentOf,
   type MatchOutcome,
   type MatchState,
   type PlayerState,
   type ScoreEventRecord,
+  type ShotRecord,
   type TeamId,
 } from './MatchState';
 import { ScoringSystem } from './ScoringSystem';
 
 export interface MatchEventMap extends Record<string, unknown> {
   kick: { playerId: string; team: TeamId; power: number; lofted: boolean };
+  /** A tackle attempt resolved, successfully or not. */
+  tackle: { playerId: string; team: TeamId; success: boolean };
+  /** The team in control of the ball changed (null = loose ball). */
+  possession: { playerId: string | null; team: TeamId | null };
   touch: { playerId: string; team: TeamId };
   frameHit: { part: GoalPart; goal: TeamId; speed: number };
   wallHit: { speed: number };
@@ -47,9 +54,7 @@ export interface MatchEventMap extends Record<string, unknown> {
 }
 
 interface ActiveShot {
-  id: string;
-  team: TeamId;
-  playerId: string;
+  record: ShotRecord;
   startedAt: number;
 }
 
@@ -62,11 +67,14 @@ export class MatchEngine {
   readonly players: PlayerEntity[] = [];
 
   private readonly scoring = new ScoringSystem();
-  private readonly commands = new Map<string, InputCommand>();
+  private readonly commands = new Map<string, PlayerCommand>();
   private readonly rng: Rng;
   private activeShot: ActiveShot | null = null;
   private shotCounter = 0;
   private ballSpeedBeforeStep = 0;
+  private possessionPlayerId: string | null = null;
+  private readonly pendingKicks: { playerId: string; power: number }[] = [];
+  private readonly animationTriggers = new Map<string, { kick: boolean; tackle: boolean }>();
 
   constructor(
     scene: Scene,
@@ -101,13 +109,20 @@ export class MatchEngine {
     this.activeShot = null;
     this.shotCounter = 0;
     this.commands.clear();
+    this.pendingKicks.length = 0;
+    this.possessionPlayerId = null;
     this.applyKickoffReset();
     this.events.emit('kickoff', { team: this.state.kickoffTeam });
   }
 
   /** Queues the command for one player for the next tick. */
-  submitCommand(command: InputCommand): void {
+  submitCommand(command: PlayerCommand): void {
     this.commands.set(command.playerId, command);
+  }
+
+  /** The player currently in control of the ball, if any. */
+  get controllingPlayerId(): string | null {
+    return this.possessionPlayerId;
   }
 
   /** Advances the simulation by exactly one fixed tick. */
@@ -122,6 +137,7 @@ export class MatchEngine {
     }
 
     if (live) {
+      this.resolvePendingKicks(dt);
       this.applyBallControl(dt);
     } else {
       // Outside live play the ball is parked: no drift during the countdown.
@@ -162,11 +178,40 @@ export class MatchEngine {
     this.writeBackState();
   }
 
-  /** Render-rate visual update. Never touches physics or rules. */
-  updateVisuals(dt: number): void {
+  /**
+   * Render-rate visual update. Never touches physics or rules.
+   * The animation triggers are consumed here, so each one plays exactly once.
+   */
+  updateVisuals(dt: number, celebratingTeam: TeamId | null, defeatedTeam: TeamId | null): void {
     for (const player of this.state.players) {
-      this.entityFor(player.id)?.updateVisual(player, dt);
+      const entity = this.entityFor(player.id);
+      if (!entity) continue;
+      const triggers = this.animationTriggers.get(player.id);
+      entity.updateVisual(
+        player,
+        {
+          speed: Math.hypot(player.velocity.x, player.velocity.z),
+          hasBall: this.possessionPlayerId === player.id,
+          kickTriggered: triggers?.kick ?? false,
+          tackleTriggered: triggers?.tackle ?? false,
+          celebrating: celebratingTeam === player.team,
+          defeated: defeatedTeam === player.team,
+        },
+        dt,
+      );
+      entity.setInControl(this.possessionPlayerId === player.id);
+      if (triggers) {
+        triggers.kick = false;
+        triggers.tackle = false;
+      }
     }
+  }
+
+  /** Flags a one-shot animation. Cleared once the renderer has consumed it. */
+  private trigger(playerId: string, kind: 'kick' | 'tackle'): void {
+    const existing = this.animationTriggers.get(playerId);
+    if (existing) existing[kind] = true;
+    else this.animationTriggers.set(playerId, { kick: kind === 'kick', tackle: kind === 'tackle' });
   }
 
   // ── Commands ────────────────────────────────────────────────────────────────
@@ -192,10 +237,14 @@ export class MatchEngine {
       return;
     }
 
+    // The shot type belongs to the player, not to the device: each player keeps
+    // their own choice, and a controller only ever asks for a swap.
+    if (command.lobToggle) player.lofted = !player.lofted;
+
     const config = GameConfig.player;
-    const moveLength = Math.hypot(command.moveX, command.moveZ);
+    const moveLength = Math.hypot(command.moveX, command.moveY);
     const wantsSprint =
-      command.sprint && moveLength > 0.1 && player.stamina > config.staminaSprintFloor;
+      command.sprintPressed && moveLength > 0.1 && player.stamina > config.staminaSprintFloor;
 
     player.sprinting = wantsSprint;
     player.stamina = clamp(
@@ -206,12 +255,11 @@ export class MatchEngine {
     );
 
     // Charging a shot slows the player down: a real trade-off, not a free action.
-    const chargeSlowdown = command.chargeKick ? 0.62 : 1;
+    const chargeSlowdown = command.shootHeld ? GameConfig.kick.chargeMoveScale : 1;
     const targetSpeed = (wantsSprint ? config.sprintSpeed : config.walkSpeed) * chargeSlowdown;
-    const desiredX =
-      moveLength > 0 ? (command.moveX / moveLength) * targetSpeed * Math.min(1, moveLength) : 0;
-    const desiredZ =
-      moveLength > 0 ? (command.moveZ / moveLength) * targetSpeed * Math.min(1, moveLength) : 0;
+    const scaled = targetSpeed * Math.min(1, moveLength);
+    const desiredX = moveLength > 0 ? (command.moveX / moveLength) * scaled : 0;
+    const desiredZ = moveLength > 0 ? (command.moveY / moveLength) * scaled : 0;
 
     const velocity = player.velocity;
     const rate = moveLength > 0.05 ? config.acceleration : config.deceleration;
@@ -219,67 +267,106 @@ export class MatchEngine {
     const nextZ = approach(velocity.z, desiredZ, rate * dt);
     entity.setHorizontalVelocity(nextX, nextZ);
 
-    // Facing: while charging, the aim wins; otherwise follow the movement.
+    // Facing: an explicit aim wins, otherwise follow the movement, otherwise hold.
+    const aimLength = Math.hypot(command.aimX, command.aimY);
     const facingTarget =
-      command.chargeKick || moveLength <= 0.05
-        ? command.aimYaw
-        : yawFromXZ(command.moveX, command.moveZ);
+      aimLength > 0.05
+        ? yawOf(command.aimX, command.aimY)
+        : moveLength > 0.05
+          ? yawOf(command.moveX, command.moveY)
+          : player.facing;
     player.facing = rotateTowards(player.facing, facingTarget, config.turnRate * dt);
 
-    // Kick charge.
-    if (command.chargeKick && player.kickCooldown <= 0) {
+    // Kick charge. A short wind-up keeps the very first frames from firing a
+    // full-power shot, so a tap is always a gentle pass.
+    if (command.shootHeld && player.kickCooldown <= 0) {
       player.charging = true;
       player.kickCharge = Math.min(1, player.kickCharge + dt / GameConfig.kick.chargeSeconds);
-    } else if (!command.chargeKick) {
+    } else if (!command.shootHeld) {
       player.charging = false;
     }
-    player.lofted = command.lofted;
 
-    if (command.releaseKick) {
+    if (command.shootReleased) {
       this.tryKick(player);
     }
-    if (command.tackle) {
+    if (command.tacklePressed) {
       this.tryTackle(player);
     }
   }
 
+  /**
+   * Validates the shot at the moment of release and schedules the strike.
+   * The short wind-up is what makes a kick readable; the impulse lands when the
+   * foot does, so the animation and the physics always agree.
+   */
   private tryKick(player: PlayerState): void {
     const power = Math.max(GameConfig.kick.minPower, player.kickCharge);
     player.kickCharge = 0;
     player.charging = false;
 
     if (player.kickCooldown > 0 || player.stunTimer > 0) return;
+    if (!this.ballIsKickable(player)) return;
 
+    this.pendingKicks.push({ playerId: player.id, power });
+    player.windUpTimer = GameConfig.kick.windUpSeconds;
+    player.kickCooldown = GameConfig.kick.cooldownSeconds + GameConfig.kick.windUpSeconds;
+  }
+
+  /** True when the ball is close enough and inside the cone in front of the player. */
+  private ballIsKickable(player: PlayerState): boolean {
     const ball = this.state.ball.position;
-    const distance = horizontalDistance(player.position, ball);
-    if (distance > GameConfig.kick.range) return;
-
-    // The ball must be in the cone in front of the player.
+    if (horizontalDistance(player.position, ball) > GameConfig.kick.range) return false;
     const toBall = yawFromXZ(ball.x - player.position.x, ball.z - player.position.z);
     let angle = Math.abs(toBall - player.facing) % (Math.PI * 2);
     if (angle > Math.PI) angle = Math.PI * 2 - angle;
-    if (angle > GameConfig.kick.coneHalfAngle) return;
+    return angle <= GameConfig.kick.coneHalfAngle;
+  }
 
+  /** Runs the scheduled strikes whose wind-up has elapsed. */
+  private resolvePendingKicks(dt: number): void {
+    if (this.pendingKicks.length === 0) return;
+    for (let i = this.pendingKicks.length - 1; i >= 0; i -= 1) {
+      const pending = this.pendingKicks[i];
+      if (!pending) continue;
+      const player = this.state.players.find((entry) => entry.id === pending.playerId);
+      if (!player) {
+        this.pendingKicks.splice(i, 1);
+        continue;
+      }
+      player.windUpTimer = Math.max(0, player.windUpTimer - dt);
+      if (player.windUpTimer > 0) continue;
+      this.pendingKicks.splice(i, 1);
+      this.strikeBall(player, pending.power);
+    }
+  }
+
+  private strikeBall(player: PlayerState, power: number): void {
+    const facing = this.assistedShotYaw(player);
     const magnitude = GameConfig.kick.maxImpulse * power;
     const lift = player.lofted ? GameConfig.kick.loftRatio : GameConfig.kick.flatLift;
-    const dirX = Math.sin(player.facing);
-    const dirZ = Math.cos(player.facing);
+    const dirX = Math.sin(facing);
+    const dirZ = Math.cos(facing);
 
     this.ball.applyImpulse(dirX * magnitude, magnitude * lift, dirZ * magnitude);
     this.ball.clampSpeed();
-
-    player.kickCooldown = GameConfig.kick.cooldownSeconds;
     this.shotCounter += 1;
     this.activeShot = {
-      id: `shot-${this.shotCounter}`,
-      team: player.team,
-      playerId: player.id,
+      record: {
+        shotId: `shot-${this.shotCounter}`,
+        playerId: player.id,
+        teamId: player.team,
+        originatingTick: this.state.tick,
+        shotType: player.lofted ? 'lob' : 'flat',
+        power,
+      },
       startedAt: this.state.elapsed,
     };
     this.state.ball.lastTouchBy = player.id;
     this.state.ball.lastTouchTeam = player.team;
     this.state.ball.lastTouchTick = this.state.tick;
+    this.possessionPlayerId = null;
 
+    this.trigger(player.id, 'kick');
     this.events.emit('kick', {
       playerId: player.id,
       team: player.team,
@@ -290,12 +377,15 @@ export class MatchEngine {
 
   private tryTackle(player: PlayerState): void {
     if (player.tackleCooldown > 0 || player.stunTimer > 0) return;
-    player.tackleCooldown = GameConfig.tackle.cooldownSeconds;
 
     const opponent = this.state.players.find((other) => other.team !== player.team);
     const ball = this.state.ball.position;
     const inRange = horizontalDistance(player.position, ball) <= GameConfig.tackle.range;
     const success = inRange && this.rng.chance(GameConfig.tackle.successChance);
+    // Missing costs more than connecting, which is what stops tackle spam.
+    player.tackleCooldown = success
+      ? GameConfig.tackle.cooldownSeconds
+      : GameConfig.tackle.missCooldownSeconds;
 
     if (success) {
       const dirX = Math.sin(player.facing);
@@ -315,6 +405,33 @@ export class MatchEngine {
       this.state.ball.lastTouchTeam = player.team;
       this.invalidateShot();
     }
+    this.trigger(player.id, 'tackle');
+    this.events.emit('tackle', { playerId: player.id, team: player.team, success });
+  }
+
+  /**
+   * Nudges a shot towards the mouth of the goal being attacked.
+   * The strength lives on the player as a plain number, so the simulation never
+   * learns whether a pad, a thumb or a keyboard produced the shot.
+   */
+  private assistedShotYaw(player: PlayerState): number {
+    const strength = clamp(player.aimAssist, 0, 1);
+    if (strength <= 0) return player.facing;
+
+    const goalZ = attackingGoalZ(player.team);
+    const ball = this.state.ball.position;
+    const distance = Math.hypot(ball.x - 0, goalZ - ball.z);
+    if (distance > GameConfig.aimAssist.range) return player.facing;
+
+    // Aim at the nearest point inside the posts rather than the exact centre,
+    // so the assist never fights a deliberate shot across the goal.
+    const halfMouth = GameConfig.goal.width * 0.36;
+    const targetX = clamp(ball.x, -halfMouth, halfMouth);
+    const idealYaw = yawFromXZ(targetX - player.position.x, goalZ - player.position.z);
+
+    const maxCorrection = GameConfig.aimAssist.maxAngle * strength;
+    const delta = angleDelta(player.facing, idealYaw);
+    return player.facing + clamp(delta, -maxCorrection, maxCorrection);
   }
 
   // ── Ball ────────────────────────────────────────────────────────────────────
@@ -333,8 +450,18 @@ export class MatchEngine {
       }
     }
 
-    if (!closest || closestDistance > GameConfig.ball.controlRadius) return;
-    if (closest.stunTimer > 0) return;
+    if (!closest || closestDistance > GameConfig.ball.controlRadius || closest.stunTimer > 0) {
+      if (this.possessionPlayerId !== null) {
+        this.possessionPlayerId = null;
+        this.events.emit('possession', { playerId: null, team: null });
+      }
+      return;
+    }
+
+    if (this.possessionPlayerId !== closest.id) {
+      this.possessionPlayerId = closest.id;
+      this.events.emit('possession', { playerId: closest.id, team: closest.team });
+    }
 
     if (ball.lastTouchBy !== closest.id) {
       ball.lastTouchBy = closest.id;
@@ -349,6 +476,24 @@ export class MatchEngine {
 
     const speed = Math.hypot(ball.velocity.x, ball.velocity.z);
     if (speed > GameConfig.ball.dribbleMaxSpeed) return;
+
+    // Control assist: a weak pull back towards the controlling player once the
+    // ball drifts to the edge of the control radius. Weak on purpose — the ball
+    // must never look glued to the foot.
+    const falloffStart = GameConfig.ball.controlRadius * GameConfig.ball.assistFalloff;
+    if (closestDistance > falloffStart) {
+      const pull =
+        ((closestDistance - falloffStart) / (GameConfig.ball.controlRadius - falloffStart)) *
+        GameConfig.ball.assistStrength *
+        dt;
+      const toPlayerX = (closest.position.x - ball.position.x) / closestDistance;
+      const toPlayerZ = (closest.position.z - ball.position.z) / closestDistance;
+      this.ball.setVelocity(
+        ball.velocity.x + toPlayerX * pull,
+        ball.velocity.y,
+        ball.velocity.z + toPlayerZ * pull,
+      );
+    }
 
     const playerSpeed = Math.hypot(closest.velocity.x, closest.velocity.z);
     if (playerSpeed < 0.35) return;
@@ -380,7 +525,7 @@ export class MatchEngine {
 
       if (ballSide.kind === 'goalPart' && live) {
         const kind = kindForGoalPart(ballSide.part);
-        const shooterTeam = this.activeShot?.team ?? null;
+        const shooterTeam = this.activeShot?.record.teamId ?? null;
         const team =
           shooterTeam === null ? null : resolveScoringTeam(ballSide.goal, shooterTeam, false);
 
@@ -391,9 +536,10 @@ export class MatchEngine {
         });
 
         this.scoring.registerContact({
-          shotId: this.activeShot?.id ?? null,
+          shot: this.activeShot?.record ?? null,
           kind,
           team,
+          ownGoal: false,
           colliderId: `${ballSide.goal}:${ballSide.part}`,
           ballId: BALL_ID,
           speed: this.ballSpeedBeforeStep,
@@ -410,13 +556,18 @@ export class MatchEngine {
 
     // A goal needs a player touch behind it, but not necessarily a live shot:
     // a ball that rolls over the line after a shot still counts.
-    const shotId = this.activeShot?.id ?? this.rollingShotId();
-    if (!shotId) return;
+    const shot = this.activeShot?.record ?? this.rollingShot();
+    if (!shot) return;
+
+    // Whoever owns the net concedes; an own goal is worth a single goal only,
+    // which is exactly what the 'goal' kind is worth.
+    const ownGoal = shot.teamId === owner;
 
     this.scoring.registerContact({
-      shotId,
+      shot,
       kind: 'goal',
       team: resolveScoringTeam(owner, opponentOf(owner), true),
+      ownGoal,
       colliderId: `${owner}:goalLine`,
       ballId: BALL_ID,
       speed: Math.max(this.ballSpeedBeforeStep, GameConfig.scoring.minGoalSpeed),
@@ -425,10 +576,18 @@ export class MatchEngine {
     });
   }
 
-  /** Identifies a goal that came from a loose ball, keyed on the last touch. */
-  private rollingShotId(): string | null {
-    const { lastTouchBy, lastTouchTick } = this.state.ball;
-    return lastTouchBy ? `roll-${lastTouchBy}-${lastTouchTick}` : null;
+  /** Builds a shot record for a goal that came from a loose ball. */
+  private rollingShot(): ShotRecord | null {
+    const { lastTouchBy, lastTouchTeam, lastTouchTick } = this.state.ball;
+    if (!lastTouchBy || !lastTouchTeam) return null;
+    return {
+      shotId: `roll-${lastTouchBy}-${lastTouchTick}`,
+      playerId: lastTouchBy,
+      teamId: lastTouchTeam,
+      originatingTick: lastTouchTick,
+      shotType: 'flat',
+      power: 0,
+    };
   }
 
   private expireShot(): void {
@@ -459,6 +618,8 @@ export class MatchEngine {
     this.scoring.reset();
     this.invalidateShot();
     this.commands.clear();
+    this.pendingKicks.length = 0;
+    this.possessionPlayerId = null;
   }
 
   private writeBackState(): void {

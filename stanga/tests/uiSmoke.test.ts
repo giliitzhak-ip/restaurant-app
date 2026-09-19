@@ -8,7 +8,12 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { UIManager, type UICallbacks } from '../src/ui/UIManager';
-import { defaultSettings, loadSettings, saveSettings } from '../src/core/Settings';
+import {
+  defaultSettings,
+  loadSettings,
+  saveSettings,
+  type GameSettings,
+} from '../src/core/Settings';
 import { createMatchState } from '../src/game/MatchState';
 import { GameConfig } from '../src/config/GameConfig';
 
@@ -29,6 +34,7 @@ type MockedCallbacks = { [K in keyof UICallbacks]: Mock<UICallbacks[K]> };
 function makeCallbacks(): MockedCallbacks {
   return {
     onPlayPressed: vi.fn<UICallbacks['onPlayPressed']>(),
+    onLocalPlayPressed: vi.fn<UICallbacks['onLocalPlayPressed']>(),
     onStartMatch: vi.fn<UICallbacks['onStartMatch']>(),
     onResume: vi.fn<UICallbacks['onResume']>(),
     onRestart: vi.fn<UICallbacks['onRestart']>(),
@@ -37,6 +43,17 @@ function makeCallbacks(): MockedCallbacks {
     onSettingsChanged: vi.fn<UICallbacks['onSettingsChanged']>(),
     onInteraction: vi.fn<UICallbacks['onInteraction']>(),
     onReload: vi.fn<UICallbacks['onReload']>(),
+    onLobbyStart: vi.fn<UICallbacks['onLobbyStart']>(),
+    onLobbySwapSides: vi.fn<UICallbacks['onLobbySwapSides']>(),
+    onLobbyLeave: vi.fn<UICallbacks['onLobbyLeave']>(),
+    onLobbyTouchJoin: vi.fn<UICallbacks['onLobbyTouchJoin']>(),
+    onLobbyName: vi.fn<UICallbacks['onLobbyName']>(),
+    onLobbyColor: vi.fn<UICallbacks['onLobbyColor']>(),
+    onPrimerDismissed: vi.fn<UICallbacks['onPrimerDismissed']>(),
+    onReconnectResume: vi.fn<UICallbacks['onReconnectResume']>(),
+    onReconnectUseAi: vi.fn<UICallbacks['onReconnectUseAi']>(),
+    onBindingsChanged: vi.fn<UICallbacks['onBindingsChanged']>(),
+    onBindingsReset: vi.fn<UICallbacks['onBindingsReset']>(),
   };
 }
 
@@ -63,25 +80,39 @@ describe('UI smoke', () => {
       'screen-settings',
       'screen-pause',
       'screen-result',
+      'screen-lobby',
+      'screen-primer',
+      'screen-reconnect',
+      'screen-bindings',
       'hud',
       'rotate-notice',
       'fatal-error',
       'render-canvas',
       'touch-root',
+      'resume-countdown',
+      'small-screen-advice',
     ]) {
       expect(document.getElementById(id), `#${id} is missing`).not.toBeNull();
     }
   });
 
-  it('marks every unreleased mode as coming soon and disables it', () => {
+  it('offers local two-player as a live button, not a locked one', () => {
+    const button = document.getElementById('btn-play-local') as HTMLButtonElement;
+    expect(button).not.toBeNull();
+    expect(button.disabled).toBe(false);
+    expect(button.textContent).toContain('שני שחקנים');
+    expect(button.className).not.toContain('btn--locked');
+  });
+
+  it('still marks every unreleased mode as coming soon and disables it', () => {
     const locked = [...document.querySelectorAll<HTMLButtonElement>('.btn--locked')];
-    expect(locked.length).toBe(5);
+    expect(locked.length).toBe(4);
     for (const button of locked) {
       expect(button.disabled).toBe(true);
       expect(button.textContent).toContain('בקרוב');
     }
     const labels = locked.map((button) => button.textContent ?? '');
-    for (const mode of ['משחק עם חבר', '2 נגד 2', 'אונליין', 'קריירה', 'טורנירים']) {
+    for (const mode of ['2 נגד 2', 'אונליין', 'קריירה', 'טורנירים']) {
       expect(labels.some((label) => label.includes(mode))).toBe(true);
     }
   });
@@ -156,9 +187,47 @@ describe('UI smoke', () => {
       'true',
     );
 
-    click('set-vibration');
+    // Vibration ships off (support is unreliable), so one click turns it on.
     expect(document.getElementById('set-vibration')?.getAttribute('aria-checked')).toBe('false');
-    expect(document.getElementById('out-vibration')?.textContent).toBe('כבוי');
+    click('set-vibration');
+    expect(document.getElementById('set-vibration')?.getAttribute('aria-checked')).toBe('true');
+    expect(document.getElementById('out-vibration')?.textContent).toBe('פעיל');
+  });
+
+  it('exposes every accessibility toggle and reports the change', () => {
+    const callbacks = makeCallbacks();
+    const ui = new UIManager(callbacks, defaultSettings());
+    ui.showScreen('settings');
+
+    for (const [id, read] of [
+      ['set-contrast', (s: GameSettings) => s.accessibility.highContrast],
+      ['set-flashes', (s: GameSettings) => s.accessibility.reduceFlashes],
+      ['set-motion', (s: GameSettings) => s.accessibility.reduceCameraMotion],
+      ['set-captions', (s: GameSettings) => s.accessibility.audioCaptions],
+    ] as const) {
+      click(id);
+      const last = callbacks.onSettingsChanged.mock.calls.at(-1)?.[0];
+      expect(last, `${id} reported no change`).toBeDefined();
+      expect(read(last as GameSettings), `${id} did not flip`).toBe(true);
+      expect(document.getElementById(id)?.getAttribute('aria-checked')).toBe('true');
+    }
+  });
+
+  it('applies accessibility choices to the document so the stylesheet can react', () => {
+    const ui = new UIManager(makeCallbacks(), defaultSettings());
+    ui.applySettingsToForm({
+      ...defaultSettings(),
+      accessibility: {
+        highContrast: true,
+        reduceFlashes: true,
+        reduceCameraMotion: true,
+        hudScale: 'large',
+        audioCaptions: true,
+      },
+    });
+    expect(document.documentElement.dataset.contrast).toBe('high');
+    expect(document.documentElement.dataset.hudScale).toBe('large');
+    expect(document.documentElement.dataset.reduceMotion).toBe('true');
   });
 
   it('round-trips settings through the real localStorage', () => {
@@ -183,7 +252,8 @@ describe('UI smoke', () => {
     state.timeRemaining = 61;
     state.players[0]!.stamina = GameConfig.player.staminaMax / 2;
 
-    ui.updateHud(state, 0.5, true);
+    state.players[0]!.lofted = true;
+    ui.updateHud(state, [0.5]);
 
     expect(document.getElementById('hud-score-home')?.textContent).toBe('5');
     expect(document.getElementById('hud-score-away')?.textContent).toBe('2');
@@ -193,12 +263,19 @@ describe('UI smoke', () => {
     expect(document.getElementById('hud-shot-type')?.textContent).toBe('בעיטה מוגבהת');
   });
 
-  it('shows a scoring banner in Hebrew', () => {
+  it('shows a scoring banner naming the scorer', () => {
     const ui = new UIManager(makeCallbacks(), defaultSettings());
-    ui.showEvent('junction', 5);
+    ui.showEvent('junction', 5, 'דנה', 0);
     expect(document.getElementById('hud-event')?.hidden).toBe(false);
+    expect(document.getElementById('hud-event-scorer')?.textContent).toBe('דנה');
     expect(document.getElementById('hud-event-kind')?.textContent).toBe('חיבור!');
     expect(document.getElementById('hud-event-points')?.textContent).toBe('+5 נקודות');
+  });
+
+  it('labels an own goal instead of crediting a scorer', () => {
+    const ui = new UIManager(makeCallbacks(), defaultSettings());
+    ui.showEvent('goal', 1, 'דנה', 0, true);
+    expect(document.getElementById('hud-event-scorer')?.textContent).toBe('שער עצמי');
   });
 
   it('shows win, loss and draw on the result screen', () => {

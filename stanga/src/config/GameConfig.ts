@@ -5,6 +5,8 @@
 
 export type Difficulty = 'easy' | 'normal' | 'hard';
 export type QualityLevel = 'low' | 'medium' | 'high';
+export type ShakeLevel = 'off' | 'subtle' | 'normal';
+export type HudScale = 'small' | 'normal' | 'large';
 
 /** Frame parts of a goal. Each one is a separate collider with its own score value. */
 export type GoalPart = 'leftPost' | 'rightPost' | 'crossbar' | 'leftJunction' | 'rightJunction';
@@ -122,11 +124,18 @@ export const GameConfig = {
     angularDamping: 0.45,
     maxSpeed: 32,
     /** Ball is considered controllable by a player inside this radius. */
-    controlRadius: 1.25,
+    controlRadius: 1.4,
     /** Dribble steering strength while in control. */
-    dribbleForce: 14,
+    dribbleForce: 15,
     /** Max speed the dribble nudge will push the ball to. */
     dribbleMaxSpeed: 9.5,
+    /**
+     * Ball control assist: a gentle pull towards the controlling player's feet.
+     * Deliberately weak — it must never glue the ball to the foot.
+     */
+    assistStrength: 3.4,
+    /** Assist fades out beyond this fraction of the control radius. */
+    assistFalloff: 0.55,
   },
 
   player: {
@@ -157,14 +166,21 @@ export const GameConfig = {
     /** Small permanent lift so flat shots still leave the ground slightly. */
     flatLift: 0.08,
     /** The ball must be this close to be kickable. */
-    range: 1.45,
+    range: 1.6,
+    /** Movement speed multiplier while a shot is being charged. */
+    chargeMoveScale: 0.7,
+    /**
+     * A short, readable wind-up before the foot meets the ball. The impulse is
+     * applied when it elapses, so the animation and the physics agree.
+     */
+    windUpSeconds: 0.09,
     /** Half-angle (radians) of the cone in front of the player that can be kicked. */
     coneHalfAngle: 1.15,
     cooldownSeconds: 0.35,
   },
 
   tackle: {
-    range: 1.9,
+    range: 2,
     cooldownSeconds: 1.1,
     /** Impulse applied to the ball when a tackle succeeds. */
     ballImpulse: 3.4,
@@ -172,6 +188,18 @@ export const GameConfig = {
     stunSeconds: 0.45,
     /** Chance the tackle takes the ball cleanly rather than just poking it. */
     successChance: 0.75,
+    /** A missed tackle costs more than a successful one, to discourage spam. */
+    missCooldownSeconds: 1.6,
+  },
+
+  /** Aim assist nudges a shot towards the goal mouth. Weak, and switchable off. */
+  aimAssist: {
+    /** Maximum correction in radians for a pad or touch player. */
+    maxAngle: 0.16,
+    /** Assist only applies inside this distance from the target goal. */
+    range: 18,
+    /** Keyboard players already aim precisely, so they get less help. */
+    keyboardScale: 0.35,
   },
 
   camera: {
@@ -186,6 +214,10 @@ export const GameConfig = {
     maxFov: 1.22,
     /** Keeps the camera from clipping through the perimeter walls. */
     collisionPadding: 0.6,
+    /** Shake amplitude in metres at full strength, before the player's setting. */
+    shakeAmplitude: 0.26,
+    shakeDecayPerSecond: 5.5,
+    shakeScale: { off: 0, subtle: 0.45, normal: 1 } as const,
     /** How strongly the view leans towards the ball rather than the goal. */
     ballAwarenessWeight: 0.22,
     /**
@@ -194,6 +226,60 @@ export const GameConfig = {
      * frame, which is exactly when the player needs to see it.
      */
     maxYawDeviation: 0.42,
+  },
+
+  /** The shared camera used when two humans play on one device. */
+  sharedCamera: {
+    /** Both players and the ball must stay inside this fraction of the screen. */
+    safeFrame: 0.72,
+    minDistance: 9,
+    maxDistance: 19.5,
+    minHeight: 4.6,
+    maxHeight: 9.4,
+    /** How much of the framing weight the ball carries versus the players. */
+    ballWeight: 0.44,
+    positionSmoothing: 0.1,
+    targetSmoothing: 0.14,
+    distanceSmoothing: 0.07,
+    /** Extra lean towards the goal the move is developing against. */
+    goalBias: 0.18,
+    /** Brief pull-in after a scoring event. */
+    celebrationZoom: 0.82,
+    /**
+     * Separation, in metres, up to which BOTH players and the ball are
+     * guaranteed inside the safe frame. Beyond it the distance and field-of-view
+     * ceilings bind, and the camera keeps the ball framed while a player may
+     * drift off the edge — the alternative is a camera so far back that both
+     * players become specks. Measured, not guessed: see tests/sharedCamera.
+     */
+    framableSeparation: 20,
+  },
+
+  /** Visual effects. Every one of these is scaled down by the quality preset. */
+  effects: {
+    /** Ball trail only appears above this speed. */
+    trailMinSpeed: 15,
+    trailSegments: 14,
+    trailFadeSeconds: 0.28,
+    /** Dust puffs on hard stops, sprint starts and kicks. */
+    dustPoolSize: 48,
+    dustLifeSeconds: 0.5,
+    dustRiseSpeed: 1.1,
+    /** How long a struck goal frame glows. */
+    frameFlashSeconds: 0.55,
+    /** Confetti-free celebration: a short ring pulse on the pitch. */
+    celebrationSeconds: 1.1,
+  },
+
+  /** Procedural animation timings, in seconds. */
+  animation: {
+    blendSeconds: 0.14,
+    kickSeconds: 0.32,
+    tackleSeconds: 0.42,
+    celebrationSeconds: 1.8,
+    /** Strides per second at walking and at sprinting pace. */
+    walkStrideRate: 5,
+    sprintStrideRate: 14,
   },
 
   difficulty: {
@@ -247,6 +333,17 @@ export const GameConfig = {
     },
   } as const satisfies Record<QualityLevel, QualityProfile>,
 
+  /**
+   * Kit colours. Each has a distinct hue AND a distinct shirt pattern, so the
+   * teams stay tellable apart without relying on colour vision.
+   */
+  kits: [
+    { id: 0, name: 'כתום', shirt: '#ff8c1a', trim: '#1b1c20', pattern: 'solid' },
+    { id: 1, name: 'כחול', shirt: '#2f7fe8', trim: '#f2f5f9', pattern: 'stripes' },
+    { id: 2, name: 'לבן', shirt: '#f2f4f7', trim: '#22242a', pattern: 'sash' },
+    { id: 3, name: 'ירוק', shirt: '#2fae6a', trim: '#10231a', pattern: 'hoops' },
+  ] as const,
+
   audio: {
     masterVolumeDefault: 0.8,
     musicVolumeDefault: 0.35,
@@ -264,6 +361,8 @@ export const GameConfig = {
   input: {
     /** Dead zone of the virtual joystick and gamepad sticks, 0..1. */
     deadZone: 0.16,
+    deadZoneMin: 0.05,
+    deadZoneMax: 0.4,
     joystickRadiusPx: 62,
     sensitivityDefault: 1,
     sensitivityMin: 0.5,

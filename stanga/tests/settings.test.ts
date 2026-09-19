@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest';
 import {
   SETTINGS_STORAGE_KEY,
   clearSettings,
+  defaultAccessibility,
   defaultSettings,
+  isLegacyRecord,
   loadSettings,
   sanitizeSettings,
   saveSettings,
   type StorageLike,
 } from '../src/core/Settings';
+import { defaultLeftKeyMap, defaultRightKeyMap } from '../src/input/KeyBindings';
 import { GameConfig } from '../src/config/GameConfig';
 
 class MemoryStorage implements StorageLike {
@@ -75,7 +78,8 @@ describe('settings persistence', () => {
     expect(repaired.musicVolume).toBe(0);
     expect(repaired.sensitivity).toBe(GameConfig.input.sensitivityMax);
     expect(repaired.quality).toBe('medium');
-    expect(repaired.vibration).toBe(true);
+    // Vibration ships off: support across browsers is not reliable enough.
+    expect(repaired.vibration).toBe(false);
     expect(repaired.difficulty).toBe('normal');
   });
 
@@ -89,6 +93,86 @@ describe('settings persistence', () => {
     const storage = new ThrowingStorage();
     expect(loadSettings(storage)).toEqual(defaultSettings());
     expect(saveSettings(defaultSettings(), storage)).toBe(false);
+  });
+
+  it('upgrades a 0.1.0 record in place without losing anything', () => {
+    const storage = new MemoryStorage();
+    // Exactly what version 0.1.0 wrote: no accessibility, bindings or profiles.
+    const legacy = {
+      masterVolume: 0.45,
+      musicVolume: 0.1,
+      sensitivity: 1.4,
+      quality: 'high',
+      vibration: true,
+      difficulty: 'hard',
+    };
+    storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(legacy));
+    expect(isLegacyRecord(legacy)).toBe(true);
+
+    const loaded = loadSettings(storage);
+
+    // Everything the player had chosen in 0.1.0 survives.
+    expect(loaded.masterVolume).toBeCloseTo(0.45);
+    expect(loaded.musicVolume).toBeCloseTo(0.1);
+    expect(loaded.sensitivity).toBeCloseTo(1.4);
+    expect(loaded.quality).toBe('high');
+    expect(loaded.vibration).toBe(true);
+    expect(loaded.difficulty).toBe('hard');
+
+    // And the new options arrive at their defaults rather than undefined.
+    expect(loaded.accessibility).toEqual(defaultAccessibility());
+    expect(loaded.keyBindings.left).toEqual(defaultLeftKeyMap());
+    expect(loaded.keyBindings.right).toEqual(defaultRightKeyMap());
+    expect(loaded.cameraShake).toBe('subtle');
+    expect(loaded.profiles.player1.name).toBe('שחקן 1');
+    expect(loaded.seenControlsPrimer).toBe(false);
+  });
+
+  it('writes the upgraded record back to the same storage key', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ masterVolume: 0.3 }));
+    const loaded = loadSettings(storage);
+    saveSettings(loaded, storage);
+
+    const stored = JSON.parse(storage.getItem(SETTINGS_STORAGE_KEY) ?? '{}') as Record<
+      string,
+      unknown
+    >;
+    expect(isLegacyRecord(stored)).toBe(false);
+    expect(stored.keyBindings).toBeDefined();
+    expect(loadSettings(storage).masterVolume).toBeCloseTo(0.3);
+  });
+
+  it('repairs a corrupted key map instead of leaving a player unable to move', () => {
+    const repaired = sanitizeSettings({
+      keyBindings: {
+        left: { up: [], down: 'nope', left: ['KeyA'], right: null },
+        right: 'not an object',
+      },
+    });
+    expect(repaired.keyBindings.left.up).toEqual(defaultLeftKeyMap().up);
+    expect(repaired.keyBindings.left.down).toEqual(defaultLeftKeyMap().down);
+    expect(repaired.keyBindings.left.left).toEqual(['KeyA']);
+    expect(repaired.keyBindings.right).toEqual(defaultRightKeyMap());
+  });
+
+  it('clamps the dead zone and the aim assist', () => {
+    const repaired = sanitizeSettings({ deadZone: 5, aimAssist: -3 });
+    expect(repaired.deadZone).toBe(GameConfig.input.deadZoneMax);
+    expect(repaired.aimAssist).toBe(0);
+  });
+
+  it('trims and bounds player names', () => {
+    const repaired = sanitizeSettings({
+      profiles: {
+        player1: { name: '   ', colorId: 99 },
+        player2: { name: '  שם ארוך מאוד מאוד מאוד מאוד  ', colorId: -2 },
+      },
+    });
+    expect(repaired.profiles.player1.name).toBe('שחקן 1');
+    expect(repaired.profiles.player1.colorId).toBeLessThan(GameConfig.kits.length);
+    expect(repaired.profiles.player2.name.length).toBeLessThanOrEqual(16);
+    expect(repaired.profiles.player2.colorId).toBeGreaterThanOrEqual(0);
   });
 
   it('clears stored settings', () => {

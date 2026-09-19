@@ -324,21 +324,50 @@ export function createBallTexture(scene: Scene, size = 512): DynamicTexture {
   });
 }
 
-/** Team kit: shirt colour with a number-plate look on the back. */
+export type KitPattern = 'solid' | 'stripes' | 'sash' | 'hoops';
+
+/**
+ * Team kit. Each kit carries a distinct PATTERN as well as a distinct colour, so
+ * the two sides stay tellable apart without relying on colour vision.
+ */
 export function createKitTexture(
   scene: Scene,
-  primary: string,
-  secondary: string,
+  shirt: string,
+  trim: string,
+  pattern: KitPattern,
   size = 256,
 ): DynamicTexture {
-  return createCanvasTexture(`kit-${primary}`, size, scene, (ctx) => {
-    ctx.fillStyle = primary;
+  return createCanvasTexture(`kit-${shirt}-${pattern}`, size, scene, (ctx) => {
+    ctx.fillStyle = shirt;
     ctx.fillRect(0, 0, size, size);
-    ctx.fillStyle = secondary;
-    for (let i = 0; i < 4; i += 1) {
-      ctx.fillRect(size * (0.12 + i * 0.22), 0, size * 0.06, size);
+    ctx.fillStyle = trim;
+
+    switch (pattern) {
+      case 'solid':
+        // A single broad chest band still reads at a distance.
+        ctx.fillRect(0, size * 0.42, size, size * 0.1);
+        break;
+      case 'stripes':
+        for (let i = 0; i < 5; i += 1) {
+          ctx.fillRect(size * (0.08 + i * 0.19), 0, size * 0.08, size);
+        }
+        break;
+      case 'sash':
+        ctx.save();
+        ctx.translate(size / 2, size / 2);
+        ctx.rotate(-Math.PI / 5);
+        ctx.fillRect(-size, -size * 0.09, size * 2, size * 0.18);
+        ctx.restore();
+        break;
+      case 'hoops':
+        for (let i = 0; i < 4; i += 1) {
+          ctx.fillRect(0, size * (0.12 + i * 0.22), size, size * 0.09);
+        }
+        break;
     }
+
+    // Shadow under the hem, so the torso does not read as flat.
     ctx.fillStyle = 'rgba(0,0,0,0.18)';
-    ctx.fillRect(0, size * 0.78, size, size * 0.22);
+    ctx.fillRect(0, size * 0.82, size, size * 0.18);
   });
 }

@@ -33,7 +33,18 @@ function runFor(state: MatchState, seconds: number) {
 }
 
 function scoreEvent(overrides: Partial<ScoreEventRecord> = {}): ScoreEventRecord {
-  return { shotId: 's', kind: 'goal', team: 'home', points: 1, tick: 1, ...overrides };
+  return {
+    shotId: 's',
+    kind: 'goal',
+    team: 'home',
+    playerId: 'home-1',
+    points: 1,
+    tick: 1,
+    ownGoal: false,
+    shotType: 'flat',
+    power: 0.8,
+    ...overrides,
+  };
 }
 
 describe('match flow', () => {

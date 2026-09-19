@@ -1,7 +1,9 @@
 /**
- * A player: one kinematic-feeling dynamic capsule plus a procedurally built
- * street-football character. No external models, no violent animation —
- * just a run cycle driven by horizontal speed.
+ * A player: one upright dynamic capsule for the physics, plus a procedurally
+ * built street-football character driven by PlayerAnimator.
+ *
+ * No external models and no violent animation — the tackle is a leg poke at the
+ * ball, and the celebration is arms up and a hop.
  */
 import { Color3 } from '@babylonjs/core/Maths/math.color';
 import { Quaternion, Vector3 } from '@babylonjs/core/Maths/math.vector';
@@ -17,31 +19,42 @@ import { GameConfig } from '../config/GameConfig';
 import type { Vec3 } from '../core/math';
 import type { PlayerState, TeamId } from '../game/MatchState';
 import type { PhysicsWorld } from '../physics/PhysicsWorld';
+import { createKitTexture, type KitPattern } from '../rendering/ProceduralTextures';
+import { PlayerAnimator, type AnimatorInputs } from './PlayerAnimator';
 
-export interface KitColors {
+const SKIN_TONES: readonly string[] = ['#c98d63', '#8d5a3b', '#e0b08a', '#6f4326'];
+const HAIR_TONES: readonly string[] = ['#241b16', '#3d2a1c', '#111114', '#5a3b22'];
+
+export interface KitDefinition {
+  readonly id: number;
+  readonly name: string;
   readonly shirt: string;
-  readonly shorts: string;
-  readonly accent: string;
+  readonly trim: string;
+  readonly pattern: string;
 }
 
-export const TEAM_KITS: Record<TeamId, KitColors> = {
-  home: { shirt: '#f5f7fa', shorts: '#1d1f24', accent: '#ffa524' },
-  away: { shirt: '#1f6fe0', shorts: '#12203a', accent: '#e8eef8' },
-};
-
-const SKIN = '#c98d63';
+export function kitFor(colorId: number): KitDefinition {
+  const kits = GameConfig.kits;
+  const index = Number.isFinite(colorId) ? Math.abs(Math.trunc(colorId)) % kits.length : 0;
+  return kits[index] ?? kits[0];
+}
 
 export class PlayerEntity {
   readonly root: Mesh;
   readonly body: PhysicsBody;
   readonly visual: TransformNode;
-  readonly marker: Mesh | null;
+  readonly marker: Mesh;
   readonly meshes: Mesh[] = [];
+  readonly animator = new PlayerAnimator();
 
   private readonly limbs: { leftLeg: Mesh; rightLeg: Mesh; leftArm: Mesh; rightArm: Mesh };
+  private readonly torso: Mesh;
+  private readonly torsoMaterial: StandardMaterial;
+  private readonly markerMaterial: StandardMaterial;
   private readonly scratch = new Vector3();
   private readonly identity = Quaternion.Identity();
-  private stridePhase = 0;
+  private readonly baseVisualY: number;
+  private colorId = -1;
 
   constructor(
     scene: Scene,
@@ -50,9 +63,9 @@ export class PlayerEntity {
     readonly team: TeamId,
     isHuman: boolean,
     start: Vec3,
+    private readonly scene_ = scene,
   ) {
     const { player } = GameConfig;
-    const kit = TEAM_KITS[team];
 
     this.root = MeshBuilder.CreateCapsule(
       `player-${id}`,
@@ -85,21 +98,27 @@ export class PlayerEntity {
 
     this.visual = new TransformNode(`visual-${id}`, scene);
     this.visual.parent = this.root;
-    this.visual.position.y = -player.height / 2;
+    this.baseVisualY = -player.height / 2;
+    this.visual.position.y = this.baseVisualY;
 
-    const shirtMaterial = solidMaterial(scene, `shirt-${id}`, kit.shirt);
-    const shortsMaterial = solidMaterial(scene, `shorts-${id}`, kit.shorts);
-    const skinMaterial = solidMaterial(scene, `skin-${id}`, SKIN);
-    const shoeMaterial = solidMaterial(scene, `shoe-${id}`, kit.accent);
+    // Small per-player variation so the two characters are not clones.
+    const variant = hashString(id);
+    const skinTone = SKIN_TONES[variant % SKIN_TONES.length] ?? '#c98d63';
+    const hairTone = HAIR_TONES[variant % HAIR_TONES.length] ?? '#241b16';
+    const skinMaterial = solidMaterial(scene, `skin-${id}`, skinTone);
+    const shortsMaterial = solidMaterial(scene, `shorts-${id}`, '#1d1f24');
 
-    const torso = MeshBuilder.CreateBox(
+    this.torsoMaterial = new StandardMaterial(`shirt-${id}`, scene);
+    this.torsoMaterial.specularColor = new Color3(0.08, 0.08, 0.09);
+
+    this.torso = MeshBuilder.CreateBox(
       `torso-${id}`,
       { width: 0.46, height: 0.6, depth: 0.26 },
       scene,
     );
-    torso.position.y = 1.16;
-    torso.material = shirtMaterial;
-    torso.parent = this.visual;
+    this.torso.position.y = 1.16;
+    this.torso.material = this.torsoMaterial;
+    this.torso.parent = this.visual;
 
     const hips = MeshBuilder.CreateBox(
       `hips-${id}`,
@@ -109,6 +128,15 @@ export class PlayerEntity {
     hips.position.y = 0.78;
     hips.material = shortsMaterial;
     hips.parent = this.visual;
+
+    const neck = MeshBuilder.CreateCylinder(
+      `neck-${id}`,
+      { height: 0.1, diameter: 0.13, tessellation: 8 },
+      scene,
+    );
+    neck.position.y = 1.48;
+    neck.material = skinMaterial;
+    neck.parent = this.visual;
 
     const head = MeshBuilder.CreateSphere(`head-${id}`, { diameter: 0.28, segments: 12 }, scene);
     head.position.y = 1.6;
@@ -121,7 +149,7 @@ export class PlayerEntity {
       scene,
     );
     hair.position.y = 1.605;
-    hair.material = solidMaterial(scene, `hair-${id}`, '#241b16');
+    hair.material = solidMaterial(scene, `hair-${id}`, hairTone);
     hair.parent = this.visual;
 
     const makeLimb = (name: string, x: number, y: number, length: number, thickness: number) => {
@@ -147,40 +175,67 @@ export class PlayerEntity {
     leftArm.material = skinMaterial;
     rightArm.material = skinMaterial;
 
-    for (const [name, x] of [
-      ['shoeL', -0.12],
-      ['shoeR', 0.12],
+    const shoeMaterial = solidMaterial(scene, `shoe-${id}`, '#111216');
+    for (const [name, parent] of [
+      ['shoeL', leftLeg],
+      ['shoeR', rightLeg],
     ] as const) {
       const shoe = MeshBuilder.CreateBox(
         `${name}-${id}`,
         { width: 0.19, height: 0.1, depth: 0.3 },
         scene,
       );
-      shoe.position.set(x, -0.3, 0.05);
+      shoe.position.set(0, -0.3, 0.05);
       shoe.material = shoeMaterial;
-      shoe.parent = name === 'shoeL' ? leftLeg : rightLeg;
+      shoe.parent = parent;
+      this.meshes.push(shoe);
     }
 
     this.limbs = { leftLeg, rightLeg, leftArm, rightArm };
-    this.meshes.push(torso, hips, head, hair, leftLeg, rightLeg, leftArm, rightArm);
+    this.meshes.push(this.torso, hips, neck, head, hair, leftLeg, rightLeg, leftArm, rightArm);
 
-    if (isHuman) {
-      this.marker = MeshBuilder.CreateTorus(
-        `marker-${id}`,
-        { diameter: 1.05, thickness: 0.07, tessellation: 24 },
-        scene,
-      );
-      this.marker.position.y = 0.04;
-      this.marker.parent = this.visual;
-      this.marker.isPickable = false;
-      const markerMaterial = new StandardMaterial(`markerMat-${id}`, scene);
-      markerMaterial.emissiveColor = Color3.FromHexString(kit.accent);
-      markerMaterial.diffuseColor = Color3.FromHexString(kit.accent);
-      markerMaterial.alpha = 0.85;
-      this.marker.material = markerMaterial;
-    } else {
-      this.marker = null;
-    }
+    // Every player gets a ring; whether it is shown depends on who is driving,
+    // which can change between matches.
+    this.marker = MeshBuilder.CreateTorus(
+      `marker-${id}`,
+      { diameter: 1.05, thickness: 0.07, tessellation: 24 },
+      scene,
+    );
+    this.marker.position.y = 0.045;
+    this.marker.parent = this.visual;
+    this.marker.isPickable = false;
+    this.markerMaterial = new StandardMaterial(`markerMat-${id}`, scene);
+    this.markerMaterial.alpha = 0.9;
+    this.marker.material = this.markerMaterial;
+    this.setMarkerVisible(isHuman);
+  }
+
+  /** Shows the player ring. Humans get one so they can find themselves. */
+  setMarkerVisible(visible: boolean): void {
+    this.marker?.setEnabled(visible);
+  }
+
+  /** Applies a kit. Cheap enough to call whenever the player changes colour. */
+  applyKit(colorId: number): void {
+    if (colorId === this.colorId) return;
+    this.colorId = colorId;
+    const kit = kitFor(colorId);
+    this.torsoMaterial.diffuseTexture?.dispose();
+    this.torsoMaterial.diffuseTexture = createKitTexture(
+      this.scene_,
+      kit.shirt,
+      kit.trim,
+      kit.pattern as KitPattern,
+    );
+    const color = Color3.FromHexString(kit.shirt);
+    this.markerMaterial.emissiveColor = color;
+    this.markerMaterial.diffuseColor = color;
+  }
+
+  /** Highlights the player currently in control of the ball. */
+  setInControl(inControl: boolean): void {
+    this.markerMaterial.alpha = inControl ? 1 : 0.55;
+    this.marker.scaling.setAll(inControl ? 1.14 : 1);
   }
 
   get position(): Vector3 {
@@ -211,32 +266,32 @@ export class PlayerEntity {
     this.root.position.copyFrom(this.scratch);
     this.body.setLinearVelocity(Vector3.ZeroReadOnly);
     this.body.setAngularVelocity(Vector3.ZeroReadOnly);
-    this.visual.rotation.y = facing;
-    this.stridePhase = 0;
+    this.visual.rotation.set(0, facing, 0);
+    this.animator.reset();
   }
 
-  /** Drives the run cycle and body facing. Rendering only — never affects physics. */
-  updateVisual(state: PlayerState, dt: number): void {
-    this.visual.rotation.y = state.facing;
+  /**
+   * Drives the animation state machine and applies the resulting pose.
+   * Rendering only — it never writes back into the simulation.
+   */
+  updateVisual(state: PlayerState, inputs: AnimatorInputs, dt: number): void {
+    const pose = this.animator.update(state, inputs, dt);
 
-    const speed = Math.hypot(state.velocity.x, state.velocity.z);
-    const normalized = Math.min(1, speed / GameConfig.player.sprintSpeed);
-    this.stridePhase += dt * (5 + normalized * 9);
+    this.visual.rotation.y = state.facing + pose.torsoYaw;
+    this.visual.rotation.x = pose.torsoPitch;
+    this.visual.rotation.z = pose.torsoRoll;
+    this.visual.position.y = this.baseVisualY + pose.bob;
 
-    const swing = Math.sin(this.stridePhase) * (0.16 + normalized * 0.72);
-    const armSwing = Math.sin(this.stridePhase) * (0.1 + normalized * 0.5);
-    this.limbs.leftLeg.rotation.x = swing;
-    this.limbs.rightLeg.rotation.x = -swing;
-    this.limbs.leftArm.rotation.x = -armSwing;
-    this.limbs.rightArm.rotation.x = armSwing;
+    this.limbs.leftLeg.rotation.x = pose.leftLeg;
+    this.limbs.rightLeg.rotation.x = pose.rightLeg;
+    this.limbs.leftArm.rotation.x = pose.leftArm;
+    this.limbs.rightArm.rotation.x = pose.rightArm;
+    // Arms swing outwards as they are raised, so a celebration reads clearly.
+    this.limbs.leftArm.rotation.z = -pose.armsUp * 0.5;
+    this.limbs.rightArm.rotation.z = pose.armsUp * 0.5;
 
-    // Lean forward a touch while charging a shot or sprinting.
-    const lean = state.charging ? 0.14 : normalized * 0.1;
-    this.visual.rotation.x = -lean;
-
-    if (this.marker) {
-      this.marker.rotation.y = -state.facing;
-    }
+    // Counter-rotate so the ring never appears to spin with the body.
+    this.marker.rotation.y = -this.visual.rotation.y;
   }
 
   /** Mirrors the physics result into the serializable match state. */
@@ -256,4 +311,13 @@ function solidMaterial(scene: Scene, name: string, hex: string): StandardMateria
   material.diffuseColor = Color3.FromHexString(hex);
   material.specularColor = new Color3(0.08, 0.08, 0.09);
   return material;
+}
+
+/** Stable small hash, so a player id always picks the same skin and hair. */
+function hashString(value: string): number {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
+  }
+  return hash;
 }

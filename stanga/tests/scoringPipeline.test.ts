@@ -13,7 +13,12 @@ import {
   resolveScoringTeam,
   startMatch,
 } from '../src/game/MatchRules';
-import { createMatchState, type MatchState, type TeamId } from '../src/game/MatchState';
+import {
+  createMatchState,
+  type MatchState,
+  type ShotRecord,
+  type TeamId,
+} from '../src/game/MatchState';
 import { ScoringSystem } from '../src/game/ScoringSystem';
 
 const STEP = GameConfig.simulation.fixedDeltaSeconds;
@@ -24,7 +29,7 @@ class Pipeline {
   readonly scoring = new ScoringSystem();
   time = 0;
   tick = 0;
-  shotId: string | null = null;
+  shot: ShotRecord | null = null;
   private shotCounter = 0;
 
   constructor() {
@@ -34,19 +39,27 @@ class Pipeline {
     expect(this.state.phase).toBe('playing');
   }
 
-  kick(team: TeamId): string {
+  kick(team: TeamId, shotType: 'flat' | 'lob' = 'flat', power = 0.8): ShotRecord {
     this.shotCounter += 1;
-    this.shotId = `shot-${this.shotCounter}`;
+    this.shot = {
+      shotId: `shot-${this.shotCounter}`,
+      playerId: `${team}-1`,
+      teamId: team,
+      originatingTick: this.tick,
+      shotType,
+      power,
+    };
     this.state.ball.lastTouchBy = `${team}-1`;
     this.state.ball.lastTouchTeam = team;
-    return this.shotId;
+    return this.shot;
   }
 
   hitFrame(goal: TeamId, part: GoalPart, shooter: TeamId, speed = 14): void {
     this.scoring.registerContact({
-      shotId: this.shotId,
+      shot: this.shot,
       kind: kindForGoalPart(part),
       team: resolveScoringTeam(goal, shooter, false),
+      ownGoal: false,
       colliderId: `${goal}:${part}`,
       ballId: 'ball',
       speed,
@@ -57,9 +70,11 @@ class Pipeline {
 
   crossLine(goal: TeamId, speed = 6): void {
     this.scoring.registerContact({
-      shotId: this.shotId,
+      shot: this.shot,
       kind: 'goal',
       team: resolveScoringTeam(goal, goal, true),
+      // An own goal is a shot that ends in the striker's own net.
+      ownGoal: this.shot?.teamId === goal,
       colliderId: `${goal}:goalLine`,
       ballId: 'ball',
       speed,
@@ -77,13 +92,13 @@ class Pipeline {
       for (const record of this.scoring.update(this.time)) {
         if (this.state.phase !== 'playing') continue;
         applyScoreEvent(this.state, record);
-        this.shotId = null;
+        this.shot = null;
       }
       const result = advancePhases(this.state, STEP);
       if (result.needsKickoffReset) {
         resetForKickoff(this.state);
         this.scoring.reset();
-        this.shotId = null;
+        this.shot = null;
       }
     }
   }
@@ -207,7 +222,7 @@ describe('scoring pipeline', () => {
 
   it('ignores frame contacts with no shot behind them', () => {
     const pipeline = new Pipeline();
-    pipeline.shotId = null;
+    pipeline.shot = null;
     pipeline.hitFrame('away', 'crossbar', 'home');
     pipeline.run(SETTLE);
     expect(pipeline.state.score.home).toBe(0);

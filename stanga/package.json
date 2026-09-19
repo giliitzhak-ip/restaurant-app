@@ -1,9 +1,9 @@
 {
   "name": "stanga",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "STANGA - Israeli street football, 3D browser game",
+  "description": "STANGA - Israeli street football, 3D browser game with local two-player",
   "engines": {
     "node": ">=20.19.0"
   },

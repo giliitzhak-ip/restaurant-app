@@ -1,12 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { ScoringSystem, type ContactInput } from '../src/game/ScoringSystem';
 import { GameConfig } from '../src/config/GameConfig';
+import type { ShotRecord, TeamId } from '../src/game/MatchState';
+
+function shot(shotId = 'shot-1', playerId = 'home-1', teamId: TeamId = 'home'): ShotRecord {
+  return { shotId, playerId, teamId, originatingTick: 50, shotType: 'flat', power: 0.8 };
+}
 
 function contact(overrides: Partial<ContactInput> = {}): ContactInput {
   return {
-    shotId: 'shot-1',
+    shot: shot(),
     kind: 'goal',
     team: 'home',
+    ownGoal: false,
     colliderId: 'away:goalLine',
     ballId: 'ball',
     speed: 12,
@@ -91,7 +97,7 @@ describe('ScoringSystem', () => {
 
   it('rejects contacts that do not belong to a player shot', () => {
     const system = new ScoringSystem();
-    expect(system.registerContact(contact({ shotId: null }))).toBe('no-shot');
+    expect(system.registerContact(contact({ shot: null }))).toBe('no-shot');
     expect(system.update(AFTER_WINDOW)).toHaveLength(0);
   });
 
@@ -115,7 +121,7 @@ describe('ScoringSystem', () => {
     expect(
       system.registerContact(
         contact({
-          shotId: 'shot-2',
+          shot: shot('shot-2'),
           kind: 'junction',
           colliderId: 'away:leftPost',
           time: 1 + GameConfig.scoring.colliderCooldownSeconds / 2,
@@ -126,7 +132,7 @@ describe('ScoringSystem', () => {
     expect(
       system.registerContact(
         contact({
-          shotId: 'shot-3',
+          shot: shot('shot-3'),
           kind: 'junction',
           colliderId: 'away:leftPost',
           time: 1 + GameConfig.scoring.colliderCooldownSeconds + 0.01,
@@ -147,11 +153,11 @@ describe('ScoringSystem', () => {
   it('resolves several independent shots', () => {
     const system = new ScoringSystem();
     system.registerContact(
-      contact({ shotId: 'a', kind: 'goal', colliderId: 'away:goalLine', time: 1 }),
+      contact({ shot: shot('a'), kind: 'goal', colliderId: 'away:goalLine', time: 1 }),
     );
     system.registerContact(
       contact({
-        shotId: 'b',
+        shot: shot('b'),
         kind: 'junction',
         colliderId: 'home:rightJunction',
         team: 'away',

@@ -13,7 +13,15 @@ export type MatchOutcome = 'homeWin' | 'awayWin' | 'draw';
 export interface PlayerState {
   readonly id: string;
   readonly team: TeamId;
-  readonly isHuman: boolean;
+  /**
+   * Whether a person is driving this player right now. The session owns this:
+   * the same slot can be a human in one match and the AI in the next.
+   */
+  isHuman: boolean;
+  /** Display name. Editable by the player, never sent anywhere. */
+  name: string;
+  /** Index into the team colour palette. */
+  colorId: number;
   position: Vec3;
   velocity: Vec3;
   /** Body yaw in radians, 0 = facing +Z. */
@@ -27,6 +35,14 @@ export interface PlayerState {
   kickCooldown: number;
   tackleCooldown: number;
   stunTimer: number;
+  /**
+   * 0..1 strength of the shot-direction assist for this player. Set by the
+   * session from the controller kind and the player's settings; the simulation
+   * only ever reads the number, never the device behind it.
+   */
+  aimAssist: number;
+  /** Counts down the wind-up between releasing the shot and the foot connecting. */
+  windUpTimer: number;
 }
 
 export interface BallState {
@@ -37,12 +53,33 @@ export interface BallState {
   lastTouchTick: number;
 }
 
+/** Everything known about one shot, recorded when the ball is struck. */
+export interface ShotRecord {
+  shotId: string;
+  playerId: string;
+  teamId: TeamId;
+  /** Tick the ball was struck on. */
+  originatingTick: number;
+  shotType: ShotType;
+  /** Charge at the moment of release, 0..1. */
+  power: number;
+}
+
+export type ShotType = 'flat' | 'lob';
+
 export interface ScoreEventRecord {
   shotId: string;
   kind: ScoreKind;
+  /** Team credited with the points. */
   team: TeamId;
+  /** Player credited with the points, or null for an unattributed rolling ball. */
+  playerId: string | null;
   points: number;
   tick: number;
+  /** True when the ball went into the scorer's own net. */
+  ownGoal: boolean;
+  shotType: ShotType;
+  power: number;
 }
 
 export interface MatchState {
@@ -67,11 +104,15 @@ export function createPlayerState(
   isHuman: boolean,
   position: Vec3,
   facing: number,
+  name = id,
+  colorId = team === 'home' ? 0 : 1,
 ): PlayerState {
   return {
     id,
     team,
     isHuman,
+    name,
+    colorId,
     position: { ...position },
     velocity: vec3(),
     facing,
@@ -83,6 +124,8 @@ export function createPlayerState(
     kickCooldown: 0,
     tackleCooldown: 0,
     stunTimer: 0,
+    aimAssist: 0,
+    windUpTimer: 0,
   };
 }
 
@@ -115,8 +158,8 @@ export function createMatchState(): MatchState {
     timeRemaining: GameConfig.match.durationSeconds,
     score: { home: 0, away: 0 },
     players: [
-      createPlayerState('home-1', 'home', true, vec3(0, 0, -halfLength * 0.42), 0),
-      createPlayerState('away-1', 'away', false, vec3(0, 0, halfLength * 0.42), Math.PI),
+      createPlayerState('home-1', 'home', true, vec3(0, 0, -halfLength * 0.42), 0, 'שחקן 1', 0),
+      createPlayerState('away-1', 'away', false, vec3(0, 0, halfLength * 0.42), Math.PI, 'מחשב', 1),
     ],
     ball: {
       position: vec3(0, GameConfig.ball.radius, 0),

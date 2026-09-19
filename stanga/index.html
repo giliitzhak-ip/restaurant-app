@@ -19,7 +19,7 @@
     <div id="app">
       <canvas id="render-canvas" aria-label="מגרש המשחק"></canvas>
 
-      <!-- Touch controls are injected here by the InputManager -->
+      <!-- Touch control pads are injected here, one per touch player -->
       <div id="touch-root"></div>
 
       <!-- HUD -->
@@ -27,13 +27,15 @@
         <div class="hud__top">
           <div class="hud__score" id="hud-score">
             <span class="hud__team hud__team--home">
-              <span class="hud__team-name">אתה</span>
+              <span class="hud__swatch" id="hud-swatch-home"></span>
+              <span class="hud__team-name" id="hud-name-home">אתה</span>
               <span class="hud__team-points" id="hud-score-home">0</span>
             </span>
             <span class="hud__separator">:</span>
             <span class="hud__team hud__team--away">
               <span class="hud__team-points" id="hud-score-away">0</span>
-              <span class="hud__team-name">מחשב</span>
+              <span class="hud__team-name" id="hud-name-away">מחשב</span>
+              <span class="hud__swatch" id="hud-swatch-away"></span>
             </span>
           </div>
           <div class="hud__clock" id="hud-clock">3:00</div>
@@ -46,13 +48,17 @@
         </div>
 
         <div class="hud__event" id="hud-event" hidden>
+          <span class="hud__event-scorer" id="hud-event-scorer"></span>
           <span class="hud__event-kind" id="hud-event-kind"></span>
           <span class="hud__event-points" id="hud-event-points"></span>
         </div>
 
+        <div class="hud__caption" id="hud-caption" hidden aria-live="polite"></div>
+
         <div class="hud__countdown" id="hud-countdown" hidden></div>
 
-        <div class="hud__meters">
+        <div class="hud__meters" id="hud-meters-1">
+          <span class="hud__meters-name" id="hud-meters-name-1">שחקן 1</span>
           <div class="meter meter--power">
             <span class="meter__label">כוח בעיטה</span>
             <div class="meter__track"><div class="meter__fill" id="meter-power"></div></div>
@@ -62,6 +68,19 @@
             <div class="meter__track"><div class="meter__fill" id="meter-stamina"></div></div>
           </div>
           <div class="hud__shot-type" id="hud-shot-type">בעיטה שטוחה</div>
+        </div>
+
+        <div class="hud__meters hud__meters--second is-hidden" id="hud-meters-2">
+          <span class="hud__meters-name" id="hud-meters-name-2">שחקן 2</span>
+          <div class="meter meter--power">
+            <span class="meter__label">כוח בעיטה</span>
+            <div class="meter__track"><div class="meter__fill" id="meter-power-2"></div></div>
+          </div>
+          <div class="meter meter--stamina">
+            <span class="meter__label">אנרגיה</span>
+            <div class="meter__track"><div class="meter__fill" id="meter-stamina-2"></div></div>
+          </div>
+          <div class="hud__shot-type" id="hud-shot-type-2">בעיטה שטוחה</div>
         </div>
       </div>
 
@@ -89,17 +108,15 @@
             <button type="button" class="btn btn--primary btn--xl" id="btn-play">
               משחק נגד המחשב
             </button>
+            <button type="button" class="btn btn--secondary btn--xl" id="btn-play-local">
+              שני שחקנים — אותו מכשיר
+            </button>
             <button type="button" class="btn btn--ghost" id="btn-settings">הגדרות</button>
           </div>
 
           <div class="menu__locked">
             <h2 class="menu__locked-title">מצבים נוספים</h2>
             <ul class="locked-list">
-              <li>
-                <button type="button" class="btn btn--locked" disabled>
-                  משחק עם חבר<span class="badge">בקרוב</span>
-                </button>
-              </li>
               <li>
                 <button type="button" class="btn btn--locked" disabled>
                   2 נגד 2<span class="badge">בקרוב</span>
@@ -191,6 +208,175 @@
         </div>
       </section>
 
+      <!-- Local two-player lobby: device assignment -->
+      <section
+        class="screen screen--dialog is-hidden"
+        id="screen-lobby"
+        aria-label="חברו אמצעי שליטה"
+      >
+        <div class="panel panel--wide">
+          <h2 class="panel__title">חברו אמצעי שליטה</h2>
+          <p class="panel__lead" id="lobby-hint">
+            כל שחקן לוחץ על מקש או על כפתור בבקר שלו כדי להצטרף.
+          </p>
+
+          <div class="lobby">
+            <div class="lobby__card" id="lobby-card-1" data-slot="1">
+              <div class="lobby__header">
+                <span class="lobby__badge" id="lobby-badge-1">שחקן 1</span>
+                <span class="lobby__goal" id="lobby-goal-1">תוקף את השער הצפוני</span>
+              </div>
+              <p class="lobby__status" id="lobby-status-1">ממתין לחיבור…</p>
+              <label class="lobby__field">
+                <span>שם</span>
+                <input
+                  class="lobby__input"
+                  id="lobby-name-1"
+                  type="text"
+                  maxlength="16"
+                  autocomplete="off"
+                  spellcheck="false"
+                  value="שחקן 1"
+                />
+              </label>
+              <div class="lobby__field">
+                <span>צבע חולצה</span>
+                <div
+                  class="kit-picker"
+                  id="kit-picker-1"
+                  role="radiogroup"
+                  aria-label="צבע חולצה שחקן 1"
+                ></div>
+              </div>
+              <button
+                type="button"
+                class="btn btn--secondary lobby__touch-join is-hidden"
+                id="lobby-touch-1"
+              >
+                הצטרף במגע
+              </button>
+              <button
+                type="button"
+                class="btn btn--ghost lobby__leave is-hidden"
+                id="lobby-leave-1"
+              >
+                שחרר אמצעי שליטה
+              </button>
+            </div>
+
+            <div class="lobby__card" id="lobby-card-2" data-slot="2">
+              <div class="lobby__header">
+                <span class="lobby__badge" id="lobby-badge-2">שחקן 2</span>
+                <span class="lobby__goal" id="lobby-goal-2">תוקף את השער הדרומי</span>
+              </div>
+              <p class="lobby__status" id="lobby-status-2">ממתין לחיבור…</p>
+              <label class="lobby__field">
+                <span>שם</span>
+                <input
+                  class="lobby__input"
+                  id="lobby-name-2"
+                  type="text"
+                  maxlength="16"
+                  autocomplete="off"
+                  spellcheck="false"
+                  value="שחקן 2"
+                />
+              </label>
+              <div class="lobby__field">
+                <span>צבע חולצה</span>
+                <div
+                  class="kit-picker"
+                  id="kit-picker-2"
+                  role="radiogroup"
+                  aria-label="צבע חולצה שחקן 2"
+                ></div>
+              </div>
+              <button
+                type="button"
+                class="btn btn--secondary lobby__touch-join is-hidden"
+                id="lobby-touch-2"
+              >
+                הצטרף במגע
+              </button>
+              <button
+                type="button"
+                class="btn btn--ghost lobby__leave is-hidden"
+                id="lobby-leave-2"
+              >
+                שחרר אמצעי שליטה
+              </button>
+            </div>
+          </div>
+
+          <p class="lobby__notice is-hidden" id="lobby-notice"></p>
+
+          <div class="panel__actions">
+            <button type="button" class="btn btn--primary btn--lg" id="btn-lobby-start" disabled>
+              מוכנים — התחל
+            </button>
+            <button type="button" class="btn btn--ghost" id="btn-lobby-swap">החלף צדדים</button>
+            <button type="button" class="btn btn--ghost" id="btn-lobby-back">חזרה</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Controls primer, shown once -->
+      <section class="screen screen--dialog is-hidden" id="screen-primer" aria-label="הפקדים">
+        <div class="panel panel--wide">
+          <h2 class="panel__title">הפקדים</h2>
+          <div class="primer" id="primer-body"></div>
+          <div class="panel__actions">
+            <button type="button" class="btn btn--primary btn--lg" id="btn-primer-ok">הבנתי</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Controller reconnect -->
+      <section class="screen screen--dialog is-hidden" id="screen-reconnect" aria-label="בקר התנתק">
+        <div class="panel">
+          <h2 class="panel__title">אמצעי השליטה התנתק</h2>
+          <p class="panel__lead" id="reconnect-message">חברו מחדש את הבקר כדי להמשיך.</p>
+          <p class="panel__note">המשחק ממתין. השליטה לא תועבר למחשב ללא אישורכם.</p>
+          <div class="panel__actions panel__actions--stack">
+            <button
+              type="button"
+              class="btn btn--primary btn--lg"
+              id="btn-reconnect-resume"
+              disabled
+            >
+              המשך משחק
+            </button>
+            <button type="button" class="btn btn--ghost" id="btn-reconnect-ai">
+              העבר את השחקן לשליטת המחשב
+            </button>
+            <button type="button" class="btn btn--danger" id="btn-reconnect-menu">
+              יציאה לתפריט
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Key binding editor -->
+      <section
+        class="screen screen--dialog is-hidden"
+        id="screen-bindings"
+        aria-label="שינוי מקשים"
+      >
+        <div class="panel panel--wide">
+          <h2 class="panel__title">מקשי השליטה</h2>
+          <div class="bindings" id="bindings-body"></div>
+          <p class="bindings__warning is-hidden" id="bindings-warning"></p>
+          <div class="panel__actions">
+            <button type="button" class="btn btn--primary btn--lg" id="btn-bindings-close">
+              סגור
+            </button>
+            <button type="button" class="btn btn--ghost" id="btn-bindings-reset">
+              אפס לברירת מחדל
+            </button>
+          </div>
+        </div>
+      </section>
+
       <!-- Settings -->
       <section class="screen screen--dialog is-hidden" id="screen-settings" aria-label="הגדרות">
         <div class="panel panel--wide">
@@ -255,6 +441,58 @@
             </div>
           </div>
 
+          <div class="field">
+            <label class="field__label" for="set-deadzone"
+              >אזור מת בבקר<output class="field__value" id="out-deadzone">16%</output></label
+            >
+            <input class="slider" type="range" id="set-deadzone" min="5" max="40" step="1" />
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="set-aimassist"
+              >סיוע כיוון בעיטה<output class="field__value" id="out-aimassist">60%</output></label
+            >
+            <input class="slider" type="range" id="set-aimassist" min="0" max="100" step="10" />
+          </div>
+
+          <div class="field">
+            <span class="field__label">רעידת מצלמה</span>
+            <div
+              class="choice-group choice-group--row"
+              id="shake-group"
+              role="radiogroup"
+              aria-label="רעידת מצלמה"
+            >
+              <button
+                type="button"
+                class="choice choice--compact"
+                data-shake="off"
+                role="radio"
+                aria-checked="false"
+              >
+                כבוי
+              </button>
+              <button
+                type="button"
+                class="choice choice--compact"
+                data-shake="subtle"
+                role="radio"
+                aria-checked="true"
+              >
+                עדין
+              </button>
+              <button
+                type="button"
+                class="choice choice--compact"
+                data-shake="normal"
+                role="radio"
+                aria-checked="false"
+              >
+                רגיל
+              </button>
+            </div>
+          </div>
+
           <div class="field field--row">
             <span class="field__label">רטט בטלפון</span>
             <button
@@ -262,11 +500,98 @@
               class="toggle"
               id="set-vibration"
               role="switch"
-              aria-checked="true"
+              aria-checked="false"
             >
               <span class="toggle__track"><span class="toggle__thumb"></span></span>
-              <span class="toggle__state" id="out-vibration">פעיל</span>
+              <span class="toggle__state" id="out-vibration">כבוי</span>
             </button>
+          </div>
+
+          <h3 class="panel__subtitle">נגישות</h3>
+
+          <div class="field field--row">
+            <span class="field__label">ניגודיות גבוהה</span>
+            <button
+              type="button"
+              class="toggle"
+              id="set-contrast"
+              role="switch"
+              aria-checked="false"
+            >
+              <span class="toggle__track"><span class="toggle__thumb"></span></span>
+              <span class="toggle__state" id="out-contrast">כבוי</span>
+            </button>
+          </div>
+          <div class="field field--row">
+            <span class="field__label">הפחתת הבזקים</span>
+            <button
+              type="button"
+              class="toggle"
+              id="set-flashes"
+              role="switch"
+              aria-checked="false"
+            >
+              <span class="toggle__track"><span class="toggle__thumb"></span></span>
+              <span class="toggle__state" id="out-flashes">כבוי</span>
+            </button>
+          </div>
+          <div class="field field--row">
+            <span class="field__label">הפחתת תנועת מצלמה</span>
+            <button type="button" class="toggle" id="set-motion" role="switch" aria-checked="false">
+              <span class="toggle__track"><span class="toggle__thumb"></span></span>
+              <span class="toggle__state" id="out-motion">כבוי</span>
+            </button>
+          </div>
+          <div class="field field--row">
+            <span class="field__label">כתוביות לצלילים</span>
+            <button
+              type="button"
+              class="toggle"
+              id="set-captions"
+              role="switch"
+              aria-checked="false"
+            >
+              <span class="toggle__track"><span class="toggle__thumb"></span></span>
+              <span class="toggle__state" id="out-captions">כבוי</span>
+            </button>
+          </div>
+
+          <div class="field">
+            <span class="field__label">גודל הממשק</span>
+            <div
+              class="choice-group choice-group--row"
+              id="hudscale-group"
+              role="radiogroup"
+              aria-label="גודל הממשק"
+            >
+              <button
+                type="button"
+                class="choice choice--compact"
+                data-hudscale="small"
+                role="radio"
+                aria-checked="false"
+              >
+                קטן
+              </button>
+              <button
+                type="button"
+                class="choice choice--compact"
+                data-hudscale="normal"
+                role="radio"
+                aria-checked="true"
+              >
+                רגיל
+              </button>
+              <button
+                type="button"
+                class="choice choice--compact"
+                data-hudscale="large"
+                role="radio"
+                aria-checked="false"
+              >
+                גדול
+              </button>
+            </div>
           </div>
 
           <p class="panel__note" id="settings-note">ההגדרות נשמרות במכשיר שלך בלבד.</p>
@@ -275,6 +600,7 @@
             <button type="button" class="btn btn--primary btn--lg" id="btn-settings-close">
               סגור
             </button>
+            <button type="button" class="btn btn--ghost" id="btn-open-bindings">מקשי השליטה</button>
           </div>
         </div>
       </section>
@@ -320,6 +646,8 @@
         </div>
       </section>
 
+      <div class="resume-countdown is-hidden" id="resume-countdown" aria-live="assertive"></div>
+
       <!-- Rotate device -->
       <div
         class="rotate-notice is-hidden"
@@ -338,6 +666,13 @@
           />
         </svg>
         <p>סובב את המכשיר למצב אופקי כדי לשחק</p>
+      </div>
+
+      <div class="advice is-hidden" id="small-screen-advice" role="status">
+        <span>לחוויה טובה יותר מומלץ טאבלט או שני בקרי משחק</span>
+        <button type="button" class="advice__close" id="btn-advice-close" aria-label="סגור">
+          ×
+        </button>
       </div>
 
       <div class="fatal is-hidden" id="fatal-error" role="alert">

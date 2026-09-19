@@ -1,18 +1,67 @@
 /**
- * UIManager — owns every DOM screen, the HUD and the settings form.
+ * UIManager — owns every DOM screen, the HUD and the forms.
  * It never touches the simulation: it receives state and emits intent.
  */
-import type { Difficulty, QualityLevel, ScoreKind } from '../config/GameConfig';
-import { GameConfig } from '../config/GameConfig';
+import {
+  GameConfig,
+  type Difficulty,
+  type HudScale,
+  type QualityLevel,
+  type ScoreKind,
+  type ShakeLevel,
+} from '../config/GameConfig';
 import type { GameSettings } from '../core/Settings';
 import { formatClock } from '../game/MatchRules';
-import type { MatchOutcome, MatchState } from '../game/MatchState';
-import { OUTCOME_DETAILS, OUTCOME_TITLES, SCORE_KIND_LABELS, pointsLabel } from './labels';
+import type { MatchOutcome, MatchState, PlayerState } from '../game/MatchState';
+import {
+  ACTION_LABELS,
+  BINDABLE_ACTIONS,
+  findConflicts,
+  ghostingRisk,
+  keyLabel,
+  type BindableAction,
+  type KeyboardProfileId,
+  type KeyMap,
+} from '../input/KeyBindings';
+import {
+  AUDIO_CAPTIONS,
+  OUTCOME_DETAILS,
+  OUTCOME_TITLES,
+  SCORE_KIND_LABELS,
+  SHOT_TYPE_LABELS,
+  localOutcomeTitle,
+  pointsLabel,
+} from './labels';
 
-export type ScreenName = 'loading' | 'menu' | 'difficulty' | 'settings' | 'pause' | 'result';
+export type ScreenName =
+  | 'loading'
+  | 'menu'
+  | 'difficulty'
+  | 'settings'
+  | 'pause'
+  | 'result'
+  | 'lobby'
+  | 'primer'
+  | 'reconnect'
+  | 'bindings';
+
+export interface LobbySlotView {
+  index: 1 | 2;
+  name: string;
+  colorId: number;
+  /** Label of the assigned device, or null while still waiting. */
+  deviceLabel: string | null;
+  attackingLabel: string;
+  /**
+   * True when this slot could be filled by tapping. A touch-only device has no
+   * key to press and no button to click, so without this there is no way in.
+   */
+  canJoinByTouch: boolean;
+}
 
 export interface UICallbacks {
   onPlayPressed: () => void;
+  onLocalPlayPressed: () => void;
   onStartMatch: (difficulty: Difficulty) => void;
   onResume: () => void;
   onRestart: () => void;
@@ -21,6 +70,18 @@ export interface UICallbacks {
   onSettingsChanged: (settings: GameSettings) => void;
   onInteraction: () => void;
   onReload: () => void;
+  onLobbyStart: () => void;
+  onLobbySwapSides: () => void;
+  onLobbyLeave: (index: 1 | 2) => void;
+  /** The player asked to take the touch half of the screen for this slot. */
+  onLobbyTouchJoin: (index: 1 | 2) => void;
+  onLobbyName: (index: 1 | 2, name: string) => void;
+  onLobbyColor: (index: 1 | 2, colorId: number) => void;
+  onPrimerDismissed: () => void;
+  onReconnectResume: () => void;
+  onReconnectUseAi: () => void;
+  onBindingsChanged: (profile: KeyboardProfileId, action: BindableAction, code: string) => void;
+  onBindingsReset: () => void;
 }
 
 function requireElement<T extends HTMLElement>(id: string): T {
@@ -34,17 +95,29 @@ export class UIManager {
   private readonly hud: HTMLElement;
   private readonly rotateNotice: HTMLElement;
   private readonly fatal: HTMLElement;
+  private readonly advice: HTMLElement;
+  private readonly resumeCountdown: HTMLElement;
 
   private readonly scoreHome: HTMLElement;
   private readonly scoreAway: HTMLElement;
+  private readonly nameHome: HTMLElement;
+  private readonly nameAway: HTMLElement;
+  private readonly swatchHome: HTMLElement;
+  private readonly swatchAway: HTMLElement;
   private readonly clock: HTMLElement;
   private readonly eventBanner: HTMLElement;
+  private readonly eventScorer: HTMLElement;
   private readonly eventKind: HTMLElement;
   private readonly eventPoints: HTMLElement;
   private readonly countdown: HTMLElement;
-  private readonly powerFill: HTMLElement;
-  private readonly staminaFill: HTMLElement;
-  private readonly shotType: HTMLElement;
+  private readonly caption: HTMLElement;
+  private readonly meters: {
+    root: HTMLElement;
+    name: HTMLElement;
+    power: HTMLElement;
+    stamina: HTMLElement;
+    shotType: HTMLElement;
+  }[];
 
   private readonly loadingFill: HTMLElement;
   private readonly loadingStatus: HTMLElement;
@@ -52,10 +125,18 @@ export class UIManager {
   private readonly resultScore: HTMLElement;
   private readonly resultDetail: HTMLElement;
 
-  private readonly sliders: Record<'master' | 'music' | 'sensitivity', HTMLInputElement>;
-  private readonly outputs: Record<'master' | 'music' | 'sensitivity', HTMLElement>;
-  private readonly vibrationToggle: HTMLButtonElement;
-  private readonly vibrationState: HTMLElement;
+  private readonly sliders: Record<
+    'master' | 'music' | 'sensitivity' | 'deadzone' | 'aimassist',
+    HTMLInputElement
+  >;
+  private readonly outputs: Record<
+    'master' | 'music' | 'sensitivity' | 'deadzone' | 'aimassist',
+    HTMLElement
+  >;
+  private readonly toggles: Record<
+    'vibration' | 'contrast' | 'flashes' | 'motion' | 'captions',
+    { button: HTMLButtonElement; state: HTMLElement }
+  >;
 
   private settings: GameSettings;
   private difficulty: Difficulty;
@@ -63,6 +144,10 @@ export class UIManager {
   private currentScreen: ScreenName | null = null;
   private lastClockText = '';
   private lastEventTick = -1;
+  private captionTimer: number | null = null;
+  private adviceTimer: number | null = null;
+  /** Action currently waiting for a key press in the bindings editor. */
+  private captureTarget: { profile: KeyboardProfileId; action: BindableAction } | null = null;
 
   constructor(
     private readonly callbacks: UICallbacks,
@@ -78,22 +163,48 @@ export class UIManager {
       settings: requireElement('screen-settings'),
       pause: requireElement('screen-pause'),
       result: requireElement('screen-result'),
+      lobby: requireElement('screen-lobby'),
+      primer: requireElement('screen-primer'),
+      reconnect: requireElement('screen-reconnect'),
+      bindings: requireElement('screen-bindings'),
     };
 
     this.hud = requireElement('hud');
     this.rotateNotice = requireElement('rotate-notice');
     this.fatal = requireElement('fatal-error');
+    this.advice = requireElement('small-screen-advice');
+    this.resumeCountdown = requireElement('resume-countdown');
 
     this.scoreHome = requireElement('hud-score-home');
     this.scoreAway = requireElement('hud-score-away');
+    this.nameHome = requireElement('hud-name-home');
+    this.nameAway = requireElement('hud-name-away');
+    this.swatchHome = requireElement('hud-swatch-home');
+    this.swatchAway = requireElement('hud-swatch-away');
     this.clock = requireElement('hud-clock');
     this.eventBanner = requireElement('hud-event');
+    this.eventScorer = requireElement('hud-event-scorer');
     this.eventKind = requireElement('hud-event-kind');
     this.eventPoints = requireElement('hud-event-points');
     this.countdown = requireElement('hud-countdown');
-    this.powerFill = requireElement('meter-power');
-    this.staminaFill = requireElement('meter-stamina');
-    this.shotType = requireElement('hud-shot-type');
+    this.caption = requireElement('hud-caption');
+
+    this.meters = [
+      {
+        root: requireElement('hud-meters-1'),
+        name: requireElement('hud-meters-name-1'),
+        power: requireElement('meter-power'),
+        stamina: requireElement('meter-stamina'),
+        shotType: requireElement('hud-shot-type'),
+      },
+      {
+        root: requireElement('hud-meters-2'),
+        name: requireElement('hud-meters-name-2'),
+        power: requireElement('meter-power-2'),
+        stamina: requireElement('meter-stamina-2'),
+        shotType: requireElement('hud-shot-type-2'),
+      },
+    ];
 
     this.loadingFill = requireElement('loading-fill');
     this.loadingStatus = requireElement('loading-status');
@@ -105,20 +216,49 @@ export class UIManager {
       master: requireElement<HTMLInputElement>('set-master'),
       music: requireElement<HTMLInputElement>('set-music'),
       sensitivity: requireElement<HTMLInputElement>('set-sensitivity'),
+      deadzone: requireElement<HTMLInputElement>('set-deadzone'),
+      aimassist: requireElement<HTMLInputElement>('set-aimassist'),
     };
     this.outputs = {
       master: requireElement('out-master'),
       music: requireElement('out-music'),
       sensitivity: requireElement('out-sensitivity'),
+      deadzone: requireElement('out-deadzone'),
+      aimassist: requireElement('out-aimassist'),
     };
-    this.vibrationToggle = requireElement<HTMLButtonElement>('set-vibration');
-    this.vibrationState = requireElement('out-vibration');
+    this.toggles = {
+      vibration: {
+        button: requireElement<HTMLButtonElement>('set-vibration'),
+        state: requireElement('out-vibration'),
+      },
+      contrast: {
+        button: requireElement<HTMLButtonElement>('set-contrast'),
+        state: requireElement('out-contrast'),
+      },
+      flashes: {
+        button: requireElement<HTMLButtonElement>('set-flashes'),
+        state: requireElement('out-flashes'),
+      },
+      motion: {
+        button: requireElement<HTMLButtonElement>('set-motion'),
+        state: requireElement('out-motion'),
+      },
+      captions: {
+        button: requireElement<HTMLButtonElement>('set-captions'),
+        state: requireElement('out-captions'),
+      },
+    };
 
+    this.buildKitPickers();
     this.bindMenu();
     this.bindDifficulty();
     this.bindSettings();
     this.bindPause();
     this.bindResult();
+    this.bindLobby();
+    this.bindPrimer();
+    this.bindReconnect();
+    this.bindBindings();
     this.applySettingsToForm(this.settings);
   }
 
@@ -129,6 +269,7 @@ export class UIManager {
       element.classList.toggle('is-hidden', key !== name);
     }
     this.currentScreen = name;
+    if (name === 'bindings') this.renderBindings();
   }
 
   get activeScreen(): ScreenName | null {
@@ -139,8 +280,26 @@ export class UIManager {
     this.hud.classList.toggle('is-hidden', !visible);
   }
 
+  /** Shows the second player's meters only in a two-human match. */
+  setTwoPlayerHud(enabled: boolean): void {
+    this.meters[1]?.root.classList.toggle('is-hidden', !enabled);
+  }
+
   setRotateNoticeVisible(visible: boolean): void {
     this.rotateNotice.classList.toggle('is-hidden', !visible);
+  }
+
+  /** Non-blocking advice for a cramped screen. Dismissible, never modal. */
+  showSmallScreenAdvice(): void {
+    this.advice.classList.remove('is-hidden');
+    if (this.adviceTimer !== null) window.clearTimeout(this.adviceTimer);
+    this.adviceTimer = window.setTimeout(() => {
+      this.advice.classList.add('is-hidden');
+    }, 9000);
+  }
+
+  hideSmallScreenAdvice(): void {
+    this.advice.classList.add('is-hidden');
   }
 
   showFatal(message: string): void {
@@ -156,11 +315,32 @@ export class UIManager {
     this.loadingStatus.textContent = status;
   }
 
+  /** Big number shown while play restarts after a pause. */
+  showResumeCountdown(value: number | null): void {
+    if (value === null) {
+      this.resumeCountdown.classList.add('is-hidden');
+      return;
+    }
+    this.resumeCountdown.classList.remove('is-hidden');
+    this.resumeCountdown.textContent = value > 0 ? String(value) : 'קדימה!';
+  }
+
   // ── HUD ─────────────────────────────────────────────────────────────────────
 
-  updateHud(state: MatchState, chargeRatio: number, lofted: boolean): void {
+  updateHud(state: MatchState, charges: readonly number[]): void {
     this.scoreHome.textContent = String(state.score.home);
     this.scoreAway.textContent = String(state.score.away);
+
+    const home = state.players.find((player) => player.team === 'home');
+    const away = state.players.find((player) => player.team === 'away');
+    if (home) {
+      this.nameHome.textContent = home.name;
+      this.swatchHome.style.background = kitColor(home.colorId);
+    }
+    if (away) {
+      this.nameAway.textContent = away.name;
+      this.swatchAway.style.background = kitColor(away.colorId);
+    }
 
     const clockText = formatClock(state.timeRemaining);
     if (clockText !== this.lastClockText) {
@@ -169,13 +349,13 @@ export class UIManager {
       this.clock.classList.toggle('is-urgent', state.timeRemaining <= 15);
     }
 
-    this.powerFill.style.width = `${Math.round(chargeRatio * 100)}%`;
-
-    const human = state.players.find((player) => player.isHuman);
-    const stamina = human ? human.stamina / GameConfig.player.staminaMax : 1;
-    this.staminaFill.style.width = `${Math.round(stamina * 100)}%`;
-
-    this.shotType.textContent = lofted ? 'בעיטה מוגבהת' : 'בעיטה שטוחה';
+    const humans = state.players.filter((player) => player.isHuman);
+    for (let i = 0; i < this.meters.length; i += 1) {
+      const meter = this.meters[i];
+      const player = humans[i];
+      if (!meter || !player) continue;
+      this.renderMeter(meter, player, charges[i] ?? 0);
+    }
 
     if (state.phase === 'kickoff') {
       const remaining = Math.ceil(state.phaseTimer);
@@ -187,23 +367,76 @@ export class UIManager {
 
     if (state.lastEvent && state.lastEvent.tick !== this.lastEventTick) {
       this.lastEventTick = state.lastEvent.tick;
-      this.showEvent(state.lastEvent.kind, state.lastEvent.points);
+      const scorer = state.players.find((player) => player.id === state.lastEvent?.playerId);
+      this.showEvent(
+        state.lastEvent.kind,
+        state.lastEvent.points,
+        scorer?.name ?? null,
+        scorer?.colorId ?? null,
+        state.lastEvent.ownGoal,
+      );
     }
     if (state.phase !== 'celebration' && !this.eventBanner.hidden) {
       this.eventBanner.hidden = true;
     }
   }
 
-  showEvent(kind: ScoreKind, points: number): void {
+  private renderMeter(
+    meter: (typeof this.meters)[number],
+    player: PlayerState,
+    charge: number,
+  ): void {
+    meter.name.textContent = player.name;
+    meter.name.style.color = kitColor(player.colorId);
+    meter.power.style.width = `${Math.round(charge * 100)}%`;
+    meter.stamina.style.width = `${Math.round(
+      (player.stamina / GameConfig.player.staminaMax) * 100,
+    )}%`;
+    meter.shotType.textContent = SHOT_TYPE_LABELS[player.lofted ? 'lob' : 'flat'];
+  }
+
+  showEvent(
+    kind: ScoreKind,
+    points: number,
+    scorerName: string | null,
+    colorId: number | null,
+    ownGoal = false,
+  ): void {
+    this.eventScorer.textContent = ownGoal ? 'שער עצמי' : (scorerName ?? '');
+    this.eventScorer.style.color = colorId === null ? '' : kitColor(colorId);
     this.eventKind.textContent = SCORE_KIND_LABELS[kind];
     this.eventPoints.textContent = `+${pointsLabel(points)}`;
     this.eventBanner.hidden = false;
   }
 
-  showResult(outcome: MatchOutcome, home: number, away: number): void {
-    this.resultTitle.textContent = OUTCOME_TITLES[outcome];
+  /** Written stand-in for an audio cue, for players who cannot rely on sound. */
+  showCaption(key: string): void {
+    if (!this.settings.accessibility.audioCaptions) return;
+    const text = AUDIO_CAPTIONS[key];
+    if (!text) return;
+    this.caption.textContent = text;
+    this.caption.hidden = false;
+    if (this.captionTimer !== null) window.clearTimeout(this.captionTimer);
+    this.captionTimer = window.setTimeout(() => {
+      this.caption.hidden = true;
+    }, 1400);
+  }
+
+  showResult(
+    outcome: MatchOutcome,
+    home: number,
+    away: number,
+    names?: { home: string; away: string },
+  ): void {
+    this.resultTitle.textContent = names
+      ? localOutcomeTitle(outcome, names.home, names.away)
+      : OUTCOME_TITLES[outcome];
     this.resultScore.textContent = `${home} : ${away}`;
-    this.resultDetail.textContent = OUTCOME_DETAILS[outcome];
+    this.resultDetail.textContent = names
+      ? outcome === 'draw'
+        ? 'אף אחד לא ויתר — תיקו.'
+        : 'משחק חוזר?'
+      : OUTCOME_DETAILS[outcome];
     this.showScreen('result');
   }
 
@@ -212,16 +445,177 @@ export class UIManager {
     this.lastEventTick = -1;
     this.eventBanner.hidden = true;
     this.countdown.hidden = true;
-    this.powerFill.style.width = '0%';
+    this.caption.hidden = true;
+    for (const meter of this.meters) meter.power.style.width = '0%';
   }
 
-  // ── Bindings ────────────────────────────────────────────────────────────────
+  // ── Lobby ───────────────────────────────────────────────────────────────────
+
+  renderLobby(slots: readonly LobbySlotView[], canStart: boolean, notice: string | null): void {
+    for (const slot of slots) {
+      const status = requireElement(`lobby-status-${slot.index}`);
+      const badge = requireElement(`lobby-badge-${slot.index}`);
+      const goal = requireElement(`lobby-goal-${slot.index}`);
+      const leave = requireElement(`lobby-leave-${slot.index}`);
+      const card = requireElement(`lobby-card-${slot.index}`);
+      const input = requireElement<HTMLInputElement>(`lobby-name-${slot.index}`);
+
+      badge.textContent = slot.name;
+      badge.style.background = kitColor(slot.colorId);
+      goal.textContent = slot.attackingLabel;
+      if (document.activeElement !== input) input.value = slot.name;
+
+      const joined = slot.deviceLabel !== null;
+      status.textContent = joined ? `מחובר: ${slot.deviceLabel}` : 'ממתין לחיבור…';
+      status.classList.toggle('is-joined', joined);
+      card.classList.toggle('is-joined', joined);
+      leave.classList.toggle('is-hidden', !joined);
+
+      const touchJoin = requireElement(`lobby-touch-${slot.index}`);
+      touchJoin.classList.toggle('is-hidden', joined || !slot.canJoinByTouch);
+
+      this.updateKitPicker(slot.index, slot.colorId);
+    }
+
+    requireElement<HTMLButtonElement>('btn-lobby-start').disabled = !canStart;
+    const noticeElement = requireElement('lobby-notice');
+    noticeElement.textContent = notice ?? '';
+    noticeElement.classList.toggle('is-hidden', notice === null);
+  }
+
+  setReconnectMessage(message: string, canResume: boolean): void {
+    requireElement('reconnect-message').textContent = message;
+    requireElement<HTMLButtonElement>('btn-reconnect-resume').disabled = !canResume;
+  }
+
+  /** Fills the one-time controls primer with the layout actually in use. */
+  renderPrimer(sections: readonly { title: string; rows: readonly [string, string][] }[]): void {
+    const body = requireElement('primer-body');
+    body.replaceChildren();
+    for (const section of sections) {
+      const block = document.createElement('div');
+      block.className = 'primer__block';
+      const heading = document.createElement('h3');
+      heading.textContent = section.title;
+      block.appendChild(heading);
+      const list = document.createElement('dl');
+      for (const [control, action] of section.rows) {
+        const dt = document.createElement('dt');
+        dt.textContent = control;
+        const dd = document.createElement('dd');
+        dd.textContent = action;
+        list.append(dt, dd);
+      }
+      block.appendChild(list);
+      body.appendChild(block);
+    }
+  }
+
+  // ── Bindings editor ─────────────────────────────────────────────────────────
+
+  private renderBindings(): void {
+    const body = requireElement('bindings-body');
+    body.replaceChildren();
+
+    const profiles: { id: KeyboardProfileId; title: string; map: KeyMap }[] = [
+      { id: 'keyboard-left', title: 'שחקן 1 — צד שמאל', map: this.settings.keyBindings.left },
+      { id: 'keyboard-right', title: 'שחקן 2 — צד ימין', map: this.settings.keyBindings.right },
+    ];
+
+    for (const profile of profiles) {
+      const block = document.createElement('div');
+      block.className = 'bindings__profile';
+      const heading = document.createElement('h3');
+      heading.textContent = profile.title;
+      block.appendChild(heading);
+
+      for (const action of BINDABLE_ACTIONS) {
+        const row = document.createElement('div');
+        row.className = 'bindings__row';
+
+        const label = document.createElement('span');
+        label.className = 'bindings__action';
+        label.textContent = ACTION_LABELS[action];
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'bindings__key';
+        button.textContent = profile.map[action].map(keyLabel).join(' / ');
+        button.setAttribute('aria-label', `שנה מקש עבור ${ACTION_LABELS[action]}`);
+        button.addEventListener('click', () => {
+          this.callbacks.onInteraction();
+          this.beginCapture(profile.id, action, button);
+        });
+
+        row.append(label, button);
+        block.appendChild(row);
+      }
+      body.appendChild(block);
+    }
+
+    this.renderBindingWarnings();
+  }
+
+  private beginCapture(
+    profile: KeyboardProfileId,
+    action: BindableAction,
+    button: HTMLButtonElement,
+  ): void {
+    this.captureTarget = { profile, action };
+    button.textContent = 'לחץ מקש…';
+    button.classList.add('is-capturing');
+  }
+
+  /**
+   * Feeds a raw key press into the editor.
+   * Returns true when the press was consumed, so the caller can stop it from
+   * reaching the game.
+   */
+  captureKey(code: string): boolean {
+    const target = this.captureTarget;
+    if (!target) return false;
+    this.captureTarget = null;
+    if (code !== 'Escape') {
+      this.callbacks.onBindingsChanged(target.profile, target.action, code);
+    }
+    this.renderBindings();
+    return true;
+  }
+
+  get isCapturingKey(): boolean {
+    return this.captureTarget !== null;
+  }
+
+  private renderBindingWarnings(): void {
+    const warning = requireElement('bindings-warning');
+    const conflicts = findConflicts(
+      this.settings.keyBindings.left,
+      this.settings.keyBindings.right,
+    );
+    const messages: string[] = [];
+
+    if (conflicts.length > 0) {
+      const names = conflicts.map((conflict) => keyLabel(conflict.code)).join(', ');
+      messages.push(`אותו מקש משויך ליותר מפעולה אחת: ${names}.`);
+    }
+    const ghost = ghostingRisk(this.settings.keyBindings.left, this.settings.keyBindings.right);
+    if (ghost) messages.push(ghost);
+
+    warning.textContent = messages.join(' ');
+    warning.classList.toggle('is-hidden', messages.length === 0);
+  }
+
+  // ── Bindings of the DOM itself ──────────────────────────────────────────────
 
   private bindMenu(): void {
     this.onClick('btn-play', () => {
       this.callbacks.onInteraction();
       this.callbacks.onPlayPressed();
       this.showScreen('difficulty');
+    });
+    this.onClick('btn-play-local', () => {
+      this.callbacks.onInteraction();
+      this.callbacks.onLocalPlayPressed();
     });
     this.onClick('btn-settings', () => {
       this.callbacks.onInteraction();
@@ -259,6 +653,9 @@ export class UIManager {
       this.applySettingsToForm(this.settings);
       this.callbacks.onSettingsChanged(this.settings);
     };
+    const updateAccessibility = (patch: Partial<GameSettings['accessibility']>) => {
+      update({ accessibility: { ...this.settings.accessibility, ...patch } });
+    };
 
     this.sliders.master.addEventListener('input', () => {
       update({ masterVolume: Number(this.sliders.master.value) / 100 });
@@ -269,6 +666,12 @@ export class UIManager {
     this.sliders.sensitivity.addEventListener('input', () => {
       update({ sensitivity: Number(this.sliders.sensitivity.value) / 100 });
     });
+    this.sliders.deadzone.addEventListener('input', () => {
+      update({ deadZone: Number(this.sliders.deadzone.value) / 100 });
+    });
+    this.sliders.aimassist.addEventListener('input', () => {
+      update({ aimAssist: Number(this.sliders.aimassist.value) / 100 });
+    });
 
     const qualityGroup = requireElement('quality-group');
     for (const button of qualityGroup.querySelectorAll<HTMLButtonElement>('[data-quality]')) {
@@ -278,14 +681,52 @@ export class UIManager {
       });
     }
 
-    this.vibrationToggle.addEventListener('click', () => {
+    const shakeGroup = requireElement('shake-group');
+    for (const button of shakeGroup.querySelectorAll<HTMLButtonElement>('[data-shake]')) {
+      button.addEventListener('click', () => {
+        this.callbacks.onInteraction();
+        update({ cameraShake: (button.dataset.shake ?? 'subtle') as ShakeLevel });
+      });
+    }
+
+    const hudScaleGroup = requireElement('hudscale-group');
+    for (const button of hudScaleGroup.querySelectorAll<HTMLButtonElement>('[data-hudscale]')) {
+      button.addEventListener('click', () => {
+        this.callbacks.onInteraction();
+        updateAccessibility({ hudScale: (button.dataset.hudscale ?? 'normal') as HudScale });
+      });
+    }
+
+    this.toggles.vibration.button.addEventListener('click', () => {
       this.callbacks.onInteraction();
       update({ vibration: !this.settings.vibration });
+    });
+    this.toggles.contrast.button.addEventListener('click', () => {
+      this.callbacks.onInteraction();
+      updateAccessibility({ highContrast: !this.settings.accessibility.highContrast });
+    });
+    this.toggles.flashes.button.addEventListener('click', () => {
+      this.callbacks.onInteraction();
+      updateAccessibility({ reduceFlashes: !this.settings.accessibility.reduceFlashes });
+    });
+    this.toggles.motion.button.addEventListener('click', () => {
+      this.callbacks.onInteraction();
+      updateAccessibility({
+        reduceCameraMotion: !this.settings.accessibility.reduceCameraMotion,
+      });
+    });
+    this.toggles.captions.button.addEventListener('click', () => {
+      this.callbacks.onInteraction();
+      updateAccessibility({ audioCaptions: !this.settings.accessibility.audioCaptions });
     });
 
     this.onClick('btn-settings-close', () => {
       this.callbacks.onInteraction();
       this.showScreen(this.settingsReturnTo);
+    });
+    this.onClick('btn-open-bindings', () => {
+      this.callbacks.onInteraction();
+      this.showScreen('bindings');
     });
   }
 
@@ -320,6 +761,105 @@ export class UIManager {
       this.callbacks.onExitToMenu();
     });
     this.onClick('btn-reload', () => this.callbacks.onReload());
+    this.onClick('btn-advice-close', () => this.hideSmallScreenAdvice());
+  }
+
+  private bindLobby(): void {
+    this.onClick('btn-lobby-start', () => {
+      this.callbacks.onInteraction();
+      this.callbacks.onLobbyStart();
+    });
+    this.onClick('btn-lobby-swap', () => {
+      this.callbacks.onInteraction();
+      this.callbacks.onLobbySwapSides();
+    });
+    this.onClick('btn-lobby-back', () => {
+      this.callbacks.onInteraction();
+      this.showScreen('menu');
+    });
+    for (const index of [1, 2] as const) {
+      this.onClick(`lobby-leave-${index}`, () => {
+        this.callbacks.onInteraction();
+        this.callbacks.onLobbyLeave(index);
+      });
+      this.onClick(`lobby-touch-${index}`, () => {
+        this.callbacks.onInteraction();
+        this.callbacks.onLobbyTouchJoin(index);
+      });
+      const input = requireElement<HTMLInputElement>(`lobby-name-${index}`);
+      input.addEventListener('input', () => {
+        this.callbacks.onLobbyName(index, input.value);
+      });
+    }
+  }
+
+  private bindPrimer(): void {
+    this.onClick('btn-primer-ok', () => {
+      this.callbacks.onInteraction();
+      this.callbacks.onPrimerDismissed();
+    });
+  }
+
+  private bindReconnect(): void {
+    this.onClick('btn-reconnect-resume', () => {
+      this.callbacks.onInteraction();
+      this.callbacks.onReconnectResume();
+    });
+    this.onClick('btn-reconnect-ai', () => {
+      this.callbacks.onInteraction();
+      this.callbacks.onReconnectUseAi();
+    });
+    this.onClick('btn-reconnect-menu', () => {
+      this.callbacks.onInteraction();
+      this.callbacks.onExitToMenu();
+    });
+  }
+
+  private bindBindings(): void {
+    this.onClick('btn-bindings-close', () => {
+      this.callbacks.onInteraction();
+      this.captureTarget = null;
+      this.showScreen('settings');
+    });
+    this.onClick('btn-bindings-reset', () => {
+      this.callbacks.onInteraction();
+      this.callbacks.onBindingsReset();
+    });
+  }
+
+  private buildKitPickers(): void {
+    for (const index of [1, 2] as const) {
+      const picker = requireElement(`kit-picker-${index}`);
+      picker.replaceChildren();
+      for (const kit of GameConfig.kits) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'kit-swatch';
+        button.dataset.kit = String(kit.id);
+        button.style.background = kit.shirt;
+        button.setAttribute('role', 'radio');
+        button.setAttribute('aria-checked', 'false');
+        button.setAttribute('aria-label', kit.name);
+        button.title = kit.name;
+        // The pattern name is shown as well, so the choice never relies on colour.
+        const tag = document.createElement('span');
+        tag.className = 'kit-swatch__tag';
+        tag.textContent = kit.name;
+        button.appendChild(tag);
+        button.addEventListener('click', () => {
+          this.callbacks.onInteraction();
+          this.callbacks.onLobbyColor(index, kit.id);
+        });
+        picker.appendChild(button);
+      }
+    }
+  }
+
+  private updateKitPicker(index: 1 | 2, colorId: number): void {
+    const picker = requireElement(`kit-picker-${index}`);
+    for (const button of picker.querySelectorAll<HTMLButtonElement>('[data-kit]')) {
+      button.setAttribute('aria-checked', String(Number(button.dataset.kit) === colorId));
+    }
   }
 
   private onClick(id: string, handler: () => void): void {
@@ -332,7 +872,7 @@ export class UIManager {
     }
   }
 
-  /** Pushes stored settings into the form controls. */
+  /** Pushes stored settings into the form controls and the document theme. */
   applySettingsToForm(settings: GameSettings): void {
     this.settings = { ...settings };
     this.difficulty = settings.difficulty;
@@ -340,15 +880,51 @@ export class UIManager {
     this.sliders.master.value = String(Math.round(settings.masterVolume * 100));
     this.sliders.music.value = String(Math.round(settings.musicVolume * 100));
     this.sliders.sensitivity.value = String(Math.round(settings.sensitivity * 100));
+    this.sliders.deadzone.value = String(Math.round(settings.deadZone * 100));
+    this.sliders.aimassist.value = String(Math.round(settings.aimAssist * 100));
 
     this.outputs.master.textContent = `${Math.round(settings.masterVolume * 100)}%`;
     this.outputs.music.textContent = `${Math.round(settings.musicVolume * 100)}%`;
     this.outputs.sensitivity.textContent = settings.sensitivity.toFixed(1);
+    this.outputs.deadzone.textContent = `${Math.round(settings.deadZone * 100)}%`;
+    this.outputs.aimassist.textContent =
+      settings.aimAssist <= 0 ? 'כבוי' : `${Math.round(settings.aimAssist * 100)}%`;
 
-    this.vibrationToggle.setAttribute('aria-checked', String(settings.vibration));
-    this.vibrationState.textContent = settings.vibration ? 'פעיל' : 'כבוי';
+    setToggle(this.toggles.vibration, settings.vibration);
+    setToggle(this.toggles.contrast, settings.accessibility.highContrast);
+    setToggle(this.toggles.flashes, settings.accessibility.reduceFlashes);
+    setToggle(this.toggles.motion, settings.accessibility.reduceCameraMotion);
+    setToggle(this.toggles.captions, settings.accessibility.audioCaptions);
 
     this.updateRadioGroup(requireElement('quality-group'), 'quality', settings.quality);
     this.updateRadioGroup(requireElement('difficulty-group'), 'difficulty', settings.difficulty);
+    this.updateRadioGroup(requireElement('shake-group'), 'shake', settings.cameraShake);
+    this.updateRadioGroup(
+      requireElement('hudscale-group'),
+      'hudscale',
+      settings.accessibility.hudScale,
+    );
+
+    // Accessibility options are applied as data attributes the stylesheet reads.
+    const root = document.documentElement;
+    root.dataset.contrast = settings.accessibility.highContrast ? 'high' : 'normal';
+    root.dataset.hudScale = settings.accessibility.hudScale;
+    root.dataset.reduceMotion = settings.accessibility.reduceCameraMotion ? 'true' : 'false';
+
+    if (this.currentScreen === 'bindings') this.renderBindings();
   }
+}
+
+function setToggle(
+  toggle: { button: HTMLButtonElement; state: HTMLElement },
+  value: boolean,
+): void {
+  toggle.button.setAttribute('aria-checked', String(value));
+  toggle.state.textContent = value ? 'פעיל' : 'כבוי';
+}
+
+function kitColor(colorId: number): string {
+  const kits = GameConfig.kits;
+  const index = Number.isFinite(colorId) ? Math.abs(Math.trunc(colorId)) % kits.length : 0;
+  return kits[index]?.shirt ?? kits[0].shirt;
 }
