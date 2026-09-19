@@ -155,3 +155,58 @@ describe('role grants', () => {
     expect(rows[0]?.tampered).toBe('0');
   });
 });
+
+/**
+ * RLS policies must evaluate the whole-session checks once per statement.
+ *
+ * This is a performance property enforced in the security suite on purpose,
+ * because it is a property OF the policies and it degrades silently. The
+ * admin control tower took 7.2 seconds against a 10,000-provider network:
+ * `is_admin()` is SECURITY DEFINER, so the planner will not inline it, and
+ * it ran once for each of 143,118 rows — its own SELECT against `profiles`
+ * every time. Nothing failed. The page was simply slow, and got slower in
+ * proportion to the data, which is the kind of regression nobody attributes
+ * to a policy.
+ *
+ * Migration 0037 wrapped every uncorrelated call in a scalar subquery so the
+ * planner hoists it to an InitPlan. The check below is on the SHAPE of the
+ * expression rather than on a timing, because a timing assertion on a small
+ * test database proves nothing and fails on a loaded CI box.
+ */
+describe('RLS policies do not re-check the session per row', () => {
+  /** How PostgreSQL re-prints a hoisted call. Anything else is unhoisted. */
+  const HOISTED = '( SELECT is_admin() AS is_admin)';
+
+  it('never evaluates is_admin() per row', async () => {
+    const { rows } = await adminPool().query<{ table_name: string; policy: string }>(
+      `select polrelid::regclass::text as table_name, polname as policy
+         from pg_policy
+        where replace(coalesce(pg_get_expr(polqual, polrelid), ''), $1, '') like '%is_admin()%'
+           or replace(coalesce(pg_get_expr(polwithcheck, polrelid), ''), $1, '') like '%is_admin()%'
+        order by 1, 2`,
+      [HOISTED],
+    );
+
+    expect(
+      rows.map((r) => `${r.table_name}.${r.policy}`),
+      'these policies call is_admin() once per row — wrap it as (select is_admin())',
+    ).toEqual([]);
+  });
+
+  it('still evaluates the row-correlated helpers per row', async () => {
+    /*
+     * The other half of the invariant, and the more important one. A helper
+     * that reads the row must NOT be hoisted: freezing the first row's answer
+     * and applying it to every other row would turn a per-row permission
+     * check into a blanket grant. This asserts the rewrite did not overreach.
+     */
+    const { rows } = await adminPool().query<{ n: string }>(
+      `select count(*) as n
+         from pg_policy
+        where coalesce(pg_get_expr(polqual, polrelid), '') ~
+              '\\( SELECT (is_job_participant|provider_assigned_to_job|job_customer_id|provider_has_interest_in_job|customer_may_track_provider|can_review|shares_active_job_with)\\('`,
+    );
+
+    expect(Number(rows[0]?.n ?? -1)).toBe(0);
+  });
+});

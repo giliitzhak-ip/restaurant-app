@@ -31,19 +31,19 @@ against a local PostgreSQL.
 
 ### Tests
 
-282 in total, across three suites:
+284 in total, across three suites:
 
 | Suite | Count | Needs a database |
 |---|---|---|
 | `npm run test:unit` | 115 | No — pure domain logic, runs anywhere |
 | `npm run test:integration` | 132 | **Yes** |
-| `npm run test:security` | 35 | **Yes** |
+| `npm run test:security` | 37 | **Yes** |
 
 The integration and security suites talk to a real PostgreSQL with PostGIS
 and are not mocked, because what they are testing — RLS policies, a
 transition trigger, `FOR UPDATE SKIP LOCKED`, a PostGIS distance — exists
 only in the database. Run `npm run db:roles`, `npm run db:migrate` and
-`npm run test:db` first. Without a database those 167 tests do not fail with
+`npm run test:db` first. Without a database those 169 tests do not fail with
 a meaningful result; they fail to connect, which says nothing about the code.
 
 ### Demo accounts
@@ -80,7 +80,7 @@ refreshes it.
 | `npm run dev` | Development server |
 | `npm run build` / `npm start` | Production build and serve |
 | `npm run lint` · `npm run typecheck` | Static checks |
-| `npm test` | All 282 tests — the integration and security suites need a live PostgreSQL + PostGIS |
+| `npm test` | All 284 tests — the integration and security suites need a live PostgreSQL + PostGIS |
 | `npm run test:unit` · `test:integration` · `test:security` | One suite |
 | `npm run db:roles` · `db:migrate` · `db:seed` · `db:setup` | Database |
 | `npm run db:network -- --count 10000 --reset` | Reseed the synthetic network at any size up to 20,000 |

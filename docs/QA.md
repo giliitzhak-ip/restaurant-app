@@ -6,10 +6,10 @@ What is verified, how, and — importantly — what is **not**.
 
 ## Test inventory
 
-**282 tests, 32 files.** Run: `npm test`
+**284 tests, 32 files.** Run: `npm test`
 (first time: `npm run test:db` to create the test database).
 
-The 115 unit tests need nothing but Node. The 132 integration and 35 security
+The 115 unit tests need nothing but Node. The 132 integration and 37 security
 tests talk to a real PostgreSQL with PostGIS and are not mocked, because what
 they test — RLS policies, the transition trigger, `FOR UPDATE SKIP LOCKED`, a
 PostGIS distance — exists only in the database. Without one they do not fail
@@ -61,7 +61,7 @@ code, and should be reported as "not run" rather than as a pass or a failure.
 | `rls.test.ts` | 17 | Cross-tenant reads, payout privacy, foreign offers, earnings tampering, role escalation, self-verification, audit forgery, review eligibility, location windows |
 | `enforcement.test.ts` | 8 | **Proof the harness can fail** |
 | `admin-audit.test.ts` | 5 | Audit append-only, no cross-admin forgery, change and record commit together |
-| `grants.test.ts` | 5 | `service_role` reads every table; everything granted to `authenticated` has RLS on; `anon` reads the catalog and writes nothing; a non-admin cannot write settings or the catalog |
+| `grants.test.ts` | 7 | `service_role` reads every table; everything granted to `authenticated` has RLS on; `anon` reads the catalog and writes nothing; a non-admin cannot write settings or the catalog; **no policy re-checks the session per row, and no row-correlated helper was hoisted** |
 
 ---
 
