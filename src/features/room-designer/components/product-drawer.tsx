@@ -113,6 +113,7 @@ export function ProductDrawer({
               <li key={swatch.id} className="w-24 shrink-0 lg:w-auto">
                 <button
                   type="button"
+                  data-testid="designer-swatch"
                   onClick={() => onSelect(swatch.id)}
                   aria-pressed={selected}
                   className={cn(

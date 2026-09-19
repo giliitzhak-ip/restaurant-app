@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCart } from "@/features/cart/cart-provider";
 import type { Product } from "@/types/catalog";
 
@@ -98,20 +97,40 @@ export function QuantityCalculator({
           </h2>
           <p className="mt-1 text-xs text-muted">{t.calculator.subtitle}</p>
         </div>
-        <Tabs
-          value={mode}
-          onValueChange={(value) => setMode(value as typeof mode)}
-          className="shrink-0"
+        {/*
+          A two-way mode switch, not a tab set: there are no panels behind it,
+          the same fields stay on screen either way. Built with Tabs it emitted
+          `aria-controls` pointing at panels that do not exist, which is a real
+          WCAG 4.1.2 failure — a screen reader is promised a region and then
+          cannot find it. Buttons with `aria-pressed` say what this actually is.
+        */}
+        <div
+          role="group"
+          aria-label={t.calculator.title}
+          className="flex shrink-0 gap-4"
         >
-          <TabsList className="gap-4 border-b-0">
-            <TabsTrigger value="dimensions" className="pb-1.5">
-              {t.calculator.byDimensions}
-            </TabsTrigger>
-            <TabsTrigger value="area" className="pb-1.5">
-              {t.calculator.byArea}
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+          {(
+            [
+              ["dimensions", t.calculator.byDimensions],
+              ["area", t.calculator.byArea],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={mode === value}
+              onClick={() => setMode(value)}
+              className={cn(
+                "-mb-px shrink-0 border-b-2 pb-1.5 text-sm transition-colors",
+                mode === value
+                  ? "border-ink text-ink"
+                  : "border-transparent text-muted hover:text-ink",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <ul className="mt-5 space-y-4">
@@ -148,6 +167,7 @@ export function QuantityCalculator({
                     <Label htmlFor={`${room.id}-length`}>{t.calculator.length}</Label>
                     <Input
                       id={`${room.id}-length`}
+                      data-testid="calc-length"
                       type="number"
                       inputMode="decimal"
                       min="0"
@@ -164,6 +184,7 @@ export function QuantityCalculator({
                     <Label htmlFor={`${room.id}-width`}>{t.calculator.width}</Label>
                     <Input
                       id={`${room.id}-width`}
+                      data-testid="calc-width"
                       type="number"
                       inputMode="decimal"
                       min="0"
@@ -258,7 +279,7 @@ export function QuantityCalculator({
             </div>
             <div className="flex items-baseline justify-between gap-4 border-t border-line-strong pt-2.5">
               <dt className="text-muted">{t.calculator.packagesNeeded}</dt>
-              <dd className="num text-base font-medium text-ink">
+              <dd className="num text-base font-medium text-ink" data-testid="calc-units">
                 {t.calculator.packagesUnit(packages)}
                 {coverage > 0 ? (
                   <span className="ms-1.5 text-xs text-muted">

@@ -195,7 +195,13 @@ export function DesignerShell({
   );
 
   return (
-    <div className="flex min-h-dvh flex-col bg-studio text-studio-ink">
+    <div
+      className="flex min-h-dvh flex-col bg-studio text-studio-ink"
+      data-designer-root
+      // Lets a deep link, an analytics hook or a test name the open design
+      // without exposing anything the visitor does not already own.
+      data-design-id={controller.designId ?? undefined}
+    >
       <header className="flex items-center justify-between gap-3 border-b border-studio-line px-4 py-3">
         <Link
           href={routes.home}
@@ -431,6 +437,7 @@ export function DesignerShell({
                 <Button
                   size="sm"
                   variant="studioOutline"
+                  data-testid="save-design"
                   onClick={() => setSaveOpen(true)}
                   disabled={!hasSelection}
                 >

@@ -16,7 +16,10 @@
   --color-ink: #16130f;
   --color-ink-soft: #3b352e;
   --color-muted: #776f65;
-  --color-muted-soft: #9a9289;
+  /* 4.5:1 on --color-canvas. The lighter tone this used to be measured 2.8:1,
+     which is below AA for body text — and it is used for placeholders, facet
+     counts and unit labels, all of which people actually need to read. */
+  --color-muted-soft: #776f65;
 
   /* Lines */
   --color-line: #e4ddd4;
@@ -26,6 +29,10 @@
   --color-brass: #8c6a43;
   --color-brass-soft: #b99a72;
   --color-brass-wash: #f2ebe1;
+  /* Brass is the accent; this is brass for *text on brass-wash*, where the
+     accent itself measures 4.2:1 and misses AA by a hair. Same hue, one step
+     darker, so badges read as brass without being unreadable. */
+  --color-brass-ink: #7d5d38;
   --color-clay: #a4552f;
   --color-forest: #2c3a33;
 

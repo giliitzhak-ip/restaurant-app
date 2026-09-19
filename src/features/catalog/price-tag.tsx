@@ -29,7 +29,7 @@ export function PriceTag({
       : "ליחידה";
 
   return (
-    <div className={cn("flex flex-col gap-0.5", className)}>
+    <div className={cn("flex flex-col gap-0.5", className)} data-testid="price-per-unit">
       <div className="flex items-baseline gap-2">
         <span
           className={cn(

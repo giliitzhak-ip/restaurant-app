@@ -152,6 +152,7 @@ export const he = {
   },
 
   product: {
+    gallery: "תמונות המוצר",
     collection: "קולקציה",
     sku: "מק״ט",
     pricePerSqm: "מחיר למ״ר",
@@ -416,6 +417,9 @@ export const he = {
       "אפשר לעצב, לחשב ולהוסיף לסל גם בלי חשבון — נבקש הרשמה רק בשמירת עיצוב ובתשלום.",
     invalidCredentials: "אימייל או סיסמה שגויים",
     emailTaken: "כבר קיים חשבון עם האימייל הזה",
+    /* Deliberately vague: see the note in auth-form.tsx. */
+    registrationRejected: "לא הצלחנו לפתוח חשבון עם הפרטים האלה. נסו להתחבר, או דברו איתנו.",
+    tooManyAttempts: "יותר מדי ניסיונות. נסו שוב בעוד כמה דקות.",
   },
 
   admin: {

@@ -14,14 +14,14 @@ import type { RoomDesignRecord, SurfaceKind } from "@/types/design";
  * useful until someone actually opens a photo, and none of it should be in the
  * first payload of a shopping session.
  *
- * `ssr: false` is deliberate. The stage is a canvas that measures itself
- * against the viewport, so a server render produces markup the client throws
- * away — and it pulls the whole engine into the server bundle for nothing.
+ * Server rendering stays on. Turning it off would save a little work, but it
+ * also means an empty page until the chunk lands — bad for the customer and
+ * bad for anything that reads the page without executing scripts. The win here
+ * is the separate chunk, not skipping the render.
  */
 const DesignerShell = dynamic(
   () => import("./designer-shell").then((mod) => mod.DesignerShell),
   {
-    ssr: false,
     loading: () => (
       <div
         className="flex min-h-[70vh] flex-col items-center justify-center gap-3 text-muted"

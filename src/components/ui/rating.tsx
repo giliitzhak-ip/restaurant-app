@@ -15,6 +15,9 @@ export function Rating({
   const rounded = Math.round(value);
   return (
     <div
+      // A bare div takes no accessible name; role="img" is what makes the
+      // label legal, and it matches what this is: a picture of a number.
+      role="img"
       className={cn("flex items-center gap-1.5", className)}
       aria-label={`דירוג ${value} מתוך 5`}
     >

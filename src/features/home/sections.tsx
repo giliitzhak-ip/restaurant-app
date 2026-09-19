@@ -136,7 +136,7 @@ export function DesignerTeaser() {
                   </span>
                   <span>
                     <span className="flex items-baseline gap-2">
-                      <span className="num text-xs text-canvas/45">
+                      <span className="num text-xs text-canvas/70">
                         0{index + 1}
                       </span>
                       <span className="text-[0.9375rem] font-medium text-canvas">
@@ -174,7 +174,7 @@ export function DesignerTeaser() {
               className="object-cover"
             />
           </div>
-          <p className="mt-3 text-xs text-canvas/50">
+          <p className="mt-3 text-xs text-canvas/70">
             ההדמיה משתמשת בטקסטורה של המוצר האמיתי — לא בתמונה שנוצרה על ידי AI.
           </p>
         </div>
@@ -193,7 +193,18 @@ export function CollectionStrip({ collections }: { collections: Collection[] }) 
         title={t.home.collectionsTitle}
         link={{ label: t.nav.collections, href: "/collections" }}
       />
-      <ul className="scrollbar-none -mx-4 mt-10 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 md:mx-0 md:grid md:grid-cols-4 md:gap-6 md:overflow-visible md:px-0">
+      {/*
+        Focusable on purpose: below md this is a horizontally scrolling strip,
+        and a region that scrolls but cannot be focused is unreachable by
+        keyboard — WCAG 2.1.1. A tabindex plus a name makes it an ordinary stop
+        that arrow keys then scroll. No role="region": that would replace the
+        list role and orphan the items inside it.
+      */}
+      <ul
+        tabIndex={0}
+        aria-label={t.home.collectionsTitle}
+        className="scrollbar-none -mx-4 mt-10 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass md:mx-0 md:grid md:grid-cols-4 md:gap-6 md:overflow-visible md:px-0"
+      >
         {collections.slice(0, 4).map((collection) => (
           <li
             key={collection.slug}
@@ -400,7 +411,18 @@ export function ReviewsSection({ reviews }: { reviews: Review[] }) {
   return (
     <section className="container-page py-20 md:py-24">
       <SectionHeading eyebrow={t.home.reviewsEyebrow} title={t.home.reviewsTitle} />
-      <ul className="scrollbar-none -mx-4 mt-10 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 md:mx-0 md:grid md:grid-cols-3 md:gap-6 md:overflow-visible md:px-0">
+      {/*
+        Focusable on purpose: below md this is a horizontally scrolling strip,
+        and a region that scrolls but cannot be focused is unreachable by
+        keyboard — WCAG 2.1.1. A tabindex plus a name makes it an ordinary stop
+        that arrow keys then scroll. No role="region": that would replace the
+        list role and orphan the items inside it.
+      */}
+      <ul
+        tabIndex={0}
+        aria-label={t.home.reviewsTitle}
+        className="scrollbar-none -mx-4 mt-10 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass md:mx-0 md:grid md:grid-cols-3 md:gap-6 md:overflow-visible md:px-0"
+      >
         {reviews.slice(0, 6).map((review) => (
           <li
             key={review.id}
@@ -474,7 +496,7 @@ export function ConsultCta() {
             >
               <Phone className="size-4" />
               <span className="num">{brand.contact.phone}</span>
-              <span className="text-canvas/50">· {t.home.consultSecondary}</span>
+              <span className="text-canvas/70">· {t.home.consultSecondary}</span>
             </a>
           </div>
         </div>

@@ -31,7 +31,11 @@ export function ProductGallery({
       <div className="relative flex-1 overflow-hidden rounded-sm bg-surface-2">
         <div
           ref={trackRef}
-          className="scrollbar-none flex snap-x snap-mandatory overflow-x-auto md:overflow-hidden"
+          // Focusable so the swipeable strip is reachable without a pointer.
+          tabIndex={0}
+          role="region"
+          aria-label={t.product.gallery}
+          className="scrollbar-none flex snap-x snap-mandatory overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass md:overflow-hidden"
           onScroll={(event) => {
             // Mobile: the gallery is a swipeable strip, so keep the dots in sync.
             const element = event.currentTarget;

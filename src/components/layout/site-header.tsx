@@ -158,7 +158,10 @@ export function SiteHeader({
             >
               <ShoppingBag className="size-[18px]" />
               {itemCount > 0 ? (
-                <span className="num absolute -end-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-ink text-[0.625rem] text-canvas">
+                <span
+                  data-testid="cart-count"
+                  className="num absolute -end-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-ink text-[0.625rem] text-canvas"
+                >
                   {itemCount}
                 </span>
               ) : null}

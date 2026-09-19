@@ -52,6 +52,7 @@ export function AddToCartPanel({ product }: { product: Product }) {
         <Button
           block
           size="lg"
+          data-testid="add-to-cart"
           disabled={soldOut || pending}
           onClick={() =>
             add({

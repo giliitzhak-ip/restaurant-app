@@ -42,12 +42,19 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
 
     if (!result.ok) {
       setErrors(result.fieldErrors ?? {});
+      /*
+       * Both auth failures answer with the same kind of message on purpose:
+       * "this email is already registered" tells anyone with a list of
+       * addresses which of them shop here.
+       */
       setMessage(
         result.error === "INVALID_CREDENTIALS"
           ? t.account.invalidCredentials
-          : result.error === "EMAIL_TAKEN"
-            ? t.account.emailTaken
-            : "",
+          : result.error === "REGISTRATION_REJECTED"
+            ? t.account.registrationRejected
+            : result.error === "RATE_LIMITED"
+              ? t.account.tooManyAttempts
+              : "",
       );
       return;
     }

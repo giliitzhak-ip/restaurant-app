@@ -8,7 +8,17 @@
  * default, stops the process at boot instead of failing quietly at 3am.
  */
 
-export const isProduction = process.env.NODE_ENV === "production";
+/**
+ * Which contract to enforce.
+ *
+ * `APP_ENV` exists because `next start` always reports NODE_ENV=production,
+ * including when CI runs the end-to-end suite against a throwaway instance
+ * with no database. Rather than a bypass flag that quietly disarms the checks,
+ * the environment says what it is: CI sets `APP_ENV=test`, a real deployment
+ * sets nothing and gets the strict path.
+ */
+export const appEnv = process.env.APP_ENV ?? process.env.NODE_ENV ?? "development";
+export const isProduction = appEnv === "production";
 /** Set by `next build`; a build must not demand runtime-only secrets. */
 export const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
 /**

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Package } from "lucide-react";
@@ -30,7 +31,13 @@ const statusLabels: Record<OrderStatus, string> = {
 
 export default async function AccountOrdersPage() {
   const user = await getSessionUser();
-  if (!user) return null;
+  /*
+   * Guarded here as well as in the layout. A layout redirect is resolved after
+   * the shell has streamed, so on its own it can leave the page rendering for
+   * an unauthenticated visitor; the page-level check is what actually keeps
+   * the data out of the response.
+   */
+  if (!user) redirect(`${routes.login}?next=${encodeURIComponent(routes.account.root)}`);
   const orders = await getRepository().listOrders(user.id);
 
   if (!orders.length) {

@@ -59,7 +59,7 @@ export function CartSummary({
 
       <div className="mt-4 flex items-baseline justify-between gap-4 border-t border-line pt-4">
         <span className="text-sm font-medium text-ink">{t.cart.total}</span>
-        <span className="num font-display text-2xl text-ink">
+        <span className="num font-display text-2xl text-ink" data-testid="cart-total">
           {formatPrice(totals.total)}
         </span>
       </div>

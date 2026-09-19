@@ -10,7 +10,7 @@ const badgeVariants = cva(
         neutral: "bg-surface-2 text-ink-soft",
         ink: "bg-ink text-canvas",
         outline: "border border-line-strong text-muted",
-        brass: "bg-brass-wash text-brass",
+        brass: "bg-brass-wash text-brass-ink",
         success: "bg-[#e9f0ea] text-success",
         warning: "bg-[#f6efe0] text-warning",
         danger: "bg-[#f7e9e7] text-danger",

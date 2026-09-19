@@ -36,13 +36,27 @@ export const TabsTrigger = React.forwardRef<
 ));
 TabsTrigger.displayName = "TabsTrigger";
 
+/**
+ * Panels stay mounted.
+ *
+ * Radix unmounts an inactive panel by default, which leaves every trigger
+ * pointing `aria-controls` at an element that is not in the document — a
+ * WCAG 4.1.2 failure, and a real one: assistive technology is told the
+ * relationship exists and then cannot follow it. `forceMount` keeps the panel
+ * in the tree; Radix still sets `hidden` on the inactive ones, so nothing is
+ * read out or focusable until its tab is chosen.
+ *
+ * It also means the specification table is in the HTML for search engines and
+ * for anyone reading the page without JavaScript.
+ */
 export const TabsContent = React.forwardRef<
   React.ComponentRef<typeof TabsPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
 >(({ className, ...props }, ref) => (
   <TabsPrimitive.Content
     ref={ref}
-    className={cn("pt-6 focus-visible:outline-none", className)}
+    forceMount
+    className={cn("pt-6 focus-visible:outline-none data-[state=inactive]:hidden", className)}
     {...props}
   />
 ));

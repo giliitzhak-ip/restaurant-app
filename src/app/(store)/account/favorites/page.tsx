@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Heart } from "lucide-react";
 import { routes } from "@/config/site";
@@ -16,7 +17,13 @@ export const metadata: Metadata = {
 
 export default async function AccountFavoritesPage() {
   const user = await getSessionUser();
-  if (!user) return null;
+  /*
+   * Guarded here as well as in the layout. A layout redirect is resolved after
+   * the shell has streamed, so on its own it can leave the page rendering for
+   * an unauthenticated visitor; the page-level check is what actually keeps
+   * the data out of the response.
+   */
+  if (!user) redirect(`${routes.login}?next=${encodeURIComponent(routes.account.root)}`);
   const repository = getRepository();
   const ids = await repository.listFavorites(user.id);
   const products = await repository.getProductsByIds(ids);
