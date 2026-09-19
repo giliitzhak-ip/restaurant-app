@@ -1,0 +1,231 @@
+// @vitest-environment jsdom
+/**
+ * Smoke test for the shipped UI: every screen in index.html exists, the main
+ * buttons respond, difficulty and quality selection work, and settings survive
+ * a round trip through storage.
+ */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
+import { UIManager, type UICallbacks } from '../src/ui/UIManager';
+import { defaultSettings, loadSettings, saveSettings } from '../src/core/Settings';
+import { createMatchState } from '../src/game/MatchState';
+import { GameConfig } from '../src/config/GameConfig';
+
+// Read the real index.html the game ships with, so a renamed element fails here.
+const html = readFileSync(resolve(process.cwd(), 'index.html'), 'utf8');
+const bodyMatch = /<body>([\s\S]*)<\/body>/.exec(html);
+const BODY = bodyMatch?.[1]?.replace(/<script[\s\S]*?<\/script>/g, '') ?? '';
+
+function mountDocument(): void {
+  document.documentElement.lang = 'he';
+  document.documentElement.dir = 'rtl';
+  document.body.innerHTML = BODY;
+}
+
+/** Every callback is a spy, while still satisfying the real UICallbacks shape. */
+type MockedCallbacks = { [K in keyof UICallbacks]: Mock<UICallbacks[K]> };
+
+function makeCallbacks(): MockedCallbacks {
+  return {
+    onPlayPressed: vi.fn<UICallbacks['onPlayPressed']>(),
+    onStartMatch: vi.fn<UICallbacks['onStartMatch']>(),
+    onResume: vi.fn<UICallbacks['onResume']>(),
+    onRestart: vi.fn<UICallbacks['onRestart']>(),
+    onExitToMenu: vi.fn<UICallbacks['onExitToMenu']>(),
+    onPauseRequested: vi.fn<UICallbacks['onPauseRequested']>(),
+    onSettingsChanged: vi.fn<UICallbacks['onSettingsChanged']>(),
+    onInteraction: vi.fn<UICallbacks['onInteraction']>(),
+    onReload: vi.fn<UICallbacks['onReload']>(),
+  };
+}
+
+function click(id: string): void {
+  document.getElementById(id)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+}
+
+describe('UI smoke', () => {
+  beforeEach(() => {
+    mountDocument();
+    localStorage.clear();
+  });
+
+  it('has the document set up for Hebrew right-to-left', () => {
+    expect(document.documentElement.lang).toBe('he');
+    expect(document.documentElement.dir).toBe('rtl');
+  });
+
+  it('contains every screen the game switches between', () => {
+    for (const id of [
+      'screen-loading',
+      'screen-menu',
+      'screen-difficulty',
+      'screen-settings',
+      'screen-pause',
+      'screen-result',
+      'hud',
+      'rotate-notice',
+      'fatal-error',
+      'render-canvas',
+      'touch-root',
+    ]) {
+      expect(document.getElementById(id), `#${id} is missing`).not.toBeNull();
+    }
+  });
+
+  it('marks every unreleased mode as coming soon and disables it', () => {
+    const locked = [...document.querySelectorAll<HTMLButtonElement>('.btn--locked')];
+    expect(locked.length).toBe(5);
+    for (const button of locked) {
+      expect(button.disabled).toBe(true);
+      expect(button.textContent).toContain('בקרוב');
+    }
+    const labels = locked.map((button) => button.textContent ?? '');
+    for (const mode of ['משחק עם חבר', '2 נגד 2', 'אונליין', 'קריירה', 'טורנירים']) {
+      expect(labels.some((label) => label.includes(mode))).toBe(true);
+    }
+  });
+
+  it('constructs without throwing and shows the menu', () => {
+    const ui = new UIManager(makeCallbacks(), defaultSettings());
+    ui.showScreen('menu');
+    expect(document.getElementById('screen-menu')?.classList.contains('is-hidden')).toBe(false);
+    expect(document.getElementById('screen-settings')?.classList.contains('is-hidden')).toBe(true);
+  });
+
+  it('moves from the menu to difficulty selection and starts a match', () => {
+    const callbacks = makeCallbacks();
+    const ui = new UIManager(callbacks, defaultSettings());
+    ui.showScreen('menu');
+
+    click('btn-play');
+    expect(callbacks.onPlayPressed).toHaveBeenCalledTimes(1);
+    expect(document.getElementById('screen-difficulty')?.classList.contains('is-hidden')).toBe(
+      false,
+    );
+
+    document
+      .querySelector<HTMLButtonElement>('[data-difficulty="hard"]')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(document.querySelector('[data-difficulty="hard"]')?.getAttribute('aria-checked')).toBe(
+      'true',
+    );
+    expect(document.querySelector('[data-difficulty="normal"]')?.getAttribute('aria-checked')).toBe(
+      'false',
+    );
+
+    click('btn-start-match');
+    expect(callbacks.onStartMatch).toHaveBeenCalledWith('hard');
+  });
+
+  it('drives pause, resume, restart and exit', () => {
+    const callbacks = makeCallbacks();
+    new UIManager(callbacks, defaultSettings());
+
+    click('btn-pause');
+    expect(callbacks.onPauseRequested).toHaveBeenCalled();
+    click('btn-resume');
+    expect(callbacks.onResume).toHaveBeenCalled();
+    click('btn-pause-restart');
+    expect(callbacks.onRestart).toHaveBeenCalled();
+    click('btn-pause-menu');
+    expect(callbacks.onExitToMenu).toHaveBeenCalled();
+    click('btn-rematch');
+    expect(callbacks.onRestart).toHaveBeenCalledTimes(2);
+    click('btn-result-menu');
+    expect(callbacks.onExitToMenu).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports settings changes and reflects them in the form', () => {
+    const callbacks = makeCallbacks();
+    const ui = new UIManager(callbacks, defaultSettings());
+    ui.showScreen('settings');
+
+    const master = document.getElementById('set-master') as HTMLInputElement;
+    master.value = '20';
+    master.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(callbacks.onSettingsChanged).toHaveBeenCalled();
+    const last = callbacks.onSettingsChanged.mock.calls.at(-1)?.[0];
+    expect(last?.masterVolume).toBeCloseTo(0.2);
+    expect(document.getElementById('out-master')?.textContent).toBe('20%');
+
+    document
+      .querySelector<HTMLButtonElement>('[data-quality="low"]')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(document.querySelector('[data-quality="low"]')?.getAttribute('aria-checked')).toBe(
+      'true',
+    );
+
+    click('set-vibration');
+    expect(document.getElementById('set-vibration')?.getAttribute('aria-checked')).toBe('false');
+    expect(document.getElementById('out-vibration')?.textContent).toBe('כבוי');
+  });
+
+  it('round-trips settings through the real localStorage', () => {
+    const settings = { ...defaultSettings(), quality: 'high' as const, masterVolume: 0.1 };
+    expect(saveSettings(settings)).toBe(true);
+    expect(loadSettings()).toEqual(settings);
+
+    const ui = new UIManager(makeCallbacks(), loadSettings());
+    ui.showScreen('settings');
+    expect(document.querySelector('[data-quality="high"]')?.getAttribute('aria-checked')).toBe(
+      'true',
+    );
+    expect(document.getElementById('out-master')?.textContent).toBe('10%');
+  });
+
+  it('renders the HUD from match state', () => {
+    const ui = new UIManager(makeCallbacks(), defaultSettings());
+    const state = createMatchState();
+    state.phase = 'playing';
+    state.score.home = 5;
+    state.score.away = 2;
+    state.timeRemaining = 61;
+    state.players[0]!.stamina = GameConfig.player.staminaMax / 2;
+
+    ui.updateHud(state, 0.5, true);
+
+    expect(document.getElementById('hud-score-home')?.textContent).toBe('5');
+    expect(document.getElementById('hud-score-away')?.textContent).toBe('2');
+    expect(document.getElementById('hud-clock')?.textContent).toBe('1:01');
+    expect(document.getElementById('meter-power')?.style.width).toBe('50%');
+    expect(document.getElementById('meter-stamina')?.style.width).toBe('50%');
+    expect(document.getElementById('hud-shot-type')?.textContent).toBe('בעיטה מוגבהת');
+  });
+
+  it('shows a scoring banner in Hebrew', () => {
+    const ui = new UIManager(makeCallbacks(), defaultSettings());
+    ui.showEvent('junction', 5);
+    expect(document.getElementById('hud-event')?.hidden).toBe(false);
+    expect(document.getElementById('hud-event-kind')?.textContent).toBe('חיבור!');
+    expect(document.getElementById('hud-event-points')?.textContent).toBe('+5 נקודות');
+  });
+
+  it('shows win, loss and draw on the result screen', () => {
+    const ui = new UIManager(makeCallbacks(), defaultSettings());
+
+    ui.showResult('homeWin', 7, 3);
+    expect(document.getElementById('result-title')?.textContent).toBe('ניצחון');
+    expect(document.getElementById('result-score')?.textContent).toBe('7 : 3');
+    expect(document.getElementById('screen-result')?.classList.contains('is-hidden')).toBe(false);
+
+    ui.showResult('awayWin', 1, 4);
+    expect(document.getElementById('result-title')?.textContent).toBe('הפסד');
+
+    ui.showResult('draw', 2, 2);
+    expect(document.getElementById('result-title')?.textContent).toBe('תיקו');
+  });
+
+  it('toggles the rotate notice and the loading bar', () => {
+    const ui = new UIManager(makeCallbacks(), defaultSettings());
+
+    ui.setRotateNoticeVisible(true);
+    expect(document.getElementById('rotate-notice')?.classList.contains('is-hidden')).toBe(false);
+    ui.setRotateNoticeVisible(false);
+    expect(document.getElementById('rotate-notice')?.classList.contains('is-hidden')).toBe(true);
+
+    ui.setLoadingProgress(0.42, 'בונה את המגרש');
+    expect(document.getElementById('loading-fill')?.style.width).toBe('42%');
+    expect(document.getElementById('loading-status')?.textContent).toBe('בונה את המגרש');
+  });
+});

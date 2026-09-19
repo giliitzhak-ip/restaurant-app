@@ -1,0 +1,37 @@
+{
+  "name": "stanga",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "STANGA - Israeli street football, 3D browser game",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "icons": "node scripts/generate-icons.mjs"
+  },
+  "dependencies": {
+    "@babylonjs/core": "9.27.1",
+    "@babylonjs/havok": "1.3.14"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "22.19.0",
+    "eslint": "10.11.0",
+    "eslint-config-prettier": "10.1.8",
+    "jsdom": "27.0.1",
+    "prettier": "3.9.8",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.70.0",
+    "vite": "8.3.0",
+    "vite-plugin-pwa": "1.3.0",
+    "vitest": "5.0.1"
+  }
+}
