@@ -19,6 +19,7 @@ import { Input, Textarea } from "@/components/ui/input";
 import { RadioCard, RadioGroup } from "@/components/ui/radio-group";
 import { useToast } from "@/components/ui/toast";
 import { CartSummary } from "@/features/cart/cart-summary";
+import { israeliCities } from "@/data/israeli-cities";
 import { useCart } from "@/features/cart/cart-provider";
 import { useSessionUser } from "@/components/providers";
 import { placeOrderAction } from "@/server/actions/checkout";
@@ -240,7 +241,23 @@ export function CheckoutForm({
                 required
                 error={form.formState.errors.city?.message}
               >
-                <Input id="city" autoComplete="address-level2" {...form.register("city")} />
+                <Input
+                  id="city"
+                  list="city-suggestions"
+                  autoComplete="address-level2"
+                  {...form.register("city")}
+                />
+                {/*
+                  Local suggestions, not a geocoding service: this saves the
+                  typing without sending every keystroke of someone's home
+                  address to a third party, and it cannot break checkout when
+                  that service is down. Free text still works.
+                */}
+                <datalist id="city-suggestions">
+                  {israeliCities.map((city) => (
+                    <option key={city} value={city} />
+                  ))}
+                </datalist>
               </Field>
               <Field label={t.checkout.zip} htmlFor="zip">
                 <Input
@@ -281,6 +298,12 @@ export function CheckoutForm({
         </fieldset>
       </div>
 
+      {/*
+        Sticky beside the form on desktop, so the total stays in view while the
+        address is filled in — surprise at the last step is where carts get
+        abandoned. On mobile it sits directly above the submit button, which is
+        the moment it matters.
+      */}
       <div className="lg:sticky lg:top-24 lg:h-fit">
         <CartSummary cart={cart}>
           <div className="space-y-4">

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   Download,
+  Share2,
   Heart,
   Image as ImageIcon,
   Loader2,
@@ -174,6 +175,40 @@ export function DesignerShell({
       )}`,
       action: { label: t.cart.checkout, href: routes.cart },
     });
+  };
+
+  /**
+   * Shares the render.
+   *
+   * Uses the Web Share sheet when the browser can take a file — on a phone
+   * that puts WhatsApp, Messages and Mail one tap away, which is where these
+   * images actually go. Falls back to a WhatsApp link with the product names
+   * and a link back to the designer.
+   */
+  const shareRender = async () => {
+    const canvas = controller.canvasRef.current;
+    if (!canvas) return;
+    track("share_design", { products: controller.selectedProducts.length });
+
+    const products = controller.selectedProducts.map(({ swatch }) => swatch.name).join(" · ");
+    const text = `${t.designer.shareText} ${products}`;
+    const pageUrl = typeof window === "undefined" ? "" : window.location.href;
+
+    try {
+      const file = await canvasToFile(canvas, "terra-nova-design.jpg");
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], text, title: t.designer.title });
+        return;
+      }
+    } catch {
+      // Cancelled, or the sheet refused the file — fall through to the link.
+    }
+
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(`${text}\n${pageUrl}`)}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
   };
 
   const downloadRender = async () => {
@@ -419,6 +454,16 @@ export function DesignerShell({
                 </div>
               </dl>
 
+              {/*
+                Stated next to the price, not buried in a policy page: this is
+                the moment someone decides to buy 40 m² from a picture.
+              */}
+              {hasSelection ? (
+                <p className="w-full max-w-prose text-[0.6875rem] leading-relaxed text-studio-ink/55 lg:order-last">
+                  {t.designer.renderDisclaimer}
+                </p>
+              ) : null}
+
               <div className="ms-auto flex flex-wrap items-center gap-2">
                 {controller.selectedProducts.map(({ swatch }) => (
                   <Badge key={swatch.id} variant="neutral" className="hidden sm:flex">
@@ -433,6 +478,15 @@ export function DesignerShell({
                   aria-label={t.designer.downloadImage}
                 >
                   <Download />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="studioOutline"
+                  onClick={shareRender}
+                  disabled={!hasSelection}
+                  aria-label={t.designer.shareCta}
+                >
+                  <Share2 />
                 </Button>
                 <Button
                   size="sm"

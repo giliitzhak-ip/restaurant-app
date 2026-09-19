@@ -1,4 +1,5 @@
 import { createId } from "@/lib/utils";
+import { fetchWithTimeout } from "@/server/http/fetch-with-timeout";
 import type { StorageDriver } from "./types";
 
 /**
@@ -22,17 +23,22 @@ export const remoteStorageDriver: StorageDriver = {
     }
 
     const key = `${new Date().toISOString().slice(0, 7)}/${keyHint}-${createId("f").slice(2)}`;
-    const response = await fetch(`${endpoint}?key=${encodeURIComponent(key)}`, {
-      method: "PUT",
-      headers: {
-        "content-type": contentType,
-        ...(process.env.STORAGE_API_KEY
-          ? { authorization: `Bearer ${process.env.STORAGE_API_KEY}` }
-          : {}),
+    // A bucket that stops answering must not hold a request worker open.
+    const response = await fetchWithTimeout(
+      `${endpoint}?key=${encodeURIComponent(key)}`,
+      {
+        method: "PUT",
+        headers: {
+          "content-type": contentType,
+          ...(process.env.STORAGE_API_KEY
+            ? { authorization: `Bearer ${process.env.STORAGE_API_KEY}` }
+            : {}),
+        },
+        body: new Uint8Array(data),
+        cache: "no-store",
       },
-      body: new Uint8Array(data),
-      cache: "no-store",
-    });
+      { timeoutMs: 20_000, label: "storage.save" },
+    );
 
     if (!response.ok) {
       throw new Error(`storage upload failed (${response.status})`);
@@ -48,12 +54,16 @@ export const remoteStorageDriver: StorageDriver = {
   async remove(key) {
     const endpoint = process.env.STORAGE_UPLOAD_URL;
     if (!endpoint) return;
-    await fetch(`${endpoint}?key=${encodeURIComponent(key)}`, {
-      method: "DELETE",
-      headers: process.env.STORAGE_API_KEY
-        ? { authorization: `Bearer ${process.env.STORAGE_API_KEY}` }
-        : undefined,
-      cache: "no-store",
-    }).catch(() => undefined);
+    await fetchWithTimeout(
+      `${endpoint}?key=${encodeURIComponent(key)}`,
+      {
+        method: "DELETE",
+        headers: process.env.STORAGE_API_KEY
+          ? { authorization: `Bearer ${process.env.STORAGE_API_KEY}` }
+          : undefined,
+        cache: "no-store",
+      },
+      { timeoutMs: 8_000, label: "storage.remove" },
+    ).catch(() => undefined);
   },
 };

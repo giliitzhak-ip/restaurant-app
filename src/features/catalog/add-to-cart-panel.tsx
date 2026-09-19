@@ -127,6 +127,13 @@ export function AddToCartPanel({ product }: { product: Product }) {
           {t.product.orderSample} · {formatPrice(commerce.samplePrice)}
         </Button>
       ) : null}
+      {product.sampleAvailable ? (
+        // The refund is the whole reason to order one; it belongs on the page,
+        // not only in the toast that appears after you have already clicked.
+        <p className="-mt-1 text-center text-xs text-muted">
+          {t.product.sampleRefundNote}
+        </p>
+      ) : null}
 
       <p className="text-center text-xs text-muted">
         <Link href={routes.quoteForProduct(product.slug)} className="link-quiet">

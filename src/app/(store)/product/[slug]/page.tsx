@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/tabs";
 import { getRepository } from "@/server/repositories";
 import { AddToCartPanel } from "@/features/catalog/add-to-cart-panel";
+import { StickyBuyBar } from "@/features/catalog/sticky-buy-bar";
 import { AvailabilityBadge } from "@/features/catalog/availability-badge";
 import { PriceTag } from "@/features/catalog/price-tag";
 import { ProductGallery } from "@/features/catalog/product-gallery";
@@ -146,7 +147,7 @@ export default async function ProductPage({
               </div>
             </div>
 
-            <div className="mt-6">
+            <div className="mt-6" id="buy-box">
               <AddToCartPanel product={product} />
             </div>
 
@@ -269,6 +270,11 @@ export default async function ProductPage({
           </section>
         ) : null}
       </div>
+
+      {/* Phones only: the buy box is long gone by the time the specs end. */}
+      <StickyBuyBar product={product} anchorId="buy-box" />
+      {/* Clears the fixed bar so the last section is never hidden behind it. */}
+      <div aria-hidden className="h-16 md:hidden" />
     </>
   );
 }

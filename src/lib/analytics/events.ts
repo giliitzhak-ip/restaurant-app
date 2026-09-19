@@ -18,6 +18,8 @@ export interface AnalyticsEvents {
   select_surface: { surface: "FLOOR" | "WALL"; source: "AUTO" | "MANUAL" };
   apply_product: { slug: string; surface: "FLOOR" | "WALL" };
   save_design: { designId: string; products: number; areaSqm: number };
+  /** A render left the site — the strongest signal of intent the designer has. */
+  share_design: { products: number };
   calculate_area: { areaSqm: number; packages: number; wastePercent: number; rooms: number };
   add_to_cart: {
     slug: string;

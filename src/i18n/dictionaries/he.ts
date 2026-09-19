@@ -176,6 +176,7 @@ export const he = {
     added: "נוסף לסל",
     seeInMyRoom: "ראה בחדר שלי",
     orderSample: "הזמן דוגמה",
+    sampleRefundNote: "מגיעה תוך 2–4 ימי עסקים, והעלות מוחזרת במלואה בהזמנה.",
     requestQuote: "קבל הצעת מחיר",
     calculator: "מחשבון כמויות",
     relatedTitle: "משתלב היטב עם",
@@ -365,6 +366,15 @@ export const he = {
     estimatedPrice: "מחיר משוער",
     areaEditHint: "אפשר לדייק את השטח לפני ההוספה לסל",
     downloadImage: "הורדת התמונה",
+    shareCta: "שיתוף ההדמיה",
+    shareText: "ככה זה נראה אצלי:",
+    /*
+     * Shown wherever a render is: a screen is not a showroom, and a customer
+     * who ordered 40 m² from a picture deserves to have been told that before
+     * they paid, not after.
+     */
+    renderDisclaimer:
+      "ההדמיה להמחשה בלבד. הגוון בפועל מושפע מהתאורה בחדר, ממסך התצוגה ומהשונות הטבעית של החומר — לפני הזמנה גדולה כדאי להזמין דוגמה.",
     startOver: "התחלה מחדש",
     replacePhoto: "החלפת תמונה",
     selectedFloor: "רצפה נבחרת",
