@@ -28,6 +28,18 @@ export default async function RequestPage({
     redirect(`/login?next=${encodeURIComponent(`/request?${next}`)}`);
   }
 
+  /*
+   * Only a customer can open a job.
+   *
+   * A provider arriving here got the whole flow — classification, location,
+   * the confirm button — and then a refusal from POST /api/jobs, which is
+   * the worst possible order to discover it in. An admin has a control tower
+   * and no reason to be here at all.
+   */
+  if (user.role !== 'customer') {
+    redirect(user.role === 'provider' ? '/provider' : '/admin');
+  }
+
   // `mode` is still accepted so links from before the timing model keep
   // working; SCHEDULE meant "a specific time", which is SCHEDULED now.
   const timing =
@@ -43,13 +55,6 @@ export default async function RequestPage({
         initialDescription={params.q ?? ''}
         initialTiming={timing}
         initialRequestedFor={params.at ?? ''}
-        // Deriving this from Date.now() during a client render would be
-        // impure and would disagree between server and client. This is a
-        // server component rendered once per request, so the read is
-        // deterministic for that render; the value is only a floor on the
-        // picker, and POST /api/jobs revalidates the chosen time.
-        // eslint-disable-next-line react-hooks/purity
-        minScheduleValue={new Date(Date.now() + 3_600_000).toISOString().slice(0, 16)}
       />
     </main>
   );

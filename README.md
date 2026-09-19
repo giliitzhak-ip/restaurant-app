@@ -29,6 +29,23 @@ npm run dev           # http://localhost:3000
 Copy `.env.example` to `.env.local` and adjust as needed. The defaults work
 against a local PostgreSQL.
 
+### Tests
+
+282 in total, across three suites:
+
+| Suite | Count | Needs a database |
+|---|---|---|
+| `npm run test:unit` | 115 | No — pure domain logic, runs anywhere |
+| `npm run test:integration` | 132 | **Yes** |
+| `npm run test:security` | 35 | **Yes** |
+
+The integration and security suites talk to a real PostgreSQL with PostGIS
+and are not mocked, because what they are testing — RLS policies, a
+transition trigger, `FOR UPDATE SKIP LOCKED`, a PostGIS distance — exists
+only in the database. Run `npm run db:roles`, `npm run db:migrate` and
+`npm run test:db` first. Without a database those 167 tests do not fail with
+a meaningful result; they fail to connect, which says nothing about the code.
+
 ### Demo accounts
 
 Password for all: `demo1234`
@@ -63,7 +80,7 @@ refreshes it.
 | `npm run dev` | Development server |
 | `npm run build` / `npm start` | Production build and serve |
 | `npm run lint` · `npm run typecheck` | Static checks |
-| `npm test` | All 152 tests |
+| `npm test` | All 282 tests — the integration and security suites need a live PostgreSQL + PostGIS |
 | `npm run test:unit` · `test:integration` · `test:security` | One suite |
 | `npm run db:roles` · `db:migrate` · `db:seed` · `db:setup` | Database |
 | `npm run test:db` | Create/refresh the test database |
@@ -104,7 +121,7 @@ Full detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | Decisions, alternatives rejected, trade-offs |
 | [`docs/ASSUMPTIONS.md`](docs/ASSUMPTIONS.md) | Every uncertain assumption and its status |
 | [`docs/RISKS.md`](docs/RISKS.md) | Risks with mitigation and verification |
-| [`docs/SCORE.md`](docs/SCORE.md) | Self-assessment against the brief's rubric: **94/100**, with the deductions argued |
+| [`docs/SCORE.md`](docs/SCORE.md) | Self-assessment against the brief's rubric: **97/100**, with the deductions argued |
 
 ---
 
@@ -118,14 +135,42 @@ REQUEST → UNDERSTAND → LOCATE → MATCH → OFFER → ACCEPT → CONFIRM
    → EN ROUTE → ARRIVE → WORK → COMPLETE → PAY → REVIEW
 ```
 
-**What is not done**, stated plainly: the customer cannot choose between
-several offers (spec §10's second branch) and the COMPARE booking mode is a
-dead end; provider documents cannot be uploaded; no real payment gateway is
-integrated
-(the mock reports `isReal = false` and the UI labels test payments as such);
-this has not been run against a live Supabase project; no push notifications;
-and the route-opportunity weighting, while it wins the adversarial case, wins
-it by a thin margin and needs validation against real data.
+**What is not done**, stated plainly. Everything in this list is a missing
+external service or an unvalidated assumption — none of it is hidden behind
+something that looks like it works:
+
+- **Payments are not real.** `PAYMENT_PROVIDER=mock` is a test adapter that
+  reports `isReal = false`; the UI labels every test payment as such and
+  production startup refuses to run it. No money moves. This system must not
+  be described as ready to take payments.
+- **Notifications reach nobody.** The only notifier shipped is
+  `LoggingNotifier`, which writes the message to the server log and reports
+  `isReal = false`. Startup refuses to run it in production, because a
+  password-reset code that goes nowhere is worse than no reset at all: the
+  person believes one is coming. A real SMS/push gateway is unintegrated
+  work, not configuration.
+- **COMPARE is refused, not half-built.** `POST /api/jobs` rejects the
+  COMPARE booking mode outright rather than accepting it and creating a job
+  that nothing will ever progress. Quote comparison is not built; the
+  customer still cannot choose between several offers (spec §10's second
+  branch), which is first-accept-wins by decision (D-020).
+- **Routing is geometric.** `MAP_PROVIDER=estimate` is a documented
+  approximation and marks every ETA it produces as low-confidence. OSRM is
+  supported but not exercised here.
+- Not run against a live Supabase project, and not tested on a real iOS
+  Safari or an Android device matrix.
+- The route-opportunity weighting wins the adversarial case, but by a thin
+  margin, and needs validation against real data.
+
+**What has been built since this section was first written**, and is no
+longer a gap: providers upload licence and insurance documents during
+onboarding (stored as bytes with magic-byte sniffing, served
+`Content-Disposition: attachment` behind RLS), verification lapses
+automatically when an approved document expires, before/after job photos
+exist where a service promises them, and password reset plus contact
+verification are implemented end to end — subject to the notifier above
+actually being able to deliver.
+
 See [`docs/QA.md`](docs/QA.md#not-verified--honest-gaps) and
 [`docs/RISKS.md`](docs/RISKS.md).
 

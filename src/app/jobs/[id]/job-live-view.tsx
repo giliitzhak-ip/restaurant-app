@@ -234,7 +234,7 @@ export function JobLiveView({ jobId }: { jobId: string }) {
       {(job.status === 'SEARCHING' || job.status === 'OFFERS_AVAILABLE') && (
         <Card className="text-center">
           <div className="relative mx-auto flex size-28 items-center justify-center">
-            <span className="gs-pulse-ring absolute size-20 rounded-full bg-brand/30" />
+            <span className="gs-pulse absolute size-20 rounded-full bg-brand/30" />
             <span className="absolute size-20 rounded-full border border-brand/40" />
             <div className="gs-sweep absolute size-24 rounded-full border-t-2 border-brand-bright" />
             <span aria-hidden="true" className="text-3xl">🔧</span>

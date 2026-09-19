@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { Button, Segmented, inputClasses } from '@/components/ui';
+import { useScheduleMinimumRef } from '@/lib/client/use-schedule-minimum';
 
 export type Timing = 'NOW' | 'ASAP' | 'SCHEDULED';
 
@@ -32,8 +33,10 @@ const TIMING_OPTIONS = [
  * providers are eligible at all — "now" is answered by the realtime switch,
  * a chosen time by the weekly plan (spec §52).
  */
-export function HomeSearch({ minScheduleValue }: { minScheduleValue: string }) {
+export function HomeSearch() {
   const router = useRouter();
+  // The floor on the picker, in the browser's timezone rather than UTC.
+  const scheduleMinimum = useScheduleMinimumRef();
   const [description, setDescription] = useState('');
   const [timing, setTiming] = useState<Timing>('NOW');
   const [requestedFor, setRequestedFor] = useState('');
@@ -95,8 +98,8 @@ export function HomeSearch({ minScheduleValue }: { minScheduleValue: string }) {
               type="datetime-local"
               dir="ltr"
               className={`${inputClasses} ltr-nums`}
+              ref={scheduleMinimum}
               value={requestedFor}
-              min={minScheduleValue || undefined}
               onChange={(event) => setRequestedFor(event.target.value)}
             />
           </div>

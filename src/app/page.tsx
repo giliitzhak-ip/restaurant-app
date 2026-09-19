@@ -36,14 +36,12 @@ export default function HomePage() {
         </p>
       </div>
 
-      <HomeSearch
-        // Computed here because this is a server component rendered once per
-        // request: a clock read is deterministic for that render and cannot
-        // cause a hydration mismatch. It is only a floor on the picker — the
-        // chosen time is revalidated in POST /api/jobs, which is the guard.
-        // eslint-disable-next-line react-hooks/purity
-        minScheduleValue={new Date(Date.now() + 3_600_000).toISOString().slice(0, 16)}
-      />
+      {/*
+        * The picker's floor is set in the browser, not here. Computing it on
+        * the server meant computing it in UTC, which is two or three hours
+        * off the wall clock the customer is reading.
+        */}
+      <HomeSearch />
 
       <footer className="mt-auto pt-10 text-center text-xs text-ink-3">
         <Link

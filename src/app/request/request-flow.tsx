@@ -16,6 +16,7 @@ import {
 import { Logo } from '@/components/brand';
 import { apiFetch, ApiRequestError } from '@/lib/client/api';
 import { useGeolocation } from '@/lib/client/use-geolocation';
+import { useScheduleMinimumRef } from '@/lib/client/use-schedule-minimum';
 
 interface Understanding {
   category: string | null;
@@ -66,15 +67,15 @@ export function RequestFlow({
   initialDescription,
   initialTiming,
   initialRequestedFor,
-  minScheduleValue,
 }: {
   initialDescription: string;
   initialTiming: Timing;
   initialRequestedFor: string;
-  minScheduleValue: string;
 }) {
   const router = useRouter();
   const geo = useGeolocation();
+  // The floor on the picker, in the browser's timezone rather than UTC.
+  const scheduleMinimum = useScheduleMinimumRef();
   const requestLocation = geo.request;
 
   const [description, setDescription] = useState(initialDescription);
@@ -278,8 +279,8 @@ export function RequestFlow({
               type="datetime-local"
               dir="ltr"
               className={`${inputClasses} ltr-nums`}
+              ref={scheduleMinimum}
               value={requestedFor}
-              min={minScheduleValue || undefined}
               onChange={(event) => setRequestedFor(event.target.value)}
             />
           </div>

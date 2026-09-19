@@ -6,8 +6,15 @@ What is verified, how, and — importantly — what is **not**.
 
 ## Test inventory
 
-204 tests, 22 files. Run: `npm test`
+**282 tests, 32 files.** Run: `npm test`
 (first time: `npm run test:db` to create the test database).
+
+The 115 unit tests need nothing but Node. The 132 integration and 35 security
+tests talk to a real PostgreSQL with PostGIS and are not mocked, because what
+they test — RLS policies, the transition trigger, `FOR UPDATE SKIP LOCKED`, a
+PostGIS distance — exists only in the database. Without one they do not fail
+with a meaningful result; they fail to connect, which says nothing about the
+code, and should be reported as "not run" rather than as a pass or a failure.
 
 ### Unit — pure domain logic, no I/O
 
@@ -20,6 +27,9 @@ What is verified, how, and — importantly — what is **not**.
 | `understanding.test.ts` | 17 | Classification, determinism, specificity, urgency, empty input |
 | `payments.test.ts` | 10 | Idempotency, over-capture, over-refund, declines |
 | `availability-phrase.test.ts` | 7 | The one availability sentence a customer reads, including "busy now" vs "no availability" and the local day boundary |
+| `safe-redirect.test.ts` | 15 | `?next=` as an open redirect — absolute URLs, `//host`, backslashes, `javascript:`, control characters, percent-encoded versions of each — and as a wrong-role landing |
+| `document-sniff.test.ts` | 7 | Magic-byte typing of uploads, and the size ceiling |
+| `maintenance-interval.test.ts` | 5 | The clock's configuration, where every failure mode is silent |
 | `foundation.test.ts` | 2 | Class merging |
 
 ### Integration — against a real PostgreSQL + PostGIS
@@ -36,6 +46,13 @@ What is verified, how, and — importantly — what is **not**.
 | `catalog-reachability.test.ts` | 4 | **Every trigger phrase resolves to the service that declares it**, in isolation and inside a sentence; the 16 canonical originals unmoved; no shipped service left unreachable |
 | `trade-proposals.test.ts` | 10 | A pending proposal changes nothing; approval makes the trade both classifiable and dispatchable; built-in classifications undisturbed; approval without phrases refused; a provider cannot approve themselves or see another's proposal; duplicates refused; rejection recorded; no invented price |
 | `sql-references.test.ts` | 1 | **Every relation named in every query under `src/` exists** |
+| `provider-documents.test.ts` | 8 | Upload, ownership, the locator decided before the INSERT, the verification gate |
+| `document-lifecycle.test.ts` | 7 | Expiry warnings, the lapse sweep suspending verification, the retention purge |
+| `job-photos.test.ts` | 6 | Before/after photos where a service promises them, and the completion gate |
+| `notification-delivery.test.ts` | 9 | The outbox, `FOR UPDATE SKIP LOCKED` claiming, attempt counting before the send |
+| `account-recovery.test.ts` | 9 | Password reset, contact codes, the attempt cap surviving a rollback, verification against the recorded destination |
+| `rate-limit.test.ts` | 5 | The shared Postgres limiter, its atomic hit, and failing open |
+| `concurrency.test.ts` | 3 | Parallel acceptance, outbox claiming under contention |
 
 ### Security
 

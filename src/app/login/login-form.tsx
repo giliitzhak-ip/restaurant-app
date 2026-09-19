@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { Button, Card, Field, inputClasses } from '@/components/ui';
 import { apiFetch, ApiRequestError } from '@/lib/client/api';
+import { redirectPathForRole } from '@/lib/safe-redirect';
 
 /**
  * `forgot` and `reset` are part of this form rather than a page of their own.
@@ -38,13 +39,21 @@ export function LoginForm({ demoMode }: { demoMode: boolean }) {
   const [resetToken, setResetToken] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
 
+  /*
+   * `next` is attacker-controlled: it is a query parameter on a page anyone
+   * can link to. It is never used as given.
+   *
+   * `redirectPathForRole` answers both questions at once — is this a
+   * same-origin path at all, and is it a screen this role can actually use —
+   * and falls back rather than failing, because a refused `next` is not
+   * something the person needs to read about.
+   */
   const routeFor = (user: AuthResponse, justRegistered = false): string => {
-    if (next) return next;
     // A newly registered provider has no trade declared yet, so the console
     // would be a dead end. Send them straight to setup.
-    if (user.role === 'provider') return justRegistered ? '/provider/onboarding' : '/provider';
-    if (user.role === 'admin') return '/admin';
-    return '/';
+    const fallback =
+      user.role === 'provider' && justRegistered ? '/provider/onboarding' : undefined;
+    return redirectPathForRole(next, user.role, fallback);
   };
 
   const submit = async (event: React.FormEvent) => {

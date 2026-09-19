@@ -48,7 +48,6 @@ jobs:
       DATABASE_ADMIN_URL: postgresql://getservice:getservice@127.0.0.1:5432/getservice
       DATABASE_URL: postgresql://getservice_app:getservice_app@127.0.0.1:5432/getservice
       TEST_DATABASE_URL: postgresql://getservice_app:getservice_app@127.0.0.1:5432/getservice_test
-      SESSION_SECRET: ci-only-session-secret-not-used-anywhere-else
       MAP_PROVIDER: estimate
       PAYMENT_PROVIDER: mock
       DEMO_MODE: 'true'
@@ -114,7 +113,6 @@ jobs:
     env:
       DATABASE_ADMIN_URL: postgresql://getservice:getservice@127.0.0.1:5432/getservice
       DATABASE_URL: postgresql://getservice_app:getservice_app@127.0.0.1:5432/getservice
-      SESSION_SECRET: ci-only-session-secret-not-used-anywhere-else
       DEMO_MODE: 'true'
       MAINTENANCE_INTERVAL_SECONDS: '0'
       NEXT_TELEMETRY_DISABLED: '1'

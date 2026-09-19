@@ -19,18 +19,34 @@ export interface GeoState {
   readonly message: string | null;
 }
 
+/*
+ * These messages offered an alternative that does not exist.
+ *
+ * "אפשר להזין כתובת במקום" was true of the form — there IS a free-text
+ * address field — but not of the request: POST /api/jobs requires
+ * coordinates, because matching is distance and route work and there is no
+ * geocoder in this deployment to turn a street name into a point. So the
+ * customer typed an address, pressed the button, and was refused by a screen
+ * that had just told them typing an address was the way out.
+ *
+ * The copy now asks for the only thing that actually unblocks them: a
+ * position from the device. Nothing here invents one — there is no default
+ * coordinate, no last-known fix, no city centre. A guessed location sends a
+ * professional to the wrong street, which is worse than an honest failure.
+ */
 const MESSAGES: Record<Exclude<GeoStatus, 'idle' | 'requesting' | 'granted'>, string> = {
-  denied: 'לא אישרתם גישה למיקום. אפשר להזין כתובת במקום.',
-  unavailable: 'המיקום אינו זמין במכשיר הזה. אפשר להזין כתובת במקום.',
-  timeout: 'לא הצלחנו לאתר את המיקום. נסו שוב או הזינו כתובת.',
+  denied: 'הגישה למיקום חסומה. אפשרו הרשאת מיקום לאתר בהגדרות הדפדפן ונסו שוב.',
+  unavailable: 'המיקום אינו זמין. הפעילו את שירותי המיקום במכשיר ונסו שוב.',
+  timeout: 'לא הצלחנו לאתר את המיקום. צאו לשטח פתוח יותר ונסו שוב.',
 };
 
 /**
  * Browser geolocation with explicit failure states (spec §44).
  *
  * There is NO fallback coordinate. If the device cannot give us a position we
- * say so and ask for an address: a guessed location would send a professional
- * to the wrong street, which is worse than an honest failure.
+ * say so and ask the person to fix the device, because that is the only thing
+ * that will actually work: a guessed location would send a professional to
+ * the wrong street, which is worse than an honest failure.
  */
 export function useGeolocation(): GeoState & { request: () => Promise<GeoFix | null> } {
   const [state, setState] = useState<GeoState>({ status: 'idle', fix: null, message: null });
