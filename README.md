@@ -18,6 +18,38 @@ throughout, mobile-first.
 
 ---
 
+
+## Before production
+
+The app refuses to start in production without a complete environment — see
+`.env.example` for which variables are required and `docs/SECURITY.md` for why
+each one is. In short: a database, a real `AUTH_SECRET`, an https site URL,
+remote object storage and a Redis endpoint for rate limiting.
+
+```bash
+npm ci
+npm run media:generate     # generated imagery; not in git, not part of the build
+npm run db:migrate         # or db:push for a throwaway database
+SEED_MODE=production npm run db:seed
+npm run build && npm start
+```
+
+Payments are **not** ready to take money: no gateway is wired up, and the
+webhook — the only thing that may mark an order paid — refuses every callback
+until `PAYMENT_WEBHOOK_SECRET` is set and the provider's format is implemented
+in `src/server/payments/hosted-gateway.ts`. Run the provider's sandbox through
+a capture, a decline, a cancellation and a replayed callback before going live.
+
+## Checks
+
+```bash
+npm run lint
+npm run typecheck
+npm run build
+npm run assets:check       # generated media against its size budget
+npm test                   # Playwright: shop, auth, quotes, designer, security, axe
+```
+
 ## Quick start
 
 ```bash

@@ -88,7 +88,7 @@ export function DesignerShell({
 
   /* --------------------------------- save -------------------------------- */
 
-  const saveDesign = async (name: string) => {
+  const saveDesign = async (name: string, options: { silent?: boolean } = {}) => {
     const canvas = controller.canvasRef.current;
     const image = controller.image;
     if (!canvas || !image) return;
@@ -141,6 +141,10 @@ export function DesignerShell({
       });
       controller.setDesignMeta({ designId: result.design.id, designName: name });
       setSaveOpen(false);
+
+      // An autosave is not an event the customer asked to be told about.
+      if (options.silent) return;
+
       toast({
         title: t.designer.designSaved,
         description: user ? t.account.designs : t.account.guestNote,
@@ -153,6 +157,39 @@ export function DesignerShell({
       setSaving(false);
     }
   };
+
+  /*
+   * Autosave.
+   *
+   * Only ever for a design the customer has *already* saved once. Saving
+   * uploads the room photo, and doing that on their behalf before they asked
+   * would quietly turn "let me try a colour" into "my living room is on your
+   * server" — the opposite of what the privacy note on the upload screen
+   * promises. Once they have chosen to save, keeping it current is what they
+   * expect.
+   *
+   * Debounced, because every slider drag changes the settings.
+   */
+  const surfaceFingerprint = JSON.stringify(
+    controller.surfaces.map((surface) => [
+      surface.mask.id,
+      surface.productId,
+      surface.settings,
+      Math.round(surface.areaSqm * 100),
+    ]),
+  );
+
+  React.useEffect(() => {
+    if (!controller.designId || !controller.designName) return;
+    if (typeof window === "undefined") return;
+
+    const handle = window.setTimeout(() => {
+      void saveDesign(controller.designName, { silent: true });
+    }, 2500);
+    return () => window.clearTimeout(handle);
+    // saveDesign closes over the current controller state by design.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [surfaceFingerprint, controller.designId, controller.designName]);
 
   /* ------------------------------ add to cart ---------------------------- */
 
