@@ -10,7 +10,7 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
   if (!user) redirect(`/login?next=${encodeURIComponent(`/jobs/${id}`)}`);
 
   return (
-    <main id="main" className="mx-auto min-h-screen max-w-md px-5 py-8">
+    <main id="main" className="mx-auto min-h-dvh max-w-md px-5 py-8">
       <JobLiveView jobId={id} />
     </main>
   );

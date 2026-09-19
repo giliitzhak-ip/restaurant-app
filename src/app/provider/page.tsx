@@ -12,7 +12,7 @@ export default async function ProviderPage() {
   }
 
   return (
-    <main id="main" className="mx-auto min-h-screen max-w-md px-4 py-6">
+    <main id="main" className="mx-auto min-h-dvh max-w-md px-4 py-6">
       <ProviderConsole />
     </main>
   );

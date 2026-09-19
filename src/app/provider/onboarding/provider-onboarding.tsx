@@ -16,6 +16,7 @@ import {
 import { Logo } from '@/components/brand';
 import { apiFetch, ApiRequestError } from '@/lib/client/api';
 import { useGeolocation } from '@/lib/client/use-geolocation';
+import { useTodayMinimumRef } from '@/lib/client/use-schedule-minimum';
 
 interface Category {
   slug: string;
@@ -117,6 +118,8 @@ function hebrewDate(iso: string | undefined): string | null {
 export function ProviderOnboarding() {
   const router = useRouter();
   const geo = useGeolocation();
+  // Today, in the provider's own timezone, set after mount.
+  const todayMinimum = useTodayMinimumRef();
 
   const [data, setData] = useState<ProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -524,18 +527,38 @@ export function ProviderOnboarding() {
             seven category names. Finding an existing match is better for
             everyone than proposing a duplicate. */}
         <label htmlFor="trade-search" className="sr-only">חיפוש מקצוע</label>
-        <input
-          id="trade-search"
-          className={`${inputClasses} mt-3`}
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="חפש את המקצוע שלך — למשל מזגן, אסלה, גינה…"
-        />
 
-        {searchHits.length > 0 && (
-          <div className="mt-3 space-y-1.5">
-            <SectionLabel>נמצא בקטלוג</SectionLabel>
-            {searchHits.map((hit) => (
+        {/*
+            The suggestions FLOAT. They do not push the form down.
+
+            Measured on the running app: as the hit count went 8 → 14 → 8
+            while typing "מזגן חלון", an in-flow list changed the document
+            height by +419px and then −347px. Every one of those swings lands
+            under a finger that is mid-word, and on iOS Safari — keyboard
+            open, layout taller than the visible area — Safari answers a
+            reflow by scrolling the focused field back into view. That is the
+            jump a provider feels: not the input losing focus, the page moving
+            underneath it.
+
+            Capping the list's height helped and did not fix it: a capped box
+            still grows from nothing and still shrinks when fewer rows match.
+            Taking the panel out of flow ends it, because then no part of the
+            panel is in the document's height at all. It is also what a
+            suggestion list is supposed to do. */}
+        <div className="relative mt-3">
+          <input
+            id="trade-search"
+            className={inputClasses}
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="חפש את המקצוע שלך — למשל מזגן, אסלה, גינה…"
+            autoComplete="off"
+          />
+
+          {searchHits.length > 0 && (
+            <div className="absolute inset-x-0 top-full z-20 mt-1.5 max-h-60 space-y-1.5 overflow-y-auto overscroll-contain rounded-xl border border-line-strong bg-surface-1 p-2 shadow-2xl shadow-bg/80">
+              <SectionLabel>נמצא בקטלוג</SectionLabel>
+              {searchHits.map((hit) => (
               <button
                 key={`${hit.categorySlug}-${hit.serviceSlug ?? 'cat'}`}
                 type="button"
@@ -556,16 +579,17 @@ export function ProviderOnboarding() {
                   )}
                 </span>
                 <span aria-hidden="true" className="shrink-0 text-ink-3">›</span>
-              </button>
-            ))}
-          </div>
-        )}
+                </button>
+              ))}
+            </div>
+          )}
 
-        {search.trim().length >= 2 && searchHits.length === 0 && (
-          <p className="mt-3 rounded-xl bg-surface-2 px-3 py-2.5 text-sm text-ink-2">
-            לא מצאנו את זה בקטלוג. אפשר להציע אותו למטה — נבדוק ונאשר.
-          </p>
-        )}
+          {search.trim().length >= 2 && searchHits.length === 0 && (
+            <p className="absolute inset-x-0 top-full z-20 mt-1.5 rounded-xl border border-line-strong bg-surface-1 px-3 py-2.5 text-sm text-ink-2 shadow-2xl shadow-bg/80">
+              לא מצאנו את זה בקטלוג. אפשר להציע אותו למטה — נבדוק ונאשר.
+            </p>
+          )}
+        </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
           {data?.catalog.categories.map((c) => (
@@ -1157,7 +1181,7 @@ export function ProviderOnboarding() {
                           id={`exp-${kind}`}
                           type="date"
                           dir="ltr"
-                          min={new Date().toISOString().slice(0, 10)}
+                          ref={todayMinimum}
                           className={`${inputClasses} ltr-nums`}
                           value={docExpiry[kind] ?? ''}
                           onChange={(event) =>

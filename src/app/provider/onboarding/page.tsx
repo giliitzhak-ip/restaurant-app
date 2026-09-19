@@ -20,7 +20,7 @@ export default async function ProviderOnboardingPage() {
   }
 
   return (
-    <main id="main" className="mx-auto min-h-screen max-w-md px-5 py-8">
+    <main id="main" className="mx-auto min-h-dvh max-w-md px-5 py-8">
       <ProviderOnboarding />
     </main>
   );

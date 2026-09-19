@@ -43,6 +43,28 @@ export function localDateTimeValue(when: Date): string {
   );
 }
 
+/** The same, for a `<input type="date">`: `YYYY-MM-DD` in LOCAL time. */
+export function localDateValue(when: Date): string {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${when.getFullYear()}-${pad(when.getMonth() + 1)}-${pad(when.getDate())}`;
+}
+
+/**
+ * A ref for a `<input type="date">` whose floor is today, locally.
+ *
+ * The document-expiry field set `min={new Date().toISOString().slice(0, 10)}`
+ * — the same two mistakes in one expression. It is UTC, so between midnight
+ * and 03:00 Israel time it offers YESTERDAY as the earliest allowed date; and
+ * it reads the clock during render, which is impure and disagrees between the
+ * server's HTML and the browser's hydration.
+ */
+export function useTodayMinimumRef(): (node: HTMLInputElement | null) => void {
+  return useCallback((node: HTMLInputElement | null) => {
+    if (!node) return;
+    node.min = localDateValue(new Date());
+  }, []);
+}
+
 /**
  * A ref for a `datetime-local` input that sets `min` once the element exists.
  *

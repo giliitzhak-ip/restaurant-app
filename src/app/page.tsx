@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic';
  */
 export default function HomePage() {
   return (
-    <main id="main" className="mx-auto flex min-h-screen max-w-md flex-col px-5 pb-10 pt-8">
+    <main id="main" className="mx-auto flex min-h-dvh max-w-md flex-col px-5 pb-10 pt-8">
       <header className="flex items-center justify-between">
         <Logo />
         <Link
