@@ -2,10 +2,11 @@ import { ComboField, SelectField, TextAreaField, TextField } from '@/components/
 import { EmptyState } from '@/components/Common';
 import { INFESTATION_LEVEL_LABELS, type InfestationLevel } from '@/schema/enums';
 import { getArray, getString } from '@/lib/paths';
+import { PhotoAttachments } from '@/features/photos/PhotoAttachments';
 import type { StepProps } from './stepProps';
 
-/** שלב 3 — ממצאי ניטור (דרישה 6). */
-export function Step3Monitoring({ draft, reference, errors }: StepProps): React.JSX.Element {
+/** שלב 3 — ממצאי ניטור (דרישה 6) ותמונות תיעוד. */
+export function Step3Monitoring({ draft, reference, errors, logId, organizationId }: StepProps): React.JSX.Element {
   const { content, setField, removeAt, appendTo, readOnly } = draft;
   const findings = getArray(content, 'monitoring.findings');
 
@@ -26,6 +27,7 @@ export function Step3Monitoring({ draft, reference, errors }: StepProps): React.
     });
 
   return (
+    <>
     <section className="card" aria-labelledby="step3-monitoring">
       <h2 id="step3-monitoring">
         ממצאי ניטור<span className="req-ref">סעיף 6</span>
@@ -157,5 +159,8 @@ export function Step3Monitoring({ draft, reference, errors }: StepProps): React.
         + הוספת מזיק
       </button>
     </section>
+
+    <PhotoAttachments draft={draft} logId={logId} organizationId={organizationId} />
+    </>
   );
 }

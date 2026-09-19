@@ -233,9 +233,10 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
       return;
     }
 
-    let path = await findExistingPdf(admin, logId, Number(log.document_version));
-    if (!path) {
-      path = await generateAndStorePdf({
+    // שם נפרד מ-path של הנתיב ב-URL, כדי שלא יוצל בטעות ללוג.
+    let pdfPath = await findExistingPdf(admin, logId, Number(log.document_version));
+    if (!pdfPath) {
+      pdfPath = await generateAndStorePdf({
         admin,
         config,
         logId,
@@ -253,14 +254,14 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
       200,
       {
         ok: true,
-        pdfPath: path,
-        signedUrl: await signUrl(admin, path, config.signedUrlTtlSeconds),
+        pdfPath,
+        signedUrl: await signUrl(admin, pdfPath, config.signedUrlTtlSeconds),
         expiresInSeconds: config.signedUrlTtlSeconds,
         serialNumber: Number(log.serial_number),
       },
       origin,
     );
-    logRequest(req.method, path ?? '', 200, auth.userId);
+    logRequest(req.method, path, 200, auth.userId);
     return;
   }
 

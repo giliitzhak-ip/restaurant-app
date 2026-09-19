@@ -25,7 +25,7 @@ test.describe('יומן דירה — זרימה מלאה', () => {
     await gotoNewLog(page);
 
     // דרישה 16 — הודעת המרכז להרעלות מוצגת תמיד.
-    await expect(page.getByText(/המרכז הארצי להרעלות/)).toBeVisible();
+    await expect(page.getByText(/מרכז הארצי להרעלות/).first()).toBeVisible();
     await expect(page.getByRole('link', { name: '04-7771900' })).toBeVisible();
 
     await fillStep1(page);
@@ -76,8 +76,8 @@ test.describe('יומן דירה — זרימה מלאה', () => {
 
     await page.reload();
     await goToStep(page, 1);
-    await expect(page.getByLabel('שם מלא')).toHaveValue('מדביר בדיקה');
-    await expect(page.getByLabel('תפקידו')).toHaveValue('בעל הדירה');
+    await expect(page.getByLabel('שם מלא', { exact: true })).toHaveValue('מדביר בדיקה');
+    await expect(page.getByLabel('תפקידו', { exact: true })).toHaveValue('בעל הדירה');
     expect(page.url()).toBe(url);
   });
 });
@@ -88,10 +88,10 @@ test.describe('שטח פתוח', () => {
     await fillStep1(page);
 
     await goToStep(page, 2);
-    await page.getByLabel('סוג מקום ההדברה').selectOption('open_area');
-    await expect(page.getByLabel('שם הרשות המקומית')).toBeVisible();
-    await expect(page.getByLabel('סוג האתר')).toBeVisible();
-    await expect(page.getByLabel('תיאור האתר')).toBeVisible();
+    await page.getByLabel('סוג מקום ההדברה', { exact: true }).selectOption('open_area');
+    await expect(page.getByLabel('שם הרשות המקומית', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('סוג האתר', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('תיאור האתר', { exact: true })).toBeVisible();
 
     await fill(page, 'שם הרשות המקומית', 'רשות מקומית לבדיקה');
     await fill(page, 'סוג האתר', 'גן ציבורי');
@@ -124,12 +124,12 @@ test.describe('ערפול', () => {
     await fillStep1(page);
 
     await goToStep(page, 2);
-    await page.getByLabel('ערפול').check();
-    await page.getByLabel('הדברה רגילה').uncheck();
+    await page.getByLabel('ערפול', { exact: true }).check();
+    await page.getByLabel('הדברה רגילה', { exact: true }).uncheck();
     // בערפול הממשק מנחה לבחור מקום מסוג ערפול.
     await expect(page.getByText(/בערפול/).first()).toBeVisible();
 
-    await page.getByLabel('סוג מקום ההדברה').selectOption('fogging_area');
+    await page.getByLabel('סוג מקום ההדברה', { exact: true }).selectOption('fogging_area');
     await fill(page, 'שם השכונה', 'שכונת הבדיקה');
     await fill(page, 'עיר', 'עיר הבדיקה');
     await fill(page, 'שם הרשות המקומית', 'רשות מקומית לבדיקה');
@@ -144,7 +144,7 @@ test.describe('ערפול', () => {
     // סעיף 11 — תיעוד ההתראה לציבור מופיע בשלב 4.
     await goToStep(page, 4);
     await expect(page.getByRole('heading', { name: /ערפול — התראה לציבור/ })).toBeVisible();
-    await page.getByLabel('ניתנה לציבור התראה מראש').check();
+    await page.getByLabel('ניתנה לציבור התראה מראש', { exact: true }).check();
     await fill(page, 'אופן ההתראה לציבור', 'הודעה בלוחות המודעות בשכונה 48 שעות מראש.');
     await page.getByRole('button', { name: /מועד ההתראה/ }).click();
 
@@ -158,8 +158,8 @@ test.describe('ערפול', () => {
     await gotoNewLog(page);
     await fillStep1(page);
     await goToStep(page, 2);
-    await page.getByLabel('ערפול').check();
-    await page.getByLabel('סוג מקום ההדברה').selectOption('fogging_area');
+    await page.getByLabel('ערפול', { exact: true }).check();
+    await page.getByLabel('סוג מקום ההדברה', { exact: true }).selectOption('fogging_area');
     await fill(page, 'שם השכונה', 'שכונת הבדיקה');
     await fill(page, 'עיר', 'עיר הבדיקה');
     await fill(page, 'שם הרשות המקומית', 'רשות לבדיקה');
@@ -186,7 +186,7 @@ test.describe('איוד', () => {
     await fillStep2Dwelling(page);
 
     await goToStep(page, 2);
-    await page.getByLabel('איוד').check();
+    await page.getByLabel('איוד', { exact: true }).check();
     await expect(page.getByText(/באיוד/).first()).toBeVisible();
 
     await fillStep3(page);
@@ -226,21 +226,21 @@ test.describe('מדביר מסייע', () => {
     await fillStep6(page);
 
     await goToStep(page, 6);
-    await page.getByLabel('עבד מדביר מסייע').check();
+    await page.getByLabel('עבד מדביר מסייע', { exact: true }).check();
     await page.getByRole('button', { name: 'השלמת היומן' }).click();
     await expect(page.getByRole('alert').filter({ hasText: 'שדות חסרים או שגויים' })).toBeVisible();
 
     await goToStep(page, 6);
     await page.getByRole('button', { name: '+ הוספת מדביר מסייע' }).click();
     const assistant = page.locator('.repeat-item').filter({ hasText: 'מדביר מסייע 1' });
-    await assistant.getByLabel('שם מלא').fill('מדביר מסייע בדיקה');
-    await assistant.getByLabel('סוג רישיון').fill('הדברה תברואית');
-    await assistant.getByLabel('מספר רישיון').fill('E2E-0009');
-    await assistant.getByLabel('טלפון').fill('0500000009');
-    await assistant.getByLabel('דוא״ל').fill('assistant@example.test');
-    await assistant.getByLabel('כתובת').fill('רחוב הבדיקה 9');
-    await assistant.getByLabel('ניתנו למדביר המסייע הנחיות').check();
-    await assistant.getByLabel('קיבל עותק מהיומן').check();
+    await assistant.getByLabel('שם מלא', { exact: true }).fill('מדביר מסייע בדיקה');
+    await assistant.getByLabel('סוג רישיון', { exact: true }).fill('הדברה תברואית');
+    await assistant.getByLabel('מספר רישיון', { exact: true }).fill('E2E-0009');
+    await assistant.getByLabel('טלפון', { exact: true }).fill('0500000009');
+    await assistant.getByLabel('דוא״ל', { exact: true }).fill('assistant@example.test');
+    await assistant.getByLabel('כתובת', { exact: true }).fill('רחוב הבדיקה 9');
+    await assistant.getByLabel('ניתנו למדביר המסייע הנחיות', { exact: true }).check();
+    await assistant.getByLabel('קיבל עותק מהיומן', { exact: true }).check();
     await signPad(page, 'חתימת המדביר המסייע');
 
     await page.getByRole('button', { name: 'השלמת היומן' }).click();
@@ -266,9 +266,9 @@ test.describe('עבודה ללא קליטה וחזרה לרשת', () => {
     // רענון בזמן ניתוק — המידע לא נאבד (IndexedDB).
     await page.reload();
     await goToStep(page, 3);
-    await expect(page.getByLabel('שם המזיק').first()).toHaveValue('מזיק דוגמה 1');
+    await expect(page.getByLabel('שם המזיק', { exact: true }).first()).toHaveValue('מזיק דוגמה 1');
     await goToStep(page, 2);
-    await expect(page.getByLabel('עיר')).toHaveValue('עיר הבדיקה');
+    await expect(page.getByLabel('עיר', { exact: true })).toHaveValue('עיר הבדיקה');
 
     const callsWhileOffline = server.upsertCalls.length;
 

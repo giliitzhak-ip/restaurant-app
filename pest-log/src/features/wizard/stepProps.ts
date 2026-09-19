@@ -4,6 +4,10 @@ import type { ReferenceData } from '@/state/AppContext';
 export interface StepProps {
   draft: DraftApi;
   reference: ReferenceData;
+  /** מזהה היומן — נדרש לשיוך קבצים. */
+  logId: string;
+  /** הארגון — נדרש לנתיב באחסון הפרטי. */
+  organizationId: string | null;
   /** שגיאות לפי נתיב, מהוולידציה האחרונה. */
   errors: Map<string, string>;
 }

@@ -7,6 +7,7 @@ import { CompletedPage } from '@/features/home/CompletedPage';
 import { VerifyPage } from '@/features/home/VerifyPage';
 import { PrivacyPage } from '@/features/home/PrivacyPage';
 import { ArchivePage } from '@/features/archive/ArchivePage';
+import { ClientsPage } from '@/features/clients/ClientsPage';
 import { ImportPage } from '@/features/legacyImport/ImportPage';
 import { WizardPage } from '@/features/wizard/WizardPage';
 import { signOut } from '@/lib/supabase';
@@ -70,6 +71,7 @@ function Shell(): React.JSX.Element {
             בית
           </NavLink>
           <NavLink to="/archive">ארכיון</NavLink>
+          <NavLink to="/clients">מזמינים</NavLink>
           <NavLink to="/import">ייבוא</NavLink>
           <NavLink to="/privacy">פרטיות</NavLink>
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => void signOut().then(() => location.reload())}>
@@ -84,6 +86,7 @@ function Shell(): React.JSX.Element {
           <Route path="/logs/:logId" element={<WizardPage />} />
           <Route path="/logs/:logId/completed" element={<CompletedPage />} />
           <Route path="/archive" element={<ArchivePage />} />
+          <Route path="/clients" element={<ClientsPage />} />
           <Route path="/import" element={<ImportPage />} />
           <Route path="/verify" element={<VerifyPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />

@@ -9,7 +9,7 @@ export function parseCsv(text) {
   let inQuotes = false;
 
   // הסרת BOM שנוסף ע"י Excel — אחרת שם העמודה הראשונה יישבר.
-  const input = text.replace(/^﻿/, '');
+  const input = text.replace(/^\uFEFF/, '');
 
   for (let i = 0; i < input.length; i += 1) {
     const char = input[i];

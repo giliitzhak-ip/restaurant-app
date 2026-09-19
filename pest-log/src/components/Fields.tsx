@@ -29,16 +29,13 @@ function FieldShell({
   const hintId = `${controlId}-hint`;
   const errorId = `${controlId}-error`;
   return (
-    <div className={`field${error ? ' has-error' : ''}`} id={fieldDomId(path)}>
-      <label htmlFor={controlId}>
-        {label}
-        {required ? (
-          <span className="required-mark" aria-hidden="true">
-            *
-          </span>
-        ) : null}
-        {required ? <span className="visually-hidden"> (שדה חובה)</span> : null}
-      </label>
+    // הכוכבית מוצגת ב-CSS (.field.is-required) ולא כטקסט בתוך ה-label:
+    // כך תוכן ה-label הוא שם השדה בלבד. מצב "חובה" נמסר דרך aria-required.
+    <div
+      className={`field${required ? ' is-required' : ''}${error ? ' has-error' : ''}`}
+      id={fieldDomId(path)}
+    >
+      <label htmlFor={controlId}>{label}</label>
       {children}
       {hint ? (
         <div className="hint" id={hintId}>

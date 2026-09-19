@@ -341,5 +341,9 @@ export function emptyDraftContent(): Record<string, unknown> {
     prevention: { actions: [] },
     operator: { hasOperator: false },
     execution: { timeZone: 'Asia/Jerusalem' },
+    // תיבת סימון שאינה מסומנת אינה כותבת ערך, ולכן בוליאני חובה היה נשאר
+    // undefined והמשתמש היה מקבל "שדה חובה" בלי דרך ברורה לספק אותו.
+    // ברירת המחדל תואמת למצב שהמשתמש רואה על המסך (לא נדרש טיפול משלים).
+    postWarnings: { followUpRequired: false },
   };
 }

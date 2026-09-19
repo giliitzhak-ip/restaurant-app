@@ -1,4 +1,6 @@
 import {
+  getMeta,
+  putMeta,
   countFailedOperations,
   countPendingOperations,
   enqueueOperation,
@@ -44,6 +46,9 @@ export type OperationOutcome =
 export type OperationExecutor = (operation: OutboxOperation) => Promise<OperationOutcome>;
 
 const MAX_ATTEMPTS = 8;
+/** כמה מפתחות אידמפוטנטיות שהושלמו נשמרים, כדי לא לשלוח אותם שוב. */
+const APPLIED_KEYS_LIMIT = 300;
+const APPLIED_KEYS_META = 'appliedOperationKeys';
 const BASE_BACKOFF_MS = 2000;
 const MAX_BACKOFF_MS = 5 * 60 * 1000;
 
@@ -66,6 +71,15 @@ export class SyncEngine {
   private lastSyncedAt: string | null = null;
   private lastError: string | null = null;
   private online = true;
+  /**
+   * מפתחות שכבר בוצעו בהצלחה.
+   *
+   * המפתח נגזר מסוג הפעולה, מהיישות ומטביעת האצבע של התוכן, ולכן מפתח
+   * שכבר בוצע מסמן שאותו תוכן בדיוק כבר נשלח. בלי הרשימה הזו, פעולה
+   * שהוסרה מהתור לאחר שליחה מוצלחת הייתה יכולה להיכנס אליו שוב (למשל
+   * כשהשמירה האוטומטית והיישוב בעלייה רצים במקביל) ולהישלח פעמיים.
+   */
+  private appliedKeys: Set<string> | null = null;
 
   constructor(executor: OperationExecutor) {
     this.executor = executor;
@@ -127,6 +141,22 @@ export class SyncEngine {
     });
   }
 
+  private async loadAppliedKeys(): Promise<Set<string>> {
+    if (this.appliedKeys) return this.appliedKeys;
+    const stored = (await getMeta<string[]>(APPLIED_KEYS_META)) ?? [];
+    this.appliedKeys = new Set(stored);
+    return this.appliedKeys;
+  }
+
+  private async rememberAppliedKey(key: string): Promise<void> {
+    const keys = await this.loadAppliedKeys();
+    keys.add(key);
+    // שמירה מוגבלת בגודל: רק המפתחות האחרונים נחוצים.
+    const trimmed = Array.from(keys).slice(-APPLIED_KEYS_LIMIT);
+    this.appliedKeys = new Set(trimmed);
+    await putMeta(APPLIED_KEYS_META, trimmed);
+  }
+
   /** מוסיף פעולה לתור ומנסה לשלוח מיד. */
   async enqueue(
     type: OutboxOperationType,
@@ -135,6 +165,11 @@ export class SyncEngine {
     discriminator = '',
   ): Promise<string> {
     const key = idempotencyKey(type, entityId, discriminator);
+
+    // אותו מפתח שכבר בוצע = אותו תוכן בדיוק. אין מה לשלוח שוב.
+    const applied = await this.loadAppliedKeys();
+    if (applied.has(key)) return key;
+
     const now = new Date().toISOString();
     await enqueueOperation({
       idempotencyKey: key,
@@ -190,6 +225,7 @@ export class SyncEngine {
 
         if (outcome.ok) {
           await removeOperation(operation.idempotencyKey);
+          await this.rememberAppliedKey(operation.idempotencyKey);
           this.lastSyncedAt = new Date().toISOString();
           this.lastError = null;
           await this.markDraftSynced(operation, outcome.serverVersion);

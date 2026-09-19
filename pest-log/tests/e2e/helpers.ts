@@ -11,11 +11,11 @@ import { expect, type Page } from '@playwright/test';
  */
 export async function login(page: Page): Promise<void> {
   await page.goto('/');
-  const emailField = page.getByLabel('כתובת דוא״ל');
+  const emailField = page.getByLabel('כתובת דוא״ל', { exact: true });
   if (await emailField.isVisible().catch(() => false)) {
     await emailField.fill('exterminator-a@example.test');
     await page.getByRole('button', { name: 'שליחת קישור התחברות' }).click();
-    await page.getByLabel('קוד חד-פעמי').fill('123456');
+    await page.getByLabel('קוד חד-פעמי', { exact: true }).fill('123456');
     await page.getByRole('button', { name: 'כניסה' }).click();
   }
   await expect(page.getByRole('heading', { name: /שלום/ })).toBeVisible({ timeout: 30_000 });
@@ -39,6 +39,9 @@ export async function fill(page: Page, label: string | RegExp, value: string): P
 /** חותם על לוח חתימה ומאשר. */
 export async function signPad(page: Page, padLabel: string): Promise<void> {
   const canvas = page.getByRole('img', { name: `אזור חתימה עבור ${padLabel}` });
+  // page.mouse עובד בקואורדינטות ה-viewport. בלי גלילה, לוח חתימה שנמצא
+  // מתחת לקפל מקבל קואורדינטות שנופלות מחוץ למסך והציור לא מגיע אליו.
+  await canvas.scrollIntoViewIfNeeded();
   const box = await canvas.boundingBox();
   if (!box) throw new Error(`לא נמצא לוח חתימה: ${padLabel}`);
 
@@ -66,7 +69,7 @@ export async function fillStep1(page: Page): Promise<void> {
   await fill(page, 'כתובת', 'רחוב הבדיקה 1, עיר הבדיקה');
 
   await fill(page, 'שם מזמין ההדברה', 'מזמין בדיקה');
-  await page.getByLabel('המזמין הוא אדם פרטי').check();
+  await page.getByLabel('המזמין הוא אדם פרטי', { exact: true }).check();
   await fill(page, 'מספר טלפון', '0500000011');
   await fill(page, 'מספר נייד', '0500000011');
   await fill(page, 'תפקידו', 'בעל הדירה');
@@ -75,7 +78,7 @@ export async function fillStep1(page: Page): Promise<void> {
 /** שלב 2 — מקום ומועד (דירה כברירת מחדל). */
 export async function fillStep2Dwelling(page: Page): Promise<void> {
   await goToStep(page, 2);
-  await page.getByLabel('סוג מקום ההדברה').selectOption('dwelling');
+  await page.getByLabel('סוג מקום ההדברה', { exact: true }).selectOption('dwelling');
   await fill(page, 'עיר', 'עיר הבדיקה');
   await fill(page, 'רחוב', 'רחוב הבדיקה');
   await fill(page, 'מספר בית', '12');
@@ -93,7 +96,7 @@ export async function fillStep3(page: Page, pestName = 'מזיק דוגמה 1'):
   await fill(page, 'דרגת התפתחות', 'בוגרים');
   await fill(page, 'סימני נגיעות', 'הפרשות מתחת לכיור ושרידי נשל מאחורי המקרר.');
   await fill(page, 'מיקום הממצא', 'מטבח — מתחת לכיור');
-  await page.getByLabel('רמת נגיעות').selectOption('medium');
+  await page.getByLabel('רמת נגיעות', { exact: true }).selectOption('medium');
 }
 
 /** שלב 4 — מניעה ותכשיר. */
@@ -102,7 +105,7 @@ export async function fillStep4(page: Page, pestName = 'מזיק דוגמה 1'):
 
   await page.getByRole('button', { name: '+ הוספת פעולת מניעה' }).click();
   await fill(page, 'תיאור הפעולה', 'איטום סדקים סביב צנרת המטבח');
-  await page.getByLabel('מצב הפעולה').selectOption('performed');
+  await page.getByLabel('מצב הפעולה', { exact: true }).selectOption('performed');
   await fill(
     page,
     'הנסיבות שבגללן הוחלט לבצע הדברה ולא טיפול אחר',
@@ -117,10 +120,10 @@ export async function fillStep4(page: Page, pestName = 'מזיק דוגמה 1'):
   await fill(page, 'ריכוז החומר הפעיל בתכשיר (%)', '10');
   await fill(page, 'מינון', '25');
   await fill(page, 'יחידת המידה', 'מ״ל/ליטר');
-  await page.getByLabel('סוג הכמות').selectOption('solution');
+  await page.getByLabel('סוג הכמות', { exact: true }).selectOption('solution');
   await fill(page, 'כמות', '5');
   await fill(page, 'יחידת הכמות', 'ליטר');
-  await page.getByLabel('הבסיס').selectOption('area');
+  await page.getByLabel('הבסיס', { exact: true }).selectOption('area');
   await fill(page, 'גודל', '85');
   await fill(page, 'יחידת הבסיס', 'מ״ר');
   await fill(page, 'ריכוז החומר הפעיל בתכשיר המוכן לשימוש (%)', '0.25');
@@ -136,7 +139,7 @@ export async function fillStep5(page: Page): Promise<void> {
   await fill(page, 'זמן כניסה מחדש (שעות)', '4');
   await fill(page, 'אסמכתת תווית התכשיר', 'תווית תכשיר דוגמה — מהדורה 2026');
   await fill(page, 'הוראות נוספות לפי תווית התכשיר', 'לאוורר 30 דקות לפני הכניסה ולשטוף משטחי מזון.');
-  await page.getByLabel('הוחלה ההנחיה המחמירה ביותר על כל התכשירים').check();
+  await page.getByLabel('הוחלה ההנחיה המחמירה ביותר על כל התכשירים', { exact: true }).check();
   await page.getByLabel(/אני, המדביר, מאשר שהאזהרות/).check();
 
   await fill(page, 'אזהרות ומידע במהלך ההדברה', 'אין להיכנס לאזור המטופל במהלך הריסוס.');
@@ -147,9 +150,9 @@ export async function fillStep5(page: Page): Promise<void> {
 /** שלב 6 — מסירה וחתימות. */
 export async function fillStep6(page: Page): Promise<void> {
   await goToStep(page, 6);
-  await page.getByLabel('היומן נמסר או הושאר אצל מזמין ההדברה').check();
+  await page.getByLabel('היומן נמסר או הושאר אצל מזמין ההדברה', { exact: true }).check();
   await fill(page, 'שם האדם שקיבל את היומן', 'מקבל בדיקה');
-  await page.getByLabel('דרך המסירה').selectOption('handed_in_person');
+  await page.getByLabel('דרך המסירה', { exact: true }).selectOption('handed_in_person');
   await signPad(page, 'חתימת המדביר');
   await signPad(page, 'חתימת האדם שקיבל את היומן');
 }

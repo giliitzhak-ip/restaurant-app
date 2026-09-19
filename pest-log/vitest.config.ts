@@ -22,6 +22,7 @@ export default defineConfig({
           name: 'pdf',
           include: ['tests/pdf/**/*.test.ts'],
           environment: 'node',
+          setupFiles: ['tests/setup/chromium.setup.ts'],
           testTimeout: 180_000,
           hookTimeout: 180_000,
           fileParallelism: false,

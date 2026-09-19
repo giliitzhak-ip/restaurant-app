@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import { SyncEngine, type SyncStatus } from '@/lib/sync/engine';
+import { reconcilePendingDrafts } from '@/lib/sync/reconcile';
 import {
   cachedProfile,
   executeOperation,
@@ -94,14 +95,32 @@ export function AppProvider({ children }: { children: ReactNode }): React.JSX.El
     }
     try {
       const session = await getSession();
-      setAuthenticated(Boolean(session));
+
       if (!session) {
+        // ללא קליטה ייתכן שהספרייה אינה מצליחה לאמת את ה-session ומחזירה
+        // null. אם יש פרופיל במטמון המקומי — ממשיכים לעבוד: הטיוטות שמורות
+        // ב-IndexedDB, והגישה לשרת ממילא חסומה בלי טוקן תקף.
+        const offlineProfile = navigator.onLine ? undefined : await cachedProfile();
+        if (offlineProfile) {
+          setProfile(offlineProfile);
+          setAuthenticated(true);
+          setLoading(false);
+          return;
+        }
+        setAuthenticated(false);
         setProfile(null);
         setLoading(false);
         return;
       }
+
+      setAuthenticated(true);
       const loaded = await loadProfile();
-      setProfile(loaded);
+      // ללא קליטה loadProfile נכשל; ניפול חזרה למטמון בבלוק catch.
+      if (loaded) setProfile(loaded);
+      else {
+        const cached = await cachedProfile();
+        if (cached) setProfile(cached);
+      }
     } catch {
       // ללא קליטה — נשענים על המטמון המקומי.
       const cached = await cachedProfile();
@@ -117,9 +136,17 @@ export function AppProvider({ children }: { children: ReactNode }): React.JSX.El
   useEffect(() => {
     const unsubscribeSync = syncEngine.subscribe(setSyncStatus);
     const stopEngine = syncEngine.start();
+
+    // טיוטות שנשמרו מקומית אך לא הספיקו להיכנס לתור (רענון או סגירה
+    // לפני שההשהיה הסתיימה) נכנסות אליו כאן, ושוב כשהחיבור חוזר.
+    void reconcilePendingDrafts(syncEngine);
+    const handleOnline = () => void reconcilePendingDrafts(syncEngine);
+    globalThis.addEventListener('online', handleOnline);
+
     return () => {
       unsubscribeSync();
       stopEngine();
+      globalThis.removeEventListener('online', handleOnline);
     };
   }, [syncEngine]);
 

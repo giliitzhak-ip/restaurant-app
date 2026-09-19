@@ -10,3 +10,4 @@ test-results
 *.log
 .pgdata
 .DS_Store
+.env.e2e.local

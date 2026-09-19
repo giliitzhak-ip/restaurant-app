@@ -74,7 +74,20 @@ export function SignaturePad({
     setupCanvas();
     const handleResize = () => setupCanvas();
     globalThis.addEventListener('resize', handleResize);
-    return () => globalThis.removeEventListener('resize', handleResize);
+
+    // ה-canvas עשוי להיכנס לתצוגה אחרי הרינדור הראשון (מעבר שלב), ואז
+    // רוחבו היה 0 בהגדרה הראשונה. ResizeObserver מגדיר אותו מחדש.
+    const canvas = canvasRef.current;
+    const observer =
+      typeof ResizeObserver === 'function' && canvas
+        ? new ResizeObserver(() => setupCanvas())
+        : null;
+    if (observer && canvas) observer.observe(canvas);
+
+    return () => {
+      globalThis.removeEventListener('resize', handleResize);
+      observer?.disconnect();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -90,12 +103,24 @@ export function SignaturePad({
     const canvas = canvasRef.current;
     const context = canvas?.getContext('2d');
     if (!canvas || !context) return;
-    canvas.setPointerCapture(event.pointerId);
+
+    // הסימון נעשה לפני setPointerCapture: יש דפדפנים שבהם הקריאה זורקת
+    // (למשל כשהמצביע אינו פעיל), ואז הציור לא היה מתחיל בכלל.
     drawingRef.current = true;
     strokesRef.current += 1;
+    try {
+      canvas.setPointerCapture(event.pointerId);
+    } catch {
+      // לא קריטי: בלי capture הציור ממשיך לעבוד כל עוד המצביע על ה-canvas.
+    }
+
     const { x, y } = pointFromEvent(event);
     context.beginPath();
     context.moveTo(x, y);
+    // נקודה בודדת נחשבת חתימה: לחיצה בלי גרירה משאירה סימן.
+    context.lineTo(x, y);
+    context.stroke();
+    setHasInk(true);
   };
 
   const continueStroke = (event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -111,7 +136,11 @@ export function SignaturePad({
   const endStroke = (event: React.PointerEvent<HTMLCanvasElement>) => {
     if (!drawingRef.current) return;
     drawingRef.current = false;
-    canvasRef.current?.releasePointerCapture(event.pointerId);
+    try {
+      canvasRef.current?.releasePointerCapture(event.pointerId);
+    } catch {
+      // המצביע כבר שוחרר.
+    }
   };
 
   const clear = () => {

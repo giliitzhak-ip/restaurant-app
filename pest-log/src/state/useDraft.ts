@@ -147,8 +147,11 @@ export function useDraft(
           const draft = draftRef.current;
           if (!draft) return;
           const fingerprint = await contentFingerprint(draft.content);
-          // לא שולחים שוב תוכן זהה למה שכבר סונכרן.
-          if (fingerprint === draft.syncedFingerprint) return;
+          // טביעת האצבע שסונכרנה נקראת מהאחסון ולא מהזיכרון: מנוע הסנכרון
+          // מעדכן אותה שם, ובלי קריאה טרייה היה נשלח שוב תוכן שכבר סונכרן.
+          const stored = await getDraft(draft.id);
+          const syncedFingerprint = stored?.syncedFingerprint ?? draft.syncedFingerprint;
+          if (fingerprint === syncedFingerprint) return;
 
           const pending: StoredDraft = { ...draft, syncState: 'pending' };
           draftRef.current = pending;
@@ -234,7 +237,8 @@ export function useDraft(
     const draft = draftRef.current;
     if (!draft || draft.readOnly) return;
     const fingerprint = await contentFingerprint(draft.content);
-    if (fingerprint === draft.syncedFingerprint) return;
+    const stored = await getDraft(draft.id);
+    if (fingerprint === (stored?.syncedFingerprint ?? draft.syncedFingerprint)) return;
     await syncEngine.enqueue(
       'upsert_draft',
       draft.id,
@@ -255,7 +259,14 @@ export function useDraft(
       void (async () => {
         const stored = await getDraft(logId);
         if (!stored) return;
-        draftRef.current = { ...stored, content: draftRef.current?.content ?? stored.content };
+        // התוכן הוא של המסך (הוא הטרי יותר), אבל מצב הסנכרון — כולל
+        // syncedFingerprint ו-serverVersion — נלקח מהאחסון, שם מנוע
+        // הסנכרון מעדכן אותו. בלי זה, draftRef היה מחזיק טביעת אצבע
+        // מיושנת ושולח שוב תוכן שכבר סונכרן.
+        draftRef.current = {
+          ...stored,
+          content: draftRef.current?.content ?? stored.content,
+        };
         setState((prev) =>
           prev.syncState === stored.syncState && prev.lastError === stored.lastError
             ? prev

@@ -28,6 +28,19 @@ export function Step2Location({ draft, reference, errors }: StepProps): React.JS
     sublabel: PLACE_KIND_LABELS[site.placeKind],
   }));
 
+  /**
+   * כתיבת ערך נ״צ יחד עם שיטת הציון.
+   * בלי זה, שיטת הציון הייתה רק ברירת מחדל בתצוגה ולא נשמרת בתוכן,
+   * והוולידציה הייתה נכשלת על "יש לבחור סוג מהרשימה" בלי שהמשתמש
+   * יבין מה חסר.
+   */
+  const setCoordinate = (path: string, value: string) => {
+    setFields([
+      { path: 'location.coordinates.system', value: coordinateSystem },
+      { path, value },
+    ]);
+  };
+
   const toggleTreatmentKind = (kind: TreatmentKind) => {
     const next = treatmentKinds.includes(kind)
       ? treatmentKinds.filter((k) => k !== kind)
@@ -307,7 +320,7 @@ export function Step2Location({ draft, reference, errors }: StepProps): React.JS
                 inputMode="decimal"
                 disabled={readOnly}
                 value={getString(content, 'location.coordinates.east')}
-                onChange={(value) => setField('location.coordinates.east', value)}
+                onChange={(value) => setCoordinate('location.coordinates.east', value)}
                 error={errors.get('location.coordinates.east')}
               />
               <TextField
@@ -317,7 +330,7 @@ export function Step2Location({ draft, reference, errors }: StepProps): React.JS
                 inputMode="decimal"
                 disabled={readOnly}
                 value={getString(content, 'location.coordinates.north')}
-                onChange={(value) => setField('location.coordinates.north', value)}
+                onChange={(value) => setCoordinate('location.coordinates.north', value)}
                 error={errors.get('location.coordinates.north')}
               />
             </div>
@@ -331,7 +344,7 @@ export function Step2Location({ draft, reference, errors }: StepProps): React.JS
                 step="0.000001"
                 disabled={readOnly}
                 value={getString(content, 'location.coordinates.latitude')}
-                onChange={(value) => setField('location.coordinates.latitude', value)}
+                onChange={(value) => setCoordinate('location.coordinates.latitude', value)}
                 error={errors.get('location.coordinates.latitude')}
               />
               <TextField
@@ -342,7 +355,7 @@ export function Step2Location({ draft, reference, errors }: StepProps): React.JS
                 step="0.000001"
                 disabled={readOnly}
                 value={getString(content, 'location.coordinates.longitude')}
-                onChange={(value) => setField('location.coordinates.longitude', value)}
+                onChange={(value) => setCoordinate('location.coordinates.longitude', value)}
                 error={errors.get('location.coordinates.longitude')}
               />
             </div>

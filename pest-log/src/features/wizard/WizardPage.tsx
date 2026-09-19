@@ -121,7 +121,13 @@ export function WizardPage(): React.JSX.Element {
     );
   }
 
-  const stepProps = { draft, reference, errors };
+  const stepProps = {
+    draft,
+    reference,
+    errors,
+    logId: logId ?? '',
+    organizationId: profile?.organizationId ?? null,
+  };
 
   return (
     <>

@@ -1,4 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
+import { resolveChromiumPath } from './tests/setup/chromium.setup';
+
+// Chromium מותקן מראש בסביבות מסוימות; מאותר אוטומטית כדי שלא יידרש
+// משתנה סביבה בכל הרצה.
+const chromiumPath = resolveChromiumPath();
 
 /**
  * E2E מול האפליקציה האמיתית בדפדפן.
@@ -9,8 +14,10 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './tests/e2e',
-  fullyParallel: false,
-  workers: 1,
+  // כל בדיקה מקבלת דף ומוק משלה, ואין ביניהן מצב משותף — ולכן הרצה
+  // מקבילה בטוחה ומקצרת את זמן ההרצה משמעותית.
+  fullyParallel: true,
+  workers: process.env.CI ? 2 : 4,
   retries: 0,
   timeout: 90_000,
   expect: { timeout: 15_000 },
@@ -19,15 +26,12 @@ export default defineConfig({
     baseURL: 'http://localhost:4173',
     locale: 'he-IL',
     timezoneId: 'Asia/Jerusalem',
-    // בקשות שיוצאות מ-service worker אינן נתפסות ב-page.route, ולכן ה-SW
-    // חסום בבדיקות. העבודה ללא קליטה נבדקת דרך IndexedDB ומנוע הסנכרון,
-    // שהם הרכיבים שאחראים על שמירת הטיוטה.
-    serviceWorkers: 'block',
+    // ה-service worker פעיל בבדיקות: בלעדיו הדף אינו נטען כלל ללא
+    // קליטה, ולא היה אפשר לבדוק רענון במצב מנותק. קריאות ה-API אינן
+    // עוברות דרך ה-SW, ולכן page.route ממשיך לתפוס אותן.
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    ...(process.env.CHROMIUM_EXECUTABLE_PATH
-      ? { launchOptions: { executablePath: process.env.CHROMIUM_EXECUTABLE_PATH } }
-      : {}),
+    ...(chromiumPath ? { launchOptions: { executablePath: chromiumPath } } : {}),
   },
   projects: [
     {
@@ -35,9 +39,21 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } },
     },
     {
-      // בדיקה במכשיר נייד — הדרישה כוללת התאמה לנייד.
+      // בדיקה במכשיר נייד: מסך בגודל טלפון עם מגע.
+      //
+      // isMobile של Chromium מפעיל visual viewport נפרד, ואז הקואורדינטות
+      // שבהן Playwright מקליק אינן תואמות לפריסה כשהדף גלול — הקליק נופל
+      // על <html> במקום על הכפתור. זו התנגשות בין הכלים ולא באג באפליקציה
+      // (בדיקת elementFromPoint על הכפתור עצמו מחזירה את הכפתור).
+      // לכן נשמרים גודל המסך, יחס הפיקסלים והמגע, בלי isMobile.
       name: 'mobile-chromium',
-      use: { ...devices['Pixel 7'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 412, height: 915 },
+        deviceScaleFactor: 2,
+        hasTouch: true,
+        isMobile: false,
+      },
     },
   ],
   webServer: {
