@@ -20,6 +20,8 @@ import type {
   FulfilmentMethod,
   Order,
   OrderStatus,
+  PaymentEvent,
+  PaymentEventKind,
   Quote,
   QuoteStatus,
   User,
@@ -111,6 +113,14 @@ export interface ProductInput {
 }
 
 export interface OrderInput {
+  /** Entry status: PAYMENT_PENDING for a gateway, PENDING for offline settlement. */
+  status: OrderStatus;
+  /** Unguessable secret for the confirmation URL. */
+  publicToken: string;
+  /** Deduplicates a resubmitted checkout. */
+  idempotencyKey: string | null;
+  vatRate: number;
+  currency: string;
   userId: string | null;
   customerName: string;
   phone: string;
@@ -140,6 +150,42 @@ export interface OrderInput {
   shipping: number;
   installationTotal: number;
   total: number;
+}
+
+/**
+ * Creating an order reserves stock in the same transaction that writes the
+ * row, so two shoppers racing for the last package cannot both win.
+ */
+export type CreateOrderResult =
+  | { ok: true; order: Order; duplicate?: false }
+  | { ok: true; order: Order; duplicate: true }
+  | {
+      ok: false;
+      error: "OUT_OF_STOCK";
+      shortages: { productId: string; name: string; requested: number; available: number }[];
+    };
+
+export interface PaymentEventInput {
+  orderId: string;
+  provider: string;
+  kind: PaymentEventKind;
+  status: string;
+  amount: number;
+  currency: string;
+  reference: string | null;
+  /** Provider event id; a repeat of the same id is dropped. */
+  eventId?: string | null;
+  detail?: Record<string, unknown> | null;
+}
+
+export interface OrderTransitionInput {
+  id: string;
+  to: OrderStatus;
+  /** Compare-and-set: the move only lands from one of these statuses. */
+  expect?: OrderStatus[];
+  paymentReference?: string | null;
+  /** Returns reserved units to the catalogue as part of the same transaction. */
+  releaseStock?: boolean;
 }
 
 export interface QuoteInput {
@@ -224,10 +270,18 @@ export interface Repository {
   deleteCart(id: string): Promise<void>;
 
   /* orders */
-  createOrder(input: OrderInput): Promise<Order>;
+  createOrder(input: OrderInput): Promise<CreateOrderResult>;
+  /** Server-side lookup. Callers must authorise before rendering anything. */
   getOrderByNumber(number: string): Promise<Order | null>;
+  /** The only lookup a guest confirmation page may use. */
+  getOrderByToken(number: string, token: string): Promise<Order | null>;
+  findOrderByIdempotencyKey(key: string): Promise<Order | null>;
   listOrders(userId?: string | null): Promise<Order[]>;
-  setOrderStatus(id: string, status: OrderStatus): Promise<void>;
+  /** Compare-and-set status change; returns null when the guard did not match. */
+  transitionOrder(input: OrderTransitionInput): Promise<Order | null>;
+  /** Append-only payment log. `duplicate` marks a replayed provider event. */
+  recordPaymentEvent(input: PaymentEventInput): Promise<{ duplicate: boolean }>;
+  listPaymentEvents(orderId: string): Promise<PaymentEvent[]>;
 
   /* quotes */
   createQuote(input: QuoteInput): Promise<Quote>;
@@ -274,6 +328,27 @@ export interface Repository {
   /* admin overview */
   getAdminStats(): Promise<AdminStats>;
   listDesignsForAdmin(): Promise<RoomDesignRecord[]>;
+
+  /* audit */
+  recordAuditEvent(input: {
+    actorId: string | null;
+    actorEmail: string | null;
+    action: string;
+    entity: string;
+    entityId: string | null;
+    detail?: Record<string, unknown> | null;
+    ip?: string | null;
+  }): Promise<void>;
+  listAuditEvents(limit?: number): Promise<
+    {
+      id: string;
+      actorEmail: string | null;
+      action: string;
+      entity: string;
+      entityId: string | null;
+      createdAt: string;
+    }[]
+  >;
 
   /* marketing */
   addNewsletterSignup(email: string): Promise<void>;

@@ -4,15 +4,45 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { routes } from "@/config/site";
 import { requireAdmin } from "@/server/auth/session";
+import { ADMIN_SETTABLE } from "@/server/commerce/order-flow";
 import { getRepository } from "@/server/repositories";
+import { clientKey } from "@/server/security/rate-limit";
 import { getStorage, readUploadedImage } from "@/server/storage";
 import type { ProductInput } from "@/server/repositories/types";
+import type { OrderStatus, SessionUser } from "@/types/commerce";
 
 /**
  * Admin mutations. Every export starts by asserting the session is an admin —
  * server actions are public endpoints, so the check lives here and not only in
  * the layout that renders the screen.
+ *
+ * Mutations that change money, stock or a customer's order also write to the
+ * audit log, so "who changed this price" has an answer.
  */
+
+async function recordAdminAction(
+  admin: SessionUser,
+  input: {
+    action: string;
+    entity: string;
+    entityId: string | null;
+    detail?: Record<string, unknown>;
+  },
+) {
+  try {
+    await getRepository().recordAuditEvent({
+      actorId: admin.id,
+      actorEmail: admin.email,
+      action: input.action,
+      entity: input.entity,
+      entityId: input.entityId,
+      detail: input.detail ?? null,
+      ip: await clientKey(),
+    });
+  } catch {
+    // An audit write must never block the operation it describes.
+  }
+}
 
 const specsSchema = z.object({
   material: z.enum([
@@ -168,13 +198,36 @@ export async function setStockAction(
   return { ok: true };
 }
 
+/**
+ * Manual status change from the admin panel.
+ *
+ * Goes through the same state machine as the payment webhook, so a
+ * salesperson cannot move an order somewhere the machine forbids, and a
+ * cancellation hands the reserved stock back.
+ */
 export async function setOrderStatusAction(
   id: string,
-  status: "PENDING" | "PAID" | "PROCESSING" | "SHIPPED" | "COMPLETED" | "CANCELLED",
+  status: OrderStatus,
 ): Promise<AdminResult> {
-  await requireAdmin();
-  await getRepository().setOrderStatus(id, status);
+  const admin = await requireAdmin();
+  if (!ADMIN_SETTABLE.includes(status)) return { ok: false, error: "INVALID_STATUS" };
+
+  const repository = getRepository();
+  const moved = await repository.transitionOrder({
+    id,
+    to: status,
+    releaseStock: status === "CANCELLED",
+  });
+  if (!moved) return { ok: false, error: "INVALID_TRANSITION" };
+
+  await recordAdminAction(admin, {
+    action: "order.status",
+    entity: "Order",
+    entityId: id,
+    detail: { to: status },
+  });
   revalidatePath(routes.admin.orders);
+  revalidatePath(routes.account.orders);
   return { ok: true };
 }
 

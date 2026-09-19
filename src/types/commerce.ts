@@ -1,12 +1,46 @@
 export type FulfilmentMethod = "SHIPPING" | "PICKUP";
 
+/**
+ * Purchase lifecycle.
+ *
+ * `CART` is not a row state — no Order exists until checkout starts — but it
+ * names the entry point of the machine in src/server/commerce/order-flow.ts.
+ *   PAYMENT_PENDING  redirected to the gateway, waiting for its webhook
+ *   PENDING          recorded, payment collected offline by a salesperson
+ *   PAID             money confirmed by the provider, never by a redirect
+ */
 export type OrderStatus =
+  | "PAYMENT_PENDING"
   | "PENDING"
   | "PAID"
+  | "PAYMENT_FAILED"
   | "PROCESSING"
   | "SHIPPED"
   | "COMPLETED"
   | "CANCELLED";
+
+export type PaymentEventKind =
+  | "INTENT_CREATED"
+  | "REDIRECTED"
+  | "WEBHOOK_RECEIVED"
+  | "AUTHORISED"
+  | "FAILED"
+  | "CANCELLED"
+  | "REFUNDED";
+
+export interface PaymentEvent {
+  id: string;
+  orderId: string;
+  provider: string;
+  kind: PaymentEventKind;
+  status: string;
+  amount: number;
+  currency: string;
+  reference: string | null;
+  eventId: string | null;
+  detail: Record<string, unknown> | null;
+  createdAt: string;
+}
 
 export type QuoteStatus = "NEW" | "IN_PROGRESS" | "SENT" | "WON" | "LOST";
 
@@ -84,6 +118,12 @@ export interface OrderItem {
 export interface Order {
   id: string;
   number: string;
+  /**
+   * Bearer secret for the confirmation URL. Present only on the order that was
+   * just created or fetched by token — list endpoints omit it so it cannot
+   * ride along into a client component.
+   */
+  publicToken?: string;
   userId: string | null;
   status: OrderStatus;
   customerName: string;
@@ -103,8 +143,16 @@ export interface Order {
   installationTotal: number;
   total: number;
   couponCode: string | null;
+  /** Snapshot taken at purchase time, so a rate change cannot rewrite history. */
+  vatRate: number;
+  currency: string;
   paymentProvider: string;
   paymentReference: string | null;
+  stockCommitted: boolean;
+  /** Server-only: deduplicates a resubmitted checkout. */
+  idempotencyKey?: string | null;
+  paidAt: string | null;
+  cancelledAt: string | null;
   createdAt: string;
 }
 

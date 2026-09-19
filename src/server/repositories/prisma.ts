@@ -1,6 +1,8 @@
 import { LOW_STOCK_AT, availabilityFor, pricePerSqmFor } from "@/data/build-catalog";
 import { Prisma } from "@/generated/prisma/client";
 import { getPrisma } from "@/server/db/prisma";
+import { canTransition } from "@/server/commerce/order-flow";
+import { timingSafeEqualString } from "@/server/security/tokens";
 import {
   generateOrderNumber,
   generateQuoteNumber,
@@ -22,7 +24,13 @@ import type {
   TextureSettings,
 } from "@/types/design";
 import { buildFacets } from "./filter";
-import type { ProductQuery, Repository } from "./types";
+import type {
+  CreateOrderResult,
+  OrderTransitionInput,
+  PaymentEventInput,
+  ProductQuery,
+  Repository,
+} from "./types";
 
 /* --------------------------- row selections --------------------------- */
 
@@ -195,14 +203,30 @@ function toUser(row: Prisma.UserGetPayload<object>): User {
   };
 }
 
+/** Thrown inside the checkout transaction so the whole thing rolls back. */
+class OutOfStock extends Error {
+  constructor(
+    readonly shortages: {
+      productId: string;
+      name: string;
+      requested: number;
+      available: number;
+    }[],
+  ) {
+    super("OUT_OF_STOCK");
+  }
+}
+
 function toOrder(
   row: Prisma.OrderGetPayload<{
     include: { items: { include: { product: { select: { slug: true } } } } };
   }>,
+  options: { withToken?: boolean } = {},
 ): Order {
   return {
     id: row.id,
     number: row.number,
+    ...(options.withToken ? { publicToken: row.publicToken } : {}),
     userId: row.userId,
     status: row.status,
     customerName: row.customerName,
@@ -233,8 +257,13 @@ function toOrder(
     installationTotal: row.installationTotal,
     total: row.total,
     couponCode: row.couponCode,
+    vatRate: row.vatRate,
+    currency: row.currency,
     paymentProvider: row.paymentProvider,
     paymentReference: row.paymentReference,
+    stockCommitted: row.stockCommitted,
+    paidAt: row.paidAt ? row.paidAt.toISOString() : null,
+    cancelledAt: row.cancelledAt ? row.cancelledAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -269,6 +298,7 @@ function toDesign(row: DesignRow): RoomDesignRecord {
     id: row.id,
     name: row.name,
     userId: row.userId,
+    guestToken: row.guestToken,
     originalImageUrl: row.originalImageUrl,
     renderedImageUrl: row.renderedImageUrl,
     floorProductId: floor?.productId ?? null,
@@ -774,63 +804,140 @@ export const prismaRepository: Repository = {
     await getPrisma().cart.deleteMany({ where: { id } });
   },
 
-  async createOrder(input) {
+  async createOrder(input): Promise<CreateOrderResult> {
     const prisma = getPrisma();
-    const row = await prisma.order.create({
-      data: {
-        number: generateOrderNumber(),
-        userId: input.userId,
-        customerName: input.customerName,
-        phone: input.phone,
-        email: input.email,
-        fulfilment: input.fulfilment,
-        street: input.street,
-        city: input.city,
-        zip: input.zip,
-        floor: input.floor,
-        notes: input.notes,
-        installation: input.installation,
-        subtotal: input.subtotal,
-        discount: input.discount,
-        shipping: input.shipping,
-        installationTotal: input.installationTotal,
-        total: input.total,
-        couponCode: input.couponCode,
-        paymentProvider: input.paymentProvider,
-        paymentReference: input.paymentReference,
-        items: {
-          create: input.items.map((item) => ({
-            productId: item.productId,
-            name: item.name,
-            imageUrl: item.imageUrl,
-            units: item.units,
-            unitPrice: item.unitPrice,
-            coveredSqm: item.coveredSqm,
-            lineTotal: item.lineTotal,
-            designId: item.designId,
-          })),
-        },
-      },
-      include: { items: { include: { product: { select: { slug: true } } } } },
-    });
+    const include = {
+      items: { include: { product: { select: { slug: true } } } },
+    } as const;
 
-    // Stock and coupon usage move with the order, in one transaction.
-    await prisma.$transaction(async (tx) => {
-      for (const item of input.items) {
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { stockUnits: { decrement: item.units } },
-        });
+    if (input.idempotencyKey) {
+      const existing = await prisma.order.findUnique({
+        where: { idempotencyKey: input.idempotencyKey },
+        include,
+      });
+      if (existing) {
+        return { ok: true, order: toOrder(existing, { withToken: true }), duplicate: true };
       }
-      if (input.couponCode) {
-        await tx.coupon.updateMany({
-          where: { code: input.couponCode.toUpperCase() },
-          data: { usageCount: { increment: 1 } },
-        });
-      }
-    });
+    }
 
-    return toOrder(row);
+    const wanted = new Map<string, number>();
+    for (const item of input.items) {
+      wanted.set(item.productId, (wanted.get(item.productId) ?? 0) + item.units);
+    }
+
+    try {
+      const created = await prisma.$transaction(async (tx) => {
+        /*
+         * Conditional decrements are the reservation: `updateMany` with a
+         * `stockUnits >= units` guard either moves the row or reports zero
+         * rows touched, so two checkouts racing for the last package cannot
+         * both succeed. A plain read-then-write would let both through.
+         */
+        const shortages: {
+          productId: string;
+          name: string;
+          requested: number;
+          available: number;
+        }[] = [];
+
+        for (const [productId, units] of wanted) {
+          const moved = await tx.product.updateMany({
+            where: { id: productId, stockUnits: { gte: units } },
+            data: { stockUnits: { decrement: units } },
+          });
+          if (moved.count === 0) {
+            const product = await tx.product.findUnique({
+              where: { id: productId },
+              select: { name: true, stockUnits: true },
+            });
+            shortages.push({
+              productId,
+              name: product?.name ?? productId,
+              requested: units,
+              available: product?.stockUnits ?? 0,
+            });
+          }
+        }
+        if (shortages.length) throw new OutOfStock(shortages);
+
+        // Gapless order number, allocated inside the same transaction.
+        const counter = await tx.sequence.upsert({
+          where: { name: "order" },
+          create: { name: "order", value: 1 },
+          update: { value: { increment: 1 } },
+        });
+
+        const order = await tx.order.create({
+          data: {
+            number: generateOrderNumber(new Date(), counter.value),
+            publicToken: input.publicToken,
+            idempotencyKey: input.idempotencyKey,
+            status: input.status,
+            vatRate: input.vatRate,
+            currency: input.currency,
+            stockCommitted: true,
+            userId: input.userId,
+            customerName: input.customerName,
+            phone: input.phone,
+            email: input.email,
+            fulfilment: input.fulfilment,
+            street: input.street,
+            city: input.city,
+            zip: input.zip,
+            floor: input.floor,
+            notes: input.notes,
+            installation: input.installation,
+            subtotal: input.subtotal,
+            discount: input.discount,
+            shipping: input.shipping,
+            installationTotal: input.installationTotal,
+            total: input.total,
+            couponCode: input.couponCode,
+            paymentProvider: input.paymentProvider,
+            paymentReference: input.paymentReference,
+            items: {
+              create: input.items.map((item) => ({
+                productId: item.productId,
+                name: item.name,
+                imageUrl: item.imageUrl,
+                units: item.units,
+                unitPrice: item.unitPrice,
+                coveredSqm: item.coveredSqm,
+                lineTotal: item.lineTotal,
+                designId: item.designId,
+              })),
+            },
+          },
+          include,
+        });
+
+        if (input.couponCode) {
+          await tx.coupon.updateMany({
+            where: { code: input.couponCode.toUpperCase() },
+            data: { usageCount: { increment: 1 } },
+          });
+        }
+
+        return order;
+      });
+
+      return { ok: true, order: toOrder(created, { withToken: true }) };
+    } catch (error) {
+      if (error instanceof OutOfStock) {
+        return { ok: false, error: "OUT_OF_STOCK", shortages: error.shortages };
+      }
+      // A unique-constraint race on idempotencyKey means someone else won.
+      if (input.idempotencyKey) {
+        const existing = await prisma.order.findUnique({
+          where: { idempotencyKey: input.idempotencyKey },
+          include,
+        });
+        if (existing) {
+          return { ok: true, order: toOrder(existing, { withToken: true }), duplicate: true };
+        }
+      }
+      throw error;
+    }
   },
 
   async getOrderByNumber(number) {
@@ -838,7 +945,26 @@ export const prismaRepository: Repository = {
       where: { number },
       include: { items: { include: { product: { select: { slug: true } } } } },
     });
-    return row ? toOrder(row) : null;
+    return row ? toOrder(row, { withToken: true }) : null;
+  },
+
+  async getOrderByToken(number, token) {
+    const row = await getPrisma().order.findUnique({
+      where: { number },
+      include: { items: { include: { product: { select: { slug: true } } } } },
+    });
+    if (!row) return null;
+    return timingSafeEqualString(row.publicToken, token)
+      ? toOrder(row, { withToken: true })
+      : null;
+  },
+
+  async findOrderByIdempotencyKey(key) {
+    const row = await getPrisma().order.findUnique({
+      where: { idempotencyKey: key },
+      include: { items: { include: { product: { select: { slug: true } } } } },
+    });
+    return row ? toOrder(row, { withToken: true }) : null;
   },
 
   async listOrders(userId) {
@@ -847,11 +973,93 @@ export const prismaRepository: Repository = {
       include: { items: { include: { product: { select: { slug: true } } } } },
       orderBy: { createdAt: "desc" },
     });
-    return rows.map(toOrder);
+    return rows.map((row) => toOrder(row));
   },
 
-  async setOrderStatus(id, status) {
-    await getPrisma().order.update({ where: { id }, data: { status } });
+  async transitionOrder(input: OrderTransitionInput) {
+    const prisma = getPrisma();
+    const include = {
+      items: { include: { product: { select: { slug: true } } } },
+    } as const;
+
+    return prisma.$transaction(async (tx) => {
+      const current = await tx.order.findUnique({ where: { id: input.id } });
+      if (!current) return null;
+      if (input.expect && !input.expect.includes(current.status)) return null;
+      if (!canTransition(current.status, input.to)) return null;
+
+      if (input.releaseStock && current.stockCommitted) {
+        const items = await tx.orderItem.findMany({
+          where: { orderId: input.id },
+          select: { productId: true, units: true },
+        });
+        for (const item of items) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { stockUnits: { increment: item.units } },
+          });
+        }
+      }
+
+      const updated = await tx.order.update({
+        where: { id: input.id },
+        data: {
+          status: input.to,
+          ...(input.paymentReference !== undefined
+            ? { paymentReference: input.paymentReference }
+            : {}),
+          ...(input.to === "PAID" && !current.paidAt ? { paidAt: new Date() } : {}),
+          ...(input.to === "CANCELLED" || input.to === "PAYMENT_FAILED"
+            ? { cancelledAt: new Date() }
+            : {}),
+          ...(input.releaseStock && current.stockCommitted ? { stockCommitted: false } : {}),
+        },
+        include,
+      });
+      return toOrder(updated, { withToken: true });
+    });
+  },
+
+  async recordPaymentEvent(input: PaymentEventInput) {
+    try {
+      await getPrisma().paymentTransaction.create({
+        data: {
+          orderId: input.orderId,
+          provider: input.provider,
+          kind: input.kind,
+          status: input.status,
+          amount: input.amount,
+          currency: input.currency,
+          reference: input.reference,
+          eventId: input.eventId ?? null,
+          detail: (input.detail ?? undefined) as never,
+        },
+      });
+      return { duplicate: false };
+    } catch {
+      // The unique index on eventId turns a replayed webhook into a no-op.
+      return { duplicate: true };
+    }
+  },
+
+  async listPaymentEvents(orderId) {
+    const rows = await getPrisma().paymentTransaction.findMany({
+      where: { orderId },
+      orderBy: { createdAt: "desc" },
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      orderId: row.orderId,
+      provider: row.provider,
+      kind: row.kind,
+      status: row.status,
+      amount: row.amount,
+      currency: row.currency,
+      reference: row.reference,
+      eventId: row.eventId,
+      detail: (row.detail ?? null) as Record<string, unknown> | null,
+      createdAt: row.createdAt.toISOString(),
+    }));
   },
 
   async createQuote(input) {
@@ -1134,5 +1342,34 @@ export const prismaRepository: Repository = {
       create: { email: normalised },
       update: {},
     });
+  },
+
+  async recordAuditEvent(input) {
+    await getPrisma().auditLog.create({
+      data: {
+        actorId: input.actorId,
+        actorEmail: input.actorEmail,
+        action: input.action,
+        entity: input.entity,
+        entityId: input.entityId,
+        detail: (input.detail ?? undefined) as never,
+        ip: input.ip ?? null,
+      },
+    });
+  },
+
+  async listAuditEvents(limit = 100) {
+    const rows = await getPrisma().auditLog.findMany({
+      orderBy: { createdAt: "desc" },
+      take: Math.min(500, Math.max(1, limit)),
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      actorEmail: row.actorEmail,
+      action: row.action,
+      entity: row.entity,
+      entityId: row.entityId,
+      createdAt: row.createdAt.toISOString(),
+    }));
   },
 };

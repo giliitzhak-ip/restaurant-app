@@ -178,11 +178,18 @@ export function hydrateCart(
   };
 }
 
-/** TN-2609-4821 — human readable, unique enough for a showroom. */
-export function generateOrderNumber(now = new Date()) {
+/**
+ * TN-2609-000482 — human readable, and unique because the counter comes from
+ * the database rather than from a random draw. Two concurrent checkouts get
+ * two different numbers; `Order.number` is still UNIQUE as a backstop.
+ */
+export function generateOrderNumber(now = new Date(), sequence?: number) {
   const stamp = `${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const random = Math.floor(1000 + Math.random() * 9000);
-  return `TN-${stamp}-${random}`;
+  const suffix =
+    sequence === undefined
+      ? String(Math.floor(1000 + Math.random() * 9000))
+      : String(sequence).padStart(6, "0");
+  return `TN-${stamp}-${suffix}`;
 }
 
 export function generateQuoteNumber(now = new Date()) {

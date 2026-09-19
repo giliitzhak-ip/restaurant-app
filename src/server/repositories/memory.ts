@@ -11,6 +11,8 @@ import {
   pricePerSqmFor,
 } from "@/data/build-catalog";
 import { createId } from "@/lib/utils";
+import { canTransition } from "@/server/commerce/order-flow";
+import { timingSafeEqualString } from "@/server/security/tokens";
 import {
   generateOrderNumber,
   generateQuoteNumber,
@@ -26,7 +28,7 @@ import type {
 import type {
   Address,
   Order,
-  OrderStatus,
+  PaymentEvent,
   Quote,
   QuoteStatus,
   User,
@@ -36,7 +38,10 @@ import { buildFacets, matchesFilter, sortProducts } from "./filter";
 import type {
   AdminStats,
   CatalogFacets,
+  CreateOrderResult,
   DesignInput,
+  OrderTransitionInput,
+  PaymentEventInput,
   ProductInput,
   ProductPage,
   ProductQuery,
@@ -59,6 +64,19 @@ interface MemoryStore {
   addresses: Address[];
   favorites: Map<string, Set<string>>;
   newsletter: Set<string>;
+  paymentEvents: PaymentEvent[];
+  audit: {
+    id: string;
+    actorId: string | null;
+    actorEmail: string | null;
+    action: string;
+    entity: string;
+    entityId: string | null;
+    detail: Record<string, unknown> | null;
+    ip: string | null;
+    createdAt: string;
+  }[];
+  sequences: Map<string, number>;
 }
 
 /**
@@ -105,6 +123,9 @@ function createStore(): MemoryStore {
     addresses: [],
     favorites: new Map(),
     newsletter: new Set(),
+    paymentEvents: [],
+    audit: [],
+    sequences: new Map(),
   };
 }
 
@@ -179,6 +200,7 @@ function designFrom(input: DesignInput, id: string, createdAt: string): RoomDesi
     id,
     name: input.name,
     userId: input.userId,
+    guestToken: input.guestToken,
     originalImageUrl: input.originalImageUrl,
     renderedImageUrl: input.renderedImageUrl,
     floorProductId: floor?.productId ?? null,
@@ -370,11 +392,45 @@ export const memoryRepository: Repository = {
     store.carts.delete(id);
   },
 
-  async createOrder(input) {
+  async createOrder(input): Promise<CreateOrderResult> {
+    if (input.idempotencyKey) {
+      const existing = store.orders.find(
+        (entry) => entry.idempotencyKey === input.idempotencyKey,
+      );
+      if (existing) return { ok: true, order: clone(existing), duplicate: true };
+    }
+
+    // Reserve stock first: an order that cannot be fulfilled is never written.
+    const shortages: CreateOrderResult extends { shortages: infer S } ? S : never =
+      [] as never;
+    const wanted = new Map<string, number>();
+    for (const item of input.items) {
+      wanted.set(item.productId, (wanted.get(item.productId) ?? 0) + item.units);
+    }
+    for (const [productId, units] of wanted) {
+      const product = store.products.find((entry) => entry.id === productId);
+      if (!product) continue;
+      if (product.stockUnits < units) {
+        (shortages as unknown as { productId: string; name: string; requested: number; available: number }[]).push({
+          productId,
+          name: product.name,
+          requested: units,
+          available: product.stockUnits,
+        });
+      }
+    }
+    if ((shortages as unknown as unknown[]).length) {
+      return { ok: false, error: "OUT_OF_STOCK", shortages: shortages as never };
+    }
+
+    const sequence = (store.sequences.get("order") ?? 0) + 1;
+    store.sequences.set("order", sequence);
+
     const order: Order = {
       id: createId("ord"),
-      number: generateOrderNumber(),
-      status: "PENDING",
+      number: generateOrderNumber(new Date(), sequence),
+      publicToken: input.publicToken,
+      status: input.status,
       createdAt: new Date().toISOString(),
       userId: input.userId,
       customerName: input.customerName,
@@ -406,15 +462,21 @@ export const memoryRepository: Repository = {
       installationTotal: input.installationTotal,
       total: input.total,
       couponCode: input.couponCode,
+      vatRate: input.vatRate,
+      currency: input.currency,
       paymentProvider: input.paymentProvider,
       paymentReference: input.paymentReference,
+      stockCommitted: true,
+      paidAt: null,
+      cancelledAt: null,
     };
+    (order as Order & { idempotencyKey?: string | null }).idempotencyKey =
+      input.idempotencyKey;
 
-    // Stock moves as soon as the order is placed.
-    for (const item of order.items) {
-      const product = store.products.find((entry) => entry.id === item.productId);
+    for (const [productId, units] of wanted) {
+      const product = store.products.find((entry) => entry.id === productId);
       if (!product) continue;
-      product.stockUnits = Math.max(0, product.stockUnits - item.units);
+      product.stockUnits = Math.max(0, product.stockUnits - units);
       product.availability = availabilityFor({
         stockUnits: product.stockUnits,
         leadTimeDays: product.leadTimeDays,
@@ -429,21 +491,83 @@ export const memoryRepository: Repository = {
     }
 
     store.orders.unshift(order);
-    return clone(order);
+    return { ok: true, order: clone(order) };
   },
 
   async getOrderByNumber(number) {
     return clone(store.orders.find((order) => order.number === number) ?? null);
   },
 
-  async listOrders(userId) {
-    const orders = userId ? store.orders.filter((order) => order.userId === userId) : store.orders;
-    return clone(orders);
+  async getOrderByToken(number, token) {
+    const order = store.orders.find((entry) => entry.number === number);
+    if (!order || !order.publicToken) return null;
+    return timingSafeEqualString(order.publicToken, token) ? clone(order) : null;
   },
 
-  async setOrderStatus(id, status: OrderStatus) {
-    const order = store.orders.find((entry) => entry.id === id);
-    if (order) order.status = status;
+  async findOrderByIdempotencyKey(key) {
+    const order = store.orders.find(
+      (entry) => (entry as Order & { idempotencyKey?: string | null }).idempotencyKey === key,
+    );
+    return clone(order ?? null);
+  },
+
+  async listOrders(userId) {
+    const orders = userId ? store.orders.filter((order) => order.userId === userId) : store.orders;
+    // The token never leaves the confirmation path.
+    return clone(orders).map(({ publicToken: _token, ...rest }) => rest as Order);
+  },
+
+  async transitionOrder(input: OrderTransitionInput) {
+    const order = store.orders.find((entry) => entry.id === input.id);
+    if (!order) return null;
+    if (input.expect && !input.expect.includes(order.status)) return null;
+    if (!canTransition(order.status, input.to)) return null;
+
+    order.status = input.to;
+    if (input.paymentReference !== undefined) order.paymentReference = input.paymentReference;
+    if (input.to === "PAID" && !order.paidAt) order.paidAt = new Date().toISOString();
+    if (input.to === "CANCELLED" || input.to === "PAYMENT_FAILED") {
+      order.cancelledAt = new Date().toISOString();
+    }
+
+    if (input.releaseStock && order.stockCommitted) {
+      for (const item of order.items) {
+        const product = store.products.find((entry) => entry.id === item.productId);
+        if (!product) continue;
+        product.stockUnits += item.units;
+        product.availability = availabilityFor({
+          stockUnits: product.stockUnits,
+          leadTimeDays: product.leadTimeDays,
+          quoteOnly: product.quoteOnly,
+        });
+      }
+      order.stockCommitted = false;
+    }
+    return clone(order);
+  },
+
+  async recordPaymentEvent(input: PaymentEventInput) {
+    if (input.eventId && store.paymentEvents.some((e) => e.eventId === input.eventId)) {
+      return { duplicate: true };
+    }
+    store.paymentEvents.unshift({
+      id: createId("pay"),
+      orderId: input.orderId,
+      provider: input.provider,
+      kind: input.kind,
+      status: input.status,
+      amount: input.amount,
+      currency: input.currency,
+      reference: input.reference,
+      eventId: input.eventId ?? null,
+      detail: input.detail ?? null,
+      createdAt: new Date().toISOString(),
+    });
+    return { duplicate: false };
+  },
+
+  async listPaymentEvents(orderId) {
+    return clone(store.paymentEvents.filter((event) => event.orderId === orderId));
   },
 
   async createQuote(input: QuoteInput) {
@@ -505,10 +629,11 @@ export const memoryRepository: Repository = {
   async listDesigns({ userId, guestToken }) {
     const designs = store.designs.filter((design) => {
       if (userId) return design.userId === userId;
-      if (guestToken) return design.userId === null;
+      // A guest sees only the designs saved under their own cookie.
+      if (guestToken) return design.userId === null && design.guestToken === guestToken;
       return false;
     });
-    return clone(designs);
+    return clone(designs).map(({ guestToken: _token, ...rest }) => rest as never);
   },
 
   async deleteDesign(id) {
@@ -534,11 +659,13 @@ export const memoryRepository: Repository = {
     }
   },
 
-  async claimGuestDesigns(_guestToken, userId) {
+  async claimGuestDesigns(guestToken, userId) {
     let claimed = 0;
     for (const design of store.designs) {
-      if (design.userId === null) {
+      // Only the designs saved under this visitor's own cookie move across.
+      if (design.userId === null && design.guestToken === guestToken) {
         design.userId = userId;
+        design.guestToken = null;
         claimed += 1;
       }
     }
@@ -653,5 +780,31 @@ export const memoryRepository: Repository = {
 
   async addNewsletterSignup(email) {
     store.newsletter.add(email.trim().toLowerCase());
+  },
+
+  async recordAuditEvent(input) {
+    store.audit.unshift({
+      id: createId("aud"),
+      actorId: input.actorId,
+      actorEmail: input.actorEmail,
+      action: input.action,
+      entity: input.entity,
+      entityId: input.entityId,
+      detail: input.detail ?? null,
+      ip: input.ip ?? null,
+      createdAt: new Date().toISOString(),
+    });
+    store.audit.splice(500);
+  },
+
+  async listAuditEvents(limit = 100) {
+    return store.audit.slice(0, limit).map((entry) => ({
+      id: entry.id,
+      actorEmail: entry.actorEmail,
+      action: entry.action,
+      entity: entry.entity,
+      entityId: entry.entityId,
+      createdAt: entry.createdAt,
+    }));
   },
 };

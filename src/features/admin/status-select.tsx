@@ -21,7 +21,8 @@ function StatusSelect<T extends string>({
   label,
 }: {
   value: T;
-  options: { value: T; label: string }[];
+  /** `settable: false` renders the current state without offering it as a move. */
+  options: { value: T; label: string; settable?: boolean }[];
   save: (next: T) => Promise<{ ok: boolean }>;
   label: string;
 }) {
@@ -48,7 +49,11 @@ function StatusSelect<T extends string>({
       className="h-9 rounded-sm border border-line-strong bg-surface px-2 text-xs text-ink focus:border-ink focus:outline-none disabled:opacity-50"
     >
       {options.map((option) => (
-        <option key={option.value} value={option.value}>
+        <option
+          key={option.value}
+          value={option.value}
+          disabled={option.settable === false && option.value !== value}
+        >
           {option.label}
         </option>
       ))}
@@ -56,8 +61,15 @@ function StatusSelect<T extends string>({
   );
 }
 
-const orderStatusOptions: { value: OrderStatus; label: string }[] = [
-  { value: "PENDING", label: "ממתינה לתשלום" },
+/**
+ * The payment states are shown so the row reads correctly, but they are not
+ * offered as moves: only the gateway callback may put an order into or out of
+ * PAYMENT_PENDING, and a person clicking a dropdown is not a payment.
+ */
+const orderStatusOptions: { value: OrderStatus; label: string; settable?: boolean }[] = [
+  { value: "PAYMENT_PENDING", label: "ממתינה לאישור תשלום", settable: false },
+  { value: "PAYMENT_FAILED", label: "התשלום נכשל", settable: false },
+  { value: "PENDING", label: "ממתינה לתשלום", settable: false },
   { value: "PAID", label: "שולמה" },
   { value: "PROCESSING", label: "בהכנה" },
   { value: "SHIPPED", label: "נשלחה" },

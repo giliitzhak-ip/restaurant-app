@@ -116,4 +116,9 @@ export interface RoomDesignRecord extends RoomDesignSummary {
   analysis: RoomAnalysis | null;
   /** Everything needed to reopen and keep editing the design. */
   surfaces: StoredRoomSurface[];
+  /**
+   * Owner of a design saved before sign-up. Server-only: every ownership check
+   * goes through requireDesignOwnership, and nothing ships it to the browser.
+   */
+  guestToken: string | null;
 }

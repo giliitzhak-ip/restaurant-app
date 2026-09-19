@@ -22,6 +22,12 @@ export const checkoutSchema = z
     floor: z.string().trim().optional(),
     notes: z.string().trim().max(1000).optional(),
     terms: z.literal(true, { message: "יש לאשר את התקנון" }),
+    /**
+     * Per-submission nonce. The form mints one when it mounts and keeps it for
+     * retries, so a double-clicked button or a flaky connection resolves to a
+     * single order instead of two charges.
+     */
+    idempotencyKey: z.string().trim().max(64).optional(),
   })
   .refine(
     (value) =>

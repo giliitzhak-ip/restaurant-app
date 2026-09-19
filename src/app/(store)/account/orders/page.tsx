@@ -18,8 +18,10 @@ export const metadata: Metadata = {
 };
 
 const statusLabels: Record<OrderStatus, string> = {
+  PAYMENT_PENDING: "ממתינה לאישור תשלום",
   PENDING: "ממתינה לתשלום",
   PAID: "שולמה",
+  PAYMENT_FAILED: "התשלום נכשל",
   PROCESSING: "בהכנה",
   SHIPPED: "נשלחה",
   COMPLETED: "הושלמה",

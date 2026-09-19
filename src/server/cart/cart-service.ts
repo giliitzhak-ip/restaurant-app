@@ -153,6 +153,22 @@ export async function clearCart() {
   });
 }
 
+/**
+ * Empties the basket once an order is actually settled.
+ *
+ * Deliberately tolerant: it is called from the confirmation page, which a
+ * customer may open twice, from a different device, or long after the order
+ * moved on. Clearing an already-empty cart is a no-op, and clearing someone
+ * else's is impossible because the cart is addressed by this browser's cookie.
+ */
+export async function clearCartIfMatches(_orderIdempotencyKey: string | null) {
+  const store = await cookies();
+  if (!store.get(COOKIE)?.value) return;
+  const cart = await getCart();
+  if (!cart.items.length) return;
+  await clearCart();
+}
+
 export type CouponOutcome = "APPLIED" | "CLEARED" | "INVALID" | "MIN_NOT_MET";
 
 export async function applyCoupon(
