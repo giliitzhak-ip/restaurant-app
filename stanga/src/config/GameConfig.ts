@@ -4,7 +4,7 @@
  */
 
 export type Difficulty = 'easy' | 'normal' | 'hard';
-export type QualityLevel = 'low' | 'medium' | 'high';
+export type QualityLevel = 'low' | 'medium' | 'high' | 'ultra';
 export type ShakeLevel = 'off' | 'subtle' | 'normal';
 export type HudScale = 'small' | 'normal' | 'large';
 
@@ -37,6 +37,26 @@ export interface QualityProfile {
   readonly antialias: boolean;
   /** Extra scenery detail (fences, props, crowd silhouettes). */
   readonly sceneryDetail: number;
+  /**
+   * Image-based lighting: a cube map of the sky, captured once, that lights
+   * every PBR surface. Off means the materials fall back to the two lights
+   * alone, which is flatter but a good deal cheaper.
+   */
+  readonly imageBasedLighting: boolean;
+  /** Post-processing chain: tone mapping, bloom, vignette, sharpening. */
+  readonly postProcessing: boolean;
+  readonly bloom: boolean;
+  /** Screen-space ambient occlusion. The most expensive thing here. */
+  readonly ambientOcclusion: boolean;
+  /** How many spectators are instanced around the fence. 0 disables them. */
+  readonly crowdCount: number;
+  /**
+   * Distance in metres past which scenery swaps to its cheap level of detail.
+   * Smaller is cheaper.
+   */
+  readonly lodDistance: number;
+  /** A rough frame-time budget in milliseconds, shown on the graphics screen. */
+  readonly frameBudgetMs: number;
 }
 
 export const GameConfig = {
@@ -418,6 +438,13 @@ export const GameConfig = {
       maxPixelRatio: 1,
       antialias: false,
       sceneryDetail: 0,
+      imageBasedLighting: false,
+      postProcessing: false,
+      bloom: false,
+      ambientOcclusion: false,
+      crowdCount: 0,
+      lodDistance: 26,
+      frameBudgetMs: 16.7,
     },
     medium: {
       shadows: true,
@@ -425,6 +452,13 @@ export const GameConfig = {
       maxPixelRatio: 1.5,
       antialias: true,
       sceneryDetail: 1,
+      imageBasedLighting: true,
+      postProcessing: true,
+      bloom: false,
+      ambientOcclusion: false,
+      crowdCount: 28,
+      lodDistance: 40,
+      frameBudgetMs: 16.7,
     },
     high: {
       shadows: true,
@@ -432,6 +466,27 @@ export const GameConfig = {
       maxPixelRatio: 2,
       antialias: true,
       sceneryDetail: 2,
+      imageBasedLighting: true,
+      postProcessing: true,
+      bloom: true,
+      ambientOcclusion: false,
+      crowdCount: 56,
+      lodDistance: 70,
+      frameBudgetMs: 16.7,
+    },
+    ultra: {
+      shadows: true,
+      shadowMapSize: 4096,
+      maxPixelRatio: 2,
+      antialias: true,
+      sceneryDetail: 2,
+      imageBasedLighting: true,
+      postProcessing: true,
+      bloom: true,
+      ambientOcclusion: true,
+      crowdCount: 96,
+      lodDistance: 140,
+      frameBudgetMs: 16.7,
     },
   } as const satisfies Record<QualityLevel, QualityProfile>,
 

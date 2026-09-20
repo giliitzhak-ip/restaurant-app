@@ -17,6 +17,7 @@ import { PlayerView } from './PlayerView';
 export class MatchViews {
   readonly ball: BallView;
   private readonly players = new Map<string, PlayerView>();
+  private lodDistance = Number.POSITIVE_INFINITY;
 
   constructor(
     private readonly scene: Scene,
@@ -40,6 +41,12 @@ export class MatchViews {
 
   /** Called after the views were rebuilt, so shadows and casters can follow. */
   onRebuilt: (() => void) | null = null;
+
+  private get lodDistanceSquared(): number {
+    return this.lodDistance === Number.POSITIVE_INFINITY
+      ? Number.POSITIVE_INFINITY
+      : this.lodDistance * this.lodDistance;
+  }
 
   private rebuild(): void {
     for (const view of this.players.values()) view.dispose();
@@ -65,9 +72,19 @@ export class MatchViews {
     return [...this.players.keys()];
   }
 
+  /**
+   * Distance past which a character drops its small parts. Set from the
+   * quality preset; Infinity keeps every detail at every distance.
+   */
+  setLodDistance(distance: number): void {
+    this.lodDistance = distance;
+  }
+
   /** Render-rate update. Never touches physics or rules. */
   update(dt: number, celebratingTeam: TeamId | null, defeatedTeam: TeamId | null): void {
     const controlling = this.match.controllingPlayerId;
+    const camera = this.scene.activeCamera;
+    const eye = camera?.globalPosition ?? null;
     for (const player of this.match.state.players) {
       const view = this.players.get(player.id);
       if (!view) continue;
@@ -85,6 +102,12 @@ export class MatchViews {
         dt,
       );
       view.setInControl(controlling === player.id);
+
+      if (eye) {
+        const dx = player.position.x - eye.x;
+        const dz = player.position.z - eye.z;
+        view.setDetailVisible(dx * dx + dz * dz <= this.lodDistanceSquared);
+      }
     }
   }
 }

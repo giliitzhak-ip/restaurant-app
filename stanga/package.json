@@ -1,6 +1,6 @@
 {
   "name": "stanga",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "description": "STANGA - Israeli street football, 3D browser game with local two-player",
@@ -19,7 +19,8 @@
     "server": "tsx src/server/index.ts",
     "e2e": "node e2e/online.e2e.mjs",
     "e2e:offline": "node e2e/offline.e2e.mjs",
-    "e2e:load": "tsx e2e/load.e2e.mts"
+    "e2e:load": "tsx e2e/load.e2e.mts",
+    "e2e:2v2": "node e2e/twovstwo.e2e.mjs"
   },
   "dependencies": {
     "@babylonjs/core": "9.27.1",

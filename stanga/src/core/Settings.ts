@@ -69,7 +69,7 @@ export interface StorageLike {
 
 export const SETTINGS_STORAGE_KEY = 'stanga.settings.v1';
 
-const QUALITY_LEVELS: readonly QualityLevel[] = ['low', 'medium', 'high'];
+const QUALITY_LEVELS: readonly QualityLevel[] = ['low', 'medium', 'high', 'ultra'];
 const DIFFICULTIES: readonly Difficulty[] = ['easy', 'normal', 'hard'];
 const SHAKE_LEVELS: readonly ShakeLevel[] = ['off', 'subtle', 'normal'];
 const HUD_SCALES: readonly HudScale[] = ['small', 'normal', 'large'];

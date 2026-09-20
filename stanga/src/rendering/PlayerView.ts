@@ -13,6 +13,7 @@ import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
 import type { Mesh } from '@babylonjs/core/Meshes/mesh';
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
+import type { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial';
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import type { Scene } from '@babylonjs/core/scene';
 import { GameConfig } from '../config/GameConfig';
@@ -20,6 +21,7 @@ import type { PlayerBody } from '../entities/PlayerBody';
 import { PlayerAnimator, type AnimatorInputs } from '../entities/PlayerAnimator';
 import type { PlayerState } from '../game/MatchState';
 import { createKitTexture, type KitPattern } from './ProceduralTextures';
+import { createSurface } from './Surfaces';
 
 const SKIN_TONES: readonly string[] = ['#c98d63', '#8d5a3b', '#e0b08a', '#6f4326'];
 const HAIR_TONES: readonly string[] = ['#241b16', '#3d2a1c', '#111114', '#5a3b22'];
@@ -46,8 +48,11 @@ export class PlayerView {
 
   private readonly limbs: { leftLeg: Mesh; rightLeg: Mesh; leftArm: Mesh; rightArm: Mesh };
   private readonly torso: Mesh;
-  private readonly torsoMaterial: StandardMaterial;
+  private readonly torsoMaterial: PBRMaterial;
   private readonly markerMaterial: StandardMaterial;
+  /** Small parts hidden once the player is far enough away to not see them. */
+  private readonly detailMeshes: Mesh[] = [];
+  private detailVisible = true;
   private readonly baseVisualY: number;
   private colorId = -1;
 
@@ -68,11 +73,13 @@ export class PlayerView {
     const variant = hashString(id);
     const skinTone = SKIN_TONES[variant % SKIN_TONES.length] ?? '#c98d63';
     const hairTone = HAIR_TONES[variant % HAIR_TONES.length] ?? '#241b16';
-    const skinMaterial = solidMaterial(scene, `skin-${id}`, skinTone);
-    const shortsMaterial = solidMaterial(scene, `shorts-${id}`, '#1d1f24');
+    const skinMaterial = solidMaterial(scene, `skin-${id}`, skinTone, 0.54);
+    const shortsMaterial = solidMaterial(scene, `shorts-${id}`, '#1d1f24', 0.86);
 
-    this.torsoMaterial = new StandardMaterial(`shirt-${id}`, scene);
-    this.torsoMaterial.specularColor = new Color3(0.08, 0.08, 0.09);
+    this.torsoMaterial = createSurface(scene, `shirt-${id}`, {
+      roughness: 0.82,
+      ambientLift: 0.26,
+    });
 
     this.torso = MeshBuilder.CreateBox(
       `torso-${id}`,
@@ -112,13 +119,22 @@ export class PlayerView {
       scene,
     );
     hair.position.y = 1.605;
-    hair.material = solidMaterial(scene, `hair-${id}`, hairTone);
+    hair.material = solidMaterial(scene, `hair-${id}`, hairTone, 0.66);
     hair.parent = this.visual;
+    this.detailMeshes.push(hair, neck);
 
+    // Tapered cylinders rather than boxes: a limb that narrows towards the
+    // ankle reads as a leg from the chase camera, where a rectangular prism
+    // reads as furniture. Six sides is enough at this size.
     const makeLimb = (name: string, x: number, y: number, length: number, thickness: number) => {
-      const limb = MeshBuilder.CreateBox(
+      const limb = MeshBuilder.CreateCylinder(
         `${name}-${id}`,
-        { width: thickness, height: length, depth: thickness },
+        {
+          height: length,
+          diameterTop: thickness * 1.15,
+          diameterBottom: thickness * 0.82,
+          tessellation: 8,
+        },
         scene,
       );
       // Pivot at the top so rotation swings the limb from the joint.
@@ -138,7 +154,7 @@ export class PlayerView {
     leftArm.material = skinMaterial;
     rightArm.material = skinMaterial;
 
-    const shoeMaterial = solidMaterial(scene, `shoe-${id}`, '#111216');
+    const shoeMaterial = solidMaterial(scene, `shoe-${id}`, '#111216', 0.42);
     for (const [name, parent] of [
       ['shoeL', leftLeg],
       ['shoeR', rightLeg],
@@ -152,6 +168,7 @@ export class PlayerView {
       shoe.material = shoeMaterial;
       shoe.parent = parent;
       this.meshes.push(shoe);
+      this.detailMeshes.push(shoe);
     }
 
     this.limbs = { leftLeg, rightLeg, leftArm, rightArm };
@@ -173,6 +190,20 @@ export class PlayerView {
     this.setMarkerVisible(isHuman);
   }
 
+  /**
+   * Level of detail, by distance.
+   *
+   * Hair, a neck and a pair of boots are four meshes and four materials that
+   * nobody can resolve from twenty metres away. Hiding them there is the
+   * cheapest LOD there is, and unlike a swapped mesh it cannot pop the
+   * silhouette.
+   */
+  setDetailVisible(visible: boolean): void {
+    if (visible === this.detailVisible) return;
+    this.detailVisible = visible;
+    for (const mesh of this.detailMeshes) mesh.setEnabled(visible);
+  }
+
   /** Shows the player ring. Humans get one so they can find themselves. */
   setMarkerVisible(visible: boolean): void {
     this.marker?.setEnabled(visible);
@@ -183,8 +214,8 @@ export class PlayerView {
     if (colorId === this.colorId) return;
     this.colorId = colorId;
     const kit = kitFor(colorId);
-    this.torsoMaterial.diffuseTexture?.dispose();
-    this.torsoMaterial.diffuseTexture = createKitTexture(
+    this.torsoMaterial.albedoTexture?.dispose();
+    this.torsoMaterial.albedoTexture = createKitTexture(
       this.scene,
       kit.shirt,
       kit.trim,
@@ -203,7 +234,7 @@ export class PlayerView {
 
   /** Releases every mesh and material this view owns. */
   dispose(): void {
-    this.torsoMaterial.diffuseTexture?.dispose();
+    this.torsoMaterial.albedoTexture?.dispose();
     this.visual.dispose(false, true);
   }
 
@@ -239,11 +270,20 @@ export class PlayerView {
   }
 }
 
-function solidMaterial(scene: Scene, name: string, hex: string): StandardMaterial {
-  const material = new StandardMaterial(name, scene);
-  material.diffuseColor = Color3.FromHexString(hex);
-  material.specularColor = new Color3(0.08, 0.08, 0.09);
-  return material;
+/**
+ * Skin, cloth and rubber all under one helper, differing only in roughness.
+ * Skin is slightly glossy, a cotton shirt is not, and a boot is somewhere
+ * between — which is enough to stop the character reading as one plastic
+ * colour under a single light.
+ */
+function solidMaterial(scene: Scene, name: string, hex: string, roughness = 0.72): PBRMaterial {
+  return createSurface(scene, name, {
+    roughness,
+    albedoColor: hex,
+    // A character is often in their own shadow; without a floor the far side
+    // of the body goes to black and the silhouette disappears.
+    ambientLift: 0.26,
+  });
 }
 
 /** Stable small hash, so a player id always picks the same skin and hair. */

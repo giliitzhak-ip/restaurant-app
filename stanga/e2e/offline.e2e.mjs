@@ -43,6 +43,48 @@ try {
   await page.goto(PAGE_URL, { waitUntil: 'load' });
   await page.waitForSelector('#screen-menu:not(.is-hidden)', { timeout: 90_000 });
 
+  // Every quality preset has to render. Ultra turns on IBL, bloom and SSAO
+  // all at once, which is exactly the combination most likely to throw.
+  //
+  // This runs first and ends on the lowest preset on purpose: the browser here
+  // has no GPU and is drawing through SwiftShader at a couple of frames a
+  // second, where the richer presets make the *simulation* crawl — the loop
+  // slows down rather than skipping ticks, by design. Correctness is what this
+  // environment can prove; frame rate is not.
+  console.log('graphics presets');
+  await page.click('#btn-settings');
+  await page.waitForSelector('#screen-settings:not(.is-hidden)', { timeout: 30_000 });
+  await page.click('#btn-open-graphics');
+  await page.waitForSelector('#screen-graphics:not(.is-hidden)', { timeout: 30_000 });
+
+  for (const level of ['ultra', 'high', 'medium', 'low']) {
+    await page.click(`[data-graphics="${level}"]`);
+    await page.waitForTimeout(2500);
+    const active = await page.evaluate(
+      (name) =>
+        document.querySelector(`[data-graphics="${name}"]`).getAttribute('aria-checked') === 'true',
+      level,
+    );
+    check(`the ${level} preset applies`, active);
+  }
+
+  // The live readout is a measurement, not a label: it has to be a number.
+  const measured = await page.evaluate(() =>
+    [...document.querySelectorAll('#graphics-stats dd')].map((dd) => dd.textContent),
+  );
+  check('the graphics screen measures this device', measured.length >= 5, measured.join(' | '));
+  check(
+    'the measurement is a real number of frames',
+    Number.parseFloat(measured[0] ?? '') > 0,
+    measured[0],
+  );
+  console.log(`  (this machine: ${measured.join(' | ')})`);
+
+  await page.click('#btn-graphics-close');
+  await page.waitForSelector('#screen-settings:not(.is-hidden)', { timeout: 30_000 });
+  await page.click('#btn-settings-close');
+  await page.waitForSelector('#screen-menu:not(.is-hidden)', { timeout: 30_000 });
+
   console.log('vs computer');
   await page.click('#btn-play');
   await page.waitForSelector('#screen-difficulty:not(.is-hidden)', { timeout: 30_000 });
@@ -58,7 +100,7 @@ try {
 
   const startZ = await page.evaluate(() => window.__stanga.matchState().players[0].position.z);
   await page.keyboard.down('KeyW');
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(2500);
   await page.keyboard.up('KeyW');
   const movedZ = await page.evaluate(() => window.__stanga.matchState().players[0].position.z);
   check('the human player moves', Math.abs(movedZ - startZ) > 0.5, `${startZ} -> ${movedZ}`);
@@ -108,7 +150,7 @@ try {
   );
   await page.keyboard.down('KeyW');
   await page.keyboard.down('ArrowDown');
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(2500);
   await page.keyboard.up('KeyW');
   await page.keyboard.up('ArrowDown');
   const after = await page.evaluate(() =>

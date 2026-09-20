@@ -12,7 +12,12 @@ import { Color4 } from '@babylonjs/core/Maths/math.color';
 import { Scene } from '@babylonjs/core/scene';
 import { AIController } from '../ai/AIController';
 import { AudioManager } from '../audio/AudioManager';
-import { GameConfig, type Difficulty, type GoalPart } from '../config/GameConfig';
+import {
+  GameConfig,
+  type Difficulty,
+  type GoalPart,
+  type QualityLevel,
+} from '../config/GameConfig';
 import { MatchEngine } from '../game/MatchEngine';
 import { MatchViews } from '../rendering/MatchViews';
 import { outcomeOf } from '../game/MatchRules';
@@ -56,6 +61,9 @@ import type { RoomStage } from '../net/schema';
 import { loadHavok } from '../physics/loadHavokBrowser';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
 import { AimIndicator } from '../rendering/AimIndicator';
+import { Crowd } from '../rendering/Crowd';
+import { Environment } from '../rendering/Environment';
+import { PostProcessing } from '../rendering/PostProcessing';
 import { EdgeArrows, type EdgeArrowTarget } from '../rendering/EdgeArrows';
 import { PlayerMarkers } from '../rendering/PlayerMarkers';
 import { buildArena, type ArenaHandles } from '../rendering/Arena';
@@ -104,6 +112,9 @@ export class Game {
   private quality!: QualityManager;
   private effects!: Effects;
   private aimIndicator!: AimIndicator;
+  private environment!: Environment;
+  private post!: PostProcessing;
+  private crowd!: Crowd;
   private markers!: PlayerMarkers;
   private edgeArrows!: EdgeArrows;
   private contactShadows!: ContactShadows;
@@ -132,6 +143,13 @@ export class Game {
   private readonly cleanups: (() => void)[] = [];
 
   private hudTimer = 0;
+  /** Rolling frame-time window for the graphics screen. */
+  private frameSamples = 0;
+  private frameMsTotal = 0;
+  /** The preset actually running, which auto-degradation may lower. */
+  private effectiveQuality: QualityLevel = 'medium';
+  private slowFrames = 0;
+  private slowWindowMs = 0;
   private resumeCountdown = 0;
   private celebratingTeam: TeamId | null = null;
   private defeatedTeam: TeamId | null = null;
@@ -243,8 +261,11 @@ export class Game {
     this.markers = new PlayerMarkers(this.scene);
     this.edgeArrows = new EdgeArrows(requireArrowLayer());
     this.effects = new Effects(this.scene);
+    this.environment = new Environment(this.scene);
+    this.post = new PostProcessing(this.scene);
+    this.crowd = new Crowd(this.scene);
 
-    this.quality.apply(this.settings.quality);
+    this.applyQuality(this.settings.quality);
 
     this.contactShadows = new ContactShadows(this.scene, this.arena.sun.direction);
     // One blob per possible player, allocated once: the roster changes between
@@ -399,6 +420,11 @@ export class Game {
       if (local) {
         this.soloCamera.snapTo(local.position, this.match.state.ball.position, local.team);
       }
+    }
+    // The post chain is bound to one camera, and the two rigs are different
+    // cameras, so it follows whichever one the match just activated.
+    if (this.scene.activeCamera) {
+      this.post.setCamera(this.scene.activeCamera);
     }
     this.handleResize();
 
@@ -1135,6 +1161,69 @@ export class Game {
 
     this.updatePresentation(dtSeconds);
     this.scene.render();
+    this.reportGraphicsStats(deltaMs);
+    this.guardFrameBudget(deltaMs);
+  }
+
+  /**
+   * Steps the preset down when the device plainly cannot hold it.
+   *
+   * A preset is a promise about frame time, and on a device that cannot keep
+   * it the game gets slower rather than uglier, which is the worse of the two.
+   * This watches a four-second window while playing and drops one level when
+   * the average is twice the budget.
+   *
+   * It never steps back up, and it never rewrites the player's setting: the
+   * stored preference stays theirs, and picking a level by hand puts it back.
+   */
+  private guardFrameBudget(deltaMs: number): void {
+    if (this.phase !== 'playing') return;
+    const order: QualityLevel[] = ['low', 'medium', 'high', 'ultra'];
+    const index = order.indexOf(this.effectiveQuality);
+    if (index <= 0) return;
+
+    const budget = GameConfig.quality[this.effectiveQuality].frameBudgetMs;
+    this.slowWindowMs += deltaMs;
+    if (deltaMs > budget * 2) this.slowFrames += deltaMs;
+    if (this.slowWindowMs < 4000) return;
+
+    const overBudget = this.slowFrames / this.slowWindowMs;
+    this.slowWindowMs = 0;
+    this.slowFrames = 0;
+    if (overBudget < 0.75) return;
+
+    const next = order[index - 1];
+    if (!next) return;
+    this.applyQuality(next);
+    this.ui.setGraphicsFallback(next);
+  }
+
+  /**
+   * Feeds the graphics screen while it is open, and nothing otherwise.
+   *
+   * Averaged over half a second: a per-frame number on a page that redraws it
+   * is unreadable, and a budget you cannot read is not a budget.
+   */
+  private reportGraphicsStats(deltaMs: number): void {
+    if (this.ui.activeScreen !== 'graphics') {
+      this.frameSamples = 0;
+      this.frameMsTotal = 0;
+      return;
+    }
+    this.frameSamples += 1;
+    this.frameMsTotal += deltaMs;
+    if (this.frameMsTotal < 500) return;
+
+    const frameMs = this.frameMsTotal / this.frameSamples;
+    this.frameSamples = 0;
+    this.frameMsTotal = 0;
+    this.ui.setGraphicsStats({
+      fps: frameMs > 0 ? 1000 / frameMs : 0,
+      frameMs,
+      budgetMs: GameConfig.quality[this.effectiveQuality].frameBudgetMs,
+      drawCalls: this.scene.getActiveMeshes().length,
+      resolutionScale: 1 / this.engine.getHardwareScalingLevel(),
+    });
   }
 
   /**
@@ -1169,6 +1258,27 @@ export class Game {
     );
     if (mate) targets.push({ kind: 'mate', position: mate.position });
     this.edgeArrows.update(this.scene, targets, viewer?.position ?? null);
+  }
+
+  /**
+   * One place that turns a preset into everything it implies: shadows and
+   * resolution (QualityManager), the sky capture that lights the PBR
+   * materials, the post chain, the crowd and how far LOD reaches.
+   */
+  private applyQuality(level: QualityLevel): void {
+    this.effectiveQuality = level;
+    this.slowFrames = 0;
+    this.slowWindowMs = 0;
+    this.quality.apply(level);
+    const profile = GameConfig.quality[level];
+    // Only the sky and the backdrop are captured: a probe that had to include
+    // the players would have to re-render every frame.
+    this.environment.setEnabled(profile.imageBasedLighting, this.arena.environmentSources);
+    this.post.setCamera(this.scene.activeCamera ?? this.soloCamera.camera);
+    this.post.apply(profile);
+    this.crowd.setCount(profile.crowdCount);
+    this.views.setLodDistance(profile.lodDistance);
+    this.markers.setEnabled(level !== 'low');
   }
 
   private refreshRosterVisuals(): void {
@@ -1240,6 +1350,7 @@ export class Game {
       state.ball.velocity.z,
     );
     this.effects.update(dt, state.ball.position, ballSpeed);
+    this.crowd.update(dt);
 
     if (this.mode === 'localTwoPlayer') {
       this.sharedCamera.update(this.cameraFocus(), dt);
@@ -1580,7 +1691,7 @@ export class Game {
     this.keyboard.own(ownedKeyCodes(settings));
 
     if (qualityChanged) {
-      this.quality.apply(settings.quality);
+      this.applyQuality(settings.quality);
       this.effects.setQuality(settings.quality);
     }
   }
@@ -1620,13 +1731,32 @@ export class Game {
     return this.phase;
   }
 
-  inspectOnline(): { stage: string; serverTick: number; ping: number } | null {
+  inspectOnline(): {
+    stage: string;
+    serverTick: number;
+    ping: number;
+    mode: OnlineMode;
+    team: TeamId;
+    playerId: string;
+    seated: number;
+    isPrivate: boolean;
+  } | null {
     const online = this.online;
     if (!online) return null;
+    const snapshot = online.client.state;
+    let seated = 0;
+    snapshot?.players.forEach((player) => {
+      if (player.name.length > 0) seated += 1;
+    });
     return {
       stage: online.stage,
-      serverTick: online.client.state?.tick ?? -1,
+      serverTick: snapshot?.tick ?? -1,
       ping: online.roundTripMs,
+      mode: online.mode,
+      team: online.localTeam,
+      playerId: online.localPlayerId,
+      seated,
+      isPrivate: snapshot?.isPrivate ?? false,
     };
   }
 

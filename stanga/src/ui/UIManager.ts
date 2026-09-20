@@ -59,7 +59,17 @@ export type ScreenName =
   | 'online'
   | 'primer'
   | 'reconnect'
-  | 'bindings';
+  | 'bindings'
+  | 'graphics';
+
+/** What the graphics screen reports back about this device, right now. */
+export interface GraphicsStats {
+  fps: number;
+  frameMs: number;
+  budgetMs: number;
+  drawCalls: number;
+  resolutionScale: number;
+}
 
 export interface LobbySlotView {
   index: 1 | 2;
@@ -218,6 +228,7 @@ export class UIManager {
   private settings: GameSettings;
   private difficulty: Difficulty;
   private settingsReturnTo: ScreenName = 'menu';
+  private graphicsFallback: QualityLevel | null = null;
   private currentScreen: ScreenName | null = null;
   private lastClockText = '';
   private lastEventTick = -1;
@@ -250,6 +261,7 @@ export class UIManager {
       primer: requireElement('screen-primer'),
       reconnect: requireElement('screen-reconnect'),
       bindings: requireElement('screen-bindings'),
+      graphics: requireElement('screen-graphics'),
     };
 
     this.hud = requireElement('hud');
@@ -726,6 +738,92 @@ export class UIManager {
     }
   }
 
+  // ── Graphics ────────────────────────────────────────────────────────────────
+
+  /**
+   * What the chosen preset actually turns on.
+   *
+   * Written out rather than summarised as "high quality" so the choice is a
+   * real one: somebody on a three-year-old phone can see that the crowd and
+   * the ambient occlusion are what they are paying for.
+   */
+  /**
+   * Says so when the game had to drop below the chosen preset. Silent when it
+   * is running what was asked for.
+   */
+  setGraphicsFallback(level: QualityLevel | null): void {
+    this.graphicsFallback = level;
+    this.renderGraphics();
+  }
+
+  private renderGraphics(): void {
+    const level = this.settings.quality;
+    for (const button of document.querySelectorAll<HTMLButtonElement>('[data-graphics]')) {
+      const active = button.dataset.graphics === level;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-checked', String(active));
+    }
+
+    const profile = GameConfig.quality[level];
+    const features: [string, boolean | string][] = [
+      ['צללים', profile.shadows ? `${profile.shadowMapSize}×${profile.shadowMapSize}` : false],
+      ['תאורת סביבה מהשמיים', profile.imageBasedLighting],
+      ['עיבוד אחרי־תמונה', profile.postProcessing],
+      ['זוהר', profile.bloom],
+      ['הצללת מגע', profile.ambientOcclusion],
+      ['קהל', profile.crowdCount > 0 ? `${profile.crowdCount} צופים` : false],
+      ['החלקת קצוות', profile.antialias],
+      ['רזולוציה מרבית', `פי ${profile.maxPixelRatio}`],
+      ['פרטים עד', `${profile.lodDistance} מטר`],
+    ];
+
+    const list = requireElement('graphics-features');
+    list.replaceChildren();
+    for (const [label, value] of features) {
+      const item = document.createElement('li');
+      item.className = value === false ? 'is-off' : 'is-on';
+      const name = document.createElement('span');
+      name.textContent = label;
+      const state = document.createElement('span');
+      state.textContent = value === false ? 'כבוי' : value === true ? 'פעיל' : value;
+      item.append(name, state);
+      list.append(item);
+    }
+
+    const notice = requireElement('graphics-fallback');
+    const lowered = this.graphicsFallback !== null && this.graphicsFallback !== level;
+    notice.classList.toggle('is-hidden', !lowered);
+    if (lowered && this.graphicsFallback) {
+      notice.textContent = `המכשיר לא עמד בקצב, והמשחק ירד בפועל לרמה ${QUALITY_LABELS[this.graphicsFallback]}. בחירה ידנית תחזיר את הרמה שביקשתם.`;
+    }
+  }
+
+  /**
+   * The live measurement on the graphics screen.
+   *
+   * A budget nobody measures is a wish. This shows what the device is
+   * actually managing right now, next to the 60-per-second target.
+   */
+  setGraphicsStats(stats: GraphicsStats): void {
+    const list = requireElement('graphics-stats');
+    list.replaceChildren();
+    const rows: [string, string][] = [
+      ['פריימים לשנייה', stats.fps.toFixed(0)],
+      ['זמן פריים', `${stats.frameMs.toFixed(1)} מ״ש`],
+      ['תקציב', `${stats.budgetMs.toFixed(1)} מ״ש`],
+      ['קריאות ציור', String(stats.drawCalls)],
+      ['סקלת רזולוציה', `פי ${stats.resolutionScale.toFixed(2)}`],
+    ];
+    for (const [label, value] of rows) {
+      const dt = document.createElement('dt');
+      dt.textContent = label;
+      const dd = document.createElement('dd');
+      dd.textContent = value;
+      dd.classList.toggle('is-over', label === 'זמן פריים' && stats.frameMs > stats.budgetMs);
+      list.append(dt, dd);
+    }
+  }
+
   // ── Bindings editor ─────────────────────────────────────────────────────────
 
   private renderBindings(): void {
@@ -959,6 +1057,27 @@ export class UIManager {
       this.callbacks.onInteraction();
       this.showScreen('bindings');
     });
+    this.onClick('btn-open-graphics', () => {
+      this.callbacks.onInteraction();
+      this.renderGraphics();
+      this.showScreen('graphics');
+    });
+    this.onClick('btn-graphics-close', () => {
+      this.callbacks.onInteraction();
+      this.showScreen('settings');
+    });
+    for (const button of document.querySelectorAll<HTMLButtonElement>('[data-graphics]')) {
+      const level = button.dataset.graphics;
+      if (!isQualityLevel(level)) continue;
+      button.addEventListener('click', () => {
+        this.callbacks.onInteraction();
+        // Through the same path as every other setting, so the stored copy,
+        // the form and this screen can never disagree.
+        this.settings = { ...this.settings, quality: level };
+        this.applySettingsToForm(this.settings);
+        this.callbacks.onSettingsChanged(this.settings);
+      });
+    }
   }
 
   private bindPause(): void {
@@ -1321,6 +1440,7 @@ export class UIManager {
   applySettingsToForm(settings: GameSettings): void {
     this.settings = { ...settings };
     this.difficulty = settings.difficulty;
+    this.renderGraphics();
 
     this.sliders.master.value = String(Math.round(settings.masterVolume * 100));
     this.sliders.music.value = String(Math.round(settings.musicVolume * 100));
@@ -1359,6 +1479,18 @@ export class UIManager {
 
     if (this.currentScreen === 'bindings') this.renderBindings();
   }
+}
+
+const QUALITY_LABELS: Record<QualityLevel, string> = {
+  low: 'נמוכה',
+  medium: 'בינונית',
+  high: 'גבוהה',
+  ultra: 'מרבית',
+};
+
+/** Narrows a data attribute to a preset name without a cast. */
+function isQualityLevel(value: string | undefined): value is QualityLevel {
+  return value === 'low' || value === 'medium' || value === 'high' || value === 'ultra';
 }
 
 function setToggle(

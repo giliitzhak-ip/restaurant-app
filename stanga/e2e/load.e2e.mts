@@ -6,7 +6,8 @@
  * against a server started the usual way:
  *
  *   npm run server
- *   npx tsx e2e/load.e2e.mts            # default: 8 matches
+ *   npx tsx e2e/load.e2e.mts                    # default: 8 1x1 matches
+ *   ROOMS=25 MODE=2v2 npx tsx e2e/load.e2e.mts  # 25 four-player matches
  *   ROOMS=20 SECONDS=30 npx tsx e2e/load.e2e.mts
  *
  * Results measured on the development machine are recorded in
@@ -17,17 +18,23 @@ import {
   ClientMessage,
   InputFlag,
   PROTOCOL_VERSION,
-  ROOM_ONE_VS_ONE,
   ServerMessage,
+  roomNameFor,
   type NetPong,
+  type OnlineMode,
   type WelcomePayload,
 } from '../src/net/protocol';
+import { configFor } from '../src/game/MatchConfig';
 import type { MatchRoomState } from '../src/net/schema';
 
 const ENDPOINT = process.env.STANGA_SERVER ?? 'http://127.0.0.1:2567';
 const ROOMS = Number(process.env.ROOMS ?? 8);
 const SECONDS = Number(process.env.SECONDS ?? 20);
 const INPUT_HZ = 60;
+const MODE: OnlineMode = process.env.MODE === '2v2' ? 'twoVsTwo' : 'oneVsOne';
+const ROOM_NAME = roomNameFor(MODE);
+/** Two for 1x1, four for 2x2. Read from the config, not written out twice. */
+const SEATS = configFor(MODE).maxPlayers;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -65,7 +72,7 @@ async function joinPlayer(name: string, roomId?: string): Promise<Player> {
   };
   const room =
     roomId === undefined
-      ? await client.create<MatchRoomState>(ROOM_ONE_VS_ONE, options)
+      ? await client.create<MatchRoomState>(ROOM_NAME, options)
       : await client.joinById<MatchRoomState>(roomId, options);
 
   const player: Player = { room, welcome: null as never, patches: 0, bytes: 0, roundTrips: [] };
@@ -93,13 +100,18 @@ function percentile(values: number[], fraction: number): number {
   return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * fraction))] ?? 0;
 }
 
-console.log(`${ROOMS} matches, ${SECONDS}s, ${INPUT_HZ} inputs/s per client`);
+console.log(
+  `${ROOMS} ${MODE === 'twoVsTwo' ? '2x2' : '1x1'} matches ` +
+    `(${SEATS} seats each), ${SECONDS}s, ${INPUT_HZ} inputs/s per client`,
+);
 
 const players: Player[] = [];
 for (let i = 0; i < ROOMS; i += 1) {
   const host = await joinPlayer(`h${i}`);
-  const guest = await joinPlayer(`g${i}`, host.room.roomId);
-  players.push(host, guest);
+  players.push(host);
+  for (let seat = 1; seat < SEATS; seat += 1) {
+    players.push(await joinPlayer(`p${i}-${seat}`, host.room.roomId));
+  }
 }
 console.log(`connected ${players.length} clients`);
 
@@ -135,6 +147,9 @@ const sending = setInterval(() => {
       my: Math.cos(angle),
       ax: Math.sin(angle),
       ay: Math.cos(angle),
+      va: 0,
+      sn: 0,
+      pt: -1,
       f: InputFlag.Sprint,
     });
   }

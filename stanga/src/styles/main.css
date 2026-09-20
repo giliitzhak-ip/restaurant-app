@@ -1648,6 +1648,71 @@ kbd {
   letter-spacing: 0.04em;
 }
 
+/* Graphics screen */
+
+.graphics__features {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.15rem 1rem;
+  font-size: 0.86rem;
+}
+
+.graphics__features li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.22rem 0;
+  border-bottom: 1px solid var(--concrete);
+}
+
+.graphics__features li.is-off {
+  color: var(--paper-dim);
+}
+
+.graphics__features li.is-on span:last-child {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.graphics__fallback {
+  color: var(--accent);
+}
+
+.graphics__budget {
+  margin-top: 0.9rem;
+}
+
+.graphics__budget h3 {
+  margin: 0 0 0.3rem;
+  font-size: 0.86rem;
+  letter-spacing: 0.04em;
+}
+
+.graphics__budget dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.1rem 1rem;
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.graphics__budget dt {
+  color: var(--paper-dim);
+}
+
+.graphics__budget dd {
+  margin: 0 0 0.25rem;
+  font-weight: 800;
+}
+
+.graphics__budget dd.is-over {
+  color: var(--danger);
+}
+
 /* Quick chat during play: a thin row, thumb-reachable, never over the pitch */
 
 .hud__quickchat {

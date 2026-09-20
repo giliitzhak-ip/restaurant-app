@@ -1,4 +1,4 @@
-# ארכיטקטורת הרשת — STANGA 0.3.0
+# ארכיטקטורת הרשת — STANGA 0.4.0
 
 ## התמונה
 
@@ -18,9 +18,12 @@
                      snapshot  │  NetInput
                     ┌──────────┴───────────────────┐
                     │  OnlineOneVsOneRoom          │  השרת: מחליט
+                    │  OnlineTwoVsTwoRoom          │
                     │   MatchSession               │
                     │    slot(home-1) ← RemoteInput│
+                    │    slot(home-2) ← RemoteInput│  (2×2)
                     │    slot(away-1) ← RemoteInput│
+                    │    slot(away-2) ← RemoteInput│  (2×2)
                     │   MatchEngine (authoritative)│
                     └──────────────────────────────┘
 ```
@@ -55,38 +58,47 @@
 | `input/controllers/NetworkController.ts` | היריב, כ־`PlayerController` רגיל           |
 | `server/BaseOnlineMatchRoom.ts`          | החדר הסמכותי                               |
 | `server/OnlineOneVsOneRoom.ts`           | 1×1 — קונפיגורציה בלבד                     |
-| `server/MatchConfig.ts`                  | כל מה שתלוי־מצב: מושבים, תזמונים, מגבלות   |
+| `server/OnlineTwoVsTwoRoom.ts`           | 2×2 — שלוש שורות, אותה ליבה                |
+| `server/TeamManager.ts`                  | מי יושב איפה. הדבר היחיד שמחליט את זה      |
+| `server/LobbyManager.ts`                 | מי מוכן ומי בעל החדר                       |
+| `server/BotSubstitutionManager.ts`       | בוט למושב שהתרוקן                          |
+| `game/MatchConfig.ts`                    | כל מה שתלוי־מצב: מושבים, תזמונים, מגבלות   |
+| `game/MatchRoster.ts`                    | מי על המגרש ואיפה הוא מתחיל                |
+| `game/Attribution.ts`                    | מי בישל                                    |
 | `server/HeadlessMatch.ts`                | סצנה, פיזיקה ומנוע בלי רינדור              |
 | `server/InviteRegistry.ts`               | קוד ↔ חדר, ב־Presence                      |
+
+`MatchConfig` עבר מ־`server/` ל־`game/` בגרסה 0.4.0: גם הלקוח קורא אותו,
+כי הניבוי שלו חייב לרוץ על אותם מספרים כמו השרת.
 
 ## מכונת המצבים של החדר
 
 ```
-waiting ──שני שחקנים──► lobby ──שניהם מוכנים──► countdown ──►  playing
-   ▲                      ▲                                      │
-   │                      │                                 ניתוק│
-   └───────מושב התפנה─────┘                                      ▼
-                          ▲                                   paused
-                          │                                      │
-                     הצבעת רימאץ׳                           חזרה│
-                          │                                      ▼
-                       finished ◄────סיום משחק / נטישה──── playing
+waitingForPlayers → teamSelection → readyCheck → countdown → playing
+                                                                ↓
+        rematchVote ← finished ←──────────────────── goalFreeze ⇄ playing
+                                                                ↓
+                                                        reconnectPause
 ```
 
-- החדר **נעול** ב־`countdown` וב־`playing`, כך שאין הצטרפות באמצע משחק.
+- החדר **נעול** מ־`countdown` והלאה, כך שאין הצטרפות באמצע משחק ואין החלפת
+  קבוצה אחרי שהיא נסגרה.
 - הוא נפתח מחדש רק כשיש מושב פנוי באמת — נעילת ה־maxClients של Colyseus
   נשארת בתוקף.
-- ב־`paused` הסימולציה **אינה מתקדמת**. אין יתרון למי שנשאר מחובר.
+- ב־`reconnectPause` הסימולציה **אינה מתקדמת**. אין יתרון למי שנשאר מחובר.
+  ב־2×2 ההפוגה קצרה, ואחריה בוט נכנס למושב.
+- `refreshStage` מתייצב במקום לבצע מעבר אחד לכל הודעה: ה"מוכן" האחרון משלים
+  את ה־ready check ומתחיל את ה־countdown באותה קריאה.
 
-## התאמה לשלב ד׳ (2 נגד 2)
+## 2 נגד 2
 
-`MatchConfig` כבר נושא `mode`, `maxPlayers`, `playersPerTeam` ורשימת מושבים,
-ו־`BaseOnlineMatchRoom` אינו יודע דבר על "שניים". חדר 2×2 צריך קונפיגורציה עם
-ארבעה מושבים ותת־מחלקה — לא מערכת שנייה.
+הפירוט המלא ב־[`2v2-architecture.md`](2v2-architecture.md). בקצרה:
+`OnlineTwoVsTwoRoom` הוא `BaseOnlineMatchRoom` עם `TWO_VS_TWO_CONFIG`, ואין
+בקוד בדיקות `mode === '2v2'` מפוזרות.
 
 ## מה שאין כאן, במפורש
 
 - אין rollback. ראו `physics-networking.md`.
-- אין בוטים שמחליפים מנותק. זה שלב ד׳.
-- אין Party, אין צ׳אט, אין סטטיסטיקות.
+- אין 2×2 מקומי — רק אונליין.
 - אין state גלובלי בתהליך: מצב משחק חי בחדר, קודי הזמנה ב־Presence.
+- אין דירוג ואין MMR. ההתאמה היא "חדר פנוי", וזה מה שנאמר בממשק.

@@ -517,7 +517,7 @@
             <input class="slider" type="range" id="set-sensitivity" min="50" max="200" step="10" />
           </div>
 
-          <div class="field">
+          <div class="field is-hidden">
             <span class="field__label">איכות גרפית</span>
             <div
               class="choice-group choice-group--row"
@@ -551,6 +551,15 @@
                 aria-checked="false"
               >
                 גבוהה
+              </button>
+              <button
+                type="button"
+                class="choice choice--compact"
+                data-quality="ultra"
+                role="radio"
+                aria-checked="false"
+              >
+                מרבית
               </button>
             </div>
           </div>
@@ -728,6 +737,82 @@
               סגור
             </button>
             <button type="button" class="btn btn--ghost" id="btn-open-bindings">מקשי השליטה</button>
+            <button type="button" class="btn btn--ghost" id="btn-open-graphics">גרפיקה</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Graphics: presets, what each one turns on, and what it costs -->
+      <section class="screen screen--dialog is-hidden" id="screen-graphics" aria-label="גרפיקה">
+        <div class="panel panel--wide">
+          <h2 class="panel__title">גרפיקה</h2>
+          <p class="panel__lead">
+            בחרו רמה. ככל שהיא גבוהה יותר התמונה עשירה יותר ודורשת יותר מהמכשיר.
+          </p>
+
+          <div class="field">
+            <span class="field__label">רמת איכות</span>
+            <div
+              class="choice-group choice-group--row"
+              id="graphics-group"
+              role="radiogroup"
+              aria-label="רמת איכות"
+            >
+              <button
+                type="button"
+                class="choice choice--compact"
+                data-graphics="low"
+                role="radio"
+                aria-checked="false"
+              >
+                נמוכה
+              </button>
+              <button
+                type="button"
+                class="choice choice--compact"
+                data-graphics="medium"
+                role="radio"
+                aria-checked="true"
+              >
+                בינונית
+              </button>
+              <button
+                type="button"
+                class="choice choice--compact"
+                data-graphics="high"
+                role="radio"
+                aria-checked="false"
+              >
+                גבוהה
+              </button>
+              <button
+                type="button"
+                class="choice choice--compact"
+                data-graphics="ultra"
+                role="radio"
+                aria-checked="false"
+              >
+                מרבית
+              </button>
+            </div>
+          </div>
+
+          <p class="panel__note graphics__fallback is-hidden" id="graphics-fallback"></p>
+
+          <ul class="graphics__features" id="graphics-features"></ul>
+
+          <div class="graphics__budget">
+            <h3>מדידה חיה</h3>
+            <dl id="graphics-stats"></dl>
+            <p class="panel__note">
+              היעד הוא 60 פריימים לשנייה. המספרים כאן נמדדים במכשיר הזה ועכשיו.
+            </p>
+          </div>
+
+          <div class="panel__actions">
+            <button type="button" class="btn btn--primary btn--lg" id="btn-graphics-close">
+              סגור
+            </button>
           </div>
         </div>
       </section>

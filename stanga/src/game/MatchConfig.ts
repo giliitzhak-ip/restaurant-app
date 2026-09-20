@@ -41,6 +41,12 @@ export interface MatchConfig {
   readonly maxControlMessagesPerSecond: number;
   /** How many unconsumed inputs a client may bank, so nobody buys extra time. */
   readonly inputQueueLimit: number;
+  /**
+   * Seconds between quick-chat phrases from one seat. The control-message
+   * budget alone would still allow a dozen a second, which is spam; this is
+   * the limit that makes the feature usable rather than a nuisance.
+   */
+  readonly quickChatCooldownSeconds: number;
 
   /** Seconds before a disconnected player is taken over by a bot. */
   readonly botSubstitutionSeconds: number;
@@ -73,6 +79,7 @@ export const ONE_VS_ONE_CONFIG: MatchConfig = {
   maxInputsPerSecond: 90,
   maxControlMessagesPerSecond: 10,
   inputQueueLimit: 6,
+  quickChatCooldownSeconds: 1.5,
   botSubstitutionSeconds: 3,
   surrenderAfterSeconds: 60,
   surrenderPointGap: 6,
@@ -102,6 +109,7 @@ export const TWO_VS_TWO_CONFIG: MatchConfig = {
   maxInputsPerSecond: 90,
   maxControlMessagesPerSecond: 12,
   inputQueueLimit: 6,
+  quickChatCooldownSeconds: 1.5,
   botSubstitutionSeconds: 3,
   surrenderAfterSeconds: 60,
   surrenderPointGap: 6,

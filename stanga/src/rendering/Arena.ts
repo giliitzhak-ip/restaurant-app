@@ -20,8 +20,10 @@ import { Rng } from '../core/Rng';
 import type { TeamId } from '../game/MatchState';
 import { buildArenaColliders } from '../physics/ArenaColliders';
 import type { PhysicsWorld } from '../physics/PhysicsWorld';
+import { createSurface } from './Surfaces';
 import {
   createAsphaltBumpTexture,
+  createAsphaltRoughnessTexture,
   createAsphaltTexture,
   createBuildingTexture,
   createConcreteTexture,
@@ -43,9 +45,13 @@ export interface ArenaHandles {
   readonly sun: DirectionalLight;
   /** Meshes that should cast shadows once a shadow generator exists. */
   readonly shadowCasters: Mesh[];
+  /**
+   * What the environment probe captures: the sky and the far backdrop, which
+   * is everything whose colour the PBR surfaces should be picking up. Nothing
+   * that moves, because the probe renders once.
+   */
+  readonly environmentSources: Mesh[];
 }
-
-const ACCENT = Color3.FromHexString('#ffa524');
 
 export function buildArena(
   scene: Scene,
@@ -88,18 +94,22 @@ export function buildArena(
 
   // ── Ground ──────────────────────────────────────────────────────────────────
   const { ground } = colliders;
-  const groundMaterial = new StandardMaterial('groundMat', scene);
   const asphalt = createAsphaltTexture(scene);
   asphalt.uScale = 4;
   asphalt.vScale = 6;
-  groundMaterial.diffuseTexture = asphalt;
   const bump = createAsphaltBumpTexture(scene);
   bump.uScale = 12;
   bump.vScale = 18;
-  groundMaterial.bumpTexture = bump;
-  groundMaterial.specularColor = new Color3(0.14, 0.14, 0.15);
-  groundMaterial.specularPower = 28;
-  ground.material = groundMaterial;
+  const asphaltRoughness = createAsphaltRoughnessTexture(scene);
+  asphaltRoughness.uScale = 4;
+  asphaltRoughness.vScale = 6;
+  ground.material = createSurface(scene, 'groundMat', {
+    roughness: 0.86,
+    albedoTexture: asphalt,
+    bumpTexture: bump,
+    metallicRoughnessTexture: asphaltRoughness,
+    ambientLift: 0.16,
+  });
   ground.receiveShadows = true;
 
   // Painted markings as a thin overlay plane.
@@ -110,25 +120,29 @@ export function buildArena(
   );
   lines.position.y = 0.012;
   lines.isPickable = false;
-  const lineMaterial = new StandardMaterial('lineMat', scene);
   const lineTexture = createLineTexture(
     scene,
     (field.length - field.lineInset * 2) / (field.width - field.lineInset * 2),
   );
   lineTexture.hasAlpha = true;
-  lineMaterial.diffuseTexture = lineTexture;
-  lineMaterial.opacityTexture = lineTexture;
-  lineMaterial.specularColor = Color3.Black();
-  lineMaterial.emissiveColor = new Color3(0.18, 0.18, 0.19);
+  const lineMaterial = createSurface(scene, 'lineMat', {
+    // Old paint on rough ground: no sheen of its own.
+    roughness: 0.92,
+    albedoTexture: lineTexture,
+    opacityTexture: lineTexture,
+    ambientLift: 0.35,
+  });
   lineMaterial.zOffset = -2;
   lines.material = lineMaterial;
 
   // ── Perimeter ───────────────────────────────────────────────────────────────
-  const concreteMaterial = new StandardMaterial('concreteMat', scene);
   const concrete = createConcreteTexture(scene);
   concrete.uScale = 8;
-  concreteMaterial.diffuseTexture = concrete;
-  concreteMaterial.specularColor = new Color3(0.06, 0.06, 0.06);
+  const concreteMaterial = createSurface(scene, 'concreteMat', {
+    roughness: 0.94,
+    albedoTexture: concrete,
+    ambientLift: 0.14,
+  });
 
   const shadowCasters: Mesh[] = [];
 
@@ -138,14 +152,18 @@ export function buildArena(
   }
 
   // Chain-link fence above the concrete, purely decorative.
-  const fenceMaterial = new StandardMaterial('fenceMat', scene);
   const fenceTexture = createFenceTexture(scene);
   fenceTexture.uScale = 14;
   fenceTexture.vScale = 2;
-  fenceMaterial.diffuseTexture = fenceTexture;
-  fenceMaterial.opacityTexture = fenceTexture;
-  fenceMaterial.backFaceCulling = false;
-  fenceMaterial.specularColor = new Color3(0.2, 0.2, 0.22);
+  const fenceMaterial = createSurface(scene, 'fenceMat', {
+    // Galvanised wire: metal, but dull and weathered.
+    roughness: 0.55,
+    metallic: 0.75,
+    albedoTexture: fenceTexture,
+    opacityTexture: fenceTexture,
+    backFaceCulling: false,
+    ambientLift: 0.2,
+  });
 
   const fenceHeight = 2.4;
   for (const sign of [-1, 1]) {
@@ -166,24 +184,33 @@ export function buildArena(
 
   // ── Goals ───────────────────────────────────────────────────────────────────
   const goals = new Map<TeamId, GoalHandles>();
-  const frameMaterial = new StandardMaterial('frameMat', scene);
-  frameMaterial.diffuseColor = Color3.FromHexString('#e9ecef');
-  frameMaterial.specularColor = new Color3(0.7, 0.7, 0.72);
-  frameMaterial.specularPower = 64;
+  // Painted steel: smooth enough to catch the sun down one side of a post,
+  // which is what makes a crossbar readable against a bright sky.
+  const frameMaterial = createSurface(scene, 'frameMat', {
+    roughness: 0.28,
+    metallic: 0.35,
+    albedoColor: '#e9ecef',
+    ambientLift: 0.2,
+  });
 
-  const junctionMaterial = new StandardMaterial('junctionMat', scene);
-  junctionMaterial.diffuseColor = ACCENT;
-  junctionMaterial.emissiveColor = ACCENT.scale(0.25);
-  junctionMaterial.specularColor = new Color3(0.8, 0.7, 0.4);
+  const junctionMaterial = createSurface(scene, 'junctionMat', {
+    roughness: 0.22,
+    metallic: 0.45,
+    albedoColor: '#ffa524',
+    emissiveColor: '#40290a',
+    ambientLift: 0.25,
+  });
 
-  const netMaterial = new StandardMaterial('netMat', scene);
   const netTexture = createNetTexture(scene);
   netTexture.uScale = 6;
   netTexture.vScale = 4;
-  netMaterial.diffuseTexture = netTexture;
-  netMaterial.opacityTexture = netTexture;
-  netMaterial.backFaceCulling = false;
-  netMaterial.specularColor = new Color3(0.1, 0.1, 0.1);
+  const netMaterial = createSurface(scene, 'netMat', {
+    roughness: 0.85,
+    albedoTexture: netTexture,
+    opacityTexture: netTexture,
+    backFaceCulling: false,
+    ambientLift: 0.3,
+  });
 
   for (const owner of ['home', 'away'] as const) {
     const sign = owner === 'home' ? -1 : 1;
@@ -237,19 +264,24 @@ export function buildArena(
   }
 
   // ── Neighbourhood backdrop ──────────────────────────────────────────────────
+  const environmentSources: Mesh[] = [sky];
   if (quality.sceneryDetail > 0) {
-    buildNeighbourhood(scene, quality.sceneryDetail);
+    environmentSources.push(...buildNeighbourhood(scene, quality.sceneryDetail));
   }
 
   scene.fogMode = 2; // FOGMODE_EXP
   scene.fogDensity = 0.0065;
   scene.fogColor = Color3.FromHexString('#7c8494');
 
-  return { ground, goals, sun, shadowCasters };
+  return { ground, goals, sun, shadowCasters, environmentSources };
 }
 
-/** Apartment blocks, lamp posts and parked-car silhouettes around the pitch. */
-function buildNeighbourhood(scene: Scene, detail: number): void {
+/**
+ * Apartment blocks, lamp posts and parked-car silhouettes around the pitch.
+ * Returns the meshes worth capturing into the environment probe.
+ */
+function buildNeighbourhood(scene: Scene, detail: number): Mesh[] {
+  const backdrop: Mesh[] = [];
   const rng = new Rng(0xb00b1e5);
   const { field } = GameConfig;
   const halfWidth = field.width / 2;
@@ -279,6 +311,7 @@ function buildNeighbourhood(scene: Scene, detail: number): void {
     material.specularColor = new Color3(0.04, 0.04, 0.05);
     building.material = material;
     building.isPickable = false;
+    backdrop.push(building);
   }
 
   // Floodlight poles in the corners.
@@ -309,6 +342,9 @@ function buildNeighbourhood(scene: Scene, detail: number): void {
       lamp.position.set(x * (halfWidth + 1.1), 8.5, z * (halfLength * 0.72));
       lamp.material = lampMaterial;
       lamp.isPickable = false;
+      backdrop.push(pole, lamp);
     }
   }
+
+  return backdrop;
 }

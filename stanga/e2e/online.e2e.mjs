@@ -46,6 +46,13 @@ const browser = await chromium.launch({
 const consoleErrors = [];
 async function openPage(label) {
   const context = await browser.newContext({ viewport: { width: 1100, height: 720 } });
+  // No GPU here: SwiftShader draws the richer presets at a frame or two a
+  // second, and the loop slows the simulation down to match rather than
+  // skipping ticks. The lowest preset is what a real player on this hardware
+  // would be running, and the graphics presets have their own test.
+  await context.addInitScript(() => {
+    window.localStorage.setItem('stanga.settings.v1', JSON.stringify({ quality: 'low' }));
+  });
   const page = await context.newPage();
   page.on('console', (message) => {
     if (message.type() === 'error') consoleErrors.push(`[${label}] ${message.text()}`);
@@ -56,7 +63,9 @@ async function openPage(label) {
   return page;
 }
 
-const rosterSize = () => document.getElementById('online-players')?.children.length ?? 0;
+/** Seats with somebody actually in them, across both team columns. */
+const rosterSize = () =>
+  document.querySelectorAll('#online-teams .online__seat:not(.is-empty)').length;
 const readPlayer = (id) => {
   const state = window.__stanga?.matchState();
   const player = state?.players.find((entry) => entry.id === id);

@@ -94,6 +94,41 @@ export function createAsphaltBumpTexture(scene: Scene, size = 512): DynamicTextu
   });
 }
 
+/**
+ * The metallic-roughness map a PBR surface wants, in the glTF packing that
+ * Babylon expects: green is roughness, blue is metallic, red is unused.
+ *
+ * Asphalt is dielectric and mostly rough, but not uniformly so — the polished
+ * lanes where a ball has been rolling for years are visibly smoother than the
+ * open grain, and that variation is most of what makes it read as a surface
+ * rather than a flat colour.
+ */
+export function createAsphaltRoughnessTexture(scene: Scene, size = 512): DynamicTexture {
+  return createCanvasTexture('asphaltRoughness', size, scene, (ctx) => {
+    const rng = new Rng(0x41b7c3);
+    // Green 0xdc ≈ 0.86 roughness: coarse, dry asphalt.
+    ctx.fillStyle = '#00dc00';
+    ctx.fillRect(0, 0, size, size);
+    // Worn-smooth patches.
+    for (let i = 0; i < 30; i += 1) {
+      const radius = rng.range(size * 0.04, size * 0.16);
+      const gradient = ctx.createRadialGradient(
+        rng.next() * size,
+        rng.next() * size,
+        0,
+        rng.next() * size,
+        rng.next() * size,
+        radius,
+      );
+      gradient.addColorStop(0, 'rgba(0, 150, 0, 0.55)');
+      gradient.addColorStop(1, 'rgba(0, 150, 0, 0)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, size, size);
+    }
+    speckle(ctx, size, rng, 1400, 0.6, 2, ['#00e800', '#00cc00', '#00f000', '#00d400']);
+  });
+}
+
 /** Painted street-pitch markings on a transparent layer laid over the asphalt. */
 export function createLineTexture(scene: Scene, aspect: number, size = 1024): DynamicTexture {
   return createCanvasTexture('pitchLines', size, scene, (ctx) => {

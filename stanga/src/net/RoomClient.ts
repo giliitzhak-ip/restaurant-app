@@ -204,8 +204,12 @@ export class RoomClient {
 
     const welcome = await new Promise<WelcomePayload>((resolve, reject) => {
       const timeout = setTimeout(() => reject(new ConnectError('unreachable')), 8000);
+      // A welcome is not only the greeting: the server repeats it whenever
+      // this client's seat changes, so the handler stays registered.
       room.onMessage(ServerMessage.Welcome, (payload: WelcomePayload) => {
         clearTimeout(timeout);
+        this.welcome = payload;
+        this.handlers.onWelcome(payload);
         resolve(payload);
       });
       room.onError((_code, message) => {
@@ -213,9 +217,6 @@ export class RoomClient {
         reject(new ConnectError(reasonFromMessage(message)));
       });
     });
-
-    this.welcome = welcome;
-    this.handlers.onWelcome(welcome);
 
     room.onMessage(ServerMessage.Event, (event: NetEvent) => this.handlers.onEvent(event));
     room.onMessage(ServerMessage.Chat, (chat: NetChat) => this.handlers.onChat(chat));

@@ -73,6 +73,8 @@ interface SeatBinding {
   controlsThisSecond: number;
   /** Seconds since the socket dropped, counting towards a bot taking over. */
   droppedFor: number;
+  /** Room clock reading of this seat's last quick-chat phrase. */
+  lastChatAt: number;
 }
 
 /** What travels with a player when they change seats, rather than staying. */
@@ -201,15 +203,7 @@ export abstract class BaseOnlineMatchRoom extends Room<MatchRoomState> {
     this.session.setName(binding.seat.playerId, auth.name);
     this.session.setColor(binding.seat.playerId, binding.netPlayer.colorId);
 
-    const welcome: WelcomePayload = {
-      protocolVersion: PROTOCOL_VERSION,
-      playerId: binding.seat.playerId,
-      team: binding.seat.team,
-      mode: this.matchConfig.mode,
-      inviteCode: this.state.inviteCode,
-      tickSeconds: GameConfig.simulation.fixedDeltaSeconds,
-    };
-    client.send(ServerMessage.Welcome, welcome);
+    this.sendWelcome(client, binding.seat);
 
     this.syncSeats();
     this.refreshStage();
@@ -266,6 +260,26 @@ export abstract class BaseOnlineMatchRoom extends Room<MatchRoomState> {
     }
   }
 
+  /**
+   * Tells one client which seat is theirs.
+   *
+   * Sent on join, and again whenever their seat changes — a team switch or a
+   * shuffle moves a person from `home-1` to `away-2`, and a client that still
+   * believed the old seat was its own would predict the wrong body and draw
+   * the wrong half of the pitch.
+   */
+  private sendWelcome(client: Client, seat: Seat): void {
+    const welcome: WelcomePayload = {
+      protocolVersion: PROTOCOL_VERSION,
+      playerId: seat.playerId,
+      team: seat.team,
+      mode: this.matchConfig.mode,
+      inviteCode: this.state.inviteCode,
+      tickSeconds: GameConfig.simulation.fixedDeltaSeconds,
+    };
+    client.send(ServerMessage.Welcome, welcome);
+  }
+
   /** Hands a seat back to the person who dropped out of it. */
   private restoreSeat(binding: SeatBinding): void {
     binding.controller.setConnected(true);
@@ -308,6 +322,7 @@ export abstract class BaseOnlineMatchRoom extends Room<MatchRoomState> {
         inputsThisSecond: 0,
         controlsThisSecond: 0,
         droppedFor: 0,
+        lastChatAt: Number.NEGATIVE_INFINITY,
       });
 
       slots.push({
@@ -389,6 +404,11 @@ export abstract class BaseOnlineMatchRoom extends Room<MatchRoomState> {
       const id = (raw as { id?: unknown } | null)?.id;
       // Ids only. There is no path here for text a client composed.
       if (!isQuickChatId(id)) return;
+      // And a cooldown on top of the control budget, so five phrases cannot
+      // become a wall of them.
+      const now = this.clock.elapsedTime / 1000;
+      if (now - binding.lastChatAt < this.matchConfig.quickChatCooldownSeconds) return;
+      binding.lastChatAt = now;
       const chat: NetChat = { playerId: binding.seat.playerId, team: binding.seat.team, id };
       this.broadcast(ServerMessage.Chat, chat);
     });
@@ -832,6 +852,9 @@ export abstract class BaseOnlineMatchRoom extends Room<MatchRoomState> {
       binding.controller.setConnected(person.connected || person.botControlled);
       this.session.setName(binding.seat.playerId, person.name);
       this.session.setColor(binding.seat.playerId, binding.netPlayer.colorId);
+
+      const client = this.clients.find((candidate) => candidate.sessionId === sessionId);
+      if (client) this.sendWelcome(client, assignment.seat);
     }
     this.syncSeats();
   }

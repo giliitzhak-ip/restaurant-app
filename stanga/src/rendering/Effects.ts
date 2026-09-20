@@ -36,6 +36,7 @@ const QUALITY_BUDGET: Record<QualityLevel, { dust: number; trail: boolean; flash
   low: { dust: 0, trail: false, flash: true },
   medium: { dust: 0.55, trail: true, flash: true },
   high: { dust: 1, trail: true, flash: true },
+  ultra: { dust: 1, trail: true, flash: true },
 };
 
 export class Effects {

@@ -70,7 +70,9 @@ describe('settings persistence', () => {
       masterVolume: 12,
       musicVolume: -4,
       sensitivity: 99,
-      quality: 'ultra',
+      // 'ultra' became a real preset in 0.4.0, so the unknown value here has
+      // to be one that genuinely is not a level.
+      quality: 'cinematic',
       vibration: 'yes',
       difficulty: 'impossible',
     });

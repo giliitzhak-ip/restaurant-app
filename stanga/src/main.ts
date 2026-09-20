@@ -22,6 +22,8 @@ async function bootstrap(): Promise<void> {
       mode: () => game.inspectMode(),
       phase: () => game.inspectPhase(),
       online: () => game.inspectOnline(),
+      onlineRoom: () => game.inspectOnline(),
+      onlineTeam: () => game.inspectOnline()?.team ?? null,
     };
   }
 }
