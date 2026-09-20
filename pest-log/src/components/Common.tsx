@@ -17,14 +17,24 @@ export interface SyncBadgeProps {
   state: SyncState;
   pendingCount?: number;
   isOnline?: boolean;
+  /** גרסה בהירה להצגה על הרקע הירוק של מסך הבית. */
+  onHero?: boolean;
+  /** ניסוח חלופי לתווית (למשל "מסונכרן" במקום "סונכרן"). */
+  label?: string;
 }
 
 /** מצב השמירה והסנכרון — מוצג תמיד. */
-export function SyncBadge({ state, pendingCount = 0, isOnline = true }: SyncBadgeProps): React.JSX.Element {
-  const label = SYNC_STATE_LABELS[state];
+export function SyncBadge({
+  state,
+  pendingCount = 0,
+  isOnline = true,
+  onHero = false,
+  label: labelOverride,
+}: SyncBadgeProps): React.JSX.Element {
+  const label = labelOverride ?? SYNC_STATE_LABELS[state];
   const detail = state === 'pending' && pendingCount > 0 ? ` (${pendingCount})` : '';
   return (
-    <span className={`sync-badge state-${state}`} role="status" aria-live="polite">
+    <span className={`sync-badge state-${state}${onHero ? ' on-hero' : ''}`} role="status" aria-live="polite">
       <span className="dot" aria-hidden="true" />
       {label}
       {detail}

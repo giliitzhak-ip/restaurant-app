@@ -224,8 +224,10 @@ export class SyncEngine {
         }
 
         if (outcome.ok) {
-          await removeOperation(operation.idempotencyKey);
+          // הסימון "בוצע" קודם להסרה מהתור: בין ההסרה לסימון נפתח חלון
+          // שבו enqueue מקביל לא היה רואה את המפתח, והתוכן היה נשלח פעמיים.
           await this.rememberAppliedKey(operation.idempotencyKey);
+          await removeOperation(operation.idempotencyKey);
           this.lastSyncedAt = new Date().toISOString();
           this.lastError = null;
           await this.markDraftSynced(operation, outcome.serverVersion);

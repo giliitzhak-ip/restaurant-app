@@ -30,9 +30,23 @@ test.describe('@screenshots', () => {
     await page.goto('/');
     await shot('01-login');
 
-    // 2. מסך הבית
+    // 2. מסך הבית — הרשת המלאה
     await login(page);
+    await page.waitForTimeout(700);
     await shot('02-home');
+
+    // 2א. מסך הבית אחרי גלילה — כותרת דביקה.
+    // במסך גדול כל הרשת נכנסת ואין גלילה כלל, ולכן הצילום מתבצע בגודל
+    // מסך קטן (iPhone SE) שבו התוכן באמת עולה על גובה החלון.
+    // צילום חלון ולא fullPage: צילום עמוד מלא מאפס את הגלילה.
+    const originalViewport = page.viewportSize();
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.evaluate(() => globalThis.scrollTo(0, 260));
+    await page.waitForTimeout(700);
+    await page.screenshot({ path: `${DIR}/${suffix}-02a-home-scrolled.png`, fullPage: false });
+    if (originalViewport) await page.setViewportSize(originalViewport);
+    await page.evaluate(() => globalThis.scrollTo(0, 0));
+    await page.waitForTimeout(400);
 
     // 3–8. ששת שלבי האשף
     await gotoNewLog(page);
@@ -56,7 +70,7 @@ test.describe('@screenshots', () => {
 
     // 9. רשימת שדות חסרים — יומן חדש וריק
     await page.goto('/');
-    await page.getByRole('button', { name: '+ יומן הדברה חדש' }).click();
+    await page.getByTestId('tile-new-log').click();
     await goToStep(page, 6);
     await page.getByRole('button', { name: 'השלמת היומן' }).click();
     await page.waitForTimeout(600);
@@ -74,7 +88,7 @@ test.describe('@screenshots', () => {
     const completed = await page.evaluate(() => window.location.href);
     void completed;
     await page.goto('/');
-    await page.getByRole('button', { name: '+ יומן הדברה חדש' }).click();
+    await page.getByTestId('tile-new-log').click();
     await fillStep1(page);
     await fillStep2Dwelling(page);
     await fillStep3(page);
@@ -89,6 +103,20 @@ test.describe('@screenshots', () => {
     await page.goto('/archive');
     await page.waitForTimeout(800);
     await shot('12-archive');
+
+    // 12א. המסכים החדשים שמסך הבית מוביל אליהם
+    for (const [name, path] of [
+      ['12a-drafts', '/drafts'],
+      ['12b-tasks', '/tasks'],
+      ['12c-products', '/products'],
+      ['12d-bait-stations', '/bait-stations'],
+      ['12e-profile', '/profile'],
+      ['12f-settings', '/settings'],
+    ] as const) {
+      await page.goto(path);
+      await page.waitForTimeout(600);
+      await shot(name);
+    }
 
     // 13. ייבוא מהגרסה הקודמת — עם נתוני דוגמה ב-localStorage
     await page.evaluate(() => {

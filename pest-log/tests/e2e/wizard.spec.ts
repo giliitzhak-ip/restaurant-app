@@ -313,18 +313,39 @@ test.describe('עבודה ללא קליטה וחזרה לרשת', () => {
 });
 
 test.describe('נגישות ועיצוב', () => {
-  test('RTL, עברית, וצבעי שחור וזהב נשמרים', async ({ page }) => {
+  test('RTL, עברית והשפה החזותית הירוקה', async ({ page }) => {
     await login(page);
     await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
     await expect(page.locator('html')).toHaveAttribute('lang', 'he');
 
-    const background = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-    expect(background).toBe('rgb(11, 11, 13)');
+    const tokens = await page.evaluate(() => {
+      const root = getComputedStyle(document.documentElement);
+      return {
+        background: getComputedStyle(document.body).backgroundColor,
+        brand: root.getPropertyValue('--brand').trim(),
+        brandDark: root.getPropertyValue('--brand-dark').trim(),
+        surface: root.getPropertyValue('--surface').trim(),
+        text: root.getPropertyValue('--text').trim(),
+        danger: root.getPropertyValue('--danger').trim(),
+      };
+    });
 
-    const gold = await page.evaluate(() =>
-      getComputedStyle(document.documentElement).getPropertyValue('--gold').trim(),
-    );
-    expect(gold).toBe('#d4af37');
+    // ה-build מקצר ערכי צבע (#ffffff → #fff), ולכן ההשוואה מנורמלת.
+    const expand = (value: string) =>
+      /^#[0-9a-f]{3}$/i.test(value)
+        ? `#${value
+            .slice(1)
+            .split('')
+            .map((char) => char + char)
+            .join('')}`
+        : value;
+
+    expect(tokens.background).toBe('rgb(245, 247, 248)');
+    expect(expand(tokens.brand)).toBe('#16c956');
+    expect(expand(tokens.brandDark)).toBe('#087a42');
+    expect(expand(tokens.surface)).toBe('#ffffff');
+    expect(expand(tokens.text)).toBe('#1b2520');
+    expect(expand(tokens.danger)).toBe('#ef4444');
   });
 
   test('ניווט מקלדת ודילוג לתוכן עובדים', async ({ page }) => {

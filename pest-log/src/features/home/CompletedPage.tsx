@@ -85,7 +85,7 @@ export function CompletedPage(): React.JSX.Element {
 
         <div className="field">
           <span className="field-label">מספר סידורי</span>
-          <div style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--gold)' }}>{state.serialNumber ?? '—'}</div>
+          <div style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--brand-dark)' }}>{state.serialNumber ?? '—'}</div>
         </div>
 
         {state.documentHash ? (

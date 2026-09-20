@@ -1,5 +1,5 @@
 import { getSupabase, translateDbError } from './supabase';
-import { getCache, putCache } from './db/idb';
+import { getCache, listDrafts, putCache } from './db/idb';
 import type { OutboxOperation } from './db/idb';
 import type { OperationOutcome } from './sync/engine';
 
@@ -384,6 +384,220 @@ export async function loadLogVersions(rootLogId: string): Promise<ArchiveLogRow[
     snapshot: (row.snapshot ?? null) as Record<string, unknown> | null,
     version: Number(row.version),
   }));
+}
+
+/* ── מונים למסך הבית ──────────────────────────────────────────────────── */
+
+export interface HomeCounters {
+  /** טיוטות פתוחות — מקומיות ובשרת, בלי כפילויות. */
+  drafts: number;
+  /** טיפולים משלימים שנדרשו ומועדם הגיע. */
+  tasks: number;
+  /** יומנים שהושלמו מתחילת החודש. */
+  archiveThisMonth: number;
+}
+
+export const EMPTY_HOME_COUNTERS: HomeCounters = { drafts: 0, tasks: 0, archiveThisMonth: 0 };
+
+/** תחילת החודש הנוכחי, כ-ISO, לשאילתות ספירה. */
+export function startOfMonthIso(now = new Date()): string {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+}
+
+/**
+ * האם טיפול משלים נחשב "פתוח" — כלומר מועדו הגיע, או שלא נקבע לו מועד.
+ * פונקציה טהורה כדי שתהיה ניתנת לבדיקה.
+ */
+export function isFollowUpOpen(targetDate: string | null | undefined, today: Date): boolean {
+  if (!targetDate) return true;
+  // תחילת יום היעד ולא סופו: משימה שמועדה היום היא משימה לביצוע היום,
+  // ולא משימה שנפתחת רק בחצות.
+  const due = new Date(`${targetDate}T00:00:00Z`);
+  if (Number.isNaN(due.getTime())) return true;
+  return due.getTime() <= today.getTime();
+}
+
+/** טיפול משלים שנדרש ביומן שהושלם. */
+export interface FollowUpTask {
+  logId: string;
+  serialNumber: number | null;
+  completedAt: string | null;
+  targetDate: string | null;
+  description: string | null;
+  clientName: string | null;
+  locationSummary: string | null;
+  isOpen: boolean;
+}
+
+function summarizeLocation(snapshot: Record<string, unknown>): string | null {
+  const location = (snapshot.location ?? {}) as Record<string, unknown>;
+  const parts = [
+    location.city,
+    location.street,
+    location.houseNumber,
+    location.neighborhoodName,
+    location.localAuthorityName,
+  ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+  return parts.length > 0 ? parts.join(' ') : null;
+}
+
+/**
+ * טיפולים משלימים מתוך יומנים שהושלמו.
+ * אין טבלת משימות נפרדת — המשימות נגזרות מהיומנים עצמם, ולכן הן תמיד
+ * משקפות מידע אמיתי ואין צורך בשינוי סכמת בסיס הנתונים.
+ */
+export async function listFollowUpTasks(now = new Date()): Promise<FollowUpTask[]> {
+  const { data, error } = await getSupabase()
+    .from('pest_logs')
+    .select('id, serial_number, completed_at, snapshot')
+    .eq('status', 'completed')
+    .is('deleted_at', null)
+    .filter('snapshot->postWarnings->>followUpRequired', 'eq', 'true')
+    .order('completed_at', { ascending: false })
+    .limit(200);
+
+  if (error) fail(error);
+
+  const tasks: FollowUpTask[] = (data ?? []).map((row) => {
+    const snapshot = (row.snapshot ?? {}) as Record<string, unknown>;
+    const post = (snapshot.postWarnings ?? {}) as Record<string, unknown>;
+    const orderer = (snapshot.orderer ?? {}) as Record<string, unknown>;
+    const targetDate = typeof post.followUpTargetDate === 'string' ? post.followUpTargetDate : null;
+    return {
+      logId: row.id as string,
+      serialNumber: (row.serial_number as number | null) ?? null,
+      completedAt: (row.completed_at as string | null) ?? null,
+      targetDate,
+      description: typeof post.followUpDescription === 'string' ? post.followUpDescription : null,
+      clientName: typeof orderer.name === 'string' ? orderer.name : null,
+      locationSummary: summarizeLocation(snapshot),
+      isOpen: isFollowUpOpen(targetDate, now),
+    };
+  });
+
+  await putCache('followUpTasks', tasks);
+  return tasks;
+}
+
+export async function cachedFollowUpTasks(): Promise<FollowUpTask[]> {
+  return (await getCache<FollowUpTask[]>('followUpTasks')) ?? [];
+}
+
+/**
+ * מונים למסך הבית. כל מספר מגיע ממקור אמיתי; אין מספרי דמה.
+ * ללא קליטה — נופל חזרה למטמון המקומי ולטיוטות שבמכשיר.
+ */
+export async function loadHomeCounters(now = new Date()): Promise<HomeCounters> {
+  const localDrafts = await listDrafts();
+  const draftIds = new Set(localDrafts.filter((draft) => draft.status === 'draft').map((draft) => draft.id));
+
+  try {
+    const supabase = getSupabase();
+
+    const [serverDrafts, archiveCount, followUps] = await Promise.all([
+      supabase.from('pest_logs').select('id').eq('status', 'draft').is('deleted_at', null).limit(500),
+      supabase
+        .from('pest_logs')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'completed')
+        .is('deleted_at', null)
+        .gte('completed_at', startOfMonthIso(now)),
+      listFollowUpTasks(now),
+    ]);
+
+    if (serverDrafts.error) fail(serverDrafts.error);
+    for (const row of serverDrafts.data ?? []) draftIds.add(row.id as string);
+
+    const counters: HomeCounters = {
+      drafts: draftIds.size,
+      tasks: followUps.filter((task) => task.isOpen).length,
+      archiveThisMonth: archiveCount.count ?? 0,
+    };
+    await putCache('homeCounters', counters);
+    return counters;
+  } catch {
+    // ללא קליטה: הטיוטות המקומיות אמיתיות, והשאר מהמטמון האחרון.
+    const cached = (await getCache<HomeCounters>('homeCounters')) ?? EMPTY_HOME_COUNTERS;
+    return { ...cached, drafts: draftIds.size };
+  }
+}
+
+/* ── תחנות האכלה ──────────────────────────────────────────────────────── */
+
+export interface BaitStationRow {
+  id: string;
+  clientSiteId: string | null;
+  pestLogId: string | null;
+  stationNumber: string;
+  locationDescription: string;
+  status: string;
+  consumptionLevel: string | null;
+  productTradeName: string | null;
+  notes: string | null;
+  updatedAt: string;
+}
+
+export async function listBaitStations(): Promise<BaitStationRow[]> {
+  return loadCached('baitStations', async () => {
+    const { data, error } = await getSupabase()
+      .from('bait_stations')
+      .select(
+        'id, client_site_id, pest_log_id, station_number, location_description, status, consumption_level, product_trade_name, notes, updated_at',
+      )
+      .is('deleted_at', null)
+      .order('station_number');
+    if (error) fail(error);
+    return (data ?? []).map((row) => ({
+      id: row.id as string,
+      clientSiteId: (row.client_site_id as string | null) ?? null,
+      pestLogId: (row.pest_log_id as string | null) ?? null,
+      stationNumber: row.station_number as string,
+      locationDescription: row.location_description as string,
+      status: row.status as string,
+      consumptionLevel: (row.consumption_level as string | null) ?? null,
+      productTradeName: (row.product_trade_name as string | null) ?? null,
+      notes: (row.notes as string | null) ?? null,
+      updatedAt: row.updated_at as string,
+    }));
+  });
+}
+
+/* ── רישיונות ─────────────────────────────────────────────────────────── */
+
+export interface LicenseRow {
+  id: string;
+  holderName: string;
+  licenseType: string;
+  licenseNumber: string;
+  mobile: string | null;
+  email: string | null;
+  address: string | null;
+  validFrom: string | null;
+  validUntil: string | null;
+  isActive: boolean;
+}
+
+export async function listLicenses(): Promise<LicenseRow[]> {
+  return loadCached('licenses', async () => {
+    const { data, error } = await getSupabase()
+      .from('pesticide_licenses')
+      .select('id, holder_name, license_type, license_number, mobile, email, address, valid_from, valid_until, is_active')
+      .is('deleted_at', null)
+      .order('license_type');
+    if (error) fail(error);
+    return (data ?? []).map((row) => ({
+      id: row.id as string,
+      holderName: row.holder_name as string,
+      licenseType: row.license_type as string,
+      licenseNumber: row.license_number as string,
+      mobile: (row.mobile as string | null) ?? null,
+      email: (row.email as string | null) ?? null,
+      address: (row.address as string | null) ?? null,
+      validFrom: (row.valid_from as string | null) ?? null,
+      validUntil: (row.valid_until as string | null) ?? null,
+      isActive: Boolean(row.is_active),
+    }));
+  });
 }
 
 /* ── מבצע פעולות הסנכרון ──────────────────────────────────────────────────── */

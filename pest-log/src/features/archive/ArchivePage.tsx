@@ -152,7 +152,7 @@ export function ArchivePage(): React.JSX.Element {
                 {row.serialNumber ? `יומן מס׳ ${row.serialNumber}` : 'טיוטה'}
                 {row.documentVersion > 1 ? ` · גרסה ${row.documentVersion}` : ''}
               </h4>
-              <span className={`tag ${row.status === 'completed' ? 'tag-success' : row.status === 'cancelled' ? 'tag-danger' : 'tag-gold'}`}>
+              <span className={`tag ${row.status === 'completed' ? 'tag-success' : row.status === 'cancelled' ? 'tag-danger' : 'tag-brand'}`}>
                 {LOG_STATUS_LABELS[row.status]}
               </span>
             </div>

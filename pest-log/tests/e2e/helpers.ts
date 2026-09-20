@@ -18,12 +18,16 @@ export async function login(page: Page): Promise<void> {
     await page.getByLabel('קוד חד-פעמי', { exact: true }).fill('123456');
     await page.getByRole('button', { name: 'כניסה' }).click();
   }
-  await expect(page.getByRole('heading', { name: /שלום/ })).toBeVisible({ timeout: 30_000 });
+  // הברכה במסך הבית משתנה לפי שעת היום.
+  await expect(
+    page.getByRole('heading', { name: /בוקר טוב|צהריים טובים|ערב טוב|לילה טוב/ }),
+  ).toBeVisible({ timeout: 30_000 });
 }
 
 export async function gotoNewLog(page: Page): Promise<void> {
   await login(page);
-  await page.getByRole('button', { name: '+ יומן הדברה חדש' }).click();
+  // כפתור הפעולה הראשית במסך הבית.
+  await page.getByTestId('tile-new-log').click();
   await expect(page.getByRole('navigation', { name: 'שלבי מילוי היומן' })).toBeVisible();
 }
 
