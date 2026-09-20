@@ -29,9 +29,9 @@ export default tseslint.config(
     },
   },
   {
-    // The authoritative server is a Node process: its log lines are the only
-    // operational signal it has, so stdout is allowed there and nowhere else.
-    files: ['src/server/**/*.ts'],
+    // The authoritative server is a Node process and the load probe is a
+    // command-line tool: stdout is how they report. Everywhere else it is not.
+    files: ['src/server/**/*.ts', 'e2e/**/*.mts'],
     rules: { 'no-console': 'off' },
   },
   {

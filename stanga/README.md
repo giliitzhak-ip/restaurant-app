@@ -156,6 +156,10 @@ STANGA_NO_PWA=1 npm run build   # בנייה ללא service worker
 
 ```bash
 npm test          # בדיקות יחידה ואינטגרציה (Vitest, כולל שרת אמיתי)
+npm run server    # השרת הסמכותי
+npm run e2e       # שני דפדפנים באונליין (דורש playwright ושרת שרץ)
+npm run e2e:offline  # רגרסיה: נגד המחשב ומשחק מקומי לשניים
+npm run e2e:load  # עומס: N משחקים במקביל מול שרת שרץ
 npm run lint      # ESLint + בדיקת פורמט של Prettier
 npm run format    # תיקון פורמט אוטומטי
 npm run icons     # יצירה מחדש של אייקוני ה־PWA

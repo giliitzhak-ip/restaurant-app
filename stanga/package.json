@@ -18,7 +18,8 @@
     "icons": "node scripts/generate-icons.mjs",
     "server": "tsx src/server/index.ts",
     "e2e": "node e2e/online.e2e.mjs",
-    "e2e:offline": "node e2e/offline.e2e.mjs"
+    "e2e:offline": "node e2e/offline.e2e.mjs",
+    "e2e:load": "tsx e2e/load.e2e.mts"
   },
   "dependencies": {
     "@babylonjs/core": "9.27.1",
