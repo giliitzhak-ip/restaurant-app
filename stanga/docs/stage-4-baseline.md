@@ -1,89 +1,70 @@
-# שלב ד׳ — בדיקת הבסיס
+# בדיקת בסיס לשלב ד׳ — מה באמת קיים לפני 0.4.0
 
-מסמך זה מתעד את מצב המאגר בפועל בתחילת שלב ד׳, לפני שינוי קוד כלשהו.
+נבדק על הגרסה שבענף: `0.3.0`, `protocolVersion` 1.
 
-## הממצא המרכזי
+## מה הורץ בפועל
 
-**שלב ג׳ (גרסה 0.3.0, אונליין 1 נגד 1) אינו קיים במאגר.**
+| בדיקה                                      | תוצאה                                    |
+| ------------------------------------------ | ---------------------------------------- |
+| `rm -rf node_modules && npm ci` (lockfile) | ✅ 11 שניות, ללא שגיאות                  |
+| `npm run lint`                             | ✅ ESLint + Prettier נקיים               |
+| `npx vitest run`                           | ✅ 17 קבצים, **245 בדיקות**              |
+| `npm run build`                            | ✅ tsc + vite, 1.4 שניות                 |
+| `npm run e2e:offline` (דפדפן אמיתי)        | ✅ נגד המחשב + מקומי לשניים, 0 שגיאות    |
+| `npm run e2e` (שני דפדפנים)                | ✅ חדר פרטי, קוד, קישור, משחק מסונכרן    |
+| `npm run e2e:load` (8 משחקים)              | ✅ 60 טיקים/ש׳, 20 patches/ש׳, RTT 1 מ״ש |
 
-המאגר נמצא בגרסה **0.2.0**. אין שרת רשת, אין Colyseus, אין WebSocket,
-ואין אף אחד מהרכיבים שתוכנית שלב ד׳ מניחה שקיימים.
+`playwright` אינו תלות של הפרויקט; הותקן ad-hoc עם `--no-save` לבדיקות הדפדפן.
 
-## מה נבדק, ומה נמצא
+## מה קיים בקוד — לפי קריאה, לא לפי האפיון
 
-| מה שתוכנית שלב ד׳ מניחה          | מה שקיים בפועל                                                    |
-| -------------------------------- | ----------------------------------------------------------------- |
-| `OnlineOneVsOneRoom`             | ❌ לא קיים                                                        |
-| `AuthoritativeMatchSimulation`   | ❌ לא קיים                                                        |
-| `NetworkController`              | ❌ קיים רק כרישום קוד לדוגמה בתוך `docs/multiplayer-readiness.md` |
-| Colyseus / schemas               | ❌ אין תלות כזו ב־`package.json`                                  |
-| matchmaking, reconnection        | ❌ לא קיימים                                                      |
-| `docs/network-protocol.md`       | ❌ לא קיים                                                        |
-| `docs/network-architecture.md`   | ❌ לא קיים                                                        |
-| `docs/deployment.md`             | ❌ לא קיים                                                        |
-| `docs/physics-networking.md`     | ❌ לא קיים                                                        |
-| Docker image, health check       | ❌ לא קיימים                                                      |
-| פקודת dev שמריצה client ו־server | ❌ `npm run dev` מריץ Vite בלבד                                   |
-| בדיקות E2E של 0.3.0              | ❌ לא קיימות                                                      |
+השמות באפיון של שלב ד׳ אינם זהים לשמות בקוד. זו המפה האמיתית:
 
-המסמכים הקיימים תחת `docs/` הם: `implementation-plan.md`, `local-multiplayer.md`,
-`multiplayer-readiness.md`, `stage-2-baseline.md`, `stage-2-plan.md`.
+| האפיון קורא לזה                | בקוד קיים                                       |
+| ------------------------------ | ----------------------------------------------- |
+| `OnlineOneVsOneRoom`           | ✅ `src/server/OnlineOneVsOneRoom.ts`           |
+| `BaseOnlineMatchRoom`          | ✅ `src/server/BaseOnlineMatchRoom.ts`          |
+| `AuthoritativeMatchSimulation` | קיים בפועל כ־`src/server/HeadlessMatch.ts`      |
+| `TeamManager`                  | ❌ אין. מושבים הם מערך `seats` ב־`MatchConfig`  |
+| `LobbyManager`                 | ❌ אין. מכונת המצבים חיה בתוך החדר              |
+| `ReconnectionManager`          | ❌ אין. `allowReconnection` של Colyseus ישירות  |
+| `BotSubstitutionManager`       | ❌ אין בכלל                                     |
+| `MatchRules`                   | ✅ `src/game/MatchRules.ts`                     |
+| `MatchConfig`                  | ✅ `src/server/MatchConfig.ts`                  |
+| `NetworkController`            | ✅ `src/input/controllers/NetworkController.ts` |
+| schemas                        | ✅ `src/net/schema.ts`                          |
+| matchmaking                    | ✅ Colyseus `joinOrCreate` + `/invite/:code`    |
 
-היסטוריית הקומיטים:
+## מה ש־0.3.0 כבר עושה נכון לשלב ד׳
 
-```
-5f2c9bd  Add a build flag for hosting without a service worker
-d6385b6  Add local two-player mode and polish the game feel (STANGA v0.2.0)
-cb511b0  Add STANGA — 3D Israeli street football game (v0.1.0)
-```
+- `MatchConfig` כבר נושא `mode`, `maxPlayers`, `playersPerTeam` ורשימת מושבים,
+  ו־`BaseOnlineMatchRoom` אינו יודע דבר על "שניים" חוץ מהקונפיגורציה.
+- `MapSchema<NetPlayer>` ממופתח לפי `playerId`, לא לפי חיבור ולא לפי אינדקס —
+  אין שום `player1`/`player2`.
+- הסימולציה רצה ב־Node (`HeadlessMatch`), ואותו `MatchEngine` בדיוק רץ בלקוח.
+- `PlayerCommand` הוא החוזה היחיד שמזיז שחקן, כולל ל־AI.
+- אין state גלובלי בתהליך; קודי הזמנה חיים ב־Presence.
 
-אין קומיט של שלב ג׳, ואין ענף נוסף מלבד `main` ו־`claude/stanga-street-football-hhlf07`.
+## מה שחסר לחלוטין ויידרש בשלב ד׳
 
-## תוצאות הפקודות הקיימות
+- קבוצות אמיתיות (`TeamManager`), שני מקומות בכל קבוצה, מעבר קבוצה בלובי.
+- מסירה. `PlayerCommand` **אינו** כולל `passPressed` כלל.
+- בוט מחליף לשחקן מנותק. היום המשחק פשוט נעצר.
+- Party, matchmaking לזוגות, כניעה, Quick Chat, סטטיסטיקות.
+- חוק הנגיעה האחת. היום אין שום מגבלת נגיעות — `TouchRuleEngine` לא קיים.
+- מערכת בעיטות רציפה. היום יש `lofted: boolean` בלבד (`lobToggle`),
+  ו־`GameConfig.kick` מחזיק `loftRatio` יחיד.
+- נכסי גרפיקה. כל הדמויות והמרקמים נוצרים פרוצדורלית בזמן ריצה
+  (`ProceduralTextures`, `PlayerView` בונה קופסאות וכדורים).
 
-| פקודה                               | תוצאה                             |
-| ----------------------------------- | --------------------------------- |
-| `npm ci` (התקנה נקייה לפי lockfile) | ✅ עבר, 0 vulnerabilities         |
-| `npm run lint`                      | ✅ עבר                            |
-| `npm test`                          | ✅ עבר — 13 קבצים, **210 בדיקות** |
-| `npm run build`                     | ✅ עבר ללא שגיאות TypeScript      |
-| `npm run dev`                       | ✅ עולה (לקוח בלבד — אין שרת)     |
+## מגבלות סביבה שמשפיעות על מה שניתן להוכיח
 
-**הבסיס של 0.2.0 תקין לחלוטין.** אין תקלה שדורשת תיקון מקדים.
+- **אין GPU.** הדפדפן רץ על SwiftShader ב־4–6 FPS. אפשר לבדוק נכונות, סנכרון
+  ושגיאות — **אי אפשר** למדוד 60 FPS אמיתיים.
+- **אין Docker daemon.** ה־image נבנה לוגית ולא נבנה בפועל, כבר מ־0.3.0.
+- **אין גישה לספריות נכסים.** אין מאיפה להוריד דמויות rigged ברישיון.
+- 4 ליבות CPU לשרת, ללקוחות ולמחולל העומס יחד.
 
-## בדיקה ידנית של המצבים הקיימים
+## מסקנה
 
-נבדק בדפדפן אמיתי מול ה־production build:
-
-| מצב                                            | תוצאה                                         |
-| ---------------------------------------------- | --------------------------------------------- |
-| משחק נגד המחשב                                 | ✅ עובד — שעון רץ, תנועה, השהיה, יציאה לתפריט |
-| שני שחקנים מקומיים                             | ✅ עובד — שני לוחות מדים, שני שחקנים עצמאיים  |
-| אונליין 1 נגד 1                                | ⛔ **לא ניתן לבדיקה — לא קיים**               |
-| חדר פרטי 1×1 / matchmaking 1×1 / reconnect 1×1 | ⛔ **לא קיימים**                              |
-
-אפס שגיאות console בשני המצבים הקיימים.
-
-התפריט הראשי מציג בפועל:
-
-- מצבים פעילים: "משחק נגד המחשב", "שני שחקנים — אותו מכשיר"
-- מצבים נעולים עם "בקרוב": **"אונליין"**, "2 נגד 2", "קריירה", "טורנירים"
-
-כלומר "אונליין" עדיין מסומן "בקרוב" בממשק — עדות נוספת לכך ששלב ג׳ לא בוצע.
-
-## המשמעות לשלב ד׳
-
-תוכנית שלב ד׳ בנויה על הרחבת שכבת רשת קיימת:
-"אל תחליף את שרת הרשת", "חלץ ליבה משותפת מ־`OnlineOneVsOneRoom`",
-"הרץ את בדיקות ה־E2E של 0.3.0". אף אחת מהפעולות הללו אינה אפשרית כרגע.
-
-בנוסף, מסמך `docs/multiplayer-readiness.md` שנכתב בשלב ב׳ מציין במפורש חסם
-שעדיין לא טופל ונדרש לכל שרת סמכותי:
-
-> **הפרדת גופי פיזיקה מה־meshes** — `entities/` בונה את שניהם יחד; שרת ב־Node
-> יצטרך את הגופים בלבד.
-
-כלומר, לפני שאפשר להריץ סימולציה סמכותית ב־Node נדרש ריפקטור של שכבת הפיזיקה
-כך שתרוץ ללא Babylon meshes. זהו תנאי מקדים לשלב ג׳ ולשלב ד׳ כאחד.
-
-**המסקנה: לא ניתן לבצע את שלב ד׳ כפי שנוסח, מכיוון שהבסיס שהוא מרחיב אינו קיים.**
+הבסיס ירוק לחלוטין. לא נדרש שום תיקון לפני תחילת שלב ד׳.
