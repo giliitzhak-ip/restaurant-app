@@ -100,7 +100,16 @@ npm run dev       # שרת פיתוח (ברירת מחדל: http://localhost:517
 ```bash
 npm run build     # בדיקת טיפוסים + בניית production אל dist/
 npm run preview   # הגשת ה־build הבנוי לבדיקה
+
+STANGA_NO_PWA=1 npm run build   # בנייה ללא service worker
 ```
+
+<div dir="rtl">
+
+הדגל `STANGA_NO_PWA=1` מייצר build ללא service worker, לשימוש כאשר המשחק מוטמע
+בתוך מסגרת מבודדת שבה רישום service worker חסום ממילא.
+
+</div>
 
 <div dir="rtl">
 
