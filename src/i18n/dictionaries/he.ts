@@ -375,6 +375,15 @@ export const he = {
      */
     renderDisclaimer:
       "ההדמיה להמחשה בלבד. הגוון בפועל מושפע מהתאורה בחדר, ממסך התצוגה ומהשונות הטבעית של החומר — לפני הזמנה גדולה כדאי להזמין דוגמה.",
+    /*
+     * Shown wherever lighting is on screen, which is a stronger claim than
+     * the cladding disclaimer and needs its own sentence: a glow is a
+     * gradient, not a photometric simulation, and the way a real strip lands
+     * on a real wall depends on the fitting, the surface and the room.
+     */
+    lightingDisclaimer:
+      "ההדמיה נועדה להמחשה. גוון החומר והתאורה בפועל עשויים להשתנות בהתאם למסך, למוצר ולתנאי החלל.",
+    illustrationOnly: "להמחשה בלבד",
     startOver: "התחלה מחדש",
     replacePhoto: "החלפת תמונה",
     selectedFloor: "רצפה נבחרת",
