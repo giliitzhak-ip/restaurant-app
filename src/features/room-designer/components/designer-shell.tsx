@@ -9,9 +9,12 @@ import {
   Share2,
   Heart,
   Image as ImageIcon,
+  Layers,
+  Lightbulb,
   RefreshCw,
   Redo2,
   ShoppingBag,
+  Sofa,
   Undo2,
   X,
 } from "lucide-react";
@@ -19,10 +22,18 @@ import { routes } from "@/config/site";
 import { t } from "@/i18n";
 import { formatArea, formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useMediaQuery } from "@/lib/use-media-query";
 import { track } from "@/lib/analytics";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/toast";
 import { useCart } from "@/features/cart/cart-provider";
 import { useSessionUser } from "@/components/providers";
@@ -102,6 +113,15 @@ export function DesignerShell({
     "cladding" | "objects" | "lighting" | "layers" | "controls"
   >("cladding");
   const [customOpen, setCustomOpen] = React.useState(false);
+  /** The phone's bottom sheet. On a desktop the panels are always on screen. */
+  const [sheetOpen, setSheetOpen] = React.useState(false);
+  /*
+   * Which shell holds the panels. CSS could hide one, but hiding still
+   * mounts: the object library is forty images and a search index, and two
+   * copies means paying for it twice and putting two elements with the same
+   * test id in the document.
+   */
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
   const [drawingShape, setDrawingShape] = React.useState<LedPathShape | null>(null);
 
   const scene = useScene(savedDesign?.scene ?? null);
@@ -465,6 +485,65 @@ export function DesignerShell({
     (warning) => warningCopy[warning],
   );
 
+  /*
+   * The five panels, built once. The desktop column and the phone sheet
+   * render the same element, so there is no second implementation to drift.
+   */
+  const panelViews: Record<typeof panel, React.ReactNode> = {
+    cladding: (
+      <ProductDrawer
+        swatches={swatches}
+        surfaceKind={controller.activeKind}
+        selectedId={controller.activeSurface?.productId ?? null}
+        onSelect={(productId) => controller.applyProduct(productId)}
+      />
+    ),
+    objects: (
+      <ObjectLibraryDrawer
+        assets={objectAssets}
+        onAdd={addObject}
+        onUploadOwn={() => setCustomOpen(true)}
+      />
+    ),
+    lighting: (
+      <LightingDrawer
+        controller={scene}
+        drawingShape={drawingShape}
+        onStartDrawing={setDrawingShape}
+        onStopDrawing={() => setDrawingShape(null)}
+        onAddFixture={addFixture}
+      />
+    ),
+    layers: (
+      <div className="flex h-full flex-col">
+        <LayersPanel controller={scene} />
+        <div className="mt-5 border-t border-studio-line pt-4">
+          <h3 className="mb-2 text-[0.6875rem] tracking-[0.18em] text-studio-ink/50">
+            רשימת העיצוב
+          </h3>
+          <BillOfMaterials
+            claddings={controller.selectedProducts.map(({ surface, swatch }) => ({
+              swatch,
+              areaSqm: surface.areaSqm,
+            }))}
+            objects={scene.scene.objects}
+            totalAreaSqm={controller.estimate.areaSqm}
+            totalPrice={controller.estimate.price}
+          />
+        </div>
+      </div>
+    ),
+    controls: <ControlsPanel controller={controller} />,
+  };
+
+  const panelTitles: Record<typeof panel, string> = {
+    cladding: t.designer.productDrawer,
+    objects: "הוספת פריטים",
+    lighting: "תאורה",
+    layers: "שכבות ורשימת העיצוב",
+    controls: t.designer.controls,
+  };
+
   return (
     <div
       className="flex min-h-dvh flex-col bg-studio text-studio-ink"
@@ -516,7 +595,8 @@ export function DesignerShell({
       ) : null}
 
       {controller.step === "design" ? (
-        <div className="flex flex-1 flex-col pb-28 lg:grid lg:grid-cols-[1fr_23rem] lg:gap-6 lg:px-6 lg:py-6 lg:pb-28">
+        /* pb-44 clears the tool bar and the summary bar stacked above it. */
+        <div className="flex flex-1 flex-col pb-44 lg:grid lg:grid-cols-[1fr_23rem] lg:gap-6 lg:px-6 lg:py-6 lg:pb-28">
           {/* ------------------------------ stage ----------------------------- */}
           <div className="px-4 pt-4 lg:px-0 lg:pt-0">
             <CanvasStage
@@ -578,7 +658,13 @@ export function DesignerShell({
           </div>
 
           {/* ------------------------------ panel ----------------------------- */}
-          <aside className="mt-4 flex flex-col border-t border-studio-line bg-studio-2 px-4 pb-32 pt-4 lg:mt-0 lg:rounded-lg lg:border lg:pb-4">
+          {/*
+            * Desktop: a column beside the room. Phone: the identical panels
+            * in a bottom sheet, opened from the toolbar. One set of
+            * components, two shells — rather than a second implementation
+            * that drifts.
+            */}
+          <aside className="mt-4 hidden flex-col border-t border-studio-line bg-studio-2 px-4 pb-32 pt-4 lg:mt-0 lg:flex lg:rounded-lg lg:border lg:pb-4">
             {/* surface switch */}
             <div className="flex gap-1.5">
               {(["FLOOR", "WALL"] as const).map((kind) => {
@@ -683,64 +769,89 @@ export function DesignerShell({
               ))}
             </div>
 
-            <div className={cn("mt-4", panel === "cladding" ? "block" : "hidden")}>
-              <ProductDrawer
-                swatches={swatches}
-                surfaceKind={controller.activeKind}
-                selectedId={controller.activeSurface?.productId ?? null}
-                onSelect={(productId) => controller.applyProduct(productId)}
-              />
-            </div>
-
-            <div className={cn("mt-4 min-h-0 flex-1", panel === "objects" ? "block" : "hidden")}>
-              <ObjectLibraryDrawer
-                assets={objectAssets}
-                onAdd={addObject}
-                onUploadOwn={() => setCustomOpen(true)}
-              />
-            </div>
-
-            <div className={cn("mt-4 min-h-0 flex-1", panel === "lighting" ? "block" : "hidden")}>
-              <LightingDrawer
-                controller={scene}
-                drawingShape={drawingShape}
-                onStartDrawing={setDrawingShape}
-                onStopDrawing={() => setDrawingShape(null)}
-                onAddFixture={addFixture}
-              />
-            </div>
-
-            <div className={cn("mt-4 min-h-0 flex-1", panel === "layers" ? "block" : "hidden")}>
-              <LayersPanel controller={scene} />
-              <div className="mt-5 border-t border-studio-line pt-4">
-                <h3 className="mb-2 text-[0.6875rem] tracking-[0.18em] text-studio-ink/50">
-                  רשימת העיצוב
-                </h3>
-                <BillOfMaterials
-                  claddings={controller.selectedProducts.map(({ surface, swatch }) => ({
-                    swatch,
-                    areaSqm: surface.areaSqm,
-                  }))}
-                  objects={scene.scene.objects}
-                  totalAreaSqm={controller.estimate.areaSqm}
-                  totalPrice={controller.estimate.price}
-                />
-              </div>
-            </div>
-
-            <div
-              className={cn(
-                "mt-4 border-t border-studio-line pt-5",
-                panel === "controls" ? "block" : "hidden",
-              )}
-            >
-              <ControlsPanel controller={controller} />
+            <div className="mt-4 min-h-0 flex-1">
+              {isDesktop ? panelViews[panel] : null}
             </div>
 
           </aside>
 
+          {/* --------------------------- phone toolbar -------------------------- */}
+          {/*
+            * The five tools, on a bar that clears the home indicator and sits
+            * above the summary. Icons with words under them, 44px targets,
+            * and the sheet opens over the photo rather than pushing it — so
+            * the room stays on screen while the tool is used.
+            */}
+          {/*
+            * The panels moved to a sheet, which left the space under the
+            * stage empty on a phone. An empty black half-screen reads as a
+            * page that failed to load, so it says what to do instead.
+            */}
+          {!isDesktop ? (
+            <p className="px-6 pb-6 pt-8 text-center text-xs leading-relaxed text-studio-ink/40 lg:hidden">
+              בחרו כלי מהסרגל למטה כדי להוסיף חיפוי, פריטים או תאורה.
+            </p>
+          ) : null}
+
+          {/*
+            * One fixed stack, not two bars with a guessed gap. The summary
+            * wraps onto three lines at 375px, so any fixed offset for the
+            * toolbar above it was going to be wrong at some width — and was:
+            * at 375 the summary covered the tools completely.
+            */}
+          <div className="fixed inset-x-0 bottom-0 z-30 flex flex-col border-t border-studio-line bg-studio/95 backdrop-blur-md">
+          <nav
+            aria-label="כלי העיצוב"
+            className="order-1 border-b border-studio-line px-2 py-1 lg:hidden"
+          >
+            <ul className="mx-auto flex max-w-lg items-stretch justify-between">
+              {(
+                [
+                  { key: "cladding", label: t.designer.productDrawer, icon: <ImageIcon /> },
+                  { key: "objects", label: "פריטים", icon: <Sofa /> },
+                  { key: "lighting", label: "תאורה", icon: <Lightbulb /> },
+                  { key: "layers", label: "שכבות", icon: <Layers /> },
+                ] as const
+              ).map((entry) => (
+                <li key={entry.key} className="flex-1">
+                  <button
+                    type="button"
+                    data-testid={`tool-${entry.key}`}
+                    aria-pressed={sheetOpen && panel === entry.key}
+                    onClick={() => {
+                      setPanel(entry.key);
+                      setSheetOpen(true);
+                    }}
+                    className={cn(
+                      "press flex min-h-11 w-full flex-col items-center justify-center gap-0.5 rounded-sm py-1 text-[0.5625rem] focus-ring-invert",
+                      sheetOpen && panel === entry.key
+                        ? "text-studio-ink"
+                        : "text-studio-ink/55",
+                    )}
+                  >
+                    <span className="[&_svg]:size-[18px]">{entry.icon}</span>
+                    {entry.label}
+                  </button>
+                </li>
+              ))}
+              <li className="flex-1">
+                <button
+                  type="button"
+                  data-testid="tool-save"
+                  onClick={() => setSaveOpen(true)}
+                  className="press flex min-h-11 w-full flex-col items-center justify-center gap-0.5 rounded-sm py-1 text-[0.5625rem] text-studio-ink/55 focus-ring-invert"
+                >
+                  <span className="[&_svg]:size-[18px]">
+                    <Heart />
+                  </span>
+                  {t.designer.saveDesign}
+                </button>
+              </li>
+            </ul>
+          </nav>
+
           {/* ---------------------------- summary bar --------------------------- */}
-          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-studio-line bg-studio/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md lg:px-8">
+          <div className="order-2 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:px-8">
             <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3">
               <dl className="flex gap-5">
                 <div>
@@ -831,6 +942,24 @@ export function DesignerShell({
               {t.designer.areaEditHint} · {t.designer.compareHint}
             </p>
           </div>
+          </div>
+
+          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+            <SheetContent side="bottom" theme="studio" className="lg:hidden">
+              <SheetHeader>
+                <SheetTitle>{panelTitles[panel]}</SheetTitle>
+              </SheetHeader>
+              {/*
+                * A definite height, not a maximum. The drawers inside are
+                * `h-full` with their own scrolling region, and `h-full`
+                * against a `max-height` container resolves to zero — the
+                * panel rendered, measured nothing, and showed nothing.
+                */}
+              <SheetBody className="h-[58dvh]">
+                {isDesktop ? null : panelViews[panel]}
+              </SheetBody>
+            </SheetContent>
+          </Sheet>
         </div>
       ) : null}
 
