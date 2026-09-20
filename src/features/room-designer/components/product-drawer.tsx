@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Check } from "lucide-react";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/format";
 import type { ProductSwatch } from "@/types/catalog";
 
@@ -85,19 +86,20 @@ export function ProductDrawer({
     <div>
       <div className="scrollbar-none -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-2">
         {filters.map((entry) => (
-          <button
+          <Button
             key={entry.key}
-            type="button"
+            size="sm"
+            /*
+             * A filter that is on is a pressed toggle, not a differently
+             * coloured button. aria-pressed says so; the fill only shows it.
+             */
+            aria-pressed={filter === entry.key}
+            variant={filter === entry.key ? "studio" : "studioOutline"}
             onClick={() => setFilter(entry.key)}
-            className={cn(
-              "shrink-0 rounded-xs border px-2.5 py-1.5 text-xs transition-colors",
-              filter === entry.key
-                ? "border-studio-ink bg-studio-ink text-studio"
-                : "border-studio-line text-studio-ink/70 hover:border-studio-ink/60",
-            )}
+            className="shrink-0 rounded-xs px-2.5 text-xs"
           >
             {entry.label}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -117,13 +119,13 @@ export function ProductDrawer({
                   onClick={() => onSelect(swatch.id)}
                   aria-pressed={selected}
                   className={cn(
-                    "group block w-full text-start",
+                    "press group block w-full text-start focus-ring-invert",
                     selected ? "opacity-100" : "opacity-90 hover:opacity-100",
                   )}
                 >
                   <span
                     className={cn(
-                      "relative block aspect-square w-full overflow-hidden rounded-sm border-2 transition-colors",
+                      "relative block aspect-square w-full overflow-hidden rounded-sm border-2 interactive",
                       selected ? "border-studio-ink" : "border-transparent",
                     )}
                   >

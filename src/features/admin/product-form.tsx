@@ -205,7 +205,7 @@ export function ProductForm({
 
   return (
     <form onSubmit={submit} className="space-y-8 pb-16">
-      <section className="rounded-lg border border-line bg-surface p-5">
+      <section className="card p-5">
         <h2 className="text-lg">פרטי מוצר</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <Field label="שם" htmlFor="name" required error={errors.name?.[0]}>
@@ -306,7 +306,7 @@ export function ProductForm({
         </div>
       </section>
 
-      <section className="rounded-lg border border-line bg-surface p-5">
+      <section className="card p-5">
         <h2 className="text-lg">מחיר ומלאי</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <Field label="מחיר ליחידה / לחבילה" htmlFor="price" required error={errors.pricePerUnit?.[0]}>
@@ -405,7 +405,7 @@ export function ProductForm({
         </div>
       </section>
 
-      <section className="rounded-lg border border-line bg-surface p-5">
+      <section className="card p-5">
         <h2 className="text-lg">{t.product.specs}</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <SelectField
@@ -599,7 +599,7 @@ export function ProductForm({
       </section>
 
       {/* ------------------------------ images ------------------------------ */}
-      <section className="rounded-lg border border-line bg-surface p-5">
+      <section className="card p-5">
         <h2 className="text-lg">תמונות</h2>
         <ul className="mt-4 space-y-4">
           {form.images.map((image, index) => (

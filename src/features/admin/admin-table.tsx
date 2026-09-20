@@ -11,7 +11,7 @@ export function AdminTable({
   className?: string;
 }) {
   return (
-    <div className={cn("overflow-x-auto rounded-lg border border-line bg-surface", className)}>
+    <div className={cn("overflow-x-auto card", className)}>
       <table className="w-full min-w-[42rem] text-sm">
         <thead>
           <tr className="border-b border-line text-start">

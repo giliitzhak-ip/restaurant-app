@@ -48,7 +48,7 @@ export function QuoteForm({
 
   if (state === "done") {
     return (
-      <div className="rounded-lg border border-line bg-surface p-8 text-center">
+      <div className="card p-8 text-center">
         <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-success text-white">
           <Check className="size-6" />
         </div>

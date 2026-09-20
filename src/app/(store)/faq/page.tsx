@@ -33,7 +33,7 @@ export default function FaqPage() {
           ))}
         </div>
 
-        <div className="mt-14 rounded-lg border border-line bg-surface p-6">
+        <div className="mt-14 card p-6">
           <h2 className="text-lg">לא מצאתם תשובה?</h2>
           <p className="mt-2 text-sm text-muted">
             שלחו לנו את הפרטים ונחזור אליכם עם תשובה מדויקת לפרויקט שלכם.

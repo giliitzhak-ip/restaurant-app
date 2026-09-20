@@ -622,8 +622,10 @@ export function ActiveFilterChips({
     <ul className="flex flex-wrap items-center gap-2">
       {chips.map((chip) => (
         <li key={`${chip.key}-${chip.value}`}>
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label={`${t.common.remove}: ${chip.label}`}
             onClick={() => {
               const current = params.get(chip.key)?.split(",") ?? [];
               const next = current.filter((entry) => entry !== chip.value);
@@ -632,11 +634,11 @@ export function ActiveFilterChips({
                 { scroll: false },
               );
             }}
-            className="inline-flex items-center gap-1.5 rounded-xs border border-line-strong bg-surface px-2.5 py-1.5 text-xs text-ink-soft transition-colors hover:border-ink hover:text-ink"
+            className="rounded-xs bg-surface px-2.5 text-xs text-ink-soft"
           >
             {chip.label}
             <X className="size-3" />
-          </button>
+          </Button>
         </li>
       ))}
       <li>

@@ -40,7 +40,7 @@ export default async function AdminDashboard() {
 
       <ul className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         {cards.map((card) => (
-          <li key={card.label} className="rounded-lg border border-line bg-surface p-5">
+          <li key={card.label} className="card p-5">
             <p className="text-xs text-muted">{card.label}</p>
             <p className="num mt-1.5 font-display text-2xl text-ink">{card.value}</p>
           </li>

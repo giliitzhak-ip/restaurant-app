@@ -59,7 +59,7 @@ export default async function AccountOrdersPage() {
       <h2 className="text-xl">{t.account.orders}</h2>
       <ul className="mt-6 space-y-5">
         {orders.map((order) => (
-          <li key={order.id} className="rounded-lg border border-line bg-surface p-5">
+          <li key={order.id} className="card p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <Link

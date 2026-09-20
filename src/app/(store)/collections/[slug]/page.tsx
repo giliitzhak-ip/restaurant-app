@@ -71,7 +71,7 @@ export default async function CollectionPage({
         lockedCollection={collection.slug}
         basePath={routes.collection(collection.slug)}
         intro={
-          <p className="mt-6 max-w-2xl rounded-lg border border-line bg-surface p-5 text-sm leading-relaxed text-muted">
+          <p className="mt-6 max-w-2xl card p-5 text-sm leading-relaxed text-muted">
             {collection.story}
           </p>
         }

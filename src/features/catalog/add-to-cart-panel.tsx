@@ -13,6 +13,7 @@ import { QuantityStepper } from "@/components/ui/quantity-stepper";
 import { useCart } from "@/features/cart/cart-provider";
 import { useFavorites } from "@/features/catalog/favorites-provider";
 import { useToast } from "@/components/ui/toast";
+import { useTransientFlag } from "@/components/ui/use-transient-flag";
 import type { Product } from "@/types/catalog";
 
 export function AddToCartPanel({ product }: { product: Product }) {
@@ -20,6 +21,7 @@ export function AddToCartPanel({ product }: { product: Product }) {
   const { add, pending } = useCart();
   const { isFavorite, toggle } = useFavorites();
   const { toast } = useToast();
+  const [added, markAdded] = useTransientFlag();
   const soldOut = product.availability === "OUT_OF_STOCK";
   const favorite = isFavorite(product.id);
 
@@ -53,15 +55,18 @@ export function AddToCartPanel({ product }: { product: Product }) {
           block
           size="lg"
           data-testid="add-to-cart"
-          disabled={soldOut || pending}
-          onClick={() =>
-            add({
+          disabled={soldOut}
+          loading={pending}
+          success={added}
+          onClick={async () => {
+            await add({
               productId: product.id,
               slug: product.slug,
               name: product.name,
               units,
-            })
-          }
+            });
+            markAdded();
+          }}
         >
           {soldOut ? t.common.outOfStock : t.product.addToCart}
         </Button>

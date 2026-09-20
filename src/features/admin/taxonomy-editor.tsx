@@ -41,21 +41,20 @@ export function TaxonomyEditor({
         <ul className="space-y-1">
           {items.map((item) => (
             <li key={item.id}>
-              <button
-                type="button"
+              <Button
+                variant={selectedId === item.id ? "primary" : "ghost"}
+                aria-pressed={selectedId === item.id}
                 onClick={() => setSelectedId(item.id)}
                 className={cn(
-                  "w-full rounded-sm px-3 py-2 text-start text-sm transition-colors",
-                  selectedId === item.id
-                    ? "bg-ink text-canvas"
-                    : "text-ink-soft hover:bg-surface-2",
+                  "h-auto w-full flex-col items-start gap-0 px-3 py-2 text-start text-sm",
+                  selectedId !== item.id && "text-ink-soft",
                 )}
               >
                 {item.name}
-                <span className="block text-xs opacity-60" dir="ltr">
+                <span className="block text-xs font-normal opacity-60" dir="ltr">
                   /{item.slug}
                 </span>
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
@@ -101,7 +100,7 @@ function CategoryForm({ category }: { category: Category | null }) {
 
   return (
     <form
-      className="space-y-4 rounded-lg border border-line bg-surface p-5"
+      className="space-y-4 card p-5"
       onSubmit={async (event) => {
         event.preventDefault();
         setPending(true);
@@ -227,7 +226,7 @@ function CollectionForm({ collection }: { collection: Collection | null }) {
 
   return (
     <form
-      className="space-y-4 rounded-lg border border-line bg-surface p-5"
+      className="space-y-4 card p-5"
       onSubmit={async (event) => {
         event.preventDefault();
         setPending(true);

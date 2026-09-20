@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
+import { useTransientFlag } from "@/components/ui/use-transient-flag";
 import { updateProfileAction } from "@/server/actions/profile";
 
 export function ProfileForm({
@@ -19,6 +20,7 @@ export function ProfileForm({
   email: string;
 }) {
   const [pending, setPending] = React.useState(false);
+  const [saved, markSaved] = useTransientFlag();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -34,11 +36,12 @@ export function ProfileForm({
           phone: String(data.get("phone") ?? ""),
         });
         setPending(false);
-        toast(
-          result.ok
-            ? { title: t.admin.saved }
-            : { tone: "error", title: t.states.errorTitle },
-        );
+        if (result.ok) {
+          markSaved();
+          toast({ title: t.admin.saved });
+        } else {
+          toast({ tone: "error", title: t.states.errorTitle });
+        }
         router.refresh();
       }}
     >
@@ -58,9 +61,21 @@ export function ProfileForm({
       <Field label={t.checkout.email} htmlFor="p-email" hint="לא ניתן לשנות אימייל">
         <Input id="p-email" value={email} disabled />
       </Field>
-      <Button type="submit" loading={pending} loadingLabel={t.common.saving}>
-        {t.common.save}
-      </Button>
+      <div className="flex items-center gap-3">
+        <Button
+          type="submit"
+          loading={pending}
+          loadingLabel={t.common.saving}
+          success={saved}
+        >
+          {t.common.save}
+        </Button>
+        {saved ? (
+          <span className="enter-soft text-xs text-success" role="status">
+            {t.admin.saved}
+          </span>
+        ) : null}
+      </div>
     </form>
   );
 }

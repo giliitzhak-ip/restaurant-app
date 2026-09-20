@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { t } from "@/i18n";
 import { blurDataUrl } from "@/lib/media";
 import { cn } from "@/lib/utils";
+import { IconButton } from "@/components/ui/icon-button";
 import type { ProductImage } from "@/types/catalog";
 
 export function ProductGallery({
@@ -68,32 +69,39 @@ export function ProductGallery({
 
         {images.length > 1 ? (
           <>
-            <button
-              type="button"
+            <IconButton
+              label={t.common.next}
               onClick={() => go(index + 1)}
-              aria-label={t.common.next}
-              className="absolute start-3 top-1/2 hidden -translate-y-1/2 rounded-full bg-canvas/85 p-2.5 text-ink shadow-subtle backdrop-blur-sm transition-colors hover:bg-canvas md:block"
+              className="absolute start-3 top-1/2 hidden -translate-y-1/2 rounded-full bg-canvas/85 text-ink shadow-subtle backdrop-blur-sm hover:bg-canvas md:inline-flex"
             >
-              <ChevronRight className="size-4" />
-            </button>
-            <button
-              type="button"
+              <ChevronRight />
+            </IconButton>
+            <IconButton
+              label={t.common.previous}
               onClick={() => go(index - 1)}
-              aria-label={t.common.previous}
-              className="absolute end-3 top-1/2 hidden -translate-y-1/2 rounded-full bg-canvas/85 p-2.5 text-ink shadow-subtle backdrop-blur-sm transition-colors hover:bg-canvas md:block"
+              className="absolute end-3 top-1/2 hidden -translate-y-1/2 rounded-full bg-canvas/85 text-ink shadow-subtle backdrop-blur-sm hover:bg-canvas md:inline-flex"
             >
-              <ChevronLeft className="size-4" />
-            </button>
+              <ChevronLeft />
+            </IconButton>
+            {/*
+              * Position dots. Decoration: they are two device pixels of
+              * colour and nothing else, so the position is also stated in
+              * words beside them for anyone not reading the dots.
+              */}
             <div className="absolute inset-x-0 bottom-3 flex justify-center gap-1.5 md:hidden">
               {images.map((image, dotIndex) => (
                 <span
                   key={image.id}
+                  aria-hidden
                   className={cn(
-                    "size-1.5 rounded-full transition-colors",
+                    "size-1.5 rounded-full transition-colors duration-[var(--dur-quick)]",
                     dotIndex === index ? "bg-ink" : "bg-ink/25",
                   )}
                 />
               ))}
+              <span className="sr-only" aria-live="polite">
+                {t.product.galleryThumbAria(index + 1)}
+              </span>
             </div>
           </>
         ) : null}
@@ -109,7 +117,7 @@ export function ProductGallery({
                 aria-label={t.product.galleryThumbAria(thumbIndex + 1)}
                 aria-current={thumbIndex === index}
                 className={cn(
-                  "relative block aspect-square w-full overflow-hidden rounded-xs border transition-colors",
+                  "press relative block aspect-square w-full overflow-hidden rounded-xs border",
                   thumbIndex === index
                     ? "border-ink"
                     : "border-transparent hover:border-line-strong",

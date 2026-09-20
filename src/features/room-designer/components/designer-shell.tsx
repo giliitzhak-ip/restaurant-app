@@ -9,7 +9,6 @@ import {
   Share2,
   Heart,
   Image as ImageIcon,
-  Loader2,
   RefreshCw,
   ShoppingBag,
   Sliders,
@@ -22,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { track } from "@/lib/analytics";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/components/ui/toast";
 import { useCart } from "@/features/cart/cart-provider";
 import { useSessionUser } from "@/components/providers";
@@ -306,7 +306,7 @@ export function DesignerShell({
 
       {controller.step === "analyzing" ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
-          <Loader2 className="size-7 animate-spin text-studio-ink/70" />
+          <Spinner className="text-[1.75rem] text-studio-ink/70" labelled={false} />
           <p className="font-display text-xl">
             {savedDesign ? t.common.loading : t.designer.analyzing}
           </p>
@@ -354,25 +354,20 @@ export function DesignerShell({
                 );
                 const active = controller.activeKind === kind;
                 return (
-                  <button
+                  <Button
                     key={kind}
-                    type="button"
-                    onClick={() => controller.setActiveKind(kind)}
+                    variant={active ? "studio" : "studioOutline"}
                     aria-pressed={active}
-                    className={cn(
-                      "flex-1 rounded-sm border px-3 py-2.5 text-sm transition-colors",
-                      active
-                        ? "border-studio-ink bg-studio-ink text-studio"
-                        : "border-studio-line text-studio-ink/70 hover:border-studio-ink/60",
-                    )}
+                    onClick={() => controller.setActiveKind(kind)}
+                    className="flex-1"
                   >
                     {kind === "FLOOR" ? t.designer.surfaceFloor : t.designer.surfaceWall}
                     {!available ? (
-                      <span className="ms-1.5 text-[0.625rem] opacity-60">
+                      <span className="text-[0.625rem] opacity-60">
                         (סימון ידני)
                       </span>
                     ) : null}
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -383,22 +378,25 @@ export function DesignerShell({
                 <p className="mb-1.5 text-xs text-studio-ink/60">{t.designer.walls}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {wallSurfaces.map((surface) => (
-                    <button
+                    <Button
                       key={surface.mask.id}
-                      type="button"
+                      size="sm"
+                      variant="studioOutline"
+                      aria-pressed={controller.activeSurfaceId === surface.mask.id}
                       onClick={() => controller.setActiveSurface(surface.mask.id)}
                       className={cn(
-                        "rounded-xs border px-2.5 py-1.5 text-xs transition-colors",
+                        "rounded-xs px-2.5 text-xs",
                         controller.activeSurfaceId === surface.mask.id
                           ? "border-studio-ink text-studio-ink"
-                          : "border-studio-line text-studio-ink/60",
+                          : "text-studio-ink/60",
                       )}
                     >
                       {surface.mask.label}
-                    </button>
+                    </Button>
                   ))}
-                  <button
-                    type="button"
+                  <Button
+                    size="sm"
+                    variant="studioOutline"
                     onClick={() => {
                       const productId = controller.activeSurface?.productId;
                       if (!productId) return;
@@ -408,41 +406,45 @@ export function DesignerShell({
                       );
                     }}
                     disabled={!controller.activeSurface?.productId}
-                    className="rounded-xs border border-dashed border-studio-line px-2.5 py-1.5 text-xs text-studio-ink/60 disabled:opacity-40"
+                    className="rounded-xs border-dashed px-2.5 text-xs text-studio-ink/60"
                   >
                     {t.designer.wallAll}
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : null}
 
             {/* mobile tabs */}
             <div className="mt-4 flex gap-1.5 lg:hidden">
-              <button
-                type="button"
+              <Button
+                size="sm"
+                variant="studioOutline"
+                aria-pressed={mobileTab === "products"}
                 onClick={() => setMobileTab("products")}
                 className={cn(
-                  "flex-1 rounded-sm border px-3 py-2 text-xs",
+                  "flex-1 text-xs",
                   mobileTab === "products"
                     ? "border-studio-ink text-studio-ink"
-                    : "border-studio-line text-studio-ink/60",
+                    : "text-studio-ink/60",
                 )}
               >
                 {t.designer.productDrawer}
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                size="sm"
+                variant="studioOutline"
+                aria-pressed={mobileTab === "controls"}
                 onClick={() => setMobileTab("controls")}
                 className={cn(
-                  "flex-1 rounded-sm border px-3 py-2 text-xs",
+                  "flex-1 text-xs",
                   mobileTab === "controls"
                     ? "border-studio-ink text-studio-ink"
-                    : "border-studio-line text-studio-ink/60",
+                    : "text-studio-ink/60",
                 )}
               >
-                <Sliders className="me-1 inline size-3.5" />
+                <Sliders />
                 {t.designer.controls}
-              </button>
+              </Button>
             </div>
 
             <div

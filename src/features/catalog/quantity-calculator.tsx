@@ -8,6 +8,7 @@ import { formatArea, formatPrice, roundTo } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { track } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -85,7 +86,7 @@ export function QuantityCalculator({
   return (
     <section
       className={cn(
-        "rounded-lg border border-line bg-surface p-5 md:p-6",
+        "card p-5 md:p-6",
         compact && "p-4 md:p-5",
       )}
       aria-labelledby="calculator-title"
@@ -115,20 +116,21 @@ export function QuantityCalculator({
               ["area", t.calculator.byArea],
             ] as const
           ).map(([value, label]) => (
-            <button
+            <Button
               key={value}
-              type="button"
+              variant="ghost"
+              size="sm"
               aria-pressed={mode === value}
               onClick={() => setMode(value)}
               className={cn(
-                "-mb-px shrink-0 border-b-2 pb-1.5 text-sm transition-colors",
+                "-mb-px shrink-0 rounded-none border-b-2 px-1 pb-1.5 text-sm hover:bg-transparent",
                 mode === value
                   ? "border-ink text-ink"
                   : "border-transparent text-muted hover:text-ink",
               )}
             >
               {label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -147,16 +149,16 @@ export function QuantityCalculator({
                 {roomAreas[index] ? formatArea(roomAreas[index]!) : "—"}
               </span>
               {rooms.length > 1 ? (
-                <button
-                  type="button"
+                <IconButton
+                  size="iconSm"
+                  label={t.calculator.removeRoom}
                   onClick={() =>
                     setRooms((current) => current.filter((entry) => entry.id !== room.id))
                   }
-                  aria-label={t.calculator.removeRoom}
-                  className="rounded-xs p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-danger"
+                  className="text-muted hover:text-danger"
                 >
-                  <Trash2 className="size-4" />
-                </button>
+                  <Trash2 />
+                </IconButton>
               ) : null}
             </div>
 
@@ -217,19 +219,20 @@ export function QuantityCalculator({
         ))}
       </ul>
 
-      <button
-        type="button"
+      <Button
+        variant="link"
+        size="sm"
         onClick={() =>
           setRooms((current) => [
             ...current,
             emptyRoom(roomCounter.current++, idPrefix),
           ])
         }
-        className="mt-3 inline-flex items-center gap-1.5 text-sm text-brass transition-opacity hover:opacity-75"
+        className="mt-3 text-sm text-brass no-underline hover:opacity-75"
       >
         <Plus className="size-4" />
         {t.calculator.addRoom}
-      </button>
+      </Button>
 
       <fieldset className="mt-6">
         <legend className="text-[0.8125rem] font-medium text-ink-soft">

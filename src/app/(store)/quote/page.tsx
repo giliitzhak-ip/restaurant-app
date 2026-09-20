@@ -50,7 +50,7 @@ export default async function QuotePage({
           </div>
         </div>
 
-        <aside className="rounded-lg border border-line bg-surface p-6 lg:sticky lg:top-24 lg:h-fit">
+        <aside className="card p-6 lg:sticky lg:top-24 lg:h-fit">
           <h2 className="text-lg">איך זה עובד</h2>
           <ol className="mt-4 space-y-4 text-sm">
             <li className="flex gap-3">

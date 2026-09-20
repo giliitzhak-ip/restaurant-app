@@ -49,7 +49,7 @@ export default async function AccountPage() {
           <li key={card.href}>
             <Link
               href={card.href}
-              className="block rounded-lg border border-line bg-surface p-5 transition-colors hover:border-ink"
+              className="block card p-5 transition-colors hover:border-ink"
             >
               <span className="num block font-display text-3xl text-ink">
                 {card.value}
@@ -95,7 +95,7 @@ export default async function AccountPage() {
         )}
       </section>
 
-      <section className="rounded-lg border border-line bg-surface p-6">
+      <section className="card p-6">
         <h2 className="text-lg">{t.designer.title}</h2>
         <p className="mt-2 text-sm leading-relaxed text-muted">
           {t.designer.introBody}

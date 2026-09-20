@@ -74,7 +74,7 @@ export default async function CategoryPage({
         lockedCategory={category.slug}
         basePath={routes.category(category.slug)}
         intro={
-          <div className="mt-8 grid gap-6 rounded-lg border border-line bg-surface p-5 md:grid-cols-[18rem_1fr] md:items-center md:p-6">
+          <div className="mt-8 grid gap-6 card p-5 md:grid-cols-[18rem_1fr] md:items-center md:p-6">
             <div className="relative aspect-4/3 overflow-hidden rounded-sm bg-surface-2">
               <Image
                 src={category.heroImage}

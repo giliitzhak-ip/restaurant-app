@@ -30,7 +30,7 @@ export default function ContactPage() {
         <div className="mt-10 grid gap-6 sm:grid-cols-2">
           <a
             href={brand.contact.phoneHref}
-            className="flex items-start gap-3 rounded-lg border border-line bg-surface p-5 transition-colors hover:border-ink"
+            className="flex items-start gap-3 card p-5 transition-colors hover:border-ink"
           >
             <Phone className="mt-0.5 size-5 text-brass" />
             <span>
@@ -44,7 +44,7 @@ export default function ContactPage() {
             href={`https://wa.me/${brand.contact.whatsapp.replace(/\D/g, "")}`}
             target="_blank"
             rel="noreferrer"
-            className="flex items-start gap-3 rounded-lg border border-line bg-surface p-5 transition-colors hover:border-ink"
+            className="flex items-start gap-3 card p-5 transition-colors hover:border-ink"
           >
             <MessageCircle className="mt-0.5 size-5 text-brass" />
             <span>
@@ -56,7 +56,7 @@ export default function ContactPage() {
           </a>
           <a
             href={`mailto:${brand.contact.email}`}
-            className="flex items-start gap-3 rounded-lg border border-line bg-surface p-5 transition-colors hover:border-ink"
+            className="flex items-start gap-3 card p-5 transition-colors hover:border-ink"
           >
             <Mail className="mt-0.5 size-5 text-brass" />
             <span>
@@ -66,7 +66,7 @@ export default function ContactPage() {
               </span>
             </span>
           </a>
-          <div className="flex items-start gap-3 rounded-lg border border-line bg-surface p-5">
+          <div className="flex items-start gap-3 card p-5">
             <MapPin className="mt-0.5 size-5 text-brass" />
             <span>
               <span className="block text-sm font-medium text-ink">

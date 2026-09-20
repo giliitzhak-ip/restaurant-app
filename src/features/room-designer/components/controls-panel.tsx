@@ -2,7 +2,6 @@
 
 import { MoveHorizontal, MoveVertical, RotateCcw, Rows3 } from "lucide-react";
 import { t } from "@/i18n";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import type { TextureOrientation } from "@/types/catalog";
@@ -44,21 +43,16 @@ export function ControlsPanel({ controller }: { controller: DesignerController }
             const Icon = entry.icon;
             const active = settings.orientation === entry.value;
             return (
-              <button
+              <Button
                 key={entry.value}
-                type="button"
-                onClick={() => controller.updateSettings({ orientation: entry.value })}
+                variant={active ? "studio" : "studioOutline"}
                 aria-pressed={active}
-                className={cn(
-                  "flex flex-1 flex-col items-center gap-1 rounded-sm border px-2 py-2.5 text-[0.6875rem] transition-colors",
-                  active
-                    ? "border-studio-ink bg-studio-ink text-studio"
-                    : "border-studio-line text-studio-ink/70 hover:border-studio-ink/60",
-                )}
+                onClick={() => controller.updateSettings({ orientation: entry.value })}
+                className="h-auto flex-1 flex-col gap-1 px-2 py-2.5 text-[0.6875rem]"
               >
-                <Icon className="size-4" />
+                <Icon />
                 {entry.label}
-              </button>
+              </Button>
             );
           })}
         </div>

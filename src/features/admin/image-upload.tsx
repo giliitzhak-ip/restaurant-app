@@ -2,10 +2,12 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Loader2, Upload, X } from "lucide-react";
+import { Upload, X } from "lucide-react";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { uploadAdminImageAction } from "@/server/actions/admin";
 
 export function ImageUpload({
@@ -57,8 +59,9 @@ export function ImageUpload({
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
+          aria-label={`${label} — העלאת תמונה`}
           className={cn(
-            "relative shrink-0 overflow-hidden rounded-sm border border-dashed border-line-strong bg-surface transition-colors hover:border-ink",
+            "press relative shrink-0 overflow-hidden rounded-sm border border-dashed border-line-strong bg-surface hover:border-ink",
             aspect === "square" ? "size-24" : "h-24 w-40",
           )}
         >
@@ -67,7 +70,7 @@ export function ImageUpload({
           ) : (
             <span className="flex size-full flex-col items-center justify-center gap-1 text-xs text-muted">
               {pending ? (
-                <Loader2 className="size-4 animate-spin" />
+                <Spinner className="size-4" labelled={false} />
               ) : (
                 <Upload className="size-4" />
               )}
@@ -96,14 +99,15 @@ export function ImageUpload({
             className="h-9 text-xs"
           />
           {value ? (
-            <button
-              type="button"
+            <Button
+              variant="link"
+              size="sm"
               onClick={() => onChange("")}
-              className="mt-1.5 inline-flex items-center gap-1 text-xs text-muted hover:text-danger"
+              className="mt-1.5 text-xs text-muted hover:text-danger"
             >
               <X className="size-3" />
               {t.common.remove}
-            </button>
+            </Button>
           ) : null}
           {error ? <p className="mt-1.5 text-xs text-danger">{error}</p> : null}
         </div>

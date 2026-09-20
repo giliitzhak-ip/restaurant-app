@@ -340,7 +340,7 @@ export function CheckoutForm({
 
         <fieldset>
           <legend className="text-lg">{t.checkout.payment}</legend>
-          <div className="mt-4 flex items-start gap-3 rounded-lg border border-line bg-surface p-5">
+          <div className="mt-4 flex items-start gap-3 card p-5">
             <Lock className="mt-0.5 size-5 shrink-0 text-brass" />
             <div>
               <p className="text-sm font-medium text-ink">{paymentLabel}</p>

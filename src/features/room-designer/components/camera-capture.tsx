@@ -4,6 +4,7 @@ import * as React from "react";
 import { Camera, Images, RotateCcw, SwitchCamera, X } from "lucide-react";
 import { t } from "@/i18n";
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 
 type CameraState = "starting" | "live" | "captured" | "denied" | "unsupported";
 
@@ -107,27 +108,25 @@ export function CameraCapture({
   return (
     <div className="fixed inset-0 z-[80] flex flex-col bg-studio">
       <div className="flex items-center justify-between p-4">
-        <button
-          type="button"
+        <IconButton
+          label={t.common.close}
           onClick={() => {
             stop();
             onClose();
           }}
-          aria-label={t.common.close}
-          className="rounded-full bg-white/10 p-2.5 text-studio-ink"
+          className="rounded-full bg-white/10 text-studio-ink focus-ring-invert hover:bg-white/20"
         >
-          <X className="size-5" />
-        </button>
+          <X />
+        </IconButton>
         <p className="text-sm text-studio-ink">{t.designer.camera.title}</p>
         {state === "live" ? (
-          <button
-            type="button"
+          <IconButton
+            label={t.designer.camera.switchCamera}
             onClick={() => setFacing(facing === "environment" ? "user" : "environment")}
-            aria-label={t.designer.camera.switchCamera}
-            className="rounded-full bg-white/10 p-2.5 text-studio-ink"
+            className="rounded-full bg-white/10 text-studio-ink focus-ring-invert hover:bg-white/20"
           >
-            <SwitchCamera className="size-5" />
-          </button>
+            <SwitchCamera />
+          </IconButton>
         ) : (
           <span className="size-10" />
         )}
@@ -212,14 +211,13 @@ export function CameraCapture({
             </Button>
           </>
         ) : state === "live" ? (
-          <button
-            type="button"
+          <IconButton
+            label={t.designer.camera.capture}
             onClick={capture}
-            aria-label={t.designer.camera.capture}
-            className="flex size-16 items-center justify-center rounded-full border-4 border-white/80 bg-white/20 backdrop-blur-sm transition-transform active:scale-95"
+            className="size-16 rounded-full border-4 border-white/80 bg-white/20 text-white backdrop-blur-sm focus-ring-invert hover:bg-white/30 [&_svg]:size-6"
           >
-            <Camera className="size-6 text-white" />
-          </button>
+            <Camera />
+          </IconButton>
         ) : null}
       </div>
 

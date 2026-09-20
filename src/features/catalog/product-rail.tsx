@@ -26,7 +26,11 @@ export function ProductRail({
       <ul className="hidden gap-x-6 gap-y-10 md:grid md:grid-cols-3 xl:grid-cols-4">
         {products.slice(0, 8).map((product, index) => (
           <li key={product.id}>
-            <ProductCard product={product} priority={priority && index < 2} />
+            <ProductCard
+              product={product}
+              priority={priority && index < 2}
+              index={index}
+            />
           </li>
         ))}
       </ul>

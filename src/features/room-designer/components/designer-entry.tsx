@@ -1,8 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Loader2 } from "lucide-react";
 import { t } from "@/i18n";
+import { Spinner } from "@/components/ui/spinner";
 import type { ProductSwatch } from "@/types/catalog";
 import type { RoomDesignRecord, SurfaceKind } from "@/types/design";
 
@@ -28,7 +28,7 @@ const DesignerShell = dynamic(
         role="status"
         aria-live="polite"
       >
-        <Loader2 className="size-6 animate-spin" aria-hidden />
+        <Spinner className="text-2xl" labelled={false} />
         <p className="text-sm">{t.designer.analyzing}</p>
       </div>
     ),

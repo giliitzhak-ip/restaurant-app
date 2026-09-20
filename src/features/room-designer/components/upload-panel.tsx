@@ -65,13 +65,13 @@ export function UploadPanel({
 
       <p className="mt-3 text-xs text-studio-ink/45">{t.designer.uploadHint}</p>
 
-      <button
-        type="button"
+      <Button
+        variant="link"
         onClick={() => onImage(media.scene("before"), "demo")}
-        className="mt-6 text-sm text-studio-ink/70 underline underline-offset-4 transition-colors hover:text-studio-ink"
+        className="mt-6 text-sm text-studio-ink/70 underline focus-ring-invert hover:text-studio-ink"
       >
         {t.designer.demoCta}
-      </button>
+      </Button>
 
       {error ? (
         <p role="alert" className="mt-6 text-sm text-[#f0a8a0]">

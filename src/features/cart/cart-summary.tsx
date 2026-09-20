@@ -18,7 +18,7 @@ export function CartSummary({
   const { totals } = cart;
 
   return (
-    <div className={cn("rounded-lg border border-line bg-surface p-5 md:p-6", className)}>
+    <div className={cn("card p-5 md:p-6", className)}>
       <h2 className="text-lg">{t.checkout.summary}</h2>
 
       <dl className="mt-4 space-y-2.5 text-sm">

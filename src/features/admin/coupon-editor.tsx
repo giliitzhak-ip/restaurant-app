@@ -68,7 +68,7 @@ export function CouponEditor({ coupons }: { coupons: Coupon[] }) {
       </AdminTable>
 
       <form
-        className="space-y-4 rounded-lg border border-line bg-surface p-5"
+        className="space-y-4 card p-5"
         onSubmit={async (event) => {
           event.preventDefault();
           setPending(true);

@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { Check, Eraser, Loader2, Pencil, Redo2, Trash2 } from "lucide-react";
+import { Check, Eraser, Pencil, Redo2, Trash2 } from "lucide-react";
 import { t } from "@/i18n";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { BeforeAfterSlider } from "@/components/before-after-slider";
@@ -123,7 +124,7 @@ export function CanvasStage({
 
         {rendering ? (
           <span className="pointer-events-none absolute end-3 top-3 inline-flex items-center gap-2 rounded-xs bg-studio/80 px-2.5 py-1.5 text-xs text-studio-ink backdrop-blur-sm">
-            <Loader2 className="size-3.5 animate-spin" />
+            <Spinner className="text-[0.875rem]" labelled={false} />
             {t.states.aiProcessing}
           </span>
         ) : null}

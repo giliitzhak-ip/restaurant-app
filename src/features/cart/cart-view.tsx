@@ -11,6 +11,7 @@ import { formatArea, formatPrice } from "@/lib/format";
 import { track } from "@/lib/analytics";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { QuantityStepper } from "@/components/ui/quantity-stepper";
@@ -84,14 +85,14 @@ export function CartView() {
                       </Badge>
                     ) : null}
                   </div>
-                  <button
-                    type="button"
+                  <IconButton
+                    size="iconSm"
+                    label={`${t.common.remove} ${item.name}`}
                     onClick={() => remove(item.id, item.productSlug)}
-                    aria-label={`${t.common.remove} ${item.name}`}
-                    className="rounded-xs p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-danger"
+                    className="shrink-0 text-muted hover:text-danger"
                   >
-                    <Trash2 className="size-4" />
-                  </button>
+                    <Trash2 />
+                  </IconButton>
                 </div>
 
                 <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
@@ -169,7 +170,7 @@ export function CartView() {
 
         {/* installation */}
         {commerce.installationPricePerSqm ? (
-          <div className="mt-6 flex items-start gap-4 rounded-lg border border-line bg-surface p-5">
+          <div className="mt-6 flex items-start gap-4 card p-5">
             <Ruler className="mt-0.5 size-5 shrink-0 text-brass" />
             <div className="flex-1">
               <p className="text-sm font-medium text-ink">
