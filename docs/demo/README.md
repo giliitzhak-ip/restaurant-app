@@ -1,7 +1,11 @@
 # The interface simulator
 
-`getservice-simulator.html` is one self-contained file: no build, no server,
-no network. Open it in a browser and it shows four views of the product —
+`getservice-simulator.html` is one self-contained file: no build and no
+server. It fetches exactly one thing — its two webfonts from Google Fonts —
+and without a connection it falls back to system faces and everything else
+works. (This paragraph used to say "no network", which was simply not true of
+a page carrying a `<link>` to fonts.googleapis.com.) Open it in a browser and
+it shows four views of the product —
 the customer's side, the registration form, the provider's side and the
 review queue — beside a panel that names the row or the function each screen
 is standing on.
@@ -17,14 +21,23 @@ imitation of the engine:
 1. A job was created through `POST /api/jobs` as the seeded customer
    `rotem@demo.local` — description `יש לי נזילה מתחת לכיור`, fix at
    `32.0742, 34.7749`, `timing: NOW` — against the synthetic network
-   (`SEED=20260917 COUNT=1000 npm run db:network`).
-2. The real dispatch ran. Five of the 25 candidates received a wave-1 offer.
-3. Every candidate's `matching_events` row was read back: each per-signal
-   score, `final_score`, `eta_minutes`, `straight_distance_km`,
-   `is_on_the_way`. The page's `PROVIDERS` constant is those values.
+   (`npm run db:network -- --seed 20260917 --count 10000 --reset`).
+2. The real dispatch ran. Of 50 candidates considered, the engine scored 43
+   and sent five a wave-1 offer. The seven it did not score were excluded as
+   `location_not_live` before any signal was computed, so they carry no
+   numbers; the 38 it scored but did not offer carry `below_cut`.
+3. Every SCORED candidate's `matching_events` row was read back: each
+   per-signal score, `final_score`, `eta_minutes`, `straight_distance_km`,
+   `is_on_the_way`. The page's `PROVIDERS` constant is those 43 rows.
 4. Profile facts came from `GET /api/providers/{id}` — the same
-   customer-facing endpoint the app calls, including its
-   `ratingBreakdown: null` for a provider with no review rows.
+   customer-facing endpoint the app calls. 41 of the 43 now carry a real
+   `ratingBreakdown`, because the network's ratings are derived from actual
+   `reviews` rows; the two that do not are genuinely new providers with no
+   reviews, and the endpoint answers `null` rather than a 0/0/0/0 that would
+   read as "nobody gave five stars". An earlier recording showed `null` for
+   everyone and review counts in the hundreds — aggregates on the provider
+   record with nothing behind them. The counts here are single and double
+   digits, and each one is a row.
 5. `CATALOG` was read from `categories` and `services`, carrying both names
    per service: the customer's words for the problem, which the classifier and
    every customer screen use, and the provider's name for the work, which the
@@ -64,8 +77,27 @@ the refusal a reviewer gets while anything is outstanding.
 
 ## Refreshing the recording
 
-Re-seed, dispatch a fresh job, and regenerate the two constants from
-`matching_events` and the catalog. The recording is only as current as the
-seed it was taken against, and a rerun of the seeder writes fresh location
-fixes (see `docs/SEED_DATA.md`), which is what makes a fresh dispatch
-possible at all.
+```bash
+npm run db:network -- --seed 20260917 --count 10000 --reset   # fresh fixes
+npm start &                                                    # or npm run dev
+node scripts/record-simulator.mjs
+```
+
+This used to be a paragraph of instructions instead of a script, which is how
+the shipped page came to be describing a 1000-provider network with
+`ratingBreakdown: null` for everyone long after neither was true. **A
+documented manual process is a process that drifts.**
+
+Two things the script will not do quietly. It refuses to write a recording
+whose `Σ score × weight` does not reproduce every recorded `final_score` to
+within 0.05, because reproducing that total is the page's entire claim. And
+it records every candidate the engine *scored*, not only the ones it offered
+— the first version filtered on `excluded_reason is null` and silently
+recorded 5 rows where there should have been 43, dropping exactly the
+`below_cut` candidates that make the thesis visible.
+
+The seeding step is not optional. Demo location fixes go stale after 120
+seconds and the matcher refuses to treat a stale fix as live, so a dispatch
+against a network seeded yesterday returns 50 candidates and zero offers —
+correctly. Re-running the seeder writes fresh fixes (see `docs/SEED_DATA.md`),
+which is what makes a fresh dispatch possible at all.

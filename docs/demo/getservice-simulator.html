@@ -449,7 +449,7 @@ body {
       אין כאן שרת ואין תשלומים — אבל גם אין נתונים מומצאים. השמות, הדירוגים,
       המחירים, המרחקים, זמני ההגעה והניקוד נקראו מ-<code
       style="font-family:var(--mono);font-size:12px">matching_events</code>
-      אחרי שיגור אמיתי של מנוע ההתאמה על רשת ההדגמה (1,000 מקצוענים מסומנים
+      אחרי שיגור אמיתי של מנוע ההתאמה על רשת ההדגמה (10,000 מקצוענים מסומנים
       <code style="font-family:var(--mono);font-size:12px">is_demo</code>).
       הסיווג של התיאור שתקלידו מחושב כאן, באותם כללים שבשרת. אף אחד
       מהמקצוענים כאן אינו אדם אמיתי.
@@ -517,18 +517,30 @@ body {
    Every row below was read back out of the database after a real job was
    dispatched through the real engine — description "יש לי נזילה מתחת לכיור"
    from the seeded customer's fix at 32.0742, 34.7749, on the synthetic
-   network of 1,000 providers (SEED=20260917). The names, ratings, review
+   network of 10,000 providers (SEED=20260917). The names, ratings, review
    counts, completed jobs, years, prices, distances, ETAs and every
    per-signal score are the values the engine actually produced and wrote to
    `matching_events`; `recordedScore` is its own final_score. Nothing here is
    invented, and nothing here is a real person.
 
-   The first five received a wave-1 offer simultaneously — the first to
-   accept takes the job. The last two ranked below the wave-1 cut, and are
-   included because they are the honest illustration of the thesis: גלית
-   הלוי is nearer (2.79 km), rated higher (4.86 of 2,292) and far more
-   experienced (27 years, 2,741 jobs) than שרה הרוש, and still ranks below
-   her — because שרה is already driving this way and גלית is not.
+   43 of the 50 candidates the engine considered are here — every one it
+   scored. The other seven were excluded before scoring with
+   `location_not_live`, so they have no numbers to show. Five received a
+   wave-1 offer simultaneously; the first to accept takes the job. The
+   remaining 38 carry `below_cut` and are kept precisely because they are
+   where the thesis is visible.
+
+   The clearest pair in this recording: טל אזולאי is 0.13 km from the
+   customer — thirteen times nearer than רועי אדרי at 1.69 km — rated higher
+   (4.88 of 24 against 4.33 of 12) and more experienced (18 years and 31 jobs
+   against 15 and 16). רועי still outranks her by 10.83 points, because the
+   route-opportunity signal reads 98.40 for him and 44.55 for her. He is
+   already driving this way. She is not.
+
+   Review counts here are small — six, twelve, twenty-four — and that is the
+   honest number. Each one is backed by real rows in `reviews`; the large
+   aggregates an earlier recording showed were columns with nothing behind
+   them.
 
    `online`  — the realtime switch right now.
    `hours`   — a declared weekly window, or null for "never published hours".
@@ -536,103 +548,607 @@ body {
    =========================================================================== */
 const PROVIDERS = [
   {
-    id: 'sara', name: 'שרה הרוש', biz: 'שרה הרוש — מיזוג אוויר',
-    rating: 4.57, reviews: 582, jobs: 716, years: 6, respSec: 24,
-    price: 335, km: 2.53, online: true, hours: '00:00–23:59',
-    onway: true, etaMin: 10.9, offered: true,
+    id: "p01_קרן", name: "קרן פרידמן", biz: "קרן פרידמן — אינסטלציה",
+    rating: 4.67, reviews: 6, jobs: 11, years: 7, respSec: 126,
+    price: null, km: 0.24, online: true, hours: null,
+    onway: true, etaMin: 3.8, offered: true,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 94.08, skillMatch: 100.00, availability: 85.12,
-           eta: 86.82, reliability: 87.43, rating: 78.44,
-           price: 24.14, experience: 74.80 },
-    recordedScore: 86.50,
-    bio: 'עבודה נקייה עם אחריות על כל תיקון.',
-    services: [['נזילה מתחת לכיור', 335], ['החלפת צנרת', 2065], ['החלפת דוד', 1605], ['פתיחת סתימה בביוב ראשי', 745], ['פיצוץ צינור', 550], ['איתור נזילה', 515]],
+    sig: { routeOpportunity: 99.38, skillMatch: 100, availability: 75.27,
+           eta: 100, reliability: 72.58, rating: 78.19,
+           price: 50, experience: 50.63 },
+    recordedScore: 86.24,
+    bio: "",
+    services: [["החלפת ברזים",230],["החלפת דודים",1350],["החלפת צנרת",1735],["חיבור מדיח ומכונת כביסה",270],["פתיחת סתימות",310],["תיקון פיצוץ צינור",465]],
+    ratingBreakdown: {"five":4,"four":2,"three":0,"low":0}, reviewsText: []
+  },
+  {
+    id: "p02_רועי", name: "רועי אדרי", biz: "רועי אדרי — אינסטלציה",
+    rating: 4.33, reviews: 12, jobs: 16, years: 15, respSec: 35,
+    price: 300, km: 1.69, online: true, hours: null,
+    onway: true, etaMin: 8.3, offered: true,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 98.4, skillMatch: 100, availability: 78.27,
+           eta: 92.64, reliability: 75.1, rating: 70.36,
+           price: 44.25, experience: 73.49 },
+    recordedScore: 86.04,
+    bio: "מתמחה בתקלות דחופות, זמין גם בשעות לא שגרתיות.",
+    services: [["איתור נזילות",460],["החלפת ברזים",245],["החלפת דודים",1440],["חיבור מדיח ומכונת כביסה",290],["פתיחת סתימות",330],["פתיחת סתימות בביוב ראשי",670],["תיקון דודים",400],["תיקון נזילות בכיור",300],["תיקון פיצוץ צינור",495]],
+    ratingBreakdown: {"five":5,"four":6,"three":1,"low":0}, reviewsText: []
+  },
+  {
+    id: "p03_מאור", name: "מאור הלוי", biz: "",
+    rating: 4.4, reviews: 15, jobs: 18, years: 20, respSec: 131,
+    price: 295, km: 1.88, online: true, hours: null,
+    onway: true, etaMin: 8.9, offered: true,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 98.43, skillMatch: 100, availability: 71.27,
+           eta: 91.27, reliability: 71.4, rating: 72,
+           price: 47.13, experience: 73.68 },
+    recordedScore: 84.81,
+    bio: "עבודה נקייה עם אחריות על כל תיקון.",
+    services: [["איתור נזילות",455],["החלפת ברזים",245],["החלפת דודים",1420],["החלפת צנרת",1825],["חיבור מדיח ומכונת כביסה",285],["פתיחת סתימות",325],["פתיחת סתימות בביוב ראשי",660],["תיקון אסלות",285],["תיקון דודים",395],["תיקון נזילות בכיור",295],["תיקון פיצוץ צינור",485]],
+    ratingBreakdown: {"five":8,"four":5,"three":2,"low":0}, reviewsText: []
+  },
+  {
+    id: "p04_מאיה", name: "מאיה אזולאי", biz: "",
+    rating: 4.64, reviews: 11, jobs: 17, years: 2, respSec: 57,
+    price: 290, km: 0.95, online: true, hours: null,
+    onway: true, etaMin: 6, offered: true,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 98.93, skillMatch: 100, availability: 57.77,
+           eta: 97.84, reliability: 75.18, rating: 78.67,
+           price: 50, experience: 37.19 },
+    recordedScore: 82.93,
+    bio: "מתמחה בתקלות דחופות, זמין גם בשעות לא שגרתיות.",
+    services: [["איתור נזילות",450],["החלפת ברזים",240],["החלפת דודים",1405],["החלפת צנרת",1805],["חיבור מדיח ומכונת כביסה",280],["פתיחת סתימות",320],["תיקון אסלות",280],["תיקון דודים",390],["תיקון נזילות בכיור",290],["תיקון פיצוץ צינור",480]],
+    ratingBreakdown: {"five":7,"four":4,"three":0,"low":0}, reviewsText: []
+  },
+  {
+    id: "p05_שלמה", name: "שלמה עמר", biz: "",
+    rating: 4.5, reviews: 16, jobs: 19, years: 18, respSec: 147,
+    price: 305, km: 0.39, online: true, hours: null,
+    onway: true, etaMin: 4.2, offered: true,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 94.53, skillMatch: 100, availability: 53.27,
+           eta: 100, reliability: 74.37, rating: 75,
+           price: 41.38, experience: 73.77 },
+    recordedScore: 82.32,
+    bio: "עבודה נקייה עם אחריות על כל תיקון.",
+    services: [["איתור נזילות",475],["החלפת דודים",1475],["החלפת צנרת",1895],["תיקון אסלות",295],["תיקון דודים",410],["תיקון נזילות בכיור",305],["תיקון פיצוץ צינור",505]],
+    ratingBreakdown: {"five":8,"four":8,"three":0,"low":0}, reviewsText: []
+  },
+  {
+    id: "p06_בנימין", name: "בנימין ביטון", biz: "",
+    rating: 4.53, reviews: 15, jobs: 17, years: 18, respSec: 54,
+    price: 290, km: 1.97, online: true, hours: null,
+    onway: true, etaMin: 9.1, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 91.18, skillMatch: 100, availability: 61.77,
+           eta: 90.71, reliability: 72.79, rating: 75.9,
+           price: 50, experience: 73.59 },
+    recordedScore: 82.18,
+    bio: "עובד באזור שנים, שירות מהיר ואמין.",
+    services: [["איתור נזילות",450],["החלפת ברזים",240],["החלפת דודים",1405],["חיבור מדיח ומכונת כביסה",280],["פתיחת סתימות",320],["פתיחת סתימות בביוב ראשי",655],["תיקון דודים",390],["תיקון נזילות בכיור",290],["תיקון פיצוץ צינור",480]],
+    ratingBreakdown: {"five":8,"four":7,"three":0,"low":0}, reviewsText: []
+  },
+  {
+    id: "p07_עידן", name: "עידן רביבו", biz: "עידן רביבו — אינסטלציה",
+    rating: 4.67, reviews: 6, jobs: 10, years: 10, respSec: 124,
+    price: 280, km: 1.31, online: true, hours: null,
+    onway: true, etaMin: 7.1, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 94.23, skillMatch: 100, availability: 58.77,
+           eta: 95.32, reliability: 66.67, rating: 78.19,
+           price: 55.75, experience: 58.93 },
+    recordedScore: 82.13,
+    bio: "",
+    services: [["איתור נזילות",435],["החלפת דודים",1350],["החלפת צנרת",1740],["פתיחת סתימות",310],["פתיחת סתימות בביוב ראשי",630],["תיקון אסלות",270],["תיקון דודים",375],["תיקון נזילות בכיור",280],["תיקון פיצוץ צינור",465]],
+    ratingBreakdown: {"five":4,"four":2,"three":0,"low":0}, reviewsText: []
+  },
+  {
+    id: "p08_אבי", name: "אבי בוזגלו", biz: "",
+    rating: 4.14, reviews: 7, jobs: 10, years: 7, respSec: 56,
+    price: null, km: 1.32, online: true, hours: null,
+    onway: true, etaMin: 7.1, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 92.98, skillMatch: 100, availability: 60.77,
+           eta: 95.23, reliability: 67.94, rating: 67.59,
+           price: 50, experience: 50.53 },
+    recordedScore: 80.46,
+    bio: "עובד באזור שנים, שירות מהיר ואמין.",
+    services: [["החלפת ברזים",235],["החלפת צנרת",1750],["חיבור מדיח ומכונת כביסה",270],["פתיחת סתימות בביוב ראשי",630],["תיקון דודים",380],["תיקון פיצוץ צינור",465]],
+    ratingBreakdown: {"five":1,"four":6,"three":0,"low":0}, reviewsText: []
+  },
+  {
+    id: "p09_תומר", name: "תומר שפירא", biz: "",
+    rating: 4.33, reviews: 3, jobs: 4, years: 2, respSec: 177,
+    price: 285, km: 1.76, online: true, hours: null,
+    onway: true, etaMin: 8.5, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 95.75, skillMatch: 100, availability: 59.27,
+           eta: 92.15, reliability: 64.83, rating: 73.04,
+           price: 52.87, experience: 35.97 },
+    recordedScore: 80.27,
+    bio: "מתמחה בתקלות דחופות, זמין גם בשעות לא שגרתיות.",
+    services: [["איתור נזילות",440],["החלפת ברזים",235],["החלפת דודים",1375],["החלפת צנרת",1770],["חיבור מדיח ומכונת כביסה",275],["פתיחת סתימות",315],["פתיחת סתימות בביוב ראשי",640],["תיקון אסלות",275],["תיקון דודים",385],["תיקון נזילות בכיור",285],["תיקון פיצוץ צינור",470]],
+    ratingBreakdown: {"five":1,"four":2,"three":0,"low":0}, reviewsText: []
+  },
+  {
+    id: "p10_עומר", name: "עומר זוהר", biz: "",
+    rating: 4.41, reviews: 17, jobs: 21, years: 9, respSec: 116,
+    price: 305, km: 1.8, online: true, hours: null,
+    onway: true, etaMin: 8.6, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 99.75, skillMatch: 100, availability: 40.27,
+           eta: 91.88, reliability: 69.63, rating: 72.17,
+           price: 41.38, experience: 57.16 },
+    recordedScore: 79.27,
+    bio: "עובד באזור שנים, שירות מהיר ואמין.",
+    services: [["איתור נזילות",475],["החלפת ברזים",255],["החלפת דודים",1475],["החלפת צנרת",1895],["חיבור מדיח ומכונת כביסה",295],["פתיחת סתימות",335],["פתיחת סתימות בביוב ראשי",685],["תיקון אסלות",295],["תיקון נזילות בכיור",305],["תיקון פיצוץ צינור",505]],
+    ratingBreakdown: {"five":8,"four":8,"three":1,"low":0}, reviewsText: []
+  },
+  {
+    id: "p11_אסתר", name: "אסתר נאמן", biz: "אסתר נאמן — אינסטלציה",
+    rating: 4.55, reviews: 22, jobs: 32, years: 20, respSec: 152,
+    price: 335, km: 0.55, online: true, hours: null,
+    onway: true, etaMin: 4.7, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 91.8, skillMatch: 100, availability: 42.77,
+           eta: 100, reliability: 72.01, rating: 76.72,
+           price: 24.14, experience: 74.99 },
+    recordedScore: 79.2,
+    bio: "עבודה נקייה עם אחריות על כל תיקון.",
+    services: [["איתור נזילות",520],["החלפת צנרת",2075],["חיבור מדיח ומכונת כביסה",325],["פתיחת סתימות בביוב ראשי",750],["תיקון אסלות",325],["תיקון דודים",450],["תיקון נזילות בכיור",335],["התקנת מזגנים",1035],["טיפול בריחות מהמזגן",325],["מילוי גז למזגן",485],["תיקון מזגן שלא מקרר",390],["תיקון מזגן שלא נדלק",370],["תיקון מיני מרכזי",555],["תיקון נזילות ממזגן",345]],
+    ratingBreakdown: {"five":13,"four":8,"three":1,"low":0}, reviewsText: []
+  },
+  {
+    id: "p12_חיים", name: "חיים נגר", biz: "חיים נגר — אינסטלציה",
+    rating: 4, reviews: 1, jobs: 2, years: 1, respSec: 111,
+    price: null, km: 0.2, online: true, hours: null,
+    onway: true, etaMin: 3.6, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 99.75, skillMatch: 100, availability: 44.27,
+           eta: 100, reliability: 60, rating: 72.73,
+           price: 50, experience: 32.99 },
+    recordedScore: 79,
+    bio: "",
+    services: [["איתור נזילות",430],["החלפת צנרת",1725],["חיבור מדיח ומכונת כביסה",270],["פתיחת סתימות",305],["תיקון אסלות",270],["תיקון דודים",375],["טיפול בריחות מהמזגן",270],["מילוי גז למזגן",400],["ניקוי וטיפול תקופתי למזגן",250],["פירוק והתקנת מזגנים",1055],["תיקון מזגן שלא מקרר",325],["תיקון מזגן שלא נדלק",305],["תיקון מיני מרכזי",460],["תיקון נזילות ממזגן",285]],
+    ratingBreakdown: {"five":0,"four":1,"three":0,"low":0}, reviewsText: []
+  },
+  {
+    id: "p13_נתן", name: "נתן שלום", biz: "נתן שלום — אינסטלציה",
+    rating: null, reviews: 0, jobs: 0, years: 0, respSec: null,
+    price: 270, km: 1.89, online: true, hours: null,
+    onway: true, etaMin: 8.9, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 93.25, skillMatch: 100, availability: 62.77,
+           eta: 91.25, reliability: 60, rating: 60,
+           price: 61.49, experience: 30 },
+    recordedScore: 78.43,
+    bio: "",
+    services: [["איתור נזילות",415],["החלפת ברזים",220],["החלפת דודים",1295],["החלפת צנרת",1665],["חיבור מדיח ומכונת כביסה",260],["פתיחת סתימות",295],["פתיחת סתימות בביוב ראשי",600],["תיקון אסלות",260],["תיקון דודים",360],["תיקון נזילות בכיור",270],["תיקון פיצוץ צינור",445]],
     ratingBreakdown: null, reviewsText: []
   },
   {
-    id: 'orly', name: 'אורלי מלכה', biz: '',
-    rating: 4.77, reviews: 502, jobs: 579, years: 20, respSec: 175,
-    price: 300, km: 3.76, online: true, hours: '08:00–18:00',
-    onway: true, etaMin: 14.7, offered: true,
+    id: "p14_איתי", name: "איתי שפירא", biz: "איתי שפירא — אינסטלציה",
+    rating: 4.74, reviews: 19, jobs: 28, years: 9, respSec: 133,
+    price: 295, km: 1.21, online: true, hours: null,
+    onway: false, etaMin: 6.8, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 97.10, skillMatch: 100.00, availability: 71.12,
-           eta: 78.20, reliability: 75.97, rating: 88.24,
-           price: 44.25, experience: 100.00 },
-    recordedScore: 86.40,
-    bio: 'ותק רב בתחום, מגיע עם כל הציוד הנדרש.',
-    services: [['נזילה מתחת לכיור', 300], ['החלפת צנרת', 1865], ['פתיחת סתימה בביוב ראשי', 675], ['פיצוץ צינור', 495], ['איתור נזילה', 465], ['סתימה בצינור', 330]],
+    sig: { routeOpportunity: 64.44, skillMatch: 100, availability: 70.77,
+           eta: 95.97, reliability: 75.74, rating: 82.86,
+           price: 47.13, experience: 57.81 },
+    recordedScore: 77.43,
+    bio: "מתמחה בתקלות דחופות, זמין גם בשעות לא שגרתיות.",
+    services: [["איתור נזילות",460],["החלפת ברזים",245],["החלפת צנרת",1835],["חיבור מדיח ומכונת כביסה",285],["פתיחת סתימות",325],["פתיחת סתימות בביוב ראשי",665],["תיקון נזילות בכיור",295]],
+    ratingBreakdown: {"five":14,"four":5,"three":0,"low":0}, reviewsText: []
+  },
+  {
+    id: "p15_טל", name: "טל אזולאי", biz: "",
+    rating: 4.88, reviews: 24, jobs: 31, years: 18, respSec: 78,
+    price: null, km: 0.13, online: true, hours: null,
+    onway: false, etaMin: 3.4, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 44.55, skillMatch: 100, availability: 77.27,
+           eta: 100, reliability: 73.93, rating: 88.41,
+           price: 50, experience: 74.89 },
+    recordedScore: 75.21,
+    bio: "",
+    services: [["איתור נזילות",520],["החלפת ברזים",280],["החלפת דודים",1620],["החלפת צנרת",2085],["פתיחת סתימות",370],["פתיחת סתימות בביוב ראשי",755],["תיקון אסלות",325],["תיקון פיצוץ צינור",555]],
+    ratingBreakdown: {"five":21,"four":3,"three":0,"low":0}, reviewsText: []
+  },
+  {
+    id: "p16_נדב", name: "נדב יוספי", biz: "נדב יוספי — אינסטלציה",
+    rating: 4.5, reviews: 18, jobs: 24, years: 7, respSec: 12,
+    price: 300, km: 0.97, online: true, hours: null,
+    onway: false, etaMin: 6, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 41.73, skillMatch: 100, availability: 78.77,
+           eta: 97.71, reliability: 88.09, rating: 75,
+           price: 44.25, experience: 51.84 },
+    recordedScore: 73.13,
+    bio: "עובד באזור שנים, שירות מהיר ואמין.",
+    services: [["איתור נזילות",465],["החלפת ברזים",245],["החלפת דודים",1445],["החלפת צנרת",1855],["חיבור מדיח ומכונת כביסה",290],["פתיחת סתימות",330],["פתיחת סתימות בביוב ראשי",670],["תיקון נזילות בכיור",300],["תיקון פיצוץ צינור",495]],
+    ratingBreakdown: {"five":10,"four":7,"three":1,"low":0}, reviewsText: []
+  },
+  {
+    id: "p17_משה", name: "משה אדרי", biz: "",
+    rating: 4.44, reviews: 16, jobs: 20, years: 7, respSec: 75,
+    price: null, km: 0.28, online: true, hours: null,
+    onway: false, etaMin: 3.9, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 44.07, skillMatch: 100, availability: 69.77,
+           eta: 100, reliability: 69.12, rating: 73.15,
+           price: 50, experience: 51.47 },
+    recordedScore: 70.78,
+    bio: "עובד באזור שנים, שירות מהיר ואמין.",
+    services: [["איתור נזילות",435],["החלפת ברזים",235],["החלפת דודים",1360],["החלפת צנרת",1745],["חיבור מדיח ומכונת כביסה",270],["פתיחת סתימות",310],["פתיחת סתימות בביוב ראשי",630],["תיקון דודים",380],["תיקון פיצוץ צינור",465],["התקנת מזגנים",875],["טיפול בריחות מהמזגן",270],["מילוי גז למזגן",405],["ניקוי וטיפול תקופתי למזגן",250],["פירוק והתקנת מזגנים",1065],["תיקון מזגן שלא מקרר",330],["תיקון מזגן שלא נדלק",310]],
+    ratingBreakdown: {"five":7,"four":9,"three":0,"low":0}, reviewsText: []
+  },
+  {
+    id: "p18_זיו", name: "זיו סבן", biz: "זיו סבן — אינסטלציה",
+    rating: 4.31, reviews: 13, jobs: 18, years: 5, respSec: 76,
+    price: 300, km: 0.55, online: true, hours: null,
+    onway: false, etaMin: 4.7, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 43.14, skillMatch: 100, availability: 75.27,
+           eta: 100, reliability: 71.4, rating: 69.63,
+           price: 44.25, experience: 45.68 },
+    recordedScore: 70.68,
+    bio: "ותק רב בתחום, מגיע עם כל הציוד הנדרש.",
+    services: [["איתור נזילות",460],["החלפת ברזים",245],["החלפת דודים",1435],["פתיחת סתימות",330],["תיקון אסלות",285],["תיקון דודים",400],["תיקון נזילות בכיור",300],["תיקון פיצוץ צינור",490]],
+    ratingBreakdown: {"five":5,"four":7,"three":1,"low":0}, reviewsText: []
+  },
+  {
+    id: "p19_אורלי", name: "אורלי נגר", biz: "",
+    rating: 4.78, reviews: 18, jobs: 20, years: 14, respSec: 58,
+    price: 310, km: 1.46, online: true, hours: null,
+    onway: false, etaMin: 7.6, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 40.07, skillMatch: 100, availability: 61.77,
+           eta: 94.26, reliability: 78.52, rating: 84,
+           price: 38.51, experience: 71.07 },
+    recordedScore: 70.44,
+    bio: "מתמחה בתקלות דחופות, זמין גם בשעות לא שגרתיות.",
+    services: [["איתור נזילות",480],["החלפת ברזים",255],["החלפת דודים",1490],["החלפת צנרת",1920],["חיבור מדיח ומכונת כביסה",300],["פתיחת סתימות",340],["פתיחת סתימות בביוב ראשי",695],["תיקון אסלות",300],["תיקון דודים",415],["תיקון נזילות בכיור",310],["תיקון פיצוץ צינור",510]],
+    ratingBreakdown: {"five":14,"four":4,"three":0,"low":0}, reviewsText: []
+  },
+  {
+    id: "p20_רועי", name: "רועי ברקוביץ", biz: "",
+    rating: 4.43, reviews: 14, jobs: 19, years: 16, respSec: 133,
+    price: 330, km: 1.4, online: true, hours: null,
+    onway: false, etaMin: 7.4, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 40.28, skillMatch: 100, availability: 75.27,
+           eta: 94.69, reliability: 71.34, rating: 72.96,
+           price: 27.01, experience: 73.77 },
+    recordedScore: 70.3,
+    bio: "עובד באזור שנים, שירות מהיר ואמין.",
+    services: [["החלפת דודים",1585],["חיבור מדיח ומכונת כביסה",315],["פתיחת סתימות בביוב ראשי",735],["תיקון דודים",440],["תיקון נזילות בכיור",330],["תיקון פיצוץ צינור",545]],
+    ratingBreakdown: {"five":6,"four":8,"three":0,"low":0}, reviewsText: []
+  },
+  {
+    id: "p21_מאיה", name: "מאיה שמש", biz: "",
+    rating: 4.86, reviews: 14, jobs: 19, years: 8, respSec: 39,
+    price: 290, km: 1.96, online: true, hours: null,
+    onway: false, etaMin: 9.1, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 38.38, skillMatch: 100, availability: 65.27,
+           eta: 90.75, reliability: 78.02, rating: 85.5,
+           price: 50, experience: 54.17 },
+    recordedScore: 70.02,
+    bio: "ותק רב בתחום, מגיע עם כל הציוד הנדרש.",
+    services: [["איתור נזילות",450],["החלפת ברזים",240],["החלפת דודים",1395],["החלפת צנרת",1795],["חיבור מדיח ומכונת כביסה",280],["פתיחת סתימות",320],["פתיחת סתימות בביוב ראשי",645],["תיקון אסלות",280],["תיקון דודים",390],["תיקון נזילות בכיור",290],["תיקון פיצוץ צינור",480]],
+    ratingBreakdown: {"five":12,"four":2,"three":0,"low":0}, reviewsText: []
+  },
+  {
+    id: "p22_אלון", name: "אלון שמש", biz: "אלון שמש — אינסטלציה",
+    rating: 4.57, reviews: 7, jobs: 12, years: 9, respSec: 140,
+    price: 290, km: 2.05, online: true, hours: null,
+    onway: false, etaMin: 9.4, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 38.08, skillMatch: 100, availability: 70.27,
+           eta: 90.12, reliability: 77.5, rating: 76.44,
+           price: 50, experience: 56.32 },
+    recordedScore: 69.78,
+    bio: "ותק רב בתחום, מגיע עם כל הציוד הנדרש.",
+    services: [["איתור נזילות",450],["החלפת ברזים",240],["החלפת דודים",1400],["החלפת צנרת",1800],["פתיחת סתימות",320],["תיקון אסלות",280],["תיקון נזילות בכיור",290]],
+    ratingBreakdown: {"five":5,"four":1,"three":1,"low":0}, reviewsText: []
+  },
+  {
+    id: "p23_בנימין", name: "בנימין טל", biz: "",
+    rating: 4.3, reviews: 10, jobs: 14, years: 9, respSec: 79,
+    price: 275, km: 1.51, online: true, hours: null,
+    onway: false, etaMin: 7.7, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 39.91, skillMatch: 100, availability: 70.77,
+           eta: 93.93, reliability: 69.63, rating: 70,
+           price: 58.62, experience: 56.51 },
+    recordedScore: 69.71,
+    bio: "מתמחה בתקלות דחופות, זמין גם בשעות לא שגרתיות.",
+    services: [["איתור נזילות",425],["החלפת דודים",1320],["החלפת צנרת",1700],["חיבור מדיח ומכונת כביסה",265],["פתיחת סתימות",300],["תיקון נזילות בכיור",275],["תיקון פיצוץ צינור",455]],
+    ratingBreakdown: {"five":4,"four":5,"three":1,"low":0}, reviewsText: []
+  },
+  {
+    id: "p24_אסף", name: "אסף בוזגלו", biz: "",
+    rating: 4.27, reviews: 11, jobs: 13, years: 12, respSec: 45,
+    price: 325, km: 0.96, online: true, hours: null,
+    onway: false, etaMin: 6, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 41.76, skillMatch: 100, availability: 66.27,
+           eta: 97.77, reliability: 77.79, rating: 68.98,
+           price: 29.89, experience: 64.81 },
+    recordedScore: 69.57,
+    bio: "עובד באזור שנים, שירות מהיר ואמין.",
+    services: [["איתור נזילות",505],["החלפת ברזים",270],["החלפת דודים",1570],["החלפת צנרת",2020],["פתיחת סתימות בביוב ראשי",730],["תיקון דודים",440],["תיקון נזילות בכיור",325],["תיקון פיצוץ צינור",540]],
+    ratingBreakdown: {"five":3,"four":8,"three":0,"low":0}, reviewsText: []
+  },
+  {
+    id: "p25_תומר", name: "תומר גולן", biz: "",
+    rating: 4.73, reviews: 15, jobs: 22, years: 16, respSec: 53,
+    price: 305, km: 2.17, online: true, hours: null,
+    onway: false, etaMin: 9.8, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 37.67, skillMatch: 100, availability: 64.27,
+           eta: 89.27, reliability: 71.88, rating: 81.9,
+           price: 41.38, experience: 74.05 },
+    recordedScore: 69.14,
+    bio: "ותק רב בתחום, מגיע עם כל הציוד הנדרש.",
+    services: [["החלפת ברזים",250],["החלפת צנרת",1885],["חיבור מדיח ומכונת כביסה",295],["פתיחת סתימות",335],["תיקון אסלות",295],["תיקון נזילות בכיור",305],["תיקון פיצוץ צינור",505]],
+    ratingBreakdown: {"five":11,"four":4,"three":0,"low":0}, reviewsText: []
+  },
+  {
+    id: "p26_זיו", name: "זיו גרינברג", biz: "זיו גרינברג — אינסטלציה",
+    rating: 4.69, reviews: 13, jobs: 21, years: 10, respSec: 48,
+    price: 290, km: 2.32, online: true, hours: null,
+    onway: false, etaMin: 10.2, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 37.19, skillMatch: 100, availability: 65.27,
+           eta: 88.28, reliability: 76.02, rating: 80.37,
+           price: 50, experience: 59.96 },
+    recordedScore: 69.05,
+    bio: "ותק רב בתחום, מגיע עם כל הציוד הנדרש.",
+    services: [["איתור נזילות",450],["החלפת ברזים",240],["החלפת דודים",1405],["חיבור מדיח ומכונת כביסה",280],["תיקון דודים",390],["תיקון נזילות בכיור",290],["תיקון פיצוץ צינור",480]],
+    ratingBreakdown: {"five":10,"four":2,"three":1,"low":0}, reviewsText: []
+  },
+  {
+    id: "p27_יוסי", name: "יוסי רביבו", biz: "יוסי רביבו — אינסטלציה",
+    rating: 4.36, reviews: 14, jobs: 16, years: 16, respSec: 139,
+    price: 300, km: 1, online: true, hours: null,
+    onway: false, etaMin: 6.1, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 41.63, skillMatch: 100, availability: 55.27,
+           eta: 97.48, reliability: 70.3, rating: 70.92,
+           price: 44.25, experience: 73.49 },
+    recordedScore: 68.46,
+    bio: "",
+    services: [["איתור נזילות",465],["החלפת ברזים",250],["החלפת דודים",1450],["החלפת צנרת",1865],["חיבור מדיח ומכונת כביסה",290],["פתיחת סתימות",330],["פתיחת סתימות בביוב ראשי",675],["תיקון אסלות",290],["תיקון דודים",405],["תיקון נזילות בכיור",300],["תיקון פיצוץ צינור",500]],
+    ratingBreakdown: {"five":7,"four":5,"three":2,"low":0}, reviewsText: []
+  },
+  {
+    id: "p28_חיים", name: "חיים קדם", biz: "חיים קדם — אינסטלציה",
+    rating: 4.71, reviews: 24, jobs: 29, years: 22, respSec: 154,
+    price: 340, km: 2.41, online: true, hours: null,
+    onway: false, etaMin: 10.5, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 36.87, skillMatch: 100, availability: 66.27,
+           eta: 87.6, reliability: 73.45, rating: 82.41,
+           price: 21.26, experience: 74.71 },
+    recordedScore: 68.3,
+    bio: "עבודה נקייה עם אחריות על כל תיקון.",
+    services: [["איתור נזילות",525],["החלפת ברזים",280],["החלפת דודים",1640],["החלפת צנרת",2105],["חיבור מדיח ומכונת כביסה",330],["פתיחת סתימות בביוב ראשי",760],["תיקון דודים",455],["תיקון נזילות בכיור",340],["תיקון פיצוץ צינור",560],["התקנת מזגנים",1055],["פירוק והתקנת מזגנים",1285],["תיקון מזגן שלא נדלק",375],["תיקון מיני מרכזי",560],["תיקון נזילות ממזגן",350]],
+    ratingBreakdown: {"five":17,"four":7,"three":0,"low":0}, reviewsText: []
+  },
+  {
+    id: "p29_דוד", name: "דוד לוינסון", biz: "",
+    rating: 4.29, reviews: 7, jobs: 13, years: 7, respSec: 122,
+    price: null, km: 1.88, online: true, hours: null,
+    onway: false, etaMin: 8.9, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 50.66, skillMatch: 100, availability: 46.27,
+           eta: 91.32, reliability: 73.02, rating: 70.68,
+           price: 50, experience: 50.81 },
+    recordedScore: 68.15,
+    bio: "עובד באזור שנים, שירות מהיר ואמין.",
+    services: [["החלפת ברזים",255],["החלפת צנרת",1930],["חיבור מדיח ומכונת כביסה",300],["פתיחת סתימות",345],["תיקון אסלות",300],["תיקון פיצוץ צינור",515]],
+    ratingBreakdown: {"five":2,"four":5,"three":0,"low":0}, reviewsText: []
+  },
+  {
+    id: "p30_מלכה", name: "מלכה סבן", biz: "מלכה סבן — אינסטלציה",
+    rating: 4.43, reviews: 7, jobs: 9, years: 12, respSec: 96,
+    price: null, km: 1.31, online: true, hours: null,
+    onway: false, etaMin: 7.1, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 40.6, skillMatch: 100, availability: 58.27,
+           eta: 95.37, reliability: 65.36, rating: 73.56,
+           price: 50, experience: 64.44 },
+    recordedScore: 68.04,
+    bio: "ותק רב בתחום, מגיע עם כל הציוד הנדרש.",
+    services: [["איתור נזילות",445],["החלפת ברזים",235],["החלפת צנרת",1775],["חיבור מדיח ומכונת כביסה",275],["פתיחת סתימות",315],["פתיחת סתימות בביוב ראשי",640],["תיקון דודים",385],["תיקון פיצוץ צינור",475]],
+    ratingBreakdown: {"five":4,"four":2,"three":1,"low":0}, reviewsText: []
+  },
+  {
+    id: "p31_נועם", name: "נועם אסולין", biz: "",
+    rating: 4.4, reviews: 5, jobs: 9, years: 8, respSec: 19,
+    price: null, km: 2.16, online: true, hours: null,
+    onway: false, etaMin: 9.7, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 37.73, skillMatch: 100, availability: 59.27,
+           eta: 89.38, reliability: 78.4, rating: 73.33,
+           price: 50, experience: 53.24 },
+    recordedScore: 67.6,
+    bio: "עבודה נקייה עם אחריות על כל תיקון.",
+    services: [["איתור נזילות",435],["החלפת דודים",1360],["החלפת צנרת",1750],["חיבור מדיח ומכונת כביסה",270],["פתיחת סתימות",310],["פתיחת סתימות בביוב ראשי",630],["תיקון אסלות",270]],
+    ratingBreakdown: {"five":3,"four":1,"three":1,"low":0}, reviewsText: []
+  },
+  {
+    id: "p32_בנימין", name: "בנימין אזולאי", biz: "",
+    rating: 4.5, reviews: 6, jobs: 7, years: 10, respSec: 92,
+    price: 290, km: 1.87, online: true, hours: null,
+    onway: false, etaMin: 8.8, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 38.67, skillMatch: 100, availability: 62.27,
+           eta: 91.36, reliability: 63.01, rating: 75,
+           price: 50, experience: 58.65 },
+    recordedScore: 67.38,
+    bio: "ותק רב בתחום, מגיע עם כל הציוד הנדרש.",
+    services: [["איתור נזילות",455],["החלפת ברזים",240],["החלפת דודים",1410],["החלפת צנרת",1810],["חיבור מדיח ומכונת כביסה",280],["פתיחת סתימות",320],["פתיחת סתימות בביוב ראשי",655],["תיקון אסלות",280],["תיקון דודים",390],["תיקון נזילות בכיור",290],["תיקון פיצוץ צינור",485]],
+    ratingBreakdown: {"five":3,"four":3,"three":0,"low":0}, reviewsText: []
+  },
+  {
+    id: "p33_עידן", name: "עידן הלוי", biz: "",
+    rating: 4.69, reviews: 16, jobs: 21, years: 14, respSec: 159,
+    price: 295, km: 2.15, online: true, hours: null,
+    onway: false, etaMin: 9.7, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 37.75, skillMatch: 100, availability: 53.27,
+           eta: 89.45, reliability: 69.63, rating: 80.85,
+           price: 47.13, experience: 71.16 },
+    recordedScore: 67.34,
+    bio: "עובד באזור שנים, שירות מהיר ואמין.",
+    services: [["איתור נזילות",460],["החלפת ברזים",245],["החלפת דודים",1430],["פתיחת סתימות",325],["פתיחת סתימות בביוב ראשי",665],["תיקון נזילות בכיור",295],["תיקון פיצוץ צינור",490]],
+    ratingBreakdown: {"five":11,"four":5,"three":0,"low":0}, reviewsText: []
+  },
+  {
+    id: "p34_כפיר", name: "כפיר לוי", biz: "כפיר לוי — אינסטלציה",
+    rating: 4.71, reviews: 7, jobs: 12, years: 11, respSec: 74,
+    price: 270, km: 2.06, online: true, hours: null,
+    onway: false, etaMin: 9.4, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 38.07, skillMatch: 100, availability: 44.77,
+           eta: 90.12, reliability: 77.5, rating: 79.32,
+           price: 61.49, experience: 61.92 },
+    recordedScore: 67.1,
+    bio: "עבודה נקייה עם אחריות על כל תיקון.",
+    services: [["החלפת ברזים",220],["החלפת דודים",1300],["פתיחת סתימות",295],["פתיחת סתימות בביוב ראשי",605],["תיקון אסלות",260],["תיקון דודים",360],["תיקון נזילות בכיור",270],["התקנת מזגנים",835],["טיפול בריחות מהמזגן",260],["מילוי גז למזגן",390],["ניקוי וטיפול תקופתי למזגן",240],["פירוק והתקנת מזגנים",1020],["תיקון מזגן שלא מקרר",315],["תיקון מזגן שלא נדלק",295],["תיקון מיני מרכזי",445],["תיקון נזילות ממזגן",280]],
+    ratingBreakdown: {"five":5,"four":2,"three":0,"low":0}, reviewsText: []
+  },
+  {
+    id: "p35_עמית", name: "עמית רגב", biz: "עמית רגב — אינסטלציה",
+    rating: 4.27, reviews: 11, jobs: 17, years: 12, respSec: 168,
+    price: 280, km: 1.24, online: true, hours: null,
+    onway: false, etaMin: 6.9, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 40.82, skillMatch: 100, availability: 46.27,
+           eta: 95.82, reliability: 70.88, rating: 68.98,
+           price: 55.75, experience: 65.19 },
+    recordedScore: 66.76,
+    bio: "עבודה נקייה עם אחריות על כל תיקון.",
+    services: [["איתור נזילות",430],["החלפת ברזים",230],["החלפת צנרת",1730],["חיבור מדיח ומכונת כביסה",270],["פתיחת סתימות",310],["פתיחת סתימות בביוב ראשי",625],["תיקון אסלות",270],["תיקון דודים",375],["תיקון נזילות בכיור",280]],
+    ratingBreakdown: {"five":5,"four":4,"three":2,"low":0}, reviewsText: []
+  },
+  {
+    id: "p36_מירב", name: "מירב וקנין", biz: "",
+    rating: 4.58, reviews: 12, jobs: 20, years: 12, respSec: 137,
+    price: 295, km: 2, online: true, hours: null,
+    onway: false, etaMin: 9.2, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 38.27, skillMatch: 100, availability: 51.27,
+           eta: 90.53, reliability: 69.12, rating: 77.18,
+           price: 47.13, experience: 65.47 },
+    recordedScore: 66.57,
+    bio: "",
+    services: [["החלפת ברזים",245],["החלפת דודים",1420],["החלפת צנרת",1825],["פתיחת סתימות בביוב ראשי",660],["תיקון אסלות",285],["תיקון נזילות בכיור",295]],
+    ratingBreakdown: {"five":7,"four":5,"three":0,"low":0}, reviewsText: []
+  },
+  {
+    id: "p37_שי", name: "שי מזרחי", biz: "",
+    rating: 5, reviews: 3, jobs: 6, years: 4, respSec: 88,
+    price: 295, km: 2.18, online: true, hours: null,
+    onway: false, etaMin: 9.8, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 42, skillMatch: 100, availability: 43.27,
+           eta: 89.16, reliability: 77.5, rating: 80.77,
+           price: 47.13, experience: 41.76 },
+    recordedScore: 66.18,
+    bio: "ותק רב בתחום, מגיע עם כל הציוד הנדרש.",
+    services: [["החלפת ברזים",245],["החלפת דודים",1425],["החלפת צנרת",1830],["תיקון אסלות",285],["תיקון נזילות בכיור",295],["תיקון פיצוץ צינור",490]],
+    ratingBreakdown: {"five":3,"four":0,"three":0,"low":0}, reviewsText: []
+  },
+  {
+    id: "p38_מיכל", name: "מיכל חדד", biz: "",
+    rating: 4.4, reviews: 10, jobs: 15, years: 2, respSec: 114,
+    price: 280, km: 2.2, online: true, hours: null,
+    onway: false, etaMin: 9.9, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 41.63, skillMatch: 100, availability: 52.27,
+           eta: 89.09, reliability: 69.67, rating: 72.5,
+           price: 55.75, experience: 37 },
+    recordedScore: 66.01,
+    bio: "עובד באזור שנים, שירות מהיר ואמין.",
+    services: [["החלפת ברזים",235],["החלפת צנרת",1750],["חיבור מדיח ומכונת כביסה",270],["פתיחת סתימות",310],["פתיחת סתימות בביוב ראשי",630],["תיקון אסלות",270],["תיקון נזילות בכיור",280]],
+    ratingBreakdown: {"five":5,"four":4,"three":1,"low":0}, reviewsText: []
+  },
+  {
+    id: "p39_אבי", name: "אבי רביבו", biz: "",
+    rating: 4.14, reviews: 7, jobs: 13, years: 5, respSec: 160,
+    price: 300, km: 1.85, online: true, hours: null,
+    onway: false, etaMin: 8.7, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 38.78, skillMatch: 100, availability: 50.77,
+           eta: 91.59, reliability: 73.02, rating: 67.59,
+           price: 44.25, experience: 45.21 },
+    recordedScore: 65.01,
+    bio: "ותק רב בתחום, מגיע עם כל הציוד הנדרש.",
+    services: [["איתור נזילות",465],["החלפת ברזים",250],["החלפת צנרת",1865],["חיבור מדיח ומכונת כביסה",290],["פתיחת סתימות",330],["פתיחת סתימות בביוב ראשי",675],["תיקון נזילות בכיור",300],["תיקון פיצוץ צינור",495]],
+    ratingBreakdown: {"five":2,"four":4,"three":1,"low":0}, reviewsText: []
+  },
+  {
+    id: "p40_משה", name: "משה שפירא", biz: "משה שפירא — אינסטלציה",
+    rating: 4, reviews: 8, jobs: 12, years: 7, respSec: 20,
+    price: 275, km: 2.46, online: true, hours: null,
+    onway: false, etaMin: 10.7, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 36.7, skillMatch: 100, availability: 40.77,
+           eta: 87.27, reliability: 90.23, rating: 63.89,
+           price: 58.62, experience: 50.72 },
+    recordedScore: 64.9,
+    bio: "ותק רב בתחום, מגיע עם כל הציוד הנדרש.",
+    services: [["החלפת ברזים",225],["החלפת דודים",1325],["החלפת צנרת",1705],["פתיחת סתימות",305],["פתיחת סתימות בביוב ראשי",615],["תיקון דודים",370],["תיקון נזילות בכיור",275],["תיקון פיצוץ צינור",455]],
+    ratingBreakdown: {"five":2,"four":4,"three":2,"low":0}, reviewsText: []
+  },
+  {
+    id: "p41_אליהו", name: "אליהו אזולאי", biz: "",
+    rating: 4.56, reviews: 16, jobs: 19, years: 6, respSec: 88,
+    price: 320, km: 1.7, online: true, hours: null,
+    onway: false, etaMin: 8.3, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 39.28, skillMatch: 100, availability: 43.27,
+           eta: 92.62, reliability: 74.37, rating: 76.85,
+           price: 32.76, experience: 48.57 },
+    recordedScore: 64.76,
+    bio: "עובד באזור שנים, שירות מהיר ואמין.",
+    services: [["איתור נזילות",495],["החלפת ברזים",265],["החלפת דודים",1535],["החלפת צנרת",1975],["חיבור מדיח ומכונת כביסה",305],["פתיחת סתימות",350],["פתיחת סתימות בביוב ראשי",715],["תיקון אסלות",305],["תיקון דודים",430],["תיקון נזילות בכיור",320],["תיקון פיצוץ צינור",525]],
+    ratingBreakdown: {"five":10,"four":5,"three":1,"low":0}, reviewsText: []
+  },
+  {
+    id: "p42_נדב", name: "נדב וקנין", biz: "נדב וקנין — אינסטלציה",
+    rating: null, reviews: 0, jobs: 0, years: 1, respSec: null,
+    price: 300, km: 0.47, online: true, hours: null,
+    onway: false, etaMin: 4.5, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 43.43, skillMatch: 100, availability: 49.77,
+           eta: 100, reliability: 60, rating: 60,
+           price: 44.25, experience: 32.8 },
+    recordedScore: 64.18,
+    bio: "עובד באזור שנים, שירות מהיר ואמין.",
+    services: [["איתור נזילות",465],["החלפת ברזים",250],["החלפת דודים",1445],["החלפת צנרת",1860],["פתיחת סתימות בביוב ראשי",670],["תיקון אסלות",290],["תיקון דודים",400],["תיקון נזילות בכיור",300],["תיקון פיצוץ צינור",495],["התקנת מזגנים",930],["טיפול בריחות מהמזגן",290],["מילוי גז למזגן",435],["פירוק והתקנת מזגנים",1135],["תיקון מזגן שלא מקרר",350],["תיקון מזגן שלא נדלק",330],["תיקון נזילות ממזגן",310]],
     ratingBreakdown: null, reviewsText: []
   },
   {
-    id: 'avigail', name: 'אביגיל מזרחי', biz: 'אביגיל מזרחי — אינסטלציה',
-    rating: 4.64, reviews: 345, jobs: 503, years: 6, respSec: 74,
-    price: 305, km: 2.25, online: true, hours: '07:00–20:00',
-    onway: true, etaMin: 10.0, offered: true,
+    id: "p43_יניב", name: "יניב אופיר", biz: "יניב אופיר — אינסטלציה",
+    rating: 4.75, reviews: 4, jobs: 5, years: 2, respSec: 158,
+    price: 285, km: 2, online: true, hours: null,
+    onway: false, etaMin: 9.3, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 99.85, skillMatch: 100.00, availability: 52.62,
-           eta: 88.73, reliability: 77.22, rating: 81.80,
-           price: 41.38, experience: 74.80 },
-    recordedScore: 83.44,
-    bio: 'מתמחה בתקלות דחופות, זמין גם בשעות לא שגרתיות.',
-    services: [['נזילה מתחת לכיור', 305], ['החלפת צנרת', 1900], ['פתיחת סתימה בביוב ראשי', 685], ['פיצוץ צינור', 505], ['בעיה בדוד', 410], ['סתימה בצינור', 340]],
-    ratingBreakdown: null, reviewsText: []
-  },
-  {
-    id: 'natan', name: 'נתן ברששת', biz: 'נתן ברששת — אינסטלציה',
-    rating: null, reviews: 0, jobs: 0, years: 3, respSec: null,
-    price: 285, km: 3.83, online: true, hours: null,
-    onway: true, etaMin: 14.9, offered: true,
-    /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 97.68, skillMatch: 100.00, availability: 76.12,
-           eta: 77.68, reliability: 60.00, rating: 60.00,
-           price: 52.87, experience: 38.40 },
-    recordedScore: 80.17,
-    bio: 'עבודה נקייה עם אחריות על כל תיקון.',
-    services: [['נזילה מתחת לכיור', 285], ['החלפת דוד', 1370], ['פתיחת סתימה בביוב ראשי', 635], ['איתור נזילה', 440], ['סתימה בצינור', 315], ['חיבור מדיח או מכונת כביסה', 275]],
-    ratingBreakdown: null, reviewsText: []
-  },
-  {
-    id: 'ram', name: 'רם בוזגלו', biz: 'רם בוזגלו — אינסטלציה',
-    rating: null, reviews: 0, jobs: 0, years: 2, respSec: null,
-    price: 265, km: 3.20, online: true, hours: '08:00–18:00',
-    onway: true, etaMin: 13.0, offered: true,
-    /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 94.75, skillMatch: 100.00, availability: 66.62,
-           eta: 82.05, reliability: 60.00, rating: 60.00,
-           price: 64.37, experience: 35.60 },
-    recordedScore: 78.88,
-    bio: 'עבודה נקייה עם אחריות על כל תיקון.',
-    services: [['נזילה מתחת לכיור', 265], ['החלפת צנרת', 1640], ['החלפת דוד', 1275], ['פתיחת סתימה בביוב ראשי', 590], ['פיצוץ צינור', 435], ['איתור נזילה', 410]],
-    ratingBreakdown: null, reviewsText: []
-  },
-  {
-    id: 'galit', name: 'גלית הלוי', biz: 'גלית הלוי — אינסטלציה',
-    rating: 4.86, reviews: 2292, jobs: 2741, years: 27, respSec: 117,
-    price: 345, km: 2.79, online: true, hours: '07:00–20:00',
-    onway: false, etaMin: 11.7, offered: false,
-    /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 35.60, skillMatch: 100.00, availability: 82.62,
-           eta: 84.97, reliability: 75.83, rating: 92.92,
-           price: 18.39, experience: 100.00 },
-    recordedScore: 72.58,
-    bio: 'ותק רב בתחום, מגיע עם כל הציוד הנדרש.',
-    services: [['נזילה מתחת לכיור', 345], ['החלפת צנרת', 2130], ['החלפת דוד', 1655], ['פתיחת סתימה בביוב ראשי', 770], ['בעיה בדוד', 460], ['סתימה בצינור', 380]],
-    ratingBreakdown: null, reviewsText: []
-  },
-  {
-    id: 'sigal', name: 'סיגל סיסו', biz: '',
-    rating: 4.76, reviews: 55, jobs: 61, years: 9, respSec: 79,
-    price: 255, km: 2.90, online: true, hours: '06:00–12:00',
-    onway: false, etaMin: 12.0, offered: false,
-    /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 35.23, skillMatch: 100.00, availability: 84.12,
-           eta: 84.21, reliability: 66.87, rating: 86.00,
-           price: 70.11, experience: 60.89 },
-    recordedScore: 71.69,
-    bio: 'ותק רב בתחום, מגיע עם כל הציוד הנדרש.',
-    services: [['נזילה מתחת לכיור', 255], ['החלפת צנרת', 1595], ['החלפת דוד', 1240], ['פתיחת סתימה בביוב ראשי', 575], ['פיצוץ צינור', 425], ['איתור נזילה', 400]],
-    ratingBreakdown: null, reviewsText: []
-  },
+    sig: { routeOpportunity: 38.23, skillMatch: 100, availability: 40.77,
+           eta: 90.44, reliability: 65.83, rating: 78.57,
+           price: 52.87, experience: 36.07 },
+    recordedScore: 63.61,
+    bio: "",
+    services: [["איתור נזילות",445],["החלפת ברזים",235],["החלפת דודים",1380],["פתיחת סתימות",315],["פתיחת סתימות בביוב ראשי",640],["תיקון דודים",385],["תיקון נזילות בכיור",285],["תיקון פיצוץ צינור",475]],
+    ratingBreakdown: {"five":3,"four":1,"three":0,"low":0}, reviewsText: []
+  }
 ];
 
 /* The real weights, read from settings.matching.weights. */
