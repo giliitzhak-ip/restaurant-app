@@ -14,6 +14,11 @@ import {
   buildReviews,
   LOW_STOCK_AT,
 } from "../src/data/build-catalog";
+import {
+  libraryAssets,
+  libraryCategories,
+  objectAssetUrl,
+} from "../src/data/object-library";
 import { getPrisma } from "../src/server/db/prisma";
 
 async function main() {
@@ -199,6 +204,63 @@ async function main() {
       create: data,
       update: data,
     });
+  }
+
+  /*
+   * The room designer's object library.
+   *
+   * Upserted by a stable key rather than recreated, so a seed re-run does not
+   * orphan the assets an administrator has already linked to catalogue
+   * products — the link is the valuable part and it lives on the asset row.
+   *
+   * Nothing is seeded as `soldOnSite`. These are drawings; an item only
+   * becomes purchasable when someone links it to a real product, and until
+   * then the designer labels it for illustration only.
+   */
+  console.log(
+    `\u25b8 object library (${libraryCategories.length} categories, ${libraryAssets.length} assets)`,
+  );
+  const categoryIdByKey = new Map<string, string>();
+  for (const category of libraryCategories) {
+    const data = {
+      key: category.key,
+      name: category.name,
+      sortOrder: category.sortOrder,
+      enabled: true,
+    };
+    const row = await prisma.designObjectCategory.upsert({
+      where: { key: category.key },
+      create: data,
+      update: { name: data.name, sortOrder: data.sortOrder },
+    });
+    categoryIdByKey.set(category.key, row.id);
+  }
+
+  for (const asset of libraryAssets) {
+    const categoryId = categoryIdByKey.get(asset.category);
+    if (!categoryId) continue;
+    const existing = await prisma.designObjectAsset.findFirst({
+      where: { categoryId, name: asset.name },
+      select: { id: true },
+    });
+    const data = {
+      categoryId,
+      name: asset.name,
+      assetUrl: objectAssetUrl(asset.slug),
+      realWidthCm: asset.widthCm,
+      realHeightCm: asset.heightCm,
+      snap: asset.snap,
+      sortOrder: asset.sortOrder,
+    };
+    if (existing) {
+      // `soldOnSite` and `productId` are left alone: they are an
+      // administrator's decision, not the seed's.
+      await prisma.designObjectAsset.update({ where: { id: existing.id }, data });
+    } else {
+      await prisma.designObjectAsset.create({
+        data: { ...data, soldOnSite: false, productId: null, enabled: true },
+      });
+    }
   }
 
   /*
