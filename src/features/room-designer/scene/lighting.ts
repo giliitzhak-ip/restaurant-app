@@ -77,28 +77,69 @@ function rgbaFromHex(hex: string, alpha: number) {
  * percentage of the stage rather than pixels, so a design looks the same at
  * preview size and at download size.
  */
-export function fixtureStyle(
+/**
+ * A light, as two stacked layers.
+ *
+ * One layer is not enough, and the reason is worth writing down because it
+ * looks like a bug when it happens. `screen` can only brighten: a warm glow
+ * over dark cladding lifts it beautifully, and over a white wall it does
+ * nothing at all, because white is already as bright as the channel goes.
+ * The demo room has a white wall, so "add a strip behind the television"
+ * appeared to do nothing — which is physically correct and completely
+ * useless.
+ *
+ * Real light on a white wall does not raise its luminance either. It shifts
+ * its colour: a 2700K strip makes white paint read warm. So the second layer
+ * is that shift — `soft-light`, which tints without flattening — and between
+ * them the same fixture reads correctly on a dark wall and a light one.
+ *
+ * Both are CSS. A glow is a blurred gradient in a compositor layer, so
+ * dragging a light never touches the per-pixel renderer that paints the
+ * cladding.
+ */
+export function fixtureLayers(
   fixture: LightingFixture,
   stageWidthPx: number,
-): CSSProperties {
+): { glow: CSSProperties; tint: CSSProperties } {
   const color = lightColor(fixture);
   const reach = 0.25 + fixture.spread * 0.75;
-  const blurPx = Math.max(2, fixture.blur * 0.06 * stageWidthPx);
+
+  /*
+   * Blur scaled to the fixture, not to the stage. A fixed fraction of the
+   * stage put a 48px blur on a 290px-tall glow, which smeared its peak below
+   * anything visible — the light was drawn, and could not be seen.
+   */
+  const shortEdge = Math.min(fixture.width, fixture.height) * stageWidthPx;
+  const blurPx = Math.max(2, Math.min(64, fixture.blur * 0.22 * shortEdge));
 
   /*
    * An elliptical gradient rather than a circular one: a strip behind a
    * television is three times wider than it is tall, and a circular falloff
    * on it produces a ball of light in the middle with dark ends.
    */
-  const inner = rgbaFromHex(color, Math.min(1, fixture.intensity));
-  const mid = rgbaFromHex(color, fixture.intensity * 0.45);
+  const stops = (peak: number) =>
+    `radial-gradient(ellipse ${(reach * 100).toFixed(0)}% ${(reach * 100).toFixed(0)}% at 50% 50%, ${rgbaFromHex(
+      color,
+      peak,
+    )} 0%, ${rgbaFromHex(color, peak * 0.5)} 45%, transparent 78%)`;
 
-  return {
-    background: `radial-gradient(ellipse ${(reach * 100).toFixed(0)}% ${(reach * 100).toFixed(0)}% at 50% 50%, ${inner} 0%, ${mid} 45%, transparent 78%)`,
+  const shared: CSSProperties = {
     filter: `blur(${blurPx.toFixed(1)}px)`,
-    mixBlendMode: "screen",
     opacity: fixture.enabled ? 1 : 0,
     transform: `rotate(${fixture.direction}deg)`,
+  };
+
+  return {
+    glow: {
+      ...shared,
+      background: stops(Math.min(1, fixture.intensity)),
+      mixBlendMode: "screen",
+    },
+    tint: {
+      ...shared,
+      background: stops(Math.min(1, fixture.intensity * 0.85)),
+      mixBlendMode: "soft-light",
+    },
   };
 }
 
@@ -122,7 +163,10 @@ export function pathStrokes(path: LedPath, stageWidthPx: number) {
     halo: {
       stroke: rgbaFromHex(color, path.intensity * 0.5),
       strokeWidth: haloPx,
-      filter: `blur(${Math.max(1, path.blur * 0.035 * stageWidthPx).toFixed(1)}px)`,
+      // Blur relative to the halo's own width, for the same reason the
+      // fixture blur is: a blur much larger than the thing being blurred
+      // erases it.
+      filter: `blur(${Math.max(1, Math.min(40, path.blur * 0.4 * haloPx)).toFixed(1)}px)`,
     },
   };
 }

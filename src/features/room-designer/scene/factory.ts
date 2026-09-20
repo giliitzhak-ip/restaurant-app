@@ -73,6 +73,26 @@ export function realFromSize(
  * difference between "drag it into place" and "drag it across the room
  * first".
  */
+/**
+ * Roughly where each kind of thing lives on a wall.
+ *
+ * Not decoration: without it every wall item drops at the same height and the
+ * sideboard lands on top of the television. These are the heights people
+ * actually hang things at, as a fraction of a room photograph — a screen a
+ * little above the middle, a hung sideboard below it, a shelf higher, art
+ * between the two.
+ */
+const WALL_HEIGHT: Record<string, number> = {
+  TV: 0.4,
+  TV_WALL: 0.45,
+  SIDEBOARD_WALL: 0.6,
+  FLOATING_SHELF: 0.3,
+  NICHE: 0.42,
+  FIREPLACE: 0.56,
+  MIRROR: 0.38,
+  WALL_ART: 0.36,
+};
+
 function dropPoint(asset: DesignObjectAsset, size: { width: number; height: number }) {
   switch (asset.snap) {
     case "FLOOR":
@@ -80,13 +100,57 @@ function dropPoint(asset: DesignObjectAsset, size: { width: number; height: numb
       // three-quarters of the way down.
       return { x: 0.5, y: 0.78 - size.height / 2 };
     case "WALL":
-      // Eye level, which for a screen is a little above the middle.
-      return { x: 0.5, y: 0.42 };
+      return { x: 0.5, y: WALL_HEIGHT[asset.category] ?? 0.45 };
     case "NICHE":
       return { x: 0.5, y: 0.45 };
     default:
       return { x: 0.5, y: 0.5 };
   }
+}
+
+/**
+ * Nudges a drop so it does not land exactly on something already there.
+ *
+ * Sideways, not downwards. The first version moved a clashing object down by
+ * the two heights, which for a floor-standing plant behind a television meant
+ * pushing it clean off the bottom of the photo — a plant does not float, and
+ * "lower" is not a free direction for anything resting on the floor.
+ *
+ * It alternates left and right so a third item does not stack on the second,
+ * and it gives up after a few tries rather than marching off the edge: two
+ * items near each other are a much smaller problem than one item nobody can
+ * find.
+ */
+function avoidOverlap(
+  point: ScenePoint,
+  size: { width: number; height: number },
+  scene: DesignScene,
+): ScenePoint {
+  const overlaps = (candidate: ScenePoint) =>
+    scene.objects.find(
+      (other) =>
+        other.visible &&
+        Math.abs(other.position.x - candidate.x) <
+          Math.min(other.width, size.width) * 0.5 &&
+        Math.abs(other.position.y - candidate.y) <
+          Math.min(other.height, size.height) * 0.5,
+    );
+
+  let clash = overlaps(point);
+  if (!clash) return point;
+
+  for (let attempt = 1; attempt <= 4; attempt += 1) {
+    const step = (size.width + clash.width) * 0.6 * attempt;
+    for (const direction of [1, -1]) {
+      const candidate = {
+        x: Math.min(0.94, Math.max(0.06, point.x + step * direction)),
+        y: point.y,
+      };
+      if (!overlaps(candidate)) return candidate;
+    }
+    clash = overlaps(point) ?? clash;
+  }
+  return point;
 }
 
 export function createObjectFromAsset({
@@ -116,7 +180,7 @@ export function createObjectFromAsset({
      * appear, that one decides whether it may.
      */
     productId: asset.soldOnSite ? asset.productId : null,
-    position: at ?? dropPoint(asset, size),
+    position: at ?? avoidOverlap(dropPoint(asset, size), size, scene),
     width: size.width,
     height: size.height,
     rotation: 0,
@@ -391,10 +455,19 @@ export function createFixtureBehind(
     surfaceId: object.surfaceId,
     attachedToObjectId: object.id,
   });
+  /*
+   * Considerably larger than the object, not a hair larger.
+   *
+   * The glow's falloff reaches nothing by about 80% of its own radius, so a
+   * strip only 6% bigger than the television has its entire visible edge
+   * inside the transparent part of the gradient — the light is drawn, it is
+   * behind the screen, and it cannot be seen. The halo has to extend well
+   * past the silhouette to be a halo at all.
+   */
   return {
     ...base,
-    width: object.width * 1.06,
-    height: object.height * 1.06,
+    width: object.width * 1.55,
+    height: object.height * 1.7,
   };
 }
 

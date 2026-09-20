@@ -591,6 +591,7 @@ export function DesignerShell({
                     key={kind}
                     variant={active ? "studio" : "studioOutline"}
                     aria-pressed={active}
+                    data-testid={`surface-${kind.toLowerCase()}`}
                     onClick={() => controller.setActiveKind(kind)}
                     className="flex-1"
                   >

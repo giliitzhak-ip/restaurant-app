@@ -11,7 +11,7 @@ import type {
   SceneObject,
   ScenePoint,
 } from "@/types/scene";
-import { fixtureStyle, objectShadowFilter, pathD, pathStrokes } from "../scene/lighting";
+import { fixtureLayers, objectShadowFilter, pathD, pathStrokes } from "../scene/lighting";
 import { quadToMatrix3d } from "../scene/perspective";
 import { snapObject, type Guide } from "../scene/snapping";
 import { createPath, frameAround, type PhotoFrame } from "../scene/factory";
@@ -59,24 +59,28 @@ function FixtureView({
   /** When a light follows an object, the object decides where it is. */
   attachedTo?: SceneObject | null;
 }) {
+  /*
+   * An attached light follows its object's position but keeps its own size:
+   * the customer set that size, and clamping it to the object would undo
+   * every adjustment they made to the spread.
+   */
   const position = attachedTo ? attachedTo.position : fixture.position;
-  const width = attachedTo ? Math.max(fixture.width, attachedTo.width * 1.06) : fixture.width;
-  const height = attachedTo
-    ? Math.max(fixture.height, attachedTo.height * 1.06)
-    : fixture.height;
+  const width = fixture.width;
+  const height = fixture.height;
+
+  const { glow, tint } = fixtureLayers(fixture, stageWidth);
+  const box = {
+    left: `${(position.x - width / 2) * 100}%`,
+    top: `${(position.y - height / 2) * 100}%`,
+    width: `${width * 100}%`,
+    height: `${height * 100}%`,
+  };
 
   return (
-    <div
-      aria-hidden
-      className="pointer-events-none absolute"
-      style={{
-        left: `${(position.x - width / 2) * 100}%`,
-        top: `${(position.y - height / 2) * 100}%`,
-        width: `${width * 100}%`,
-        height: `${height * 100}%`,
-        ...fixtureStyle(fixture, stageWidth),
-      }}
-    />
+    <>
+      <div aria-hidden className="pointer-events-none absolute" style={{ ...box, ...glow }} />
+      <div aria-hidden className="pointer-events-none absolute" style={{ ...box, ...tint }} />
+    </>
   );
 }
 
