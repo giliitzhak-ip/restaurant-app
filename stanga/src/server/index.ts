@@ -15,8 +15,9 @@
 import { createServer } from 'node:http';
 import { Server, matchMaker } from '@colyseus/core';
 import { WebSocketTransport } from '@colyseus/ws-transport';
-import { ROOM_ONE_VS_ONE } from '../net/protocol';
+import { ROOM_ONE_VS_ONE, ROOM_TWO_VS_TWO } from '../net/protocol';
 import { OnlineOneVsOneRoom } from './OnlineOneVsOneRoom';
+import { OnlineTwoVsTwoRoom } from './OnlineTwoVsTwoRoom';
 import { createRequestHandler } from './httpRoutes';
 
 function numberFromEnv(name: string, fallback: number): number {
@@ -82,6 +83,7 @@ const gameServer = new Server({
 });
 
 gameServer.define(ROOM_ONE_VS_ONE, OnlineOneVsOneRoom);
+gameServer.define(ROOM_TWO_VS_TWO, OnlineTwoVsTwoRoom);
 
 void gameServer.listen(port, host).then(() => {
   // No tokens, no invite codes: server logs never carry anything that would let

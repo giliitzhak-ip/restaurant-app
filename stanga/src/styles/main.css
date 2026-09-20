@@ -1611,6 +1611,24 @@ kbd {
   letter-spacing: 0.04em;
 }
 
+/* Quick chat — a single line, so it never covers the pitch */
+
+.hud__chat {
+  align-self: center;
+  margin-top: auto;
+  background: rgba(8, 9, 11, 0.92);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 0.3rem 0.9rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  pointer-events: none;
+}
+
+.hud__chat.is-away {
+  border-color: #4aa8ff;
+}
+
 /* Resume countdown */
 
 .resume-countdown {
@@ -1901,4 +1919,112 @@ kbd {
 
 .hud__event.is-violation .hud__event-kind {
   color: #ffb4b4;
+}
+
+/* ── Online lobby: two teams, two seats a side ──────────────────────────────
+   1×1 uses the same board with one seat a side, so there is only ever one
+   lobby layout to keep working. */
+
+.online__teams {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+}
+
+.online__team {
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.online__team--home {
+  border-color: rgba(255, 165, 36, 0.5);
+}
+
+.online__team--away {
+  border-color: rgba(92, 156, 255, 0.5);
+}
+
+.online__team-title {
+  margin: 0;
+  font-size: 0.86rem;
+  letter-spacing: 0.04em;
+}
+
+.online__team--home .online__team-title {
+  color: #ffa524;
+}
+
+.online__team--away .online__team-title {
+  color: #6aa8ff;
+}
+
+.online__seat {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.1rem;
+  padding: 0.3rem 0.45rem;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.04);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.online__seat.is-empty {
+  border: 1px dashed var(--line);
+  background: none;
+  opacity: 0.6;
+  font-weight: 500;
+}
+
+.online__seat.is-you {
+  outline: 2px solid var(--accent);
+}
+
+.online__seat-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.online__seat.is-connected .online__player-dot {
+  background: var(--accent);
+}
+
+.online__seat.is-ready .online__player-dot {
+  box-shadow: 0 0 0 3px rgba(255, 165, 36, 0.3);
+}
+
+.online__seats {
+  margin-inline-start: auto;
+  opacity: 0.75;
+  font-weight: 600;
+}
+
+.online__status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.online__quickchat {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.btn--chip {
+  padding: 0.28rem 0.7rem;
+  font-size: 0.82rem;
+  border-radius: 999px;
+}
+
+@media (max-width: 560px) {
+  .online__teams {
+    grid-template-columns: 1fr;
+  }
 }

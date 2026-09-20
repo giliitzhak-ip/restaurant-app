@@ -31,6 +31,8 @@ export interface AccessibilitySettings {
   hudScale: HudScale;
   /** Shows a written caption for important audio cues. */
   audioCaptions: boolean;
+  /** Hides quick-chat phrases from other players. */
+  muteQuickChat: boolean;
 }
 
 export interface PlayerProfile {
@@ -77,6 +79,7 @@ export function defaultAccessibility(): AccessibilitySettings {
     reduceCameraMotion: false,
     hudScale: 'normal',
     audioCaptions: false,
+    muteQuickChat: false,
   };
 }
 
@@ -186,6 +189,10 @@ export function sanitizeSettings(raw: unknown): GameSettings {
       audioCaptions: coerceBool(
         accessibilityRaw.audioCaptions,
         defaults.accessibility.audioCaptions,
+      ),
+      muteQuickChat: coerceBool(
+        accessibilityRaw.muteQuickChat,
+        defaults.accessibility.muteQuickChat,
       ),
     },
     keyBindings: {

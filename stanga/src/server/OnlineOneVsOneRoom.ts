@@ -6,7 +6,7 @@
  * a different room name, not a second server.
  */
 import { BaseOnlineMatchRoom } from './BaseOnlineMatchRoom';
-import { ONE_VS_ONE_CONFIG, type MatchConfig } from './MatchConfig';
+import { ONE_VS_ONE_CONFIG, type MatchConfig } from '../game/MatchConfig';
 
 export class OnlineOneVsOneRoom extends BaseOnlineMatchRoom {
   readonly matchConfig: MatchConfig = ONE_VS_ONE_CONFIG;

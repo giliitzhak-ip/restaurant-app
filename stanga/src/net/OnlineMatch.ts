@@ -21,7 +21,7 @@ import type { MatchPhase, ScoreEventRecord, TeamId } from '../game/MatchState';
 import type { ScoreKind } from '../config/GameConfig';
 import type { NetworkController } from '../input/controllers/NetworkController';
 import { RoomClient, type ConnectRequest, type RoomClientHandlers } from './RoomClient';
-import type { NetEvent, WelcomePayload } from './protocol';
+import type { NetChat, NetEvent, OnlineMode, QuickChatId, WelcomePayload } from './protocol';
 import type { MatchRoomState, NetPlayer, RoomStage } from './schema';
 
 /** Beyond this much error a correction stops being a nudge and is a teleport. */
@@ -47,6 +47,8 @@ export interface OnlineMatchHandlers {
   onOpponentConnected(connected: boolean): void;
   onDisconnected(): void;
   onPing(roundTripMs: number): void;
+  /** One of the fixed phrases arrived from another seat. */
+  onChat(chat: NetChat): void;
 }
 
 export class OnlineMatch {
@@ -54,7 +56,8 @@ export class OnlineMatch {
 
   private welcome: WelcomePayload | null = null;
   private snapshot: MatchRoomState | null = null;
-  private remote: NetworkController | null = null;
+  /** One controller per seat this device does *not* drive. */
+  private readonly remotes = new Map<string, NetworkController>();
   private session: MatchSession | null = null;
   private opponentConnected = true;
   private lastStage: RoomStage | null = null;
@@ -72,6 +75,7 @@ export class OnlineMatch {
       },
       onEvent: (event) => this.handleServerEvent(event),
       onStateChange: (state) => this.handleSnapshot(state),
+      onChat: (chat) => this.handlers.onChat(chat),
       onDisconnected: () => this.handlers.onDisconnected(),
       onPing: (roundTrip) => this.handlers.onPing(roundTrip),
     };
@@ -90,12 +94,27 @@ export class OnlineMatch {
     return this.welcome?.team ?? 'home';
   }
 
-  get remotePlayerId(): string {
-    return this.localPlayerId === 'home-1' ? 'away-1' : 'home-1';
+  /** Every seat except the one this device drives. */
+  get remotePlayerIds(): string[] {
+    const snapshot = this.snapshot;
+    if (!snapshot) return [];
+    const ids: string[] = [];
+    snapshot.players.forEach((_net, id) => {
+      if (id !== this.localPlayerId) ids.push(id);
+    });
+    return ids.sort();
+  }
+
+  get mode(): OnlineMode {
+    return (this.snapshot?.mode as OnlineMode | undefined) ?? this.welcome?.mode ?? 'oneVsOne';
+  }
+
+  get playersPerTeam(): number {
+    return this.snapshot?.playersPerTeam ?? 1;
   }
 
   get stage(): RoomStage {
-    return (this.snapshot?.stage as RoomStage | undefined) ?? 'waiting';
+    return (this.snapshot?.stage as RoomStage | undefined) ?? 'waitingForPlayers';
   }
 
   get inviteCode(): string {
@@ -115,9 +134,10 @@ export class OnlineMatch {
   }
 
   /** Called once the session exists, so commands can be read back and sent. */
-  attach(session: MatchSession, remote: NetworkController): void {
+  attach(session: MatchSession, remotes: Map<string, NetworkController>): void {
     this.session = session;
-    this.remote = remote;
+    this.remotes.clear();
+    for (const [playerId, controller] of remotes) this.remotes.set(playerId, controller);
     this.pendingSnap = true;
   }
 
@@ -129,9 +149,30 @@ export class OnlineMatch {
     this.client.sendRematch();
   }
 
+  /**
+   * Lobby requests. Every one of these is exactly that — a request. The server
+   * decides whether the seat is free, whether this client is the host and
+   * whether the teams are still open, and answers by changing the state.
+   */
+  requestTeamSwitch(team: TeamId): void {
+    this.client.sendTeamSwitch(team);
+  }
+
+  requestShuffle(): void {
+    this.client.sendShuffleTeams();
+  }
+
+  voteSurrender(): void {
+    this.client.sendSurrender();
+  }
+
+  sendQuickChat(id: QuickChatId): void {
+    this.client.sendQuickChat(id);
+  }
+
   async leave(): Promise<void> {
     this.session = null;
-    this.remote = null;
+    this.remotes.clear();
     await this.client.leave();
   }
 
@@ -143,10 +184,11 @@ export class OnlineMatch {
     if (!snapshot) return;
 
     const local = snapshot.players.get(this.localPlayerId);
-    const remote = snapshot.players.get(this.remotePlayerId);
-
     if (local) this.correctPlayer(this.localPlayerId, local, SNAP_DISTANCE_LOCAL);
-    if (remote) this.correctPlayer(this.remotePlayerId, remote, SNAP_DISTANCE_REMOTE);
+    for (const playerId of this.remotes.keys()) {
+      const net = snapshot.players.get(playerId);
+      if (net) this.correctPlayer(playerId, net, SNAP_DISTANCE_REMOTE);
+    }
     this.correctBall(snapshot);
     this.pendingSnap = false;
   }
@@ -184,25 +226,33 @@ export class OnlineMatch {
       this.handlers.onStage(stage, state.stageTimer);
     }
 
-    const remote = state.players.get(this.remotePlayerId);
-    if (remote) {
-      if (remote.connected !== this.opponentConnected) {
-        this.opponentConnected = remote.connected;
-        this.handlers.onOpponentConnected(remote.connected);
-      }
-      this.remote?.apply({
-        positionX: remote.x,
-        positionZ: remote.z,
-        velocityX: remote.vx,
-        velocityZ: remote.vz,
-        facing: remote.facing,
-        sprinting: remote.sprinting,
-        charging: remote.charging,
+    // Everybody else's motion, fed back through the controller contract so the
+    // simulation cannot tell a remote player from a keyboard.
+    let anyoneMissing = false;
+    for (const [playerId, controller] of this.remotes) {
+      const net = state.players.get(playerId);
+      if (!net) continue;
+      const present = net.connected || net.botControlled;
+      if (!present) anyoneMissing = true;
+      controller.apply({
+        positionX: net.x,
+        positionZ: net.z,
+        velocityX: net.vx,
+        velocityZ: net.vz,
+        facing: net.facing,
+        sprinting: net.sprinting,
+        charging: net.charging,
         // A kick and a tackle arrive as events; the report carries motion only.
         kicked: false,
         tackled: false,
-        connected: remote.connected,
+        connected: present,
       });
+    }
+
+    const everyonePresent = !anyoneMissing;
+    if (everyonePresent !== this.opponentConnected) {
+      this.opponentConnected = everyonePresent;
+      this.handlers.onOpponentConnected(everyonePresent);
     }
   }
 

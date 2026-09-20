@@ -12,7 +12,8 @@ import {
 } from '../config/GameConfig';
 import type { GameSettings } from '../core/Settings';
 import { formatClock } from '../game/MatchRules';
-import type { MatchOutcome, MatchState, PlayerState } from '../game/MatchState';
+import type { MatchOutcome, MatchState, PlayerState, TeamId } from '../game/MatchState';
+import { QUICK_CHAT, QUICK_CHAT_IDS, type OnlineMode, type QuickChatId } from '../net/protocol';
 import {
   ACTION_LABELS,
   BINDABLE_ACTIONS,
@@ -64,16 +65,28 @@ export interface LobbySlotView {
 
 /** One row in the online room's roster. */
 export interface OnlinePlayerView {
+  playerId: string;
   name: string;
+  team: TeamId;
   teamLabel: string;
+  slotIndex: number;
   connected: boolean;
   ready: boolean;
+  isHost: boolean;
+  /** True while a server-side bot is standing in for this seat. */
+  isBot: boolean;
   isYou: boolean;
+  roundTripMs: number | null;
 }
 
 export interface OnlineRoomView {
   /** Already-localized line describing what the room is waiting for. */
   status: string;
+  mode: OnlineMode;
+  playersPerTeam: number;
+  /** How many seats are taken, and how many there are. */
+  seated: number;
+  capacity: number;
   /** Empty while not in a private room. */
   inviteCode: string;
   inviteLink: string;
@@ -81,6 +94,8 @@ export interface OnlineRoomView {
   /** Round-trip time in milliseconds, or null before the first pong. */
   roundTripMs: number | null;
   canReady: boolean;
+  canSwitchTeam: boolean;
+  canShuffle: boolean;
   readyLabel: string;
 }
 
@@ -102,12 +117,16 @@ export interface UICallbacks {
   onLobbyTouchJoin: (index: 1 | 2) => void;
   onLobbyName: (index: 1 | 2, name: string) => void;
   onLobbyColor: (index: 1 | 2, colorId: number) => void;
-  onOnlinePlayPressed: () => void;
+  onOnlinePlayPressed: (mode: OnlineMode) => void;
   onOnlineQuickMatch: (displayName: string) => void;
   onOnlineCreateRoom: (displayName: string) => void;
   onOnlineJoinRoom: (displayName: string, code: string) => void;
   onOnlineReady: () => void;
   onOnlineLeave: () => void;
+  onOnlineTeamSwitch: (team: TeamId) => void;
+  onOnlineShuffleTeams: () => void;
+  onOnlineSurrender: () => void;
+  onOnlineQuickChat: (id: QuickChatId) => void;
   onPrimerDismissed: () => void;
   onReconnectResume: () => void;
   onReconnectUseAi: () => void;
@@ -145,6 +164,7 @@ export class UIManager {
   private readonly touchBadge: HTMLElement;
   private readonly touchDot: HTMLElement;
   private readonly touchText: HTMLElement;
+  private readonly chatFeed: HTMLElement;
   private readonly meters: {
     root: HTMLElement;
     name: HTMLElement;
@@ -168,7 +188,7 @@ export class UIManager {
     HTMLElement
   >;
   private readonly toggles: Record<
-    'vibration' | 'contrast' | 'flashes' | 'motion' | 'captions',
+    'vibration' | 'contrast' | 'flashes' | 'motion' | 'captions' | 'quickChat',
     { button: HTMLButtonElement; state: HTMLElement }
   >;
 
@@ -180,10 +200,13 @@ export class UIManager {
   private lastEventTick = -1;
   private lastViolationTick = -1;
   private captionTimer: number | null = null;
+  private chatTimer: number | null = null;
   private adviceTimer: number | null = null;
   /** Action currently waiting for a key press in the bindings editor. */
   private captureTarget: { profile: KeyboardProfileId; action: BindableAction } | null = null;
   private inviteLink = '';
+  /** Which team the switch button would move you to, decided at render time. */
+  private pendingTeamSwitch: TeamId = 'away';
 
   constructor(
     private readonly callbacks: UICallbacks,
@@ -228,6 +251,7 @@ export class UIManager {
     this.touchBadge = requireElement('hud-touch');
     this.touchDot = requireElement('hud-touch-dot');
     this.touchText = requireElement('hud-touch-text');
+    this.chatFeed = requireElement('hud-chat');
 
     this.meters = [
       {
@@ -286,6 +310,10 @@ export class UIManager {
       captions: {
         button: requireElement<HTMLButtonElement>('set-captions'),
         state: requireElement('out-captions'),
+      },
+      quickChat: {
+        button: requireElement<HTMLButtonElement>('set-quickchat'),
+        state: requireElement('out-quickchat'),
       },
     };
 
@@ -489,6 +517,21 @@ export class UIManager {
     this.eventPoints.textContent = `הכדור ל${restartTeamLabel}`;
     this.eventBanner.hidden = false;
     this.eventBanner.classList.add('is-violation');
+  }
+
+  /**
+   * Shows one quick-chat phrase. The id is looked up in the fixed table here,
+   * so nothing a client sent can reach the DOM as text.
+   */
+  showQuickChat(name: string, id: QuickChatId, team: TeamId): void {
+    if (this.settings.accessibility.muteQuickChat) return;
+    this.chatFeed.textContent = `${name}: ${QUICK_CHAT[id]}`;
+    this.chatFeed.classList.toggle('is-away', team === 'away');
+    this.chatFeed.hidden = false;
+    if (this.chatTimer !== null) window.clearTimeout(this.chatTimer);
+    this.chatTimer = window.setTimeout(() => {
+      this.chatFeed.hidden = true;
+    }, 2600);
   }
 
   showCaption(key: string): void {
@@ -716,7 +759,12 @@ export class UIManager {
       // The screen first, then the callback: the game may want to put the
       // controls primer on top of it.
       this.showScreen('online');
-      this.callbacks.onOnlinePlayPressed();
+      this.callbacks.onOnlinePlayPressed('oneVsOne');
+    });
+    this.onClick('btn-play-online-2v2', () => {
+      this.callbacks.onInteraction();
+      this.showScreen('online');
+      this.callbacks.onOnlinePlayPressed('twoVsTwo');
     });
     this.onClick('btn-settings', () => {
       this.callbacks.onInteraction();
@@ -820,6 +868,10 @@ export class UIManager {
       this.callbacks.onInteraction();
       updateAccessibility({ audioCaptions: !this.settings.accessibility.audioCaptions });
     });
+    this.toggles.quickChat.button.addEventListener('click', () => {
+      this.callbacks.onInteraction();
+      updateAccessibility({ muteQuickChat: !this.settings.accessibility.muteQuickChat });
+    });
 
     this.onClick('btn-settings-close', () => {
       this.callbacks.onInteraction();
@@ -917,6 +969,25 @@ export class UIManager {
       this.callbacks.onOnlineLeave();
       this.showScreen('menu');
     });
+    this.onClick('btn-online-switch', () => {
+      this.callbacks.onInteraction();
+      this.callbacks.onOnlineTeamSwitch(this.pendingTeamSwitch);
+    });
+    this.onClick('btn-online-shuffle', () => {
+      this.callbacks.onInteraction();
+      this.callbacks.onOnlineShuffleTeams();
+    });
+    this.onClick('btn-online-surrender', () => {
+      this.callbacks.onInteraction();
+      this.callbacks.onOnlineSurrender();
+    });
+    for (const id of QUICK_CHAT_IDS) {
+      const button = document.querySelector<HTMLButtonElement>(`[data-quick-chat="${id}"]`);
+      button?.addEventListener('click', () => {
+        this.callbacks.onInteraction();
+        this.callbacks.onOnlineQuickChat(id);
+      });
+    }
     this.onClick('btn-online-copy', () => {
       this.callbacks.onInteraction();
       void this.copyInviteLink();
@@ -958,34 +1029,33 @@ export class UIManager {
     requireElement('online-entry').classList.add('is-hidden');
     requireElement('online-room').classList.remove('is-hidden');
     requireElement('online-status').textContent = view.status;
+    requireElement('online-seats').textContent = `${view.seated}/${view.capacity}`;
 
     const invite = requireElement('online-invite');
     invite.classList.toggle('is-hidden', view.inviteCode.length === 0);
     requireElement('online-invite-code').textContent = view.inviteCode;
     this.inviteLink = view.inviteLink;
 
-    const list = requireElement('online-players');
-    list.replaceChildren();
-    for (const player of view.players) {
-      const item = document.createElement('li');
-      item.className = 'online__player';
-      item.classList.toggle('is-connected', player.connected);
-      item.classList.toggle('is-ready', player.ready);
+    // Two columns, one per side, each with a row per seat. 1×1 gets the same
+    // layout with one row a side, so there is only ever one lobby to maintain.
+    const board = requireElement('online-teams');
+    board.replaceChildren();
+    for (const team of ['home', 'away'] as const) {
+      const column = document.createElement('div');
+      column.className = `online__team online__team--${team}`;
 
-      const dot = document.createElement('span');
-      dot.className = 'online__player-dot';
-      const name = document.createElement('span');
-      name.textContent = player.isYou ? `${player.name} (אתה)` : player.name;
-      const note = document.createElement('span');
-      note.className = 'online__player-note';
-      note.textContent = player.connected
-        ? player.ready
-          ? `מוכן · ${player.teamLabel}`
-          : player.teamLabel
-        : 'מנותק — ממתינים לחזרה';
+      const heading = document.createElement('h3');
+      heading.className = 'online__team-title';
+      heading.textContent = teamLabel(team);
+      column.append(heading);
 
-      item.append(dot, name, note);
-      list.append(item);
+      for (let slot = 0; slot < view.playersPerTeam; slot += 1) {
+        const player = view.players.find(
+          (candidate) => candidate.team === team && candidate.slotIndex === slot,
+        );
+        column.append(this.renderOnlineSeat(player));
+      }
+      board.append(column);
     }
 
     requireElement('online-ping').textContent =
@@ -994,6 +1064,55 @@ export class UIManager {
     const ready = requireElement<HTMLButtonElement>('btn-online-ready');
     ready.classList.toggle('is-hidden', !view.canReady);
     ready.textContent = view.readyLabel;
+
+    const switchTeam = requireElement<HTMLButtonElement>('btn-online-switch');
+    switchTeam.classList.toggle('is-hidden', !view.canSwitchTeam);
+    const you = view.players.find((candidate) => candidate.isYou);
+    switchTeam.textContent =
+      you?.team === 'home' ? 'עבור לכחולים' : you?.team === 'away' ? 'עבור לכתומים' : 'החלף קבוצה';
+    this.pendingTeamSwitch = you?.team === 'home' ? 'away' : 'home';
+
+    requireElement('btn-online-shuffle').classList.toggle('is-hidden', !view.canShuffle);
+    requireElement('online-quickchat').classList.toggle(
+      'is-hidden',
+      view.mode !== 'twoVsTwo' || view.seated < 2,
+    );
+  }
+
+  /** One seat in the lobby: filled, or an empty chair waiting for somebody. */
+  private renderOnlineSeat(player: OnlinePlayerView | undefined): HTMLElement {
+    const item = document.createElement('div');
+    item.className = 'online__seat';
+    if (!player) {
+      item.classList.add('is-empty');
+      item.textContent = 'מקום פנוי';
+      return item;
+    }
+
+    item.classList.toggle('is-connected', player.connected);
+    item.classList.toggle('is-ready', player.ready);
+    item.classList.toggle('is-you', player.isYou);
+
+    const dot = document.createElement('span');
+    dot.className = 'online__player-dot';
+    const name = document.createElement('span');
+    name.className = 'online__seat-name';
+    name.textContent = player.isYou ? `${player.name} (אתה)` : player.name;
+
+    const note = document.createElement('span');
+    note.className = 'online__player-note';
+    note.textContent = player.isBot
+      ? 'בוט מחליף'
+      : !player.connected
+        ? 'מנותק — ממתינים לחזרה'
+        : player.ready
+          ? 'מוכן'
+          : player.isHost
+            ? 'בעל החדר'
+            : '';
+
+    item.append(dot, name, note);
+    return item;
   }
 
   private async copyInviteLink(): Promise<void> {
@@ -1109,6 +1228,7 @@ export class UIManager {
     setToggle(this.toggles.flashes, settings.accessibility.reduceFlashes);
     setToggle(this.toggles.motion, settings.accessibility.reduceCameraMotion);
     setToggle(this.toggles.captions, settings.accessibility.audioCaptions);
+    setToggle(this.toggles.quickChat, settings.accessibility.muteQuickChat);
 
     this.updateRadioGroup(requireElement('quality-group'), 'quality', settings.quality);
     this.updateRadioGroup(requireElement('difficulty-group'), 'difficulty', settings.difficulty);

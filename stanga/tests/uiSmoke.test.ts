@@ -55,6 +55,10 @@ function makeCallbacks(): MockedCallbacks {
     onOnlineJoinRoom: vi.fn<UICallbacks['onOnlineJoinRoom']>(),
     onOnlineReady: vi.fn<UICallbacks['onOnlineReady']>(),
     onOnlineLeave: vi.fn<UICallbacks['onOnlineLeave']>(),
+    onOnlineTeamSwitch: vi.fn<UICallbacks['onOnlineTeamSwitch']>(),
+    onOnlineShuffleTeams: vi.fn<UICallbacks['onOnlineShuffleTeams']>(),
+    onOnlineSurrender: vi.fn<UICallbacks['onOnlineSurrender']>(),
+    onOnlineQuickChat: vi.fn<UICallbacks['onOnlineQuickChat']>(),
     onPrimerDismissed: vi.fn<UICallbacks['onPrimerDismissed']>(),
     onReconnectResume: vi.fn<UICallbacks['onReconnectResume']>(),
     onReconnectUseAi: vi.fn<UICallbacks['onReconnectUseAi']>(),
@@ -112,17 +116,20 @@ describe('UI smoke', () => {
 
   it('still marks every unreleased mode as coming soon and disables it', () => {
     const locked = [...document.querySelectorAll<HTMLButtonElement>('.btn--locked')];
-    expect(locked.length).toBe(3);
+    expect(locked.length).toBe(2);
     for (const button of locked) {
       expect(button.disabled).toBe(true);
       expect(button.textContent).toContain('בקרוב');
     }
     const labels = locked.map((button) => button.textContent ?? '');
-    for (const mode of ['2 נגד 2', 'קריירה', 'טורנירים']) {
+    for (const mode of ['קריירה', 'טורנירים']) {
       expect(labels.some((label) => label.includes(mode))).toBe(true);
     }
-    // Online shipped in 0.3.0, so it is a real button rather than a promise.
-    expect(labels.some((label) => label.includes('אונליין'))).toBe(false);
+    // Online shipped in 0.3.0 and 2x2 in 0.4.0, so both are real buttons now
+    // rather than promises.
+    for (const shipped of ['אונליין', '2 נגד 2']) {
+      expect(labels.some((label) => label.includes(shipped))).toBe(false);
+    }
   });
 
   it('offers online play from the menu and opens the online screen', () => {
@@ -244,6 +251,7 @@ describe('UI smoke', () => {
         reduceCameraMotion: true,
         hudScale: 'large',
         audioCaptions: true,
+        muteQuickChat: true,
       },
     });
     expect(document.documentElement.dataset.contrast).toBe('high');

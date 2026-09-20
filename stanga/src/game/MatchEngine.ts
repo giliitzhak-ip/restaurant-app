@@ -114,6 +114,13 @@ export interface MatchEngineOptions {
   rules?: RulesAuthority;
   /** Who is on the pitch. Defaults to 1×1; `setRoster` changes it later. */
   roster?: MatchRoster;
+  /**
+   * How hard team-mates push each other apart, 0 to 1. Team-mate capsules do
+   * not collide (see `PLAYER_LAYER`); this scales the spring that replaces
+   * that collision. 1 is close to a solid body, 0 lets them walk through each
+   * other. Irrelevant in 1×1, where nobody has a team-mate.
+   */
+  friendlyCollision?: number;
 }
 
 export class MatchEngine {
@@ -142,6 +149,7 @@ export class MatchEngine {
   private ballSpin = 0;
   private roster: MatchRoster;
   private readonly scene: Scene;
+  private friendlyCollision: number;
 
   constructor(
     scene: Scene,
@@ -152,6 +160,7 @@ export class MatchEngine {
     this.rulesAuthority = options.rules ?? 'authoritative';
     this.rng = new Rng(options.seed ?? 0x5741c6);
     this.roster = options.roster ?? ONE_VS_ONE_ROSTER;
+    this.friendlyCollision = clamp(options.friendlyCollision ?? 1, 0, 1);
     this.state = createMatchState(this.roster);
     this.touchRule = this.makeTouchRule();
     this.ball = new BallBody(scene, world);
@@ -191,6 +200,15 @@ export class MatchEngine {
 
   get currentRoster(): MatchRoster {
     return this.roster;
+  }
+
+  /**
+   * Changes how hard team-mates push each other apart. The online client sets
+   * this from the room's config so its prediction matches the server, which is
+   * why it is not fixed at construction.
+   */
+  setFriendlyCollision(value: number): void {
+    this.friendlyCollision = clamp(value, 0, 1);
   }
 
   private buildPlayerBodies(): void {
@@ -262,6 +280,7 @@ export class MatchEngine {
     }
 
     this.touchRule.advance();
+    this.separateTeammates(dt);
 
     if (live) {
       this.resolvePendingKicks(dt);
@@ -866,6 +885,49 @@ export class MatchEngine {
   private contactDebounced(playerId: string): boolean {
     const last = this.lastContactTick.get(playerId);
     return last !== undefined && this.state.tick - last < GameConfig.touch.contactDebounceTicks;
+  }
+
+  /**
+   * The spring that stands in for a team-mate collision.
+   *
+   * Two players on the same side pass through each other as far as the physics
+   * engine is concerned, so without this they would stand in the same spot.
+   * An overlap pushes both apart along the line between them, capped so that
+   * being caught inside a team-mate cannot launch anybody. It runs before the
+   * physics step, on the server and on the client alike, from the same state.
+   */
+  private separateTeammates(dt: number): void {
+    if (this.friendlyCollision <= 0 || this.players.length < 3) return;
+    const { player } = GameConfig;
+    const minimum = player.radius * 2;
+    const stiffness = player.friendlySeparation * this.friendlyCollision;
+    const maxImpulse = player.mass * player.friendlySeparationMaxSpeed;
+
+    for (let i = 0; i < this.players.length; i += 1) {
+      for (let j = i + 1; j < this.players.length; j += 1) {
+        const a = this.players[i];
+        const b = this.players[j];
+        if (a === undefined || b === undefined || a.team !== b.team) continue;
+
+        let dx = b.position.x - a.position.x;
+        let dz = b.position.z - a.position.z;
+        let distance = Math.hypot(dx, dz);
+        if (distance >= minimum) continue;
+        if (distance < 1e-4) {
+          // Exactly on top of each other: pick a stable axis rather than
+          // dividing by zero, so the result stays deterministic.
+          dx = 1;
+          dz = 0;
+          distance = 1;
+        }
+        const overlap = minimum - distance;
+        const magnitude = Math.min(stiffness * overlap * dt, maxImpulse);
+        const nx = (dx / distance) * magnitude;
+        const nz = (dz / distance) * magnitude;
+        a.applyImpulse(-nx, 0, -nz);
+        b.applyImpulse(nx, 0, nz);
+      }
+    }
   }
 
   private processCollisions(collisions: readonly RawCollision[], live: boolean): void {

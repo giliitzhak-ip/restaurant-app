@@ -16,6 +16,8 @@ import { GameConfig, type Difficulty, type GoalPart } from '../config/GameConfig
 import { MatchEngine } from '../game/MatchEngine';
 import { MatchViews } from '../rendering/MatchViews';
 import { outcomeOf } from '../game/MatchRules';
+import { configFor } from '../game/MatchConfig';
+import { rosterFor } from '../game/MatchRoster';
 import { MatchSession, type MatchMode, type PlayerSlot } from '../game/MatchSession';
 import { canPlayerTouch } from '../game/TouchRuleEngine';
 import type { MatchState, TeamId } from '../game/MatchState';
@@ -35,7 +37,12 @@ import { NetworkController } from '../input/controllers/NetworkController';
 import type { PlayerController } from '../input/PlayerController';
 import { OnlineMatch } from '../net/OnlineMatch';
 import { ConnectError, RoomClient } from '../net/RoomClient';
-import { normalizeInviteCode, type JoinIntent } from '../net/protocol';
+import {
+  normalizeInviteCode,
+  type JoinIntent,
+  type NetChat,
+  type OnlineMode,
+} from '../net/protocol';
 import type { RoomStage } from '../net/schema';
 import { loadHavok } from '../physics/loadHavokBrowser';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
@@ -52,7 +59,13 @@ import {
   type OnlinePlayerView,
   type ScreenName,
 } from '../ui/UIManager';
-import { attackingGoalLabel, connectErrorLabel, LOADING_STEPS, roomStageLabel } from '../ui/labels';
+import {
+  attackingGoalLabel,
+  connectErrorLabel,
+  LOADING_STEPS,
+  roomStageLabel,
+  teamLabel,
+} from '../ui/labels';
 import { loadSettings, saveSettings, type GameSettings } from './Settings';
 import { SimulationLoop } from './SimulationLoop';
 
@@ -90,6 +103,8 @@ export class Game {
 
   private session: MatchSession | null = null;
   private online: OnlineMatch | null = null;
+  /** Which online mode the player picked from the menu. */
+  private onlineMode: OnlineMode = 'oneVsOne';
   /** Whose player the camera follows and whose meters the HUD shows. */
   private localPlayerId = 'home-1';
   private mode: MatchMode = 'vsComputer';
@@ -153,13 +168,17 @@ export class Game {
         onLobbyTouchJoin: (index) => this.joinWithTouch(index),
         onLobbyName: (index, name) => this.setLobbyName(index, name),
         onLobbyColor: (index, colorId) => this.setLobbyColor(index, colorId),
-        onOnlinePlayPressed: () => this.openOnline(),
+        onOnlinePlayPressed: (mode) => this.openOnline(mode),
         onOnlineQuickMatch: (name) => void this.connectOnline({ intent: 'quick', name }),
         onOnlineCreateRoom: (name) => void this.connectOnline({ intent: 'create', name }),
         onOnlineJoinRoom: (name, code) =>
           void this.connectOnline({ intent: 'join', name, inviteCode: code }),
         onOnlineReady: () => this.online?.sendReady(),
         onOnlineLeave: () => void this.leaveOnline(),
+        onOnlineTeamSwitch: (team) => this.online?.requestTeamSwitch(team),
+        onOnlineShuffleTeams: () => this.online?.requestShuffle(),
+        onOnlineSurrender: () => this.online?.voteSurrender(),
+        onOnlineQuickChat: (id) => this.online?.sendQuickChat(id),
         onPrimerDismissed: () => this.dismissPrimer(),
         onReconnectResume: () => this.resumeAfterReconnect(),
         onReconnectUseAi: () => this.replaceDisconnectedWithAi(),
@@ -375,7 +394,8 @@ export class Game {
   // ── Online 1×1 ──────────────────────────────────────────────────────────────
 
   /** Opens the online screen. Entry form only — nothing connects yet. */
-  private openOnline(): void {
+  private openOnline(mode: OnlineMode = 'oneVsOne'): void {
+    this.onlineMode = mode;
     this.audio.unlock();
     this.ui.setOnlineName(this.settings.profiles.player1.name);
     this.ui.showOnlineEntry(null);
@@ -433,22 +453,30 @@ export class Game {
       onOpponentConnected: (connected) => this.handleOpponentConnection(connected),
       onDisconnected: () => this.handleOnlineDisconnect(),
       onPing: () => this.refreshOnlineRoom(),
+      onChat: (chat) => this.showQuickChat(chat),
     });
     this.online = online;
     this.ui.setOnlineNotice(null);
     this.ui.renderOnlineRoom({
       status: 'מתחבר…',
+      mode: this.onlineMode,
+      playersPerTeam: this.onlineMode === 'twoVsTwo' ? 2 : 1,
+      seated: 0,
+      capacity: this.onlineMode === 'twoVsTwo' ? 4 : 2,
       inviteCode: '',
       inviteLink: '',
       players: [],
       roundTripMs: null,
       canReady: false,
+      canSwitchTeam: false,
+      canShuffle: false,
       readyLabel: 'מוכן',
     });
 
     try {
       await online.connect({
         intent: request.intent,
+        mode: this.onlineMode,
         displayName: name,
         colorId: this.settings.profiles.player1.colorId,
         inviteCode: normalizeInviteCode(request.inviteCode) ?? undefined,
@@ -478,10 +506,12 @@ export class Game {
         this.ui.showResumeCountdown(null);
         if (this.mode !== 'online' || this.phase !== 'playing') this.startOnlineSession();
         break;
-      case 'paused':
+      case 'goalFreeze':
+        break;
+      case 'reconnectPause':
         this.ui.showResumeCountdown(null);
         break;
-      case 'closed':
+      case 'disposing':
         void this.leaveOnline();
         this.exitToMenu();
         break;
@@ -496,16 +526,13 @@ export class Game {
     const online = this.online;
     if (!online) return;
 
-    const localId = online.localPlayerId;
-    const remoteId = online.remotePlayerId;
     const snapshot = online.client.state;
-    const remoteName = snapshot?.players.get(remoteId)?.name ?? 'יריב';
+    const localId = online.localPlayerId;
     const localColor = snapshot?.players.get(localId)?.colorId ?? 0;
-    const remoteColor = snapshot?.players.get(remoteId)?.colorId ?? pickContrastingKit(localColor);
-    const remoteController = new NetworkController(`net-${remoteId}`, remoteName);
 
-    // The client predicts; the server decides. Everything below this line is
-    // the ordinary local game.
+    // One slot for this device, one for every other seat in the room. The
+    // simulation sees the same PlayerSlot list a local two-player game builds.
+    const remotes = new Map<string, NetworkController>();
     const slots: PlayerSlot[] = [
       {
         playerId: localId,
@@ -514,24 +541,37 @@ export class Game {
         colorId: localColor,
         controller: this.buildSoloController(),
       },
-      {
-        playerId: remoteId,
-        team: online.localTeam === 'home' ? 'away' : 'home',
-        name: remoteName,
-        colorId: remoteColor,
-        controller: remoteController,
-      },
     ];
 
+    for (const remoteId of online.remotePlayerIds) {
+      const net = snapshot?.players.get(remoteId);
+      const name = net?.name && net.name.length > 0 ? net.name : 'שחקן';
+      const controller = new NetworkController(`net-${remoteId}`, name);
+      remotes.set(remoteId, controller);
+      slots.push({
+        playerId: remoteId,
+        team: (net?.team as TeamId | undefined) ?? (remoteId.startsWith('home') ? 'home' : 'away'),
+        name,
+        colorId: net?.colorId ?? pickContrastingKit(localColor),
+        controller,
+      });
+    }
+
+    // The client predicts; the server decides. Everything below this line is
+    // the ordinary local game.
+    this.match.setRoster(rosterFor(online.playersPerTeam));
+    // The prediction has to run on the same numbers as the server, or the
+    // corrections would be fighting a difference in the rules.
+    this.match.setFriendlyCollision(configFor(online.mode).friendlyCollision);
     this.beginSession('online', slots);
     const session = this.session;
-    if (session) online.attach(session, remoteController);
+    if (session) online.attach(session, remotes);
   }
 
   private handleOpponentConnection(connected: boolean): void {
     if (this.mode !== 'online') return;
     this.ui.showCaption(connected ? 'whistle' : 'tackle');
-    this.ui.setOnlineNotice(connected ? null : roomStageLabel('paused'));
+    this.ui.setOnlineNotice(connected ? null : roomStageLabel('reconnectPause'));
     this.refreshOnlineRoom();
   }
 
@@ -547,35 +587,62 @@ export class Game {
     this.ui.showOnlineEntry('החיבור לשרת נפל. נסו שוב.');
   }
 
+  /**
+   * Quick chat is displayed by id, never by text from the wire: the phrase is
+   * looked up locally, so a tampered client can only pick one of five.
+   */
+  private showQuickChat(chat: NetChat): void {
+    const speaker = this.online?.client.state?.players.get(chat.playerId);
+    const name = speaker?.name ?? '';
+    if (name.length === 0) return;
+    this.ui.showQuickChat(name, chat.id, chat.team);
+  }
+
   private refreshOnlineRoom(): void {
     const online = this.online;
     if (!online) return;
     const snapshot = online.client.state;
     const stage = online.stage;
 
+    // Everybody in the room, grouped by side, in seat order. The server owns
+    // the grouping; this just reads it.
     const players: OnlinePlayerView[] = [];
-    for (const id of ['home-1', 'away-1']) {
-      const player = snapshot?.players.get(id);
-      if (!player || player.name.length === 0) continue;
+    snapshot?.players.forEach((player, id) => {
+      if (player.name.length === 0) return;
       players.push({
+        playerId: id,
         name: player.name,
-        teamLabel: attackingGoalLabel(player.team as TeamId),
+        team: player.team as TeamId,
+        teamLabel: teamLabel(player.team as TeamId),
+        slotIndex: player.slotIndex,
         connected: player.connected,
         ready: player.ready,
+        isHost: player.isHost,
+        isBot: player.botControlled,
         isYou: id === online.localPlayerId,
+        roundTripMs:
+          id === online.localPlayerId && online.roundTripMs > 0 ? online.roundTripMs : null,
       });
-    }
+    });
+    players.sort((a, b) => a.team.localeCompare(b.team) || a.slotIndex - b.slotIndex);
 
     const code = online.inviteCode;
     const you = snapshot?.players.get(online.localPlayerId);
+    const seated = players.length;
     this.ui.renderOnlineRoom({
       status: roomStageLabel(stage),
+      mode: online.mode,
+      playersPerTeam: online.playersPerTeam,
+      seated,
+      capacity: online.playersPerTeam * 2,
       inviteCode: code,
       inviteLink: code.length > 0 ? inviteLinkFor(code) : '',
       players,
       roundTripMs: online.roundTripMs > 0 ? online.roundTripMs : null,
-      canReady: stage === 'lobby' && you?.ready !== true,
-      readyLabel: stage === 'finished' ? 'עוד משחק' : 'מוכן',
+      canReady: stage === 'teamSelection' && you?.ready !== true,
+      canSwitchTeam: stage === 'waitingForPlayers' || stage === 'teamSelection',
+      canShuffle: (you?.isHost ?? false) && stage === 'teamSelection',
+      readyLabel: stage === 'finished' || stage === 'rematchVote' ? 'עוד משחק' : 'מוכן',
     });
   }
 

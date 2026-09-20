@@ -27,6 +27,16 @@ export class NetPlayer extends Schema {
   declare connected: boolean;
   declare ready: boolean;
   declare rematchVote: boolean;
+  declare surrenderVote: boolean;
+  /** True while a server-side bot is standing in for a dropped player. */
+  declare botControlled: boolean;
+  /** True once the player has left for good rather than dropped. */
+  declare departed: boolean;
+  /** Owns the private room: can shuffle teams and nothing else. */
+  declare isHost: boolean;
+  /** Position within the team. Server-assigned, never client-stated. */
+  declare slotIndex: number;
+  declare roundTripMs: number;
   /** Last input sequence number the server consumed; drives reconciliation. */
   declare lastInput: number;
 
@@ -54,6 +64,12 @@ export class NetPlayer extends Schema {
     this.connected = true;
     this.ready = false;
     this.rematchVote = false;
+    this.surrenderVote = false;
+    this.botControlled = false;
+    this.departed = false;
+    this.isHost = false;
+    this.slotIndex = 0;
+    this.roundTripMs = 0;
     this.lastInput = 0;
     this.x = 0;
     this.y = 0;
@@ -79,6 +95,12 @@ defineTypes(NetPlayer, {
   connected: 'boolean',
   ready: 'boolean',
   rematchVote: 'boolean',
+  surrenderVote: 'boolean',
+  botControlled: 'boolean',
+  departed: 'boolean',
+  isHost: 'boolean',
+  slotIndex: 'uint8',
+  roundTripMs: 'uint16',
   lastInput: 'uint32',
   x: 'float32',
   y: 'float32',
@@ -192,11 +214,28 @@ defineTypes(NetViolation, {
  * waiting for an opponent long before the simulation has a phase at all.
  */
 export type RoomStage =
-  'waiting' | 'lobby' | 'countdown' | 'playing' | 'paused' | 'finished' | 'closed';
+  /** Not enough people yet. */
+  | 'waitingForPlayers'
+  /** Everybody is here; teams can still be changed. */
+  | 'teamSelection'
+  /** Teams are locked and the server is collecting "ready". */
+  | 'readyCheck'
+  | 'countdown'
+  | 'playing'
+  /** Frozen while a scoring banner is up. */
+  | 'goalFreeze'
+  /** Somebody dropped; waiting for them or for a bot to take over. */
+  | 'reconnectPause'
+  | 'finished'
+  /** Final whistle; collecting rematch votes. */
+  | 'rematchVote'
+  | 'disposing';
 
 export class MatchRoomState extends Schema {
   declare stage: string;
   declare mode: string;
+  /** How many players each side fields: 1 for 1×1, 2 for 2×2. */
+  declare playersPerTeam: number;
   /** Empty for a matchmade room. */
   declare inviteCode: string;
   declare isPrivate: boolean;
@@ -219,8 +258,9 @@ export class MatchRoomState extends Schema {
 
   constructor() {
     super();
-    this.stage = 'waiting';
+    this.stage = 'waitingForPlayers';
     this.mode = 'oneVsOne';
+    this.playersPerTeam = 1;
     this.inviteCode = '';
     this.isPrivate = false;
     this.stageTimer = 0;
@@ -241,6 +281,7 @@ export class MatchRoomState extends Schema {
 defineTypes(MatchRoomState, {
   stage: 'string',
   mode: 'string',
+  playersPerTeam: 'uint8',
   inviteCode: 'string',
   isPrivate: 'boolean',
   stageTimer: 'float32',

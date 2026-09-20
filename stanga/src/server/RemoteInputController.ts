@@ -15,7 +15,7 @@ import {
   resetPlayerCommand,
   type PlayerCommand,
 } from '../input/PlayerCommand';
-import type { ControllerKind, PlayerController } from '../input/PlayerController';
+import type { ControlContext, ControllerKind, PlayerController } from '../input/PlayerController';
 import { InputFlag, toPlayerCommand, type NetInput } from '../net/protocol';
 
 export class RemoteInputController implements PlayerController {
@@ -26,6 +26,8 @@ export class RemoteInputController implements PlayerController {
   private lastConsumed: NetInput | null = null;
   private acknowledged = 0;
   private connected = true;
+  /** Set while a bot is standing in for the player who dropped this seat. */
+  private bot: PlayerController | null = null;
 
   constructor(
     readonly deviceId: string,
@@ -58,7 +60,22 @@ export class RemoteInputController implements PlayerController {
     while (this.queue.length > this.queueLimit) this.queue.shift();
   }
 
-  poll(playerId: string, tickId: number): PlayerCommand {
+  /**
+   * Hands the seat to a bot, or takes it back. The bot produces exactly the
+   * same commands as a person would, through the same contract.
+   */
+  setBot(bot: PlayerController | null): void {
+    this.bot = bot;
+    if (bot) this.reset();
+  }
+
+  get isBotControlled(): boolean {
+    return this.bot !== null;
+  }
+
+  poll(playerId: string, tickId: number, context: ControlContext): PlayerCommand {
+    if (this.bot) return this.bot.poll(playerId, tickId, context);
+
     const next = this.queue.shift();
     if (next) {
       this.lastConsumed = next;

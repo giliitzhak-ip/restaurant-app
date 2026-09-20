@@ -61,6 +61,9 @@
           <span class="hud__touch-text" id="hud-touch-text"></span>
         </div>
 
+        <!-- Quick chat from team-mates and opponents. Fixed phrases only. -->
+        <div class="hud__chat" id="hud-chat" hidden aria-live="polite"></div>
+
         <div class="hud__countdown" id="hud-countdown" hidden></div>
 
         <div class="hud__meters" id="hud-meters-1">
@@ -120,17 +123,15 @@
             <button type="button" class="btn btn--secondary btn--xl" id="btn-play-online">
               אונליין — 1 על 1
             </button>
+            <button type="button" class="btn btn--secondary btn--xl" id="btn-play-online-2v2">
+              אונליין — 2 נגד 2
+            </button>
             <button type="button" class="btn btn--ghost" id="btn-settings">הגדרות</button>
           </div>
 
           <div class="menu__locked">
             <h2 class="menu__locked-title">מצבים נוספים</h2>
             <ul class="locked-list">
-              <li>
-                <button type="button" class="btn btn--locked" disabled>
-                  2 נגד 2<span class="badge">בקרוב</span>
-                </button>
-              </li>
               <li>
                 <button type="button" class="btn btn--locked" disabled>
                   קריירה<span class="badge">בקרוב</span>
@@ -352,6 +353,9 @@
             <button type="button" class="btn btn--secondary" id="btn-online-create">
               חדר פרטי חדש
             </button>
+            <button type="button" class="btn btn--secondary" id="btn-online-party">
+              חיפוש עם חבר
+            </button>
             <div class="online__join">
               <label class="lobby__field">
                 <span>קוד הזמנה</span>
@@ -372,13 +376,35 @@
           </div>
 
           <div class="online__room is-hidden" id="online-room">
-            <p class="online__status" id="online-status">מתחבר…</p>
+            <p class="online__status">
+              <span id="online-status">מתחבר…</span>
+              <span class="online__seats" id="online-seats"></span>
+            </p>
             <div class="online__invite is-hidden" id="online-invite">
               <span class="online__invite-label">קוד הזמנה</span>
               <strong class="online__code" id="online-invite-code" dir="ltr"></strong>
               <button type="button" class="btn btn--ghost" id="btn-online-copy">העתק קישור</button>
             </div>
-            <ul class="online__players" id="online-players"></ul>
+            <div class="online__teams" id="online-teams"></div>
+
+            <div class="online__quickchat is-hidden" id="online-quickchat">
+              <button type="button" class="btn btn--ghost btn--chip" data-quick-chat="pass">
+                מסור!
+              </button>
+              <button type="button" class="btn btn--ghost btn--chip" data-quick-chat="nice">
+                יפה!
+              </button>
+              <button type="button" class="btn btn--ghost btn--chip" data-quick-chat="mine">
+                שלי
+              </button>
+              <button type="button" class="btn btn--ghost btn--chip" data-quick-chat="defend">
+                בהגנה
+              </button>
+              <button type="button" class="btn btn--ghost btn--chip" data-quick-chat="goodGame">
+                משחק טוב
+              </button>
+            </div>
+
             <p class="online__ping" id="online-ping"></p>
           </div>
 
@@ -387,6 +413,15 @@
           <div class="panel__actions">
             <button type="button" class="btn btn--primary btn--lg is-hidden" id="btn-online-ready">
               מוכן
+            </button>
+            <button type="button" class="btn btn--secondary is-hidden" id="btn-online-switch">
+              החלף קבוצה
+            </button>
+            <button type="button" class="btn btn--ghost is-hidden" id="btn-online-shuffle">
+              ערבב קבוצות
+            </button>
+            <button type="button" class="btn btn--danger is-hidden" id="btn-online-surrender">
+              כניעה
             </button>
             <button type="button" class="btn btn--ghost" id="btn-online-back">חזרה</button>
           </div>
@@ -626,6 +661,19 @@
             >
               <span class="toggle__track"><span class="toggle__thumb"></span></span>
               <span class="toggle__state" id="out-captions">כבוי</span>
+            </button>
+          </div>
+          <div class="field field--row">
+            <span class="field__label">השתקת צ׳אט מהיר</span>
+            <button
+              type="button"
+              class="toggle"
+              id="set-quickchat"
+              role="switch"
+              aria-checked="false"
+            >
+              <span class="toggle__track"><span class="toggle__thumb"></span></span>
+              <span class="toggle__state" id="out-quickchat">כבוי</span>
             </button>
           </div>
 

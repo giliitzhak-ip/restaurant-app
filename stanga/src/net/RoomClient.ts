@@ -13,16 +13,20 @@ import { Client, type Room } from 'colyseus.js';
 import {
   ClientMessage,
   PROTOCOL_VERSION,
-  ROOM_ONE_VS_ONE,
   RejectReason,
   ServerMessage,
+  roomNameFor,
   toNetInput,
   type JoinIntent,
+  type NetChat,
   type NetEvent,
   type NetPong,
+  type OnlineMode,
+  type QuickChatId,
   type RejectReasonCode,
   type WelcomePayload,
 } from './protocol';
+import type { TeamId } from '../game/MatchState';
 import type { MatchRoomState } from './schema';
 import type { PlayerCommand } from '../input/PlayerCommand';
 
@@ -31,6 +35,8 @@ const PING_INTERVAL_MS = 2000;
 
 export interface ConnectRequest {
   intent: JoinIntent;
+  /** Which room type to sit in. A join by code follows the room it finds. */
+  mode: OnlineMode;
   displayName: string;
   colorId: number;
   /** Required for `intent: 'join'`. */
@@ -41,6 +47,8 @@ export interface RoomClientHandlers {
   onWelcome(welcome: WelcomePayload): void;
   onEvent(event: NetEvent): void;
   onStateChange(state: MatchRoomState): void;
+  /** A team-mate or opponent sent one of the fixed phrases. */
+  onChat(chat: NetChat): void;
   /** Connection dropped. `willRetry` is false once the grace period is gone. */
   onDisconnected(code: number): void;
   onPing(roundTripMs: number): void;
@@ -107,15 +115,18 @@ export class RoomClient {
       colorId: request.colorId,
     };
 
+    const roomName = roomNameFor(request.mode);
     let room: Room<MatchRoomState>;
     try {
       if (request.intent === 'create') {
-        room = await this.client.create<MatchRoomState>(ROOM_ONE_VS_ONE, options);
+        room = await this.client.create<MatchRoomState>(roomName, options);
       } else if (request.intent === 'join') {
+        // The code decides the room, and with it the mode: a 1x1 code cannot
+        // be walked into with a 2x2 client.
         const roomId = await this.lookupInvite(request.inviteCode ?? '');
         room = await this.client.joinById<MatchRoomState>(roomId, options);
       } else {
-        room = await this.client.joinOrCreate<MatchRoomState>(ROOM_ONE_VS_ONE, options);
+        room = await this.client.joinOrCreate<MatchRoomState>(roomName, options);
       }
     } catch (error) {
       throw asConnectError(error);
@@ -154,6 +165,24 @@ export class RoomClient {
     this.room?.send(ClientMessage.Rematch, {});
   }
 
+  /** Asks to move to the other team. The server answers through the state. */
+  sendTeamSwitch(team: TeamId): void {
+    this.room?.send(ClientMessage.TeamSwitch, { team });
+  }
+
+  /** Host only; the server checks that, not this. */
+  sendShuffleTeams(): void {
+    this.room?.send(ClientMessage.ShuffleTeams, {});
+  }
+
+  sendSurrender(): void {
+    this.room?.send(ClientMessage.Surrender, {});
+  }
+
+  sendQuickChat(id: QuickChatId): void {
+    this.room?.send(ClientMessage.QuickChat, { id });
+  }
+
   async leave(): Promise<void> {
     this.leaving = true;
     this.stopPinging();
@@ -185,6 +214,7 @@ export class RoomClient {
     this.handlers.onWelcome(welcome);
 
     room.onMessage(ServerMessage.Event, (event: NetEvent) => this.handlers.onEvent(event));
+    room.onMessage(ServerMessage.Chat, (chat: NetChat) => this.handlers.onChat(chat));
     room.onMessage(ServerMessage.Pong, (pong: NetPong) => {
       this.lastRoundTrip = Math.max(0, Date.now() - pong.t);
       this.handlers.onPing(this.lastRoundTrip);

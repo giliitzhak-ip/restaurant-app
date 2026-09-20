@@ -81,7 +81,7 @@ async function quickPair(): Promise<[Joined, Joined]> {
   const b = await connect({}, (client) =>
     client.joinOrCreate<MatchRoomState>(ROOM_ONE_VS_ONE, joinOptions('דני')),
   );
-  await until(() => a.room.roomId === b.room.roomId && a.room.state.stage === 'lobby');
+  await until(() => a.room.roomId === b.room.roomId && a.room.state.stage === 'teamSelection');
   return [a, b];
 }
 
@@ -191,7 +191,8 @@ describe('online 1×1 room', () => {
         joinOptions('חבר', { intent: 'join', inviteCode: code }),
       ),
     );
-    await until(() => host.room.state.stage === 'lobby');
+    // Both seats are now taken, so the room moves on to team selection.
+    await until(() => host.room.state.stage === 'teamSelection');
     expect(friend.welcome.playerId).not.toBe(host.welcome.playerId);
 
     // And a third player cannot take a seat that does not exist.
@@ -378,7 +379,7 @@ describe('online 1×1 room', () => {
     const name = a.room.state.players.get(a.welcome.playerId)?.name;
     await a.room.leave(false);
 
-    await until(() => b.room.state.stage === 'paused');
+    await until(() => b.room.state.stage === 'reconnectPause');
     expect(b.room.state.players.get(a.welcome.playerId)?.connected).toBe(false);
 
     // Frozen, not fast-forwarded: the tick stops while a seat is empty.

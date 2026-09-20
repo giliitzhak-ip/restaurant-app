@@ -17,6 +17,17 @@ import type { Vec3 } from '../core/math';
 import type { PlayerState, TeamId } from '../game/MatchState';
 import type { PhysicsWorld } from '../physics/PhysicsWorld';
 
+/**
+ * Collision layers.
+ *
+ * Team-mates deliberately do not collide as solid capsules: four players
+ * around one ball becomes a scrum, and being blocked by your own partner is
+ * maddening. They are separated by a spring in `MatchEngine` instead, scaled
+ * per mode by `MatchConfig.friendlyCollision`. Everything else — the ball, the
+ * arena, opponents — keeps the default mask and so still collides normally.
+ */
+export const PLAYER_LAYER: Readonly<Record<TeamId, number>> = { home: 0b10, away: 0b100 };
+
 export class PlayerBody {
   readonly root: Mesh;
   readonly body: PhysicsBody;
@@ -59,6 +70,17 @@ export class PlayerBody {
     this.body.setAngularDamping(1);
     this.body.setLinearDamping(0.05);
     this.body.setCollisionCallbackEnabled(true);
+
+    const layer = PLAYER_LAYER[team];
+    const shape = this.body.shape;
+    if (shape) {
+      // Membership is the team bit alone, so a team-mate's collide mask can
+      // exclude it; the mask still carries every other bit, so the ball, the
+      // walls and the opposition are untouched by this.
+      shape.filterMembershipMask = layer;
+      shape.filterCollideMask = ~layer;
+    }
+
     world.tag(this.body, { kind: 'player', playerId: id, team });
   }
 

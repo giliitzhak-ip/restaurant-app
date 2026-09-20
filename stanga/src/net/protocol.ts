@@ -16,11 +16,15 @@ import type { TeamId } from '../game/MatchState';
  */
 export const PROTOCOL_VERSION = 2;
 
-/** Colyseus room name for online 1×1. Stage 4 adds a second name for 2×2. */
+/** Colyseus room names, one per online mode. */
 export const ROOM_ONE_VS_ONE = 'stanga_1v1';
+export const ROOM_TWO_VS_TWO = 'stanga_2v2';
 
-/** Online modes. `twoVsTwo` is deliberately absent until stage 4 ships it. */
-export type OnlineMode = 'oneVsOne';
+export type OnlineMode = 'oneVsOne' | 'twoVsTwo';
+
+export function roomNameFor(mode: OnlineMode): string {
+  return mode === 'twoVsTwo' ? ROOM_TWO_VS_TWO : ROOM_ONE_VS_ONE;
+}
 
 /** How a client wants to be placed into a room. */
 export type JoinIntent =
@@ -53,6 +57,14 @@ export const ClientMessage = {
   Ping: 'p',
   /** Vote to play again after the final whistle. */
   Rematch: 'm',
+  /** Ask to move to the other team. A request; the server decides. */
+  TeamSwitch: 't',
+  /** Host only: redeal the teams at random. */
+  ShuffleTeams: 's',
+  /** Vote to give up. Needs the whole team. */
+  Surrender: 'g',
+  /** One of a fixed set of phrases. Never free text. */
+  QuickChat: 'c',
 } as const;
 export type ClientMessageName = (typeof ClientMessage)[keyof typeof ClientMessage];
 
@@ -63,6 +75,8 @@ export const ServerMessage = {
   Pong: 'q',
   /** A gameplay event worth a sound or a banner (goal, post, tackle…). */
   Event: 'e',
+  /** Somebody said one of the fixed phrases. */
+  Chat: 'h',
   /** The client's simulation is too far from the server's; hard-reset it. */
   Resync: 'y',
 } as const;
@@ -182,7 +196,17 @@ export interface NetEvent {
     | 'kickoff'
     | 'matchEnd'
     /** A double touch was called; the ball changes hands. */
-    | 'violation';
+    | 'violation'
+    /** A pass was completed to a team-mate. */
+    | 'pass'
+    /** The ball was flicked up to keep an aerial chain alive. */
+    | 'juggle'
+    /** A bot took a seat whose player did not come back. */
+    | 'botTookOver'
+    /** A player who dropped is back and has their seat again. */
+    | 'playerReturned'
+    /** A team gave up. */
+    | 'surrender';
   playerId?: string;
   team?: TeamId | null;
   /** Free-form detail: goal part, score kind, outcome, violation kind. */
@@ -298,6 +322,44 @@ export function toNetInput(command: PlayerCommand): NetInput {
     pt: command.preferredPassSlot,
     f: flags,
   };
+}
+
+/**
+ * Quick chat: fixed phrases by id, never text from a client.
+ *
+ * This is the whole of in-game communication on purpose. A free text field is
+ * a moderation problem, and a voice channel is a bigger one; five phrases
+ * cover what a two-player team actually needs to say.
+ */
+export const QUICK_CHAT = {
+  pass: 'מסור!',
+  nice: 'יפה!',
+  mine: 'שלי',
+  defend: 'בהגנה',
+  goodGame: 'משחק טוב',
+} as const;
+
+export type QuickChatId = keyof typeof QUICK_CHAT;
+
+export const QUICK_CHAT_IDS = Object.keys(QUICK_CHAT) as QuickChatId[];
+
+export function isQuickChatId(value: unknown): value is QuickChatId {
+  return typeof value === 'string' && Object.hasOwn(QUICK_CHAT, value);
+}
+
+export interface NetChat {
+  playerId: string;
+  team: TeamId;
+  id: QuickChatId;
+}
+
+/** A team-switch request. The server answers by changing the state, or not. */
+export interface NetTeamSwitch {
+  team: TeamId;
+}
+
+export function sanitizeTeam(raw: unknown): TeamId | null {
+  return raw === 'home' || raw === 'away' ? raw : null;
 }
 
 /**

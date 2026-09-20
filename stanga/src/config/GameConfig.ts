@@ -180,6 +180,16 @@ export const GameConfig = {
     staminaRegenPerSecond: 17,
     /** Sprinting is refused below this stamina value. */
     staminaSprintFloor: 8,
+    /**
+     * How stiffly two team-mates who overlap push each other apart, in
+     * newtons per metre of overlap. Team-mates do not collide as solid
+     * capsules — four people around one ball turns into a scrum — so this
+     * spring is the whole of their separation, and `MatchConfig.friendlyCollision`
+     * scales it per mode.
+     */
+    friendlySeparation: 900,
+    /** Ceiling on the separation speed, so an overlap cannot launch anyone. */
+    friendlySeparationMaxSpeed: 2.6,
   },
 
   kick: {
