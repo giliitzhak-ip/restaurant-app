@@ -10,6 +10,18 @@ the customer's side, the registration form, the provider's side and the
 review queue — beside a panel that names the row or the function each screen
 is standing on.
 
+Below the phone sits the **operator stage**, which is where the rest of the
+system is. Admin is desktop-first in the real product (spec §42), so these
+four views are full width rather than pretending a control tower fits in a
+phone bezel:
+
+| View | What it runs on |
+|---|---|
+| **מסלול העבודה** | The 41 rows of `job_transitions` — the table the database trigger validates every move against. Only legal moves are offered, each labelled with who may make it. A move the explorer refuses is a move the system refuses. |
+| **מגדל בקרה** | The counters and analytics `GET /api/admin/overview` answered, on a 10,000-provider network. |
+| **מעבדת התאמה** | Eight weight sliders over the recorded per-signal scores, recomputing `Σ score × weight` — the same arithmetic as `engine.ts`. Drag route opportunity to zero and טל אזולאי climbs fifteen places to first, which is the thesis stated as a control rather than a paragraph. |
+| **עמלה ותשלום** | The active tiered rule from `platform_fees` applied to recorded prices. No payment happens; the provider is `mock` and says so. |
+
 It is kept here because it is a deliverable, not scaffolding, and because a
 published copy is not a source.
 
@@ -87,6 +99,12 @@ This used to be a paragraph of instructions instead of a script, which is how
 the shipped page came to be describing a 1000-provider network with
 `ratingBreakdown: null` for everyone long after neither was true. **A
 documented manual process is a process that drifts.**
+
+It also writes the `SYSTEM` constant the operator stage runs on: the legal
+transitions, the matching weights, the dispatch waves, the timeouts, the
+thresholds, the fee tiers and the control tower's own numbers. Those are
+settings rows and catalogue rows, so they drift exactly like the recording
+does.
 
 Two things the script will not do quietly. It refuses to write a recording
 whose `Σ score × weight` does not reproduce every recorded `final_score` to

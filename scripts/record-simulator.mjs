@@ -25,6 +25,7 @@ import pg from 'pg';
 const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:3000';
 const HTML = 'docs/demo/getservice-simulator.html';
 const CUSTOMER = { email: 'rotem@demo.local', password: 'demo1234' };
+const ADMIN = { email: 'admin@demo.local', password: 'demo1234' };
 
 /** The reference request, unchanged from the original recording. */
 const JOB = {
@@ -101,7 +102,20 @@ async function main() {
   } finally {
     await db.end();
   }
-  if (rows.length === 0) throw new Error('no matching_events rows — nothing to record');
+  if (rows.length === 0) {
+    /*
+     * Say WHY, because the cause is almost always the same one and the bare
+     * message sends people looking at the engine instead of the clock. Demo
+     * fixes go stale after 120 seconds; a network seeded earlier today
+     * produces a full candidate list where every one is refused as
+     * `location_not_live`, which is the matcher working correctly.
+     */
+    throw new Error(
+      'no scored candidates — every one was excluded before scoring.\n' +
+      '   Almost always stale location fixes: they go stale after 120s and the\n' +
+      '   matcher refuses to treat a stale fix as live. Re-seed, then record:\n' +
+      '     npm run db:network -- --seed 20260917 --count 10000 --reset');
+  }
   log(`• ${rows.length} scored candidates read back from matching_events`);
 
   /* ── 3. The customer-facing profile, from the endpoint the app calls ─ */
@@ -172,7 +186,72 @@ async function main() {
   }
   log(`• Σ score × weight reproduces every recorded total (worst drift ${worst.toFixed(4)})`);
 
-  /* ── 5. Splice the constant back in ───────────────────────────────── */
+  /* ── 5. The system's own rules, for the operator views ─────────────
+   *
+   * The lifecycle explorer, the control tower and the matching lab are not
+   * illustrations of how the system might work — they run on the rows that
+   * decide how it does. `job_transitions` is the table the database trigger
+   * validates every move against, so a move the explorer refuses is a move
+   * the real system refuses. The weights, waves, timeouts and thresholds are
+   * the `settings` rows the engine reads, and the fee tiers are the
+   * `platform_fees` row the split is computed from.
+   */
+  const sys = new pg.Client({ connectionString });
+  await sys.connect();
+  let system;
+  try {
+    const setting = async (key) =>
+      (await sys.query('select value from settings where key = $1', [key])).rows[0]?.value ?? null;
+
+    const transitions = (await sys.query(
+      `select from_status::text as "from", to_status::text as "to",
+              array_remove(array[
+                case when allow_customer then 'customer' end,
+                case when allow_provider then 'provider' end,
+                case when allow_admin then 'admin' end,
+                case when allow_system then 'system' end], null) as actors,
+              coalesce(note, '') as note
+         from job_transitions order by 1, 2`)).rows;
+
+    const fees = (await sys.query(
+      `select config from platform_fees
+        where is_active and category_id is null
+        order by priority desc limit 1`)).rows[0]?.config ?? null;
+
+    system = {
+      weights,
+      waves: await setting('dispatch.waves'),
+      timeouts: await setting('job.timeouts'),
+      thresholds: await setting('matching.thresholds'),
+      fees,
+      transitions,
+    };
+  } finally {
+    await sys.end();
+  }
+  log(`• ${system.transitions.length} legal transitions, ` +
+      `${system.waves?.waves?.length ?? 0} dispatch waves, ` +
+      `${system.fees?.tiers?.length ?? 0} fee tiers`);
+
+  /* The control tower's own numbers, from the endpoint the tower calls. */
+  const adminLogin = await fetch(`${BASE}/api/auth/login`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(ADMIN),
+  });
+  if (!adminLogin.ok) throw new Error(`admin login failed: ${adminLogin.status}`);
+  const adminCookie = (adminLogin.headers.get('set-cookie') ?? '').split(';')[0];
+  const ovRes = await fetch(`${BASE}/api/admin/overview`, { headers: { cookie: adminCookie } });
+  if (!ovRes.ok) throw new Error(`overview failed: ${ovRes.status}`);
+  const ov = await ovRes.json();
+  system.admin = {
+    counters: ov.counters, analytics: ov.analytics, totals: ov.totals,
+    categories: ov.categories,
+    recordedAt: new Date().toISOString().slice(0, 10),
+  };
+  log(`• control tower: ${ov.totals?.liveProviders} live providers, ` +
+      `${ov.analytics?.completions_7d} completions in 7 days`);
+
+  /* ── 6. Splice the constants back in ──────────────────────────────── */
   const slug = (name, i) =>
     'p' + String(i + 1).padStart(2, '0') + '_' + name.split(' ')[0].replace(/[^֐-׿]/g, '');
   const body = providers.map((p, i) => {
@@ -193,12 +272,19 @@ async function main() {
   }`;
   }).join(',\n');
 
-  const html = readFileSync(HTML, 'utf8');
+  let html = readFileSync(HTML, 'utf8');
   const start = html.indexOf('const PROVIDERS = [');
   const end = html.indexOf('\n];', start);
   if (start === -1 || end === -1) throw new Error('PROVIDERS constant not found in the page');
-  const next = html.slice(0, start) + 'const PROVIDERS = [\n' + body + html.slice(end);
-  writeFileSync(HTML, next);
+  html = html.slice(0, start) + 'const PROVIDERS = [\n' + body + html.slice(end);
+
+  const sysStart = html.indexOf('const SYSTEM = ');
+  const sysEnd = html.indexOf('\n};', sysStart);
+  if (sysStart === -1 || sysEnd === -1) throw new Error('SYSTEM constant not found in the page');
+  html = html.slice(0, sysStart) + 'const SYSTEM = ' +
+    JSON.stringify(system, null, 2).replace(/\n/g, '\n') + html.slice(sysEnd + 3);
+
+  writeFileSync(HTML, html);
 
   log(`\n✅ recording refreshed`);
   log(`   providers          ${providers.length}`);

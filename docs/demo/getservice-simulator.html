@@ -448,6 +448,46 @@ body {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+/* ── Operator stage ──────────────────────────────────────────────────────
+   Admin is desktop-first in the real product (spec §42), so these views sit
+   full width below the phone rather than inside its bezel. Pretending a
+   control tower is a phone screen would be a lie about the product. */
+.ops{margin-top:28px;border:1px solid var(--line);border-radius:16px;background:var(--p-s1);overflow:hidden}
+.ops-head{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;
+  padding:14px 16px;border-bottom:1px solid var(--line);background:var(--p-s2)}
+.ops-head h2{margin:0;font-size:15px;font-weight:700;color:var(--p-ink)}
+.ops-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.ops-body{padding:16px}
+.ops-note{font-size:12.5px;color:var(--p-ink-3);margin:0 0 14px;line-height:1.6}
+.ops-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.tile{border:1px solid var(--line);border-radius:12px;background:var(--p-s2);padding:12px 14px}
+.tile .n{font-size:22px;font-weight:800;color:var(--p-ink);font-variant-numeric:tabular-nums;direction:ltr}
+.tile .l{font-size:12px;color:var(--p-ink-3);margin-top:3px}
+.ops-two{display:grid;gap:16px;grid-template-columns:1fr}
+@media(min-width:900px){.ops-two{grid-template-columns:1fr 1fr}}
+.sm-now{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;margin-bottom:12px}
+.sm-now code{font-size:15px;font-weight:700;color:var(--brand-bright)}
+.mv{display:flex;flex-wrap:wrap;gap:8px}
+.mv button{border:1px solid var(--line-strong);background:var(--p-s2);color:var(--p-ink);
+  border-radius:10px;padding:8px 11px;font:inherit;font-size:12.5px;cursor:pointer;text-align:start;min-height:40px}
+.mv button:hover{border-color:var(--brand)}
+.mv button .who{display:block;font-size:10.5px;color:var(--p-ink-3);margin-top:2px}
+.mv button.term{border-style:dashed;opacity:.85}
+.trail{display:flex;flex-wrap:wrap;gap:5px;align-items:center;font-size:11.5px;color:var(--p-ink-3);margin-top:12px}
+.trail code{font-size:11px}
+.lab-row{display:grid;grid-template-columns:118px 1fr 52px;gap:10px;align-items:center;margin-bottom:9px}
+.lab-row label{font-size:12.5px;color:var(--p-ink-2)}
+.lab-row output{font-size:12.5px;font-variant-numeric:tabular-nums;direction:ltr;text-align:end;color:var(--p-ink)}
+.lab-row input[type=range]{width:100%;accent-color:var(--brand)}
+.rank{border-top:1px solid var(--line);padding:8px 0;display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:center;font-size:13px}
+.rank .pos{font-variant-numeric:tabular-nums;color:var(--p-ink-3);direction:ltr}
+.rank .sc{font-variant-numeric:tabular-nums;direction:ltr;font-weight:700}
+.rank .mvd{font-size:11px;padding:1px 5px;border-radius:5px;margin-inline-start:6px}
+.up{background:rgba(34,197,94,.15);color:var(--ok-bright)}
+.dn{background:rgba(239,68,68,.15);color:var(--bad-bright)}
+.split{display:flex;align-items:center;gap:0;height:30px;border-radius:8px;overflow:hidden;margin:10px 0}
+.split span{display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;height:100%;color:#04101f}
+
 </style>
 
 <div class="wrap">
@@ -540,6 +580,20 @@ body {
   </div>
 </div>
 
+  <!-- ══ Operator stage ═══════════════════════════════════════════════ -->
+  <section class="ops">
+    <div class="ops-head">
+      <h2>מאחורי הקלעים — המערכת עצמה</h2>
+      <div class="ops-tabs">
+        <button class="ctl" id="ops-life" aria-pressed="true">מסלול העבודה</button>
+        <button class="ctl" id="ops-tower" aria-pressed="false">מגדל בקרה</button>
+        <button class="ctl" id="ops-lab" aria-pressed="false">מעבדת התאמה</button>
+        <button class="ctl" id="ops-money" aria-pressed="false">עמלה ותשלום</button>
+      </div>
+    </div>
+    <div class="ops-body" id="ops-body"></div>
+  </section>
+
 <script>
 /* ===========================================================================
    Data. Not a mock: a recording.
@@ -583,10 +637,10 @@ const PROVIDERS = [
     price: null, km: 0.24, online: true, hours: null,
     onway: true, etaMin: 3.8, offered: true,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 99.38, skillMatch: 100, availability: 75.27,
+    sig: { routeOpportunity: 99.38, skillMatch: 100, availability: 76.22,
            eta: 100, reliability: 72.58, rating: 78.19,
            price: 50, experience: 50.63 },
-    recordedScore: 86.24,
+    recordedScore: 86.39,
     bio: "",
     services: [["החלפת ברזים",230],["החלפת דודים",1350],["החלפת צנרת",1735],["חיבור מדיח ומכונת כביסה",270],["פתיחת סתימות",310],["תיקון פיצוץ צינור",465]],
     ratingBreakdown: {"five":4,"four":2,"three":0,"low":0}, reviewsText: []
@@ -597,10 +651,10 @@ const PROVIDERS = [
     price: 300, km: 1.69, online: true, hours: null,
     onway: true, etaMin: 8.3, offered: true,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 98.4, skillMatch: 100, availability: 78.27,
+    sig: { routeOpportunity: 98.4, skillMatch: 100, availability: 79.22,
            eta: 92.64, reliability: 75.1, rating: 70.36,
            price: 44.25, experience: 73.49 },
-    recordedScore: 86.04,
+    recordedScore: 86.18,
     bio: "מתמחה בתקלות דחופות, זמין גם בשעות לא שגרתיות.",
     services: [["איתור נזילות",460],["החלפת ברזים",245],["החלפת דודים",1440],["חיבור מדיח ומכונת כביסה",290],["פתיחת סתימות",330],["פתיחת סתימות בביוב ראשי",670],["תיקון דודים",400],["תיקון נזילות בכיור",300],["תיקון פיצוץ צינור",495]],
     ratingBreakdown: {"five":5,"four":6,"three":1,"low":0}, reviewsText: []
@@ -611,10 +665,10 @@ const PROVIDERS = [
     price: 295, km: 1.88, online: true, hours: null,
     onway: true, etaMin: 8.9, offered: true,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 98.43, skillMatch: 100, availability: 71.27,
+    sig: { routeOpportunity: 98.43, skillMatch: 100, availability: 72.22,
            eta: 91.27, reliability: 71.4, rating: 72,
            price: 47.13, experience: 73.68 },
-    recordedScore: 84.81,
+    recordedScore: 84.95,
     bio: "עבודה נקייה עם אחריות על כל תיקון.",
     services: [["איתור נזילות",455],["החלפת ברזים",245],["החלפת דודים",1420],["החלפת צנרת",1825],["חיבור מדיח ומכונת כביסה",285],["פתיחת סתימות",325],["פתיחת סתימות בביוב ראשי",660],["תיקון אסלות",285],["תיקון דודים",395],["תיקון נזילות בכיור",295],["תיקון פיצוץ צינור",485]],
     ratingBreakdown: {"five":8,"four":5,"three":2,"low":0}, reviewsText: []
@@ -625,10 +679,10 @@ const PROVIDERS = [
     price: 290, km: 0.95, online: true, hours: null,
     onway: true, etaMin: 6, offered: true,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 98.93, skillMatch: 100, availability: 57.77,
+    sig: { routeOpportunity: 98.93, skillMatch: 100, availability: 58.72,
            eta: 97.84, reliability: 75.18, rating: 78.67,
            price: 50, experience: 37.19 },
-    recordedScore: 82.93,
+    recordedScore: 83.07,
     bio: "מתמחה בתקלות דחופות, זמין גם בשעות לא שגרתיות.",
     services: [["איתור נזילות",450],["החלפת ברזים",240],["החלפת דודים",1405],["החלפת צנרת",1805],["חיבור מדיח ומכונת כביסה",280],["פתיחת סתימות",320],["תיקון אסלות",280],["תיקון דודים",390],["תיקון נזילות בכיור",290],["תיקון פיצוץ צינור",480]],
     ratingBreakdown: {"five":7,"four":4,"three":0,"low":0}, reviewsText: []
@@ -639,10 +693,10 @@ const PROVIDERS = [
     price: 305, km: 0.39, online: true, hours: null,
     onway: true, etaMin: 4.2, offered: true,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 94.53, skillMatch: 100, availability: 53.27,
+    sig: { routeOpportunity: 94.53, skillMatch: 100, availability: 54.22,
            eta: 100, reliability: 74.37, rating: 75,
            price: 41.38, experience: 73.77 },
-    recordedScore: 82.32,
+    recordedScore: 82.46,
     bio: "עבודה נקייה עם אחריות על כל תיקון.",
     services: [["איתור נזילות",475],["החלפת דודים",1475],["החלפת צנרת",1895],["תיקון אסלות",295],["תיקון דודים",410],["תיקון נזילות בכיור",305],["תיקון פיצוץ צינור",505]],
     ratingBreakdown: {"five":8,"four":8,"three":0,"low":0}, reviewsText: []
@@ -653,10 +707,10 @@ const PROVIDERS = [
     price: 290, km: 1.97, online: true, hours: null,
     onway: true, etaMin: 9.1, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 91.18, skillMatch: 100, availability: 61.77,
+    sig: { routeOpportunity: 91.18, skillMatch: 100, availability: 62.72,
            eta: 90.71, reliability: 72.79, rating: 75.9,
            price: 50, experience: 73.59 },
-    recordedScore: 82.18,
+    recordedScore: 82.32,
     bio: "עובד באזור שנים, שירות מהיר ואמין.",
     services: [["איתור נזילות",450],["החלפת ברזים",240],["החלפת דודים",1405],["חיבור מדיח ומכונת כביסה",280],["פתיחת סתימות",320],["פתיחת סתימות בביוב ראשי",655],["תיקון דודים",390],["תיקון נזילות בכיור",290],["תיקון פיצוץ צינור",480]],
     ratingBreakdown: {"five":8,"four":7,"three":0,"low":0}, reviewsText: []
@@ -667,10 +721,10 @@ const PROVIDERS = [
     price: 280, km: 1.31, online: true, hours: null,
     onway: true, etaMin: 7.1, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 94.23, skillMatch: 100, availability: 58.77,
+    sig: { routeOpportunity: 94.23, skillMatch: 100, availability: 59.72,
            eta: 95.32, reliability: 66.67, rating: 78.19,
            price: 55.75, experience: 58.93 },
-    recordedScore: 82.13,
+    recordedScore: 82.27,
     bio: "",
     services: [["איתור נזילות",435],["החלפת דודים",1350],["החלפת צנרת",1740],["פתיחת סתימות",310],["פתיחת סתימות בביוב ראשי",630],["תיקון אסלות",270],["תיקון דודים",375],["תיקון נזילות בכיור",280],["תיקון פיצוץ צינור",465]],
     ratingBreakdown: {"five":4,"four":2,"three":0,"low":0}, reviewsText: []
@@ -681,10 +735,10 @@ const PROVIDERS = [
     price: null, km: 1.32, online: true, hours: null,
     onway: true, etaMin: 7.1, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 92.98, skillMatch: 100, availability: 60.77,
+    sig: { routeOpportunity: 92.98, skillMatch: 100, availability: 61.72,
            eta: 95.23, reliability: 67.94, rating: 67.59,
            price: 50, experience: 50.53 },
-    recordedScore: 80.46,
+    recordedScore: 80.61,
     bio: "עובד באזור שנים, שירות מהיר ואמין.",
     services: [["החלפת ברזים",235],["החלפת צנרת",1750],["חיבור מדיח ומכונת כביסה",270],["פתיחת סתימות בביוב ראשי",630],["תיקון דודים",380],["תיקון פיצוץ צינור",465]],
     ratingBreakdown: {"five":1,"four":6,"three":0,"low":0}, reviewsText: []
@@ -695,10 +749,10 @@ const PROVIDERS = [
     price: 285, km: 1.76, online: true, hours: null,
     onway: true, etaMin: 8.5, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 95.75, skillMatch: 100, availability: 59.27,
+    sig: { routeOpportunity: 95.75, skillMatch: 100, availability: 60.22,
            eta: 92.15, reliability: 64.83, rating: 73.04,
            price: 52.87, experience: 35.97 },
-    recordedScore: 80.27,
+    recordedScore: 80.42,
     bio: "מתמחה בתקלות דחופות, זמין גם בשעות לא שגרתיות.",
     services: [["איתור נזילות",440],["החלפת ברזים",235],["החלפת דודים",1375],["החלפת צנרת",1770],["חיבור מדיח ומכונת כביסה",275],["פתיחת סתימות",315],["פתיחת סתימות בביוב ראשי",640],["תיקון אסלות",275],["תיקון דודים",385],["תיקון נזילות בכיור",285],["תיקון פיצוץ צינור",470]],
     ratingBreakdown: {"five":1,"four":2,"three":0,"low":0}, reviewsText: []
@@ -709,10 +763,10 @@ const PROVIDERS = [
     price: 305, km: 1.8, online: true, hours: null,
     onway: true, etaMin: 8.6, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 99.75, skillMatch: 100, availability: 40.27,
+    sig: { routeOpportunity: 99.75, skillMatch: 100, availability: 41.22,
            eta: 91.88, reliability: 69.63, rating: 72.17,
            price: 41.38, experience: 57.16 },
-    recordedScore: 79.27,
+    recordedScore: 79.42,
     bio: "עובד באזור שנים, שירות מהיר ואמין.",
     services: [["איתור נזילות",475],["החלפת ברזים",255],["החלפת דודים",1475],["החלפת צנרת",1895],["חיבור מדיח ומכונת כביסה",295],["פתיחת סתימות",335],["פתיחת סתימות בביוב ראשי",685],["תיקון אסלות",295],["תיקון נזילות בכיור",305],["תיקון פיצוץ צינור",505]],
     ratingBreakdown: {"five":8,"four":8,"three":1,"low":0}, reviewsText: []
@@ -723,10 +777,10 @@ const PROVIDERS = [
     price: 335, km: 0.55, online: true, hours: null,
     onway: true, etaMin: 4.7, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 91.8, skillMatch: 100, availability: 42.77,
+    sig: { routeOpportunity: 91.8, skillMatch: 100, availability: 43.72,
            eta: 100, reliability: 72.01, rating: 76.72,
            price: 24.14, experience: 74.99 },
-    recordedScore: 79.2,
+    recordedScore: 79.34,
     bio: "עבודה נקייה עם אחריות על כל תיקון.",
     services: [["איתור נזילות",520],["החלפת צנרת",2075],["חיבור מדיח ומכונת כביסה",325],["פתיחת סתימות בביוב ראשי",750],["תיקון אסלות",325],["תיקון דודים",450],["תיקון נזילות בכיור",335],["התקנת מזגנים",1035],["טיפול בריחות מהמזגן",325],["מילוי גז למזגן",485],["תיקון מזגן שלא מקרר",390],["תיקון מזגן שלא נדלק",370],["תיקון מיני מרכזי",555],["תיקון נזילות ממזגן",345]],
     ratingBreakdown: {"five":13,"four":8,"three":1,"low":0}, reviewsText: []
@@ -737,10 +791,10 @@ const PROVIDERS = [
     price: null, km: 0.2, online: true, hours: null,
     onway: true, etaMin: 3.6, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 99.75, skillMatch: 100, availability: 44.27,
+    sig: { routeOpportunity: 99.75, skillMatch: 100, availability: 45.22,
            eta: 100, reliability: 60, rating: 72.73,
            price: 50, experience: 32.99 },
-    recordedScore: 79,
+    recordedScore: 79.14,
     bio: "",
     services: [["איתור נזילות",430],["החלפת צנרת",1725],["חיבור מדיח ומכונת כביסה",270],["פתיחת סתימות",305],["תיקון אסלות",270],["תיקון דודים",375],["טיפול בריחות מהמזגן",270],["מילוי גז למזגן",400],["ניקוי וטיפול תקופתי למזגן",250],["פירוק והתקנת מזגנים",1055],["תיקון מזגן שלא מקרר",325],["תיקון מזגן שלא נדלק",305],["תיקון מיני מרכזי",460],["תיקון נזילות ממזגן",285]],
     ratingBreakdown: {"five":0,"four":1,"three":0,"low":0}, reviewsText: []
@@ -751,10 +805,10 @@ const PROVIDERS = [
     price: 270, km: 1.89, online: true, hours: null,
     onway: true, etaMin: 8.9, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 93.25, skillMatch: 100, availability: 62.77,
+    sig: { routeOpportunity: 93.25, skillMatch: 100, availability: 63.72,
            eta: 91.25, reliability: 60, rating: 60,
            price: 61.49, experience: 30 },
-    recordedScore: 78.43,
+    recordedScore: 78.57,
     bio: "",
     services: [["איתור נזילות",415],["החלפת ברזים",220],["החלפת דודים",1295],["החלפת צנרת",1665],["חיבור מדיח ומכונת כביסה",260],["פתיחת סתימות",295],["פתיחת סתימות בביוב ראשי",600],["תיקון אסלות",260],["תיקון דודים",360],["תיקון נזילות בכיור",270],["תיקון פיצוץ צינור",445]],
     ratingBreakdown: null, reviewsText: []
@@ -765,416 +819,430 @@ const PROVIDERS = [
     price: 295, km: 1.21, online: true, hours: null,
     onway: false, etaMin: 6.8, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 64.44, skillMatch: 100, availability: 70.77,
+    sig: { routeOpportunity: 64.44, skillMatch: 100, availability: 71.72,
            eta: 95.97, reliability: 75.74, rating: 82.86,
            price: 47.13, experience: 57.81 },
-    recordedScore: 77.43,
+    recordedScore: 77.57,
     bio: "מתמחה בתקלות דחופות, זמין גם בשעות לא שגרתיות.",
     services: [["איתור נזילות",460],["החלפת ברזים",245],["החלפת צנרת",1835],["חיבור מדיח ומכונת כביסה",285],["פתיחת סתימות",325],["פתיחת סתימות בביוב ראשי",665],["תיקון נזילות בכיור",295]],
     ratingBreakdown: {"five":14,"four":5,"three":0,"low":0}, reviewsText: []
   },
   {
-    id: "p15_טל", name: "טל אזולאי", biz: "",
+    id: "p15_מלכה", name: "מלכה פרץ", biz: "",
+    rating: 3.82, reviews: 11, jobs: 14, years: 8, respSec: 102,
+    price: 265, km: 1.3, online: true, hours: null,
+    onway: true, etaMin: 7, offered: false,
+    /* The recorded per-signal scores for this job, 0..100. */
+    sig: { routeOpportunity: 89.55, skillMatch: 100, availability: 40.72,
+           eta: 95.41, reliability: 78.06, rating: 57.19,
+           price: 64.37, experience: 53.71 },
+    recordedScore: 77.47,
+    bio: "עובד באזור שנים, שירות מהיר ואמין.",
+    services: [["החלפת ברזים",215],["החלפת צנרת",1630],["חיבור מדיח ומכונת כביסה",255],["פתיחת סתימות",290],["תיקון אסלות",255],["תיקון דודים",355],["תיקון נזילות בכיור",265],["תיקון פיצוץ צינור",435]],
+    ratingBreakdown: {"five":1,"four":7,"three":3,"low":0}, reviewsText: []
+  },
+  {
+    id: "p16_טל", name: "טל אזולאי", biz: "",
     rating: 4.88, reviews: 24, jobs: 31, years: 18, respSec: 78,
     price: null, km: 0.13, online: true, hours: null,
     onway: false, etaMin: 3.4, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 44.55, skillMatch: 100, availability: 77.27,
+    sig: { routeOpportunity: 44.55, skillMatch: 100, availability: 78.22,
            eta: 100, reliability: 73.93, rating: 88.41,
            price: 50, experience: 74.89 },
-    recordedScore: 75.21,
+    recordedScore: 75.35,
     bio: "",
     services: [["איתור נזילות",520],["החלפת ברזים",280],["החלפת דודים",1620],["החלפת צנרת",2085],["פתיחת סתימות",370],["פתיחת סתימות בביוב ראשי",755],["תיקון אסלות",325],["תיקון פיצוץ צינור",555]],
     ratingBreakdown: {"five":21,"four":3,"three":0,"low":0}, reviewsText: []
   },
   {
-    id: "p16_נדב", name: "נדב יוספי", biz: "נדב יוספי — אינסטלציה",
+    id: "p17_נדב", name: "נדב יוספי", biz: "נדב יוספי — אינסטלציה",
     rating: 4.5, reviews: 18, jobs: 24, years: 7, respSec: 12,
     price: 300, km: 0.97, online: true, hours: null,
     onway: false, etaMin: 6, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 41.73, skillMatch: 100, availability: 78.77,
+    sig: { routeOpportunity: 41.73, skillMatch: 100, availability: 79.72,
            eta: 97.71, reliability: 88.09, rating: 75,
            price: 44.25, experience: 51.84 },
-    recordedScore: 73.13,
+    recordedScore: 73.28,
     bio: "עובד באזור שנים, שירות מהיר ואמין.",
     services: [["איתור נזילות",465],["החלפת ברזים",245],["החלפת דודים",1445],["החלפת צנרת",1855],["חיבור מדיח ומכונת כביסה",290],["פתיחת סתימות",330],["פתיחת סתימות בביוב ראשי",670],["תיקון נזילות בכיור",300],["תיקון פיצוץ צינור",495]],
     ratingBreakdown: {"five":10,"four":7,"three":1,"low":0}, reviewsText: []
   },
   {
-    id: "p17_משה", name: "משה אדרי", biz: "",
+    id: "p18_משה", name: "משה אדרי", biz: "",
     rating: 4.44, reviews: 16, jobs: 20, years: 7, respSec: 75,
     price: null, km: 0.28, online: true, hours: null,
     onway: false, etaMin: 3.9, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 44.07, skillMatch: 100, availability: 69.77,
+    sig: { routeOpportunity: 44.07, skillMatch: 100, availability: 70.72,
            eta: 100, reliability: 69.12, rating: 73.15,
            price: 50, experience: 51.47 },
-    recordedScore: 70.78,
+    recordedScore: 70.93,
     bio: "עובד באזור שנים, שירות מהיר ואמין.",
     services: [["איתור נזילות",435],["החלפת ברזים",235],["החלפת דודים",1360],["החלפת צנרת",1745],["חיבור מדיח ומכונת כביסה",270],["פתיחת סתימות",310],["פתיחת סתימות בביוב ראשי",630],["תיקון דודים",380],["תיקון פיצוץ צינור",465],["התקנת מזגנים",875],["טיפול בריחות מהמזגן",270],["מילוי גז למזגן",405],["ניקוי וטיפול תקופתי למזגן",250],["פירוק והתקנת מזגנים",1065],["תיקון מזגן שלא מקרר",330],["תיקון מזגן שלא נדלק",310]],
     ratingBreakdown: {"five":7,"four":9,"three":0,"low":0}, reviewsText: []
   },
   {
-    id: "p18_זיו", name: "זיו סבן", biz: "זיו סבן — אינסטלציה",
+    id: "p19_זיו", name: "זיו סבן", biz: "זיו סבן — אינסטלציה",
     rating: 4.31, reviews: 13, jobs: 18, years: 5, respSec: 76,
     price: 300, km: 0.55, online: true, hours: null,
     onway: false, etaMin: 4.7, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 43.14, skillMatch: 100, availability: 75.27,
+    sig: { routeOpportunity: 43.14, skillMatch: 100, availability: 76.22,
            eta: 100, reliability: 71.4, rating: 69.63,
            price: 44.25, experience: 45.68 },
-    recordedScore: 70.68,
+    recordedScore: 70.82,
     bio: "ותק רב בתחום, מגיע עם כל הציוד הנדרש.",
     services: [["איתור נזילות",460],["החלפת ברזים",245],["החלפת דודים",1435],["פתיחת סתימות",330],["תיקון אסלות",285],["תיקון דודים",400],["תיקון נזילות בכיור",300],["תיקון פיצוץ צינור",490]],
     ratingBreakdown: {"five":5,"four":7,"three":1,"low":0}, reviewsText: []
   },
   {
-    id: "p19_אורלי", name: "אורלי נגר", biz: "",
+    id: "p20_אורלי", name: "אורלי נגר", biz: "",
     rating: 4.78, reviews: 18, jobs: 20, years: 14, respSec: 58,
     price: 310, km: 1.46, online: true, hours: null,
     onway: false, etaMin: 7.6, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 40.07, skillMatch: 100, availability: 61.77,
+    sig: { routeOpportunity: 40.07, skillMatch: 100, availability: 62.72,
            eta: 94.26, reliability: 78.52, rating: 84,
            price: 38.51, experience: 71.07 },
-    recordedScore: 70.44,
+    recordedScore: 70.58,
     bio: "מתמחה בתקלות דחופות, זמין גם בשעות לא שגרתיות.",
     services: [["איתור נזילות",480],["החלפת ברזים",255],["החלפת דודים",1490],["החלפת צנרת",1920],["חיבור מדיח ומכונת כביסה",300],["פתיחת סתימות",340],["פתיחת סתימות בביוב ראשי",695],["תיקון אסלות",300],["תיקון דודים",415],["תיקון נזילות בכיור",310],["תיקון פיצוץ צינור",510]],
     ratingBreakdown: {"five":14,"four":4,"three":0,"low":0}, reviewsText: []
   },
   {
-    id: "p20_רועי", name: "רועי ברקוביץ", biz: "",
+    id: "p21_רועי", name: "רועי ברקוביץ", biz: "",
     rating: 4.43, reviews: 14, jobs: 19, years: 16, respSec: 133,
     price: 330, km: 1.4, online: true, hours: null,
     onway: false, etaMin: 7.4, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 40.28, skillMatch: 100, availability: 75.27,
+    sig: { routeOpportunity: 40.28, skillMatch: 100, availability: 76.22,
            eta: 94.69, reliability: 71.34, rating: 72.96,
            price: 27.01, experience: 73.77 },
-    recordedScore: 70.3,
+    recordedScore: 70.44,
     bio: "עובד באזור שנים, שירות מהיר ואמין.",
     services: [["החלפת דודים",1585],["חיבור מדיח ומכונת כביסה",315],["פתיחת סתימות בביוב ראשי",735],["תיקון דודים",440],["תיקון נזילות בכיור",330],["תיקון פיצוץ צינור",545]],
     ratingBreakdown: {"five":6,"four":8,"three":0,"low":0}, reviewsText: []
   },
   {
-    id: "p21_מאיה", name: "מאיה שמש", biz: "",
+    id: "p22_מאיה", name: "מאיה שמש", biz: "",
     rating: 4.86, reviews: 14, jobs: 19, years: 8, respSec: 39,
     price: 290, km: 1.96, online: true, hours: null,
     onway: false, etaMin: 9.1, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 38.38, skillMatch: 100, availability: 65.27,
+    sig: { routeOpportunity: 38.38, skillMatch: 100, availability: 66.22,
            eta: 90.75, reliability: 78.02, rating: 85.5,
            price: 50, experience: 54.17 },
-    recordedScore: 70.02,
+    recordedScore: 70.16,
     bio: "ותק רב בתחום, מגיע עם כל הציוד הנדרש.",
     services: [["איתור נזילות",450],["החלפת ברזים",240],["החלפת דודים",1395],["החלפת צנרת",1795],["חיבור מדיח ומכונת כביסה",280],["פתיחת סתימות",320],["פתיחת סתימות בביוב ראשי",645],["תיקון אסלות",280],["תיקון דודים",390],["תיקון נזילות בכיור",290],["תיקון פיצוץ צינור",480]],
     ratingBreakdown: {"five":12,"four":2,"three":0,"low":0}, reviewsText: []
   },
   {
-    id: "p22_אלון", name: "אלון שמש", biz: "אלון שמש — אינסטלציה",
+    id: "p23_אלון", name: "אלון שמש", biz: "אלון שמש — אינסטלציה",
     rating: 4.57, reviews: 7, jobs: 12, years: 9, respSec: 140,
     price: 290, km: 2.05, online: true, hours: null,
     onway: false, etaMin: 9.4, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 38.08, skillMatch: 100, availability: 70.27,
+    sig: { routeOpportunity: 38.08, skillMatch: 100, availability: 71.22,
            eta: 90.12, reliability: 77.5, rating: 76.44,
            price: 50, experience: 56.32 },
-    recordedScore: 69.78,
+    recordedScore: 69.93,
     bio: "ותק רב בתחום, מגיע עם כל הציוד הנדרש.",
     services: [["איתור נזילות",450],["החלפת ברזים",240],["החלפת דודים",1400],["החלפת צנרת",1800],["פתיחת סתימות",320],["תיקון אסלות",280],["תיקון נזילות בכיור",290]],
     ratingBreakdown: {"five":5,"four":1,"three":1,"low":0}, reviewsText: []
   },
   {
-    id: "p23_בנימין", name: "בנימין טל", biz: "",
+    id: "p24_בנימין", name: "בנימין טל", biz: "",
     rating: 4.3, reviews: 10, jobs: 14, years: 9, respSec: 79,
     price: 275, km: 1.51, online: true, hours: null,
     onway: false, etaMin: 7.7, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 39.91, skillMatch: 100, availability: 70.77,
+    sig: { routeOpportunity: 39.91, skillMatch: 100, availability: 71.72,
            eta: 93.93, reliability: 69.63, rating: 70,
            price: 58.62, experience: 56.51 },
-    recordedScore: 69.71,
+    recordedScore: 69.85,
     bio: "מתמחה בתקלות דחופות, זמין גם בשעות לא שגרתיות.",
     services: [["איתור נזילות",425],["החלפת דודים",1320],["החלפת צנרת",1700],["חיבור מדיח ומכונת כביסה",265],["פתיחת סתימות",300],["תיקון נזילות בכיור",275],["תיקון פיצוץ צינור",455]],
     ratingBreakdown: {"five":4,"four":5,"three":1,"low":0}, reviewsText: []
   },
   {
-    id: "p24_אסף", name: "אסף בוזגלו", biz: "",
+    id: "p25_אסף", name: "אסף בוזגלו", biz: "",
     rating: 4.27, reviews: 11, jobs: 13, years: 12, respSec: 45,
     price: 325, km: 0.96, online: true, hours: null,
     onway: false, etaMin: 6, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 41.76, skillMatch: 100, availability: 66.27,
+    sig: { routeOpportunity: 41.76, skillMatch: 100, availability: 67.22,
            eta: 97.77, reliability: 77.79, rating: 68.98,
            price: 29.89, experience: 64.81 },
-    recordedScore: 69.57,
+    recordedScore: 69.71,
     bio: "עובד באזור שנים, שירות מהיר ואמין.",
     services: [["איתור נזילות",505],["החלפת ברזים",270],["החלפת דודים",1570],["החלפת צנרת",2020],["פתיחת סתימות בביוב ראשי",730],["תיקון דודים",440],["תיקון נזילות בכיור",325],["תיקון פיצוץ צינור",540]],
     ratingBreakdown: {"five":3,"four":8,"three":0,"low":0}, reviewsText: []
   },
   {
-    id: "p25_תומר", name: "תומר גולן", biz: "",
+    id: "p26_תומר", name: "תומר גולן", biz: "",
     rating: 4.73, reviews: 15, jobs: 22, years: 16, respSec: 53,
     price: 305, km: 2.17, online: true, hours: null,
     onway: false, etaMin: 9.8, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 37.67, skillMatch: 100, availability: 64.27,
+    sig: { routeOpportunity: 37.67, skillMatch: 100, availability: 65.22,
            eta: 89.27, reliability: 71.88, rating: 81.9,
            price: 41.38, experience: 74.05 },
-    recordedScore: 69.14,
+    recordedScore: 69.28,
     bio: "ותק רב בתחום, מגיע עם כל הציוד הנדרש.",
     services: [["החלפת ברזים",250],["החלפת צנרת",1885],["חיבור מדיח ומכונת כביסה",295],["פתיחת סתימות",335],["תיקון אסלות",295],["תיקון נזילות בכיור",305],["תיקון פיצוץ צינור",505]],
     ratingBreakdown: {"five":11,"four":4,"three":0,"low":0}, reviewsText: []
   },
   {
-    id: "p26_זיו", name: "זיו גרינברג", biz: "זיו גרינברג — אינסטלציה",
+    id: "p27_זיו", name: "זיו גרינברג", biz: "זיו גרינברג — אינסטלציה",
     rating: 4.69, reviews: 13, jobs: 21, years: 10, respSec: 48,
     price: 290, km: 2.32, online: true, hours: null,
     onway: false, etaMin: 10.2, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 37.19, skillMatch: 100, availability: 65.27,
+    sig: { routeOpportunity: 37.19, skillMatch: 100, availability: 66.22,
            eta: 88.28, reliability: 76.02, rating: 80.37,
            price: 50, experience: 59.96 },
-    recordedScore: 69.05,
+    recordedScore: 69.2,
     bio: "ותק רב בתחום, מגיע עם כל הציוד הנדרש.",
     services: [["איתור נזילות",450],["החלפת ברזים",240],["החלפת דודים",1405],["חיבור מדיח ומכונת כביסה",280],["תיקון דודים",390],["תיקון נזילות בכיור",290],["תיקון פיצוץ צינור",480]],
     ratingBreakdown: {"five":10,"four":2,"three":1,"low":0}, reviewsText: []
   },
   {
-    id: "p27_יוסי", name: "יוסי רביבו", biz: "יוסי רביבו — אינסטלציה",
+    id: "p28_יוסי", name: "יוסי רביבו", biz: "יוסי רביבו — אינסטלציה",
     rating: 4.36, reviews: 14, jobs: 16, years: 16, respSec: 139,
     price: 300, km: 1, online: true, hours: null,
     onway: false, etaMin: 6.1, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 41.63, skillMatch: 100, availability: 55.27,
+    sig: { routeOpportunity: 41.63, skillMatch: 100, availability: 56.22,
            eta: 97.48, reliability: 70.3, rating: 70.92,
            price: 44.25, experience: 73.49 },
-    recordedScore: 68.46,
+    recordedScore: 68.6,
     bio: "",
     services: [["איתור נזילות",465],["החלפת ברזים",250],["החלפת דודים",1450],["החלפת צנרת",1865],["חיבור מדיח ומכונת כביסה",290],["פתיחת סתימות",330],["פתיחת סתימות בביוב ראשי",675],["תיקון אסלות",290],["תיקון דודים",405],["תיקון נזילות בכיור",300],["תיקון פיצוץ צינור",500]],
     ratingBreakdown: {"five":7,"four":5,"three":2,"low":0}, reviewsText: []
   },
   {
-    id: "p28_חיים", name: "חיים קדם", biz: "חיים קדם — אינסטלציה",
+    id: "p29_חיים", name: "חיים קדם", biz: "חיים קדם — אינסטלציה",
     rating: 4.71, reviews: 24, jobs: 29, years: 22, respSec: 154,
     price: 340, km: 2.41, online: true, hours: null,
     onway: false, etaMin: 10.5, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 36.87, skillMatch: 100, availability: 66.27,
+    sig: { routeOpportunity: 36.87, skillMatch: 100, availability: 67.22,
            eta: 87.6, reliability: 73.45, rating: 82.41,
            price: 21.26, experience: 74.71 },
-    recordedScore: 68.3,
+    recordedScore: 68.45,
     bio: "עבודה נקייה עם אחריות על כל תיקון.",
     services: [["איתור נזילות",525],["החלפת ברזים",280],["החלפת דודים",1640],["החלפת צנרת",2105],["חיבור מדיח ומכונת כביסה",330],["פתיחת סתימות בביוב ראשי",760],["תיקון דודים",455],["תיקון נזילות בכיור",340],["תיקון פיצוץ צינור",560],["התקנת מזגנים",1055],["פירוק והתקנת מזגנים",1285],["תיקון מזגן שלא נדלק",375],["תיקון מיני מרכזי",560],["תיקון נזילות ממזגן",350]],
     ratingBreakdown: {"five":17,"four":7,"three":0,"low":0}, reviewsText: []
   },
   {
-    id: "p29_דוד", name: "דוד לוינסון", biz: "",
+    id: "p30_דוד", name: "דוד לוינסון", biz: "",
     rating: 4.29, reviews: 7, jobs: 13, years: 7, respSec: 122,
     price: null, km: 1.88, online: true, hours: null,
     onway: false, etaMin: 8.9, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 50.66, skillMatch: 100, availability: 46.27,
+    sig: { routeOpportunity: 50.66, skillMatch: 100, availability: 47.22,
            eta: 91.32, reliability: 73.02, rating: 70.68,
            price: 50, experience: 50.81 },
-    recordedScore: 68.15,
+    recordedScore: 68.29,
     bio: "עובד באזור שנים, שירות מהיר ואמין.",
     services: [["החלפת ברזים",255],["החלפת צנרת",1930],["חיבור מדיח ומכונת כביסה",300],["פתיחת סתימות",345],["תיקון אסלות",300],["תיקון פיצוץ צינור",515]],
     ratingBreakdown: {"five":2,"four":5,"three":0,"low":0}, reviewsText: []
   },
   {
-    id: "p30_מלכה", name: "מלכה סבן", biz: "מלכה סבן — אינסטלציה",
+    id: "p31_מלכה", name: "מלכה סבן", biz: "מלכה סבן — אינסטלציה",
     rating: 4.43, reviews: 7, jobs: 9, years: 12, respSec: 96,
     price: null, km: 1.31, online: true, hours: null,
     onway: false, etaMin: 7.1, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 40.6, skillMatch: 100, availability: 58.27,
+    sig: { routeOpportunity: 40.6, skillMatch: 100, availability: 59.22,
            eta: 95.37, reliability: 65.36, rating: 73.56,
            price: 50, experience: 64.44 },
-    recordedScore: 68.04,
+    recordedScore: 68.18,
     bio: "ותק רב בתחום, מגיע עם כל הציוד הנדרש.",
     services: [["איתור נזילות",445],["החלפת ברזים",235],["החלפת צנרת",1775],["חיבור מדיח ומכונת כביסה",275],["פתיחת סתימות",315],["פתיחת סתימות בביוב ראשי",640],["תיקון דודים",385],["תיקון פיצוץ צינור",475]],
     ratingBreakdown: {"five":4,"four":2,"three":1,"low":0}, reviewsText: []
   },
   {
-    id: "p31_נועם", name: "נועם אסולין", biz: "",
+    id: "p32_נועם", name: "נועם אסולין", biz: "",
     rating: 4.4, reviews: 5, jobs: 9, years: 8, respSec: 19,
     price: null, km: 2.16, online: true, hours: null,
     onway: false, etaMin: 9.7, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 37.73, skillMatch: 100, availability: 59.27,
+    sig: { routeOpportunity: 37.73, skillMatch: 100, availability: 60.22,
            eta: 89.38, reliability: 78.4, rating: 73.33,
            price: 50, experience: 53.24 },
-    recordedScore: 67.6,
+    recordedScore: 67.74,
     bio: "עבודה נקייה עם אחריות על כל תיקון.",
     services: [["איתור נזילות",435],["החלפת דודים",1360],["החלפת צנרת",1750],["חיבור מדיח ומכונת כביסה",270],["פתיחת סתימות",310],["פתיחת סתימות בביוב ראשי",630],["תיקון אסלות",270]],
     ratingBreakdown: {"five":3,"four":1,"three":1,"low":0}, reviewsText: []
   },
   {
-    id: "p32_בנימין", name: "בנימין אזולאי", biz: "",
+    id: "p33_בנימין", name: "בנימין אזולאי", biz: "",
     rating: 4.5, reviews: 6, jobs: 7, years: 10, respSec: 92,
     price: 290, km: 1.87, online: true, hours: null,
     onway: false, etaMin: 8.8, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 38.67, skillMatch: 100, availability: 62.27,
+    sig: { routeOpportunity: 38.67, skillMatch: 100, availability: 63.22,
            eta: 91.36, reliability: 63.01, rating: 75,
            price: 50, experience: 58.65 },
-    recordedScore: 67.38,
+    recordedScore: 67.52,
     bio: "ותק רב בתחום, מגיע עם כל הציוד הנדרש.",
     services: [["איתור נזילות",455],["החלפת ברזים",240],["החלפת דודים",1410],["החלפת צנרת",1810],["חיבור מדיח ומכונת כביסה",280],["פתיחת סתימות",320],["פתיחת סתימות בביוב ראשי",655],["תיקון אסלות",280],["תיקון דודים",390],["תיקון נזילות בכיור",290],["תיקון פיצוץ צינור",485]],
     ratingBreakdown: {"five":3,"four":3,"three":0,"low":0}, reviewsText: []
   },
   {
-    id: "p33_עידן", name: "עידן הלוי", biz: "",
+    id: "p34_עידן", name: "עידן הלוי", biz: "",
     rating: 4.69, reviews: 16, jobs: 21, years: 14, respSec: 159,
     price: 295, km: 2.15, online: true, hours: null,
     onway: false, etaMin: 9.7, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 37.75, skillMatch: 100, availability: 53.27,
+    sig: { routeOpportunity: 37.75, skillMatch: 100, availability: 54.22,
            eta: 89.45, reliability: 69.63, rating: 80.85,
            price: 47.13, experience: 71.16 },
-    recordedScore: 67.34,
+    recordedScore: 67.48,
     bio: "עובד באזור שנים, שירות מהיר ואמין.",
     services: [["איתור נזילות",460],["החלפת ברזים",245],["החלפת דודים",1430],["פתיחת סתימות",325],["פתיחת סתימות בביוב ראשי",665],["תיקון נזילות בכיור",295],["תיקון פיצוץ צינור",490]],
     ratingBreakdown: {"five":11,"four":5,"three":0,"low":0}, reviewsText: []
   },
   {
-    id: "p34_כפיר", name: "כפיר לוי", biz: "כפיר לוי — אינסטלציה",
+    id: "p35_כפיר", name: "כפיר לוי", biz: "כפיר לוי — אינסטלציה",
     rating: 4.71, reviews: 7, jobs: 12, years: 11, respSec: 74,
     price: 270, km: 2.06, online: true, hours: null,
     onway: false, etaMin: 9.4, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 38.07, skillMatch: 100, availability: 44.77,
+    sig: { routeOpportunity: 38.07, skillMatch: 100, availability: 45.72,
            eta: 90.12, reliability: 77.5, rating: 79.32,
            price: 61.49, experience: 61.92 },
-    recordedScore: 67.1,
+    recordedScore: 67.24,
     bio: "עבודה נקייה עם אחריות על כל תיקון.",
     services: [["החלפת ברזים",220],["החלפת דודים",1300],["פתיחת סתימות",295],["פתיחת סתימות בביוב ראשי",605],["תיקון אסלות",260],["תיקון דודים",360],["תיקון נזילות בכיור",270],["התקנת מזגנים",835],["טיפול בריחות מהמזגן",260],["מילוי גז למזגן",390],["ניקוי וטיפול תקופתי למזגן",240],["פירוק והתקנת מזגנים",1020],["תיקון מזגן שלא מקרר",315],["תיקון מזגן שלא נדלק",295],["תיקון מיני מרכזי",445],["תיקון נזילות ממזגן",280]],
     ratingBreakdown: {"five":5,"four":2,"three":0,"low":0}, reviewsText: []
   },
   {
-    id: "p35_עמית", name: "עמית רגב", biz: "עמית רגב — אינסטלציה",
+    id: "p36_עמית", name: "עמית רגב", biz: "עמית רגב — אינסטלציה",
     rating: 4.27, reviews: 11, jobs: 17, years: 12, respSec: 168,
     price: 280, km: 1.24, online: true, hours: null,
     onway: false, etaMin: 6.9, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 40.82, skillMatch: 100, availability: 46.27,
+    sig: { routeOpportunity: 40.82, skillMatch: 100, availability: 47.22,
            eta: 95.82, reliability: 70.88, rating: 68.98,
            price: 55.75, experience: 65.19 },
-    recordedScore: 66.76,
+    recordedScore: 66.9,
     bio: "עבודה נקייה עם אחריות על כל תיקון.",
     services: [["איתור נזילות",430],["החלפת ברזים",230],["החלפת צנרת",1730],["חיבור מדיח ומכונת כביסה",270],["פתיחת סתימות",310],["פתיחת סתימות בביוב ראשי",625],["תיקון אסלות",270],["תיקון דודים",375],["תיקון נזילות בכיור",280]],
     ratingBreakdown: {"five":5,"four":4,"three":2,"low":0}, reviewsText: []
   },
   {
-    id: "p36_מירב", name: "מירב וקנין", biz: "",
+    id: "p37_מירב", name: "מירב וקנין", biz: "",
     rating: 4.58, reviews: 12, jobs: 20, years: 12, respSec: 137,
     price: 295, km: 2, online: true, hours: null,
     onway: false, etaMin: 9.2, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 38.27, skillMatch: 100, availability: 51.27,
+    sig: { routeOpportunity: 38.27, skillMatch: 100, availability: 52.22,
            eta: 90.53, reliability: 69.12, rating: 77.18,
            price: 47.13, experience: 65.47 },
-    recordedScore: 66.57,
+    recordedScore: 66.71,
     bio: "",
     services: [["החלפת ברזים",245],["החלפת דודים",1420],["החלפת צנרת",1825],["פתיחת סתימות בביוב ראשי",660],["תיקון אסלות",285],["תיקון נזילות בכיור",295]],
     ratingBreakdown: {"five":7,"four":5,"three":0,"low":0}, reviewsText: []
   },
   {
-    id: "p37_שי", name: "שי מזרחי", biz: "",
+    id: "p38_שי", name: "שי מזרחי", biz: "",
     rating: 5, reviews: 3, jobs: 6, years: 4, respSec: 88,
     price: 295, km: 2.18, online: true, hours: null,
     onway: false, etaMin: 9.8, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 42, skillMatch: 100, availability: 43.27,
+    sig: { routeOpportunity: 42, skillMatch: 100, availability: 44.22,
            eta: 89.16, reliability: 77.5, rating: 80.77,
            price: 47.13, experience: 41.76 },
-    recordedScore: 66.18,
+    recordedScore: 66.32,
     bio: "ותק רב בתחום, מגיע עם כל הציוד הנדרש.",
     services: [["החלפת ברזים",245],["החלפת דודים",1425],["החלפת צנרת",1830],["תיקון אסלות",285],["תיקון נזילות בכיור",295],["תיקון פיצוץ צינור",490]],
     ratingBreakdown: {"five":3,"four":0,"three":0,"low":0}, reviewsText: []
   },
   {
-    id: "p38_מיכל", name: "מיכל חדד", biz: "",
+    id: "p39_מיכל", name: "מיכל חדד", biz: "",
     rating: 4.4, reviews: 10, jobs: 15, years: 2, respSec: 114,
     price: 280, km: 2.2, online: true, hours: null,
     onway: false, etaMin: 9.9, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 41.63, skillMatch: 100, availability: 52.27,
+    sig: { routeOpportunity: 41.63, skillMatch: 100, availability: 53.22,
            eta: 89.09, reliability: 69.67, rating: 72.5,
            price: 55.75, experience: 37 },
-    recordedScore: 66.01,
+    recordedScore: 66.15,
     bio: "עובד באזור שנים, שירות מהיר ואמין.",
     services: [["החלפת ברזים",235],["החלפת צנרת",1750],["חיבור מדיח ומכונת כביסה",270],["פתיחת סתימות",310],["פתיחת סתימות בביוב ראשי",630],["תיקון אסלות",270],["תיקון נזילות בכיור",280]],
     ratingBreakdown: {"five":5,"four":4,"three":1,"low":0}, reviewsText: []
   },
   {
-    id: "p39_אבי", name: "אבי רביבו", biz: "",
+    id: "p40_אבי", name: "אבי רביבו", biz: "",
     rating: 4.14, reviews: 7, jobs: 13, years: 5, respSec: 160,
     price: 300, km: 1.85, online: true, hours: null,
     onway: false, etaMin: 8.7, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 38.78, skillMatch: 100, availability: 50.77,
+    sig: { routeOpportunity: 38.78, skillMatch: 100, availability: 51.72,
            eta: 91.59, reliability: 73.02, rating: 67.59,
            price: 44.25, experience: 45.21 },
-    recordedScore: 65.01,
+    recordedScore: 65.15,
     bio: "ותק רב בתחום, מגיע עם כל הציוד הנדרש.",
     services: [["איתור נזילות",465],["החלפת ברזים",250],["החלפת צנרת",1865],["חיבור מדיח ומכונת כביסה",290],["פתיחת סתימות",330],["פתיחת סתימות בביוב ראשי",675],["תיקון נזילות בכיור",300],["תיקון פיצוץ צינור",495]],
     ratingBreakdown: {"five":2,"four":4,"three":1,"low":0}, reviewsText: []
   },
   {
-    id: "p40_משה", name: "משה שפירא", biz: "משה שפירא — אינסטלציה",
+    id: "p41_משה", name: "משה שפירא", biz: "משה שפירא — אינסטלציה",
     rating: 4, reviews: 8, jobs: 12, years: 7, respSec: 20,
     price: 275, km: 2.46, online: true, hours: null,
     onway: false, etaMin: 10.7, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 36.7, skillMatch: 100, availability: 40.77,
+    sig: { routeOpportunity: 36.7, skillMatch: 100, availability: 41.72,
            eta: 87.27, reliability: 90.23, rating: 63.89,
            price: 58.62, experience: 50.72 },
-    recordedScore: 64.9,
+    recordedScore: 65.04,
     bio: "ותק רב בתחום, מגיע עם כל הציוד הנדרש.",
     services: [["החלפת ברזים",225],["החלפת דודים",1325],["החלפת צנרת",1705],["פתיחת סתימות",305],["פתיחת סתימות בביוב ראשי",615],["תיקון דודים",370],["תיקון נזילות בכיור",275],["תיקון פיצוץ צינור",455]],
     ratingBreakdown: {"five":2,"four":4,"three":2,"low":0}, reviewsText: []
   },
   {
-    id: "p41_אליהו", name: "אליהו אזולאי", biz: "",
+    id: "p42_אליהו", name: "אליהו אזולאי", biz: "",
     rating: 4.56, reviews: 16, jobs: 19, years: 6, respSec: 88,
     price: 320, km: 1.7, online: true, hours: null,
     onway: false, etaMin: 8.3, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 39.28, skillMatch: 100, availability: 43.27,
+    sig: { routeOpportunity: 39.28, skillMatch: 100, availability: 44.22,
            eta: 92.62, reliability: 74.37, rating: 76.85,
            price: 32.76, experience: 48.57 },
-    recordedScore: 64.76,
+    recordedScore: 64.9,
     bio: "עובד באזור שנים, שירות מהיר ואמין.",
     services: [["איתור נזילות",495],["החלפת ברזים",265],["החלפת דודים",1535],["החלפת צנרת",1975],["חיבור מדיח ומכונת כביסה",305],["פתיחת סתימות",350],["פתיחת סתימות בביוב ראשי",715],["תיקון אסלות",305],["תיקון דודים",430],["תיקון נזילות בכיור",320],["תיקון פיצוץ צינור",525]],
     ratingBreakdown: {"five":10,"four":5,"three":1,"low":0}, reviewsText: []
   },
   {
-    id: "p42_נדב", name: "נדב וקנין", biz: "נדב וקנין — אינסטלציה",
+    id: "p43_נדב", name: "נדב וקנין", biz: "נדב וקנין — אינסטלציה",
     rating: null, reviews: 0, jobs: 0, years: 1, respSec: null,
     price: 300, km: 0.47, online: true, hours: null,
     onway: false, etaMin: 4.5, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 43.43, skillMatch: 100, availability: 49.77,
+    sig: { routeOpportunity: 43.43, skillMatch: 100, availability: 50.72,
            eta: 100, reliability: 60, rating: 60,
            price: 44.25, experience: 32.8 },
-    recordedScore: 64.18,
+    recordedScore: 64.32,
     bio: "עובד באזור שנים, שירות מהיר ואמין.",
     services: [["איתור נזילות",465],["החלפת ברזים",250],["החלפת דודים",1445],["החלפת צנרת",1860],["פתיחת סתימות בביוב ראשי",670],["תיקון אסלות",290],["תיקון דודים",400],["תיקון נזילות בכיור",300],["תיקון פיצוץ צינור",495],["התקנת מזגנים",930],["טיפול בריחות מהמזגן",290],["מילוי גז למזגן",435],["פירוק והתקנת מזגנים",1135],["תיקון מזגן שלא מקרר",350],["תיקון מזגן שלא נדלק",330],["תיקון נזילות ממזגן",310]],
     ratingBreakdown: null, reviewsText: []
   },
   {
-    id: "p43_יניב", name: "יניב אופיר", biz: "יניב אופיר — אינסטלציה",
+    id: "p44_יניב", name: "יניב אופיר", biz: "יניב אופיר — אינסטלציה",
     rating: 4.75, reviews: 4, jobs: 5, years: 2, respSec: 158,
     price: 285, km: 2, online: true, hours: null,
     onway: false, etaMin: 9.3, offered: false,
     /* The recorded per-signal scores for this job, 0..100. */
-    sig: { routeOpportunity: 38.23, skillMatch: 100, availability: 40.77,
+    sig: { routeOpportunity: 38.23, skillMatch: 100, availability: 41.72,
            eta: 90.44, reliability: 65.83, rating: 78.57,
            price: 52.87, experience: 36.07 },
-    recordedScore: 63.61,
+    recordedScore: 63.75,
     bio: "",
     services: [["איתור נזילות",445],["החלפת ברזים",235],["החלפת דודים",1380],["פתיחת סתימות",315],["פתיחת סתימות בביוב ראשי",640],["תיקון דודים",385],["תיקון נזילות בכיור",285],["תיקון פיצוץ צינור",475]],
     ratingBreakdown: {"five":3,"four":1,"three":0,"low":0}, reviewsText: []
@@ -1210,6 +1278,521 @@ const EXAMPLES = ['יש לי נזילה מתחת לכיור', 'המזגן לא �
    A provider whose trade is in neither list proposes it in the registration
    form, and it reaches the catalog only after it is approved with the words
    a customer would use to ask for it. */
+/* ===========================================================================
+   The system's own rules.
+
+   Not an illustration of how GET SERVICE might behave — the rows that decide
+   how it does. `transitions` is the table the database trigger validates
+   every job move against, so a move the explorer below refuses is a move the
+   real system refuses. `weights`, `waves`, `timeouts` and `thresholds` are
+   the `settings` rows the engine reads on every dispatch. `fees` is the
+   active `platform_fees` row. `admin` is what GET /api/admin/overview
+   answered for the control tower.
+
+   Written by scripts/record-simulator.mjs. Do not hand-edit.
+   =========================================================================== */
+const SYSTEM = {
+  "weights": {
+    "eta": 0.1,
+    "price": 0.05,
+    "rating": 0.1,
+    "experience": 0.05,
+    "skillMatch": 0.2,
+    "reliability": 0.1,
+    "availability": 0.15,
+    "routeOpportunity": 0.25
+  },
+  "waves": {
+    "waves": [
+      {
+        "wave": 1,
+        "radiusKm": 5,
+        "maxProviders": 5,
+        "responseTimeoutSeconds": 45
+      },
+      {
+        "wave": 2,
+        "radiusKm": 10,
+        "maxProviders": 5,
+        "responseTimeoutSeconds": 45
+      },
+      {
+        "wave": 3,
+        "radiusKm": 20,
+        "maxProviders": 8,
+        "responseTimeoutSeconds": 60
+      }
+    ],
+    "offerTtlSeconds": 60,
+    "minCandidatesPerWave": 1
+  },
+  "timeouts": {
+    "searchGiveUpSeconds": 300,
+    "autoCompleteAfterHours": 24,
+    "customerConfirmSeconds": 120
+  },
+  "thresholds": {
+    "minScoreToOffer": 25,
+    "candidateHardLimit": 50,
+    "maxLocationAgeSeconds": 120,
+    "maxLocationAccuracyMeters": 500,
+    "minRouteOpportunityDeviationMinutes": 6
+  },
+  "fees": {
+    "tiers": [
+      {
+        "upTo": 100000,
+        "percentage": 15
+      },
+      {
+        "upTo": null,
+        "percentage": 10
+      }
+    ],
+    "minFee": 0
+  },
+  "transitions": [
+    {
+      "from": "ARRIVED",
+      "to": "CANCELLED_BY_CUSTOMER",
+      "actors": [
+        "customer",
+        "admin"
+      ],
+      "note": ""
+    },
+    {
+      "from": "ARRIVED",
+      "to": "CANCELLED_BY_PROVIDER",
+      "actors": [
+        "provider",
+        "admin"
+      ],
+      "note": ""
+    },
+    {
+      "from": "ARRIVED",
+      "to": "DISPUTED",
+      "actors": [
+        "customer",
+        "provider",
+        "admin"
+      ],
+      "note": ""
+    },
+    {
+      "from": "ARRIVED",
+      "to": "IN_PROGRESS",
+      "actors": [
+        "provider",
+        "admin"
+      ],
+      "note": ""
+    },
+    {
+      "from": "AWAITING_CUSTOMER_CONFIRMATION",
+      "to": "COMPLETED",
+      "actors": [
+        "customer",
+        "admin",
+        "system"
+      ],
+      "note": "Customer confirms, or auto-confirm window elapses"
+    },
+    {
+      "from": "AWAITING_CUSTOMER_CONFIRMATION",
+      "to": "DISPUTED",
+      "actors": [
+        "customer",
+        "admin"
+      ],
+      "note": ""
+    },
+    {
+      "from": "CANCELLED_BY_PROVIDER",
+      "to": "SEARCHING",
+      "actors": [
+        "admin",
+        "system"
+      ],
+      "note": "Re-dispatch after provider cancellation"
+    },
+    {
+      "from": "COMPLETED",
+      "to": "DISPUTED",
+      "actors": [
+        "customer",
+        "provider",
+        "admin"
+      ],
+      "note": ""
+    },
+    {
+      "from": "COMPLETED",
+      "to": "PAID",
+      "actors": [
+        "admin",
+        "system"
+      ],
+      "note": "Set only by a captured payment"
+    },
+    {
+      "from": "CONFIRMED",
+      "to": "CANCELLED_BY_CUSTOMER",
+      "actors": [
+        "customer",
+        "admin"
+      ],
+      "note": ""
+    },
+    {
+      "from": "CONFIRMED",
+      "to": "CANCELLED_BY_PROVIDER",
+      "actors": [
+        "provider",
+        "admin"
+      ],
+      "note": "Returns the job to matching"
+    },
+    {
+      "from": "CONFIRMED",
+      "to": "CANCELLED_BY_SYSTEM",
+      "actors": [
+        "admin",
+        "system"
+      ],
+      "note": ""
+    },
+    {
+      "from": "CONFIRMED",
+      "to": "EN_ROUTE",
+      "actors": [
+        "provider",
+        "admin"
+      ],
+      "note": ""
+    },
+    {
+      "from": "DISPUTED",
+      "to": "CANCELLED_BY_SYSTEM",
+      "actors": [
+        "admin"
+      ],
+      "note": "Admin voids the job"
+    },
+    {
+      "from": "DISPUTED",
+      "to": "COMPLETED",
+      "actors": [
+        "admin"
+      ],
+      "note": "Admin resolves in provider favour"
+    },
+    {
+      "from": "DISPUTED",
+      "to": "PAID",
+      "actors": [
+        "admin"
+      ],
+      "note": ""
+    },
+    {
+      "from": "EN_ROUTE",
+      "to": "ARRIVED",
+      "actors": [
+        "provider",
+        "admin"
+      ],
+      "note": ""
+    },
+    {
+      "from": "EN_ROUTE",
+      "to": "CANCELLED_BY_CUSTOMER",
+      "actors": [
+        "customer",
+        "admin"
+      ],
+      "note": ""
+    },
+    {
+      "from": "EN_ROUTE",
+      "to": "CANCELLED_BY_PROVIDER",
+      "actors": [
+        "provider",
+        "admin"
+      ],
+      "note": ""
+    },
+    {
+      "from": "EN_ROUTE",
+      "to": "CANCELLED_BY_SYSTEM",
+      "actors": [
+        "admin",
+        "system"
+      ],
+      "note": ""
+    },
+    {
+      "from": "IN_PROGRESS",
+      "to": "AWAITING_CUSTOMER_CONFIRMATION",
+      "actors": [
+        "provider",
+        "admin"
+      ],
+      "note": "Provider marks work done"
+    },
+    {
+      "from": "IN_PROGRESS",
+      "to": "CANCELLED_BY_PROVIDER",
+      "actors": [
+        "provider",
+        "admin"
+      ],
+      "note": ""
+    },
+    {
+      "from": "IN_PROGRESS",
+      "to": "DISPUTED",
+      "actors": [
+        "customer",
+        "provider",
+        "admin"
+      ],
+      "note": ""
+    },
+    {
+      "from": "OFFERS_AVAILABLE",
+      "to": "CANCELLED_BY_CUSTOMER",
+      "actors": [
+        "customer",
+        "admin"
+      ],
+      "note": ""
+    },
+    {
+      "from": "OFFERS_AVAILABLE",
+      "to": "CANCELLED_BY_SYSTEM",
+      "actors": [
+        "admin",
+        "system"
+      ],
+      "note": ""
+    },
+    {
+      "from": "OFFERS_AVAILABLE",
+      "to": "PROVIDER_SELECTED",
+      "actors": [
+        "provider",
+        "admin"
+      ],
+      "note": "Provider accepted the offer"
+    },
+    {
+      "from": "OFFERS_AVAILABLE",
+      "to": "SEARCHING",
+      "actors": [
+        "admin",
+        "system"
+      ],
+      "note": "All offers expired; widen search"
+    },
+    {
+      "from": "PAID",
+      "to": "DISPUTED",
+      "actors": [
+        "customer",
+        "provider",
+        "admin"
+      ],
+      "note": ""
+    },
+    {
+      "from": "PAID",
+      "to": "REVIEWED",
+      "actors": [
+        "customer",
+        "provider",
+        "admin",
+        "system"
+      ],
+      "note": ""
+    },
+    {
+      "from": "PROVIDER_SELECTED",
+      "to": "CANCELLED_BY_CUSTOMER",
+      "actors": [
+        "customer",
+        "admin"
+      ],
+      "note": ""
+    },
+    {
+      "from": "PROVIDER_SELECTED",
+      "to": "CANCELLED_BY_PROVIDER",
+      "actors": [
+        "provider",
+        "admin"
+      ],
+      "note": ""
+    },
+    {
+      "from": "PROVIDER_SELECTED",
+      "to": "CANCELLED_BY_SYSTEM",
+      "actors": [
+        "admin",
+        "system"
+      ],
+      "note": "Confirmation window elapsed"
+    },
+    {
+      "from": "PROVIDER_SELECTED",
+      "to": "CONFIRMED",
+      "actors": [
+        "customer",
+        "admin"
+      ],
+      "note": "Customer confirms the match"
+    },
+    {
+      "from": "PROVIDER_SELECTED",
+      "to": "SEARCHING",
+      "actors": [
+        "admin",
+        "system"
+      ],
+      "note": "Provider withdrew before confirmation"
+    },
+    {
+      "from": "REQUESTED",
+      "to": "CANCELLED_BY_CUSTOMER",
+      "actors": [
+        "customer",
+        "admin"
+      ],
+      "note": "Customer aborts before dispatch"
+    },
+    {
+      "from": "REQUESTED",
+      "to": "CANCELLED_BY_SYSTEM",
+      "actors": [
+        "admin",
+        "system"
+      ],
+      "note": "Classification or validation failure"
+    },
+    {
+      "from": "REQUESTED",
+      "to": "SEARCHING",
+      "actors": [
+        "admin",
+        "system"
+      ],
+      "note": "Dispatch begins"
+    },
+    {
+      "from": "REVIEWED",
+      "to": "DISPUTED",
+      "actors": [
+        "customer",
+        "provider",
+        "admin"
+      ],
+      "note": ""
+    },
+    {
+      "from": "SEARCHING",
+      "to": "CANCELLED_BY_CUSTOMER",
+      "actors": [
+        "customer",
+        "admin"
+      ],
+      "note": ""
+    },
+    {
+      "from": "SEARCHING",
+      "to": "CANCELLED_BY_SYSTEM",
+      "actors": [
+        "admin",
+        "system"
+      ],
+      "note": "No provider found after final wave"
+    },
+    {
+      "from": "SEARCHING",
+      "to": "OFFERS_AVAILABLE",
+      "actors": [
+        "admin",
+        "system"
+      ],
+      "note": "At least one offer outstanding"
+    }
+  ],
+  "admin": {
+    "counters": {
+      "providers_online": "5672",
+      "providers_busy": "515",
+      "providers_pending": "688",
+      "active_jobs": "4",
+      "searching_jobs": "6",
+      "unmatched_jobs": "0",
+      "en_route": "0",
+      "open_disputes": "0",
+      "completed_today": "143100",
+      "revenue_today_agorot": "0",
+      "platform_fees_today_agorot": "0"
+    },
+    "analytics": {
+      "completions_7d": "1148",
+      "time_to_first_offer_s": "0.0",
+      "time_to_match_s": "0.2",
+      "match_rate_pct": "98.5",
+      "completion_rate_pct": "98.1",
+      "cancellation_rate_pct": "1.0",
+      "unmatched_rate_pct": "1.0",
+      "acceptance_rate_pct": "28.6",
+      "provider_response_time_s": "5.4",
+      "average_job_value_ils": "619.55"
+    },
+    "totals": {
+      "pendingVerification": 688,
+      "pendingTrades": 1,
+      "liveProviders": 6187,
+      "liveJobs": 10
+    },
+    "categories": [
+      {
+        "slug": "plumbing",
+        "name_he": "אינסטלציה"
+      },
+      {
+        "slug": "electrical",
+        "name_he": "חשמל"
+      },
+      {
+        "slug": "air_conditioning",
+        "name_he": "מיזוג אוויר"
+      },
+      {
+        "slug": "locksmith",
+        "name_he": "מנעולנות"
+      },
+      {
+        "slug": "pest_control",
+        "name_he": "הדברה"
+      },
+      {
+        "slug": "cleaning",
+        "name_he": "ניקיון"
+      },
+      {
+        "slug": "gardening",
+        "name_he": "גינון"
+      }
+    ],
+    "recordedAt": "2026-09-20"
+  }
+}
+
 const CATALOG = [
   { slug: 'plumbing', name: 'אינסטלציה', lic: true, ins: true, radius: 12.00, services: [
     ['החלפת צנרת', 1800, 1000, 4000, ['החלפת צנרת', 'להחליף צנרת', 'צנרת מיושנת', 'שיפוץ צנרת'], 'החלפת צנרת'],
@@ -3421,4 +4004,268 @@ document.getElementById('btn-back').addEventListener('click', () => {
    already typed, so the first frame shows what the thing does. */
 S.desc = EXAMPLES[0];
 render();
+
+/* The operator stage is scoped.
+   Appending it at top level redeclared the page's existing `esc`, and a
+   duplicate `const` is an EARLY error: the entire <script> failed to
+   parse, so the phone views went blank as well. One shared name was
+   enough to take down everything. Inside an IIFE nothing it declares can
+   reach the page's scope, so the next helper added here cannot repeat it. */
+(function () {
+/* ═══════════════════════════════════════════════════════════════════════
+     The operator stage.
+  
+     Four views, all computing on SYSTEM — the rows the real system runs on.
+     Nothing here is illustrative: the lifecycle refuses the moves the database
+     trigger refuses, the lab re-ranks with the same Σ score × weight the
+     engine uses, and the split is the active platform_fees tier applied to a
+     recorded price.
+     ═══════════════════════════════════════════════════════════════════════ */
+  const OPS = { view: 'life', status: 'REQUESTED', trail: ['REQUESTED'], w: null, sort: null };
+  
+  const ACTOR_HE = { customer: 'לקוח', provider: 'בעל מקצוע', admin: 'מנהל', system: 'מערכת' };
+  const TERMINAL = /^(CANCELLED_|REVIEWED$)/;
+  
+  const esc = (v) => String(v).replace(/[&<>"]/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const n2 = (v) => Number(v).toFixed(2);
+  const ils = (a) => '₪' + Number(a).toLocaleString('he-IL');
+  
+  /* ── 1. The lifecycle, validated against job_transitions ─────────────── */
+  function movesFrom(status) {
+    return SYSTEM.transitions.filter((t) => t.from === status);
+  }
+  
+  function viewLife() {
+    const moves = movesFrom(OPS.status);
+    const trail = OPS.trail.map((st, i) =>
+      (i ? '<span aria-hidden="true">←</span>' : '') + '<code>' + esc(st) + '</code>').join(' ');
+  
+    return `
+      <p class="ops-note">
+        כל מעבר כאן נבדק מול <code>job_transitions</code> — הטבלה שטריגר בבסיס
+        הנתונים מאמת מולה כל שינוי מצב. ${SYSTEM.transitions.length} מעברים
+        חוקיים בסך הכול. מה שלא מופיע כאן, המערכת דוחה: אי אפשר לדלג על מצב
+        ואי אפשר לזייף שורת ביקורת.
+      </p>
+      <div class="sm-now">
+        <span style="font-size:12.5px;color:var(--p-ink-3)">המצב עכשיו</span>
+        <code>${esc(OPS.status)}</code>
+        ${TERMINAL.test(OPS.status)
+          ? '<span style="font-size:12px;color:var(--p-ink-3)">— מצב סופי</span>' : ''}
+      </div>
+      ${moves.length ? `
+        <p style="font-size:12.5px;color:var(--p-ink-2);margin:0 0 9px">
+          המהלכים החוקיים מכאן (${moves.length}) — ומי רשאי לעשות כל אחד:
+        </p>
+        <div class="mv">
+          ${moves.map((m) => `
+            <button data-to="${esc(m.to)}" class="${TERMINAL.test(m.to) ? 'term' : ''}">
+              ${esc(m.to)}
+              <span class="who">${m.actors.map((a) => ACTOR_HE[a] ?? a).join(' · ')}${
+                m.note ? ' — ' + esc(m.note) : ''}</span>
+            </button>`).join('')}
+        </div>`
+        : `<p style="font-size:13px;color:var(--p-ink-2)">
+             אין מכאן מעבר חוקי. זה סוף הדרך של העבודה הזו.
+           </p>`}
+      <div class="trail">${trail}
+        <button class="ctl" id="life-reset" style="margin-inline-start:8px">התחל מחדש</button>
+      </div>`;
+  }
+  
+  /* ── 2. The control tower ────────────────────────────────────────────── */
+  function viewTower() {
+    const c = SYSTEM.admin.counters ?? {};
+    const a = SYSTEM.admin.analytics ?? {};
+    const t = SYSTEM.admin.totals ?? {};
+    const tile = (n, l) => `<div class="tile"><div class="n">${esc(n)}</div><div class="l">${esc(l)}</div></div>`;
+    const num = (v) => Number(v ?? 0).toLocaleString('he-IL');
+  
+    return `
+      <p class="ops-note">
+        המספרים האלה נקראו מ-<code>GET /api/admin/overview</code> — אותו endpoint
+        שמגדל הבקרה האמיתי קורא — על רשת של
+        ${num(t.liveProviders)} מקצוענים. נכון ל-${esc(SYSTEM.admin.recordedAt ?? '')}.
+      </p>
+      <div class="ops-grid">
+        ${tile(num(c.providers_online), 'מחוברים עכשיו')}
+        ${tile(num(c.providers_busy), 'בעבודה')}
+        ${tile(num(c.providers_pending), 'ממתינים לאימות')}
+        ${tile(num(c.active_jobs), 'עבודות פעילות')}
+        ${tile(num(a.completions_7d), 'הושלמו ב-7 ימים')}
+        ${tile(a.match_rate_pct + '%', 'שיעור התאמה')}
+        ${tile(a.completion_rate_pct + '%', 'שיעור השלמה')}
+        ${tile(a.time_to_match_s + 's', 'זמן עד התאמה')}
+      </div>
+      <p class="ops-note" style="margin:14px 0 0">
+        <strong>שיעור התאמה ${esc(a.match_rate_pct)}%</strong> אינו הבטחה — זו
+        המדידה על רשת ההדגמה, שבה כל המקצוענים סינתטיים ותמיד יש מישהו פנוי.
+        ברשת אמיתית המספר הזה יהיה נמוך יותר, וזה בסדר: העניין הוא שהוא נמדד
+        ולא נקבע.
+      </p>`;
+  }
+  
+  /* ── 3. The matching lab ─────────────────────────────────────────────── */
+  const SIGNALS = [
+    ['routeOpportunity', 'הזדמנות מסלול'], ['skillMatch', 'התאמת מקצוע'],
+    ['availability', 'זמינות'], ['eta', 'זמן הגעה'],
+    ['reliability', 'אמינות'], ['rating', 'דירוג'],
+    ['price', 'מחיר'], ['experience', 'ותק'],
+  ];
+  
+  function labScore(p, w) {
+    return SIGNALS.reduce((sum, [k]) => sum + (p.sig[k] ?? 0) * (w[k] ?? 0), 0);
+  }
+  
+  function viewLab() {
+    if (!OPS.w) OPS.w = { ...SYSTEM.weights };
+    const base = PROVIDERS.map((p) => ({ p, s: labScore(p, SYSTEM.weights) }))
+      .sort((x, y) => y.s - x.s).map((r) => r.p.id);
+    const now = PROVIDERS.map((p) => ({ p, s: labScore(p, OPS.w) })).sort((x, y) => y.s - x.s);
+    const sum = SIGNALS.reduce((t, [k]) => t + (OPS.w[k] ?? 0), 0);
+  
+    return `
+      <p class="ops-note">
+        אותם ${PROVIDERS.length} מועמדים מוקלטים, אותה נוסחה שב-<code>engine.ts</code>:
+        <code>Σ ניקוד × משקל</code>. גררו משקל — הדירוג מחושב מחדש כאן, על אותות
+        אמיתיים. זו אינה הדמיה של המנוע; זה המנוע, בלי בסיס הנתונים.
+      </p>
+      <div class="ops-two">
+        <div>
+          ${SIGNALS.map(([k, he]) => `
+            <div class="lab-row">
+              <label for="w-${k}">${he}</label>
+              <input type="range" id="w-${k}" data-w="${k}" min="0" max="0.6" step="0.01"
+                     value="${OPS.w[k] ?? 0}">
+              <output>${n2(OPS.w[k] ?? 0)}</output>
+            </div>`).join('')}
+          <p style="font-size:12px;color:${Math.abs(sum - 1) > 0.005 ? 'var(--warn-bright)' : 'var(--p-ink-3)'};margin:10px 0 0">
+            סכום המשקלים: <span class="ltr">${n2(sum)}</span>
+            ${Math.abs(sum - 1) > 0.005 ? ' — לא 1.00, אז הציונים אינם על אותו סולם' : ''}
+            <button class="ctl" id="lab-reset" style="margin-inline-start:8px">החזר לברירת המחדל</button>
+          </p>
+        </div>
+        <div>
+          <p style="font-size:12.5px;color:var(--p-ink-2);margin:0 0 6px">הדירוג המחושב</p>
+          <div>
+            ${now.slice(0, 10).map((r, i) => {
+              const was = base.indexOf(r.p.id);
+              const d = was - i;
+              return `<div class="rank">
+                <span class="pos">${i + 1}</span>
+                <span>${esc(r.p.name)}${r.p.onway
+                  ? ' <span style="font-size:11px;color:var(--ok-bright)">בדרך</span>' : ''}${
+                  d ? `<span class="mvd ${d > 0 ? 'up' : 'dn'}">${d > 0 ? '▲' : '▼'}${Math.abs(d)}</span>` : ''}</span>
+                <span class="sc">${n2(r.s)}</span>
+              </div>`;
+            }).join('')}
+          </div>
+          <p class="ops-note" style="margin-top:12px">
+            סף הצעה: <span class="ltr">${esc(SYSTEM.thresholds?.minScoreToOffer ?? '—')}</span> ·
+            תקרת מועמדים: <span class="ltr">${esc(SYSTEM.thresholds?.candidateHardLimit ?? '—')}</span> ·
+            גיל מיקום מרבי: <span class="ltr">${esc(SYSTEM.thresholds?.maxLocationAgeSeconds ?? '—')}s</span><br>
+            סבבים: ${(SYSTEM.waves?.waves ?? []).map((w) =>
+              `<span class="ltr">${w.radiusKm}km/${w.maxProviders}</span>`).join(' · ')}
+          </p>
+        </div>
+      </div>`;
+  }
+  
+  /* ── 4. The split ────────────────────────────────────────────────────── */
+  function feeFor(agorot) {
+    const tiers = SYSTEM.fees?.tiers ?? [];
+    let fee = 0, prev = 0;
+    for (const t of tiers) {
+      const cap = t.upTo === null || t.upTo === undefined ? Infinity : t.upTo;
+      if (agorot > prev) fee += (Math.min(agorot, cap) - prev) * (t.percentage / 100);
+      prev = cap;
+      if (agorot <= cap) break;
+    }
+    return Math.max(Math.round(fee), SYSTEM.fees?.minFee ?? 0);
+  }
+  
+  function viewMoney() {
+    const priced = PROVIDERS.filter((p) => p.price).sort((a, b) => a.price - b.price);
+    const examples = [priced[0], priced[Math.floor(priced.length / 2)], priced[priced.length - 1]]
+      .filter(Boolean);
+    const tiers = SYSTEM.fees?.tiers ?? [];
+  
+    return `
+      <p class="ops-note">
+        העמלה מחושבת כאן באותו כלל מדורג שב-<code>platform_fees</code> —
+        ${tiers.map((t) => `<span class="ltr">${t.percentage}%</span> ${
+          t.upTo ? 'עד ' + ils(t.upTo / 100) : 'ומעלה'}`).join(', ')}.
+        <strong>אין כאן תשלום אמיתי.</strong> ספק התשלומים במערכת הוא
+        <code>mock</code> ומדווח <code>isReal = false</code>; העלייה בייצור מסרבת
+        להריץ אותו.
+      </p>
+      ${examples.map((p) => {
+        const gross = p.price * 100;
+        const fee = feeFor(gross);
+        const net = gross - fee;
+        const pct = (fee / gross) * 100;
+        return `
+          <div class="tile" style="margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+              <strong style="font-size:13.5px">${esc(p.name)}</strong>
+              <span class="ltr" style="font-variant-numeric:tabular-nums">${ils(p.price)}</span>
+            </div>
+            <div class="split">
+              <span style="width:${100 - pct}%;background:var(--ok)">${ils(net / 100)}</span>
+              <span style="width:${pct}%;background:var(--warn)">${ils(fee / 100)}</span>
+            </div>
+            <div class="l" style="display:flex;justify-content:space-between">
+              <span>לבעל המקצוע</span>
+              <span>עמלת הפלטפורמה <span class="ltr">${pct.toFixed(1)}%</span></span>
+            </div>
+          </div>`;
+      }).join('')}`;
+  }
+  
+  /* ── wiring ──────────────────────────────────────────────────────────── */
+  function renderOps() {
+    const body = document.getElementById('ops-body');
+    if (!body) return;
+    body.innerHTML = OPS.view === 'life' ? viewLife()
+      : OPS.view === 'tower' ? viewTower()
+      : OPS.view === 'lab' ? viewLab()
+      : viewMoney();
+    for (const [id, v] of [['ops-life', 'life'], ['ops-tower', 'tower'], ['ops-lab', 'lab'], ['ops-money', 'money']]) {
+      document.getElementById(id).setAttribute('aria-pressed', String(OPS.view === v));
+    }
+  }
+  
+  document.getElementById('ops-body').addEventListener('click', (e) => {
+    const mv = e.target.closest('.mv button');
+    if (mv) { OPS.status = mv.dataset.to; OPS.trail.push(OPS.status); renderOps(); return; }
+    if (e.target.id === 'life-reset') { OPS.status = 'REQUESTED'; OPS.trail = ['REQUESTED']; renderOps(); return; }
+    if (e.target.id === 'lab-reset') { OPS.w = { ...SYSTEM.weights }; renderOps(); }
+  });
+  
+  document.getElementById('ops-body').addEventListener('input', (e) => {
+    const k = e.target.dataset?.w;
+    if (!k) return;
+    OPS.w[k] = Number(e.target.value);
+    // Re-render the ranking without rebuilding the sliders, so the one being
+    // dragged keeps both its focus and the pointer capture.
+    const v = viewLab();
+    const tmp = document.createElement('div');
+    tmp.innerHTML = v;
+    const right = document.getElementById('ops-body').querySelector('.ops-two > div:last-child');
+    right.innerHTML = tmp.querySelector('.ops-two > div:last-child').innerHTML;
+    e.target.parentElement.querySelector('output').textContent = n2(OPS.w[k]);
+    const sumEl = document.getElementById('ops-body').querySelector('.ops-two > div:first-child p');
+    const sum = SIGNALS.reduce((t, [kk]) => t + (OPS.w[kk] ?? 0), 0);
+    sumEl.firstElementChild.textContent = n2(sum);
+    sumEl.style.color = Math.abs(sum - 1) > 0.005 ? 'var(--warn-bright)' : 'var(--p-ink-3)';
+  });
+  
+  for (const [id, v] of [['ops-life', 'life'], ['ops-tower', 'tower'], ['ops-lab', 'lab'], ['ops-money', 'money']]) {
+    document.getElementById(id).addEventListener('click', () => { OPS.view = v; renderOps(); });
+  }
+  
+  renderOps();
+})();
+
 </script>
