@@ -1,0 +1,1404 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>יומן ביצוע הדברה – יצחק אחזקות והדברות</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --forest:#1f5236;--forest-2:#2c6b47;--leaf:#3f9d5a;--mint:#e3f1e7;--mint-2:#f1f8f3;
+  --gold:#b39c6a;--gold-soft:#f3ecdc;
+  --bg:#f4f7f4;--surface:#fff;--ink:#15271c;--muted:#5d6f63;--line:#d5e3d9;--danger:#c8433a;--danger-soft:#fbe9e7;
+  --r-lg:20px;--r-md:14px;--r-sm:10px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1712;--surface:#16231b;--ink:#e7efe9;--muted:#9fb3a6;--line:#2a3d31;--mint:#1e3326;--mint-2:#18291f;--gold-soft:#2c2718;--danger-soft:#3a1d1a}}
+:root[data-theme="dark"]{--bg:#0e1712;--surface:#16231b;--ink:#e7efe9;--muted:#9fb3a6;--line:#2a3d31;--mint:#1e3326;--mint-2:#18291f;--gold-soft:#2c2718;--danger-soft:#3a1d1a}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:Rubik,"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:16px;line-height:1.5;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+#app{max-width:600px;margin:0 auto;min-height:100vh;padding-bottom:110px}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+.hero{background:var(--forest);color:#fff;padding:22px 20px 64px;border-radius:0 0 32px 32px}
+.brandrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.brand{display:flex;align-items:center;gap:12px}
+.mark{width:48px;height:48px;border-radius:14px;background:var(--gold);color:var(--forest);display:grid;place-items:center;font-weight:800;font-size:26px;flex:none}
+.bname{font-weight:700;font-size:18px;line-height:1.2}
+.bsub{font-size:13px;color:#cfe3d5}
+.sync{font-size:12px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.14);white-space:nowrap}
+.hello{margin:22px 0 0;font-size:23px;font-weight:700}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 16px;margin-top:-40px}
+.tile{border:0;background:var(--surface);border-radius:var(--r-lg);box-shadow:0 6px 18px rgba(20,50,30,.12);padding:18px 14px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;cursor:pointer;position:relative;color:var(--leaf);text-align:right;min-height:104px}
+.tile b{color:var(--ink);font-size:16px}
+.tile small{color:var(--muted);font-size:12px}
+.tile.primary{background:var(--gold);color:var(--forest)}.tile.primary b,.tile.primary small{color:var(--forest)}
+.badge{position:absolute;top:10px;left:10px;background:var(--danger);color:#fff;min-width:22px;height:22px;border-radius:11px;font-size:12px;display:grid;place-items:center;padding:0 6px}
+.block{padding:22px 16px 0}
+.block h2{font-size:17px;margin:0 0 10px}
+
+.top{position:sticky;top:0;z-index:20;background:var(--forest);color:#fff;padding:10px 12px}
+.toprow{display:flex;align-items:center;gap:8px;min-height:40px}
+.top h1{flex:1;margin:0;font-size:18px;font-weight:700;text-align:center}
+.top .sub{text-align:center;font-size:13px;color:#cfe3d5;margin-top:-2px}
+.iconbtn{width:42px;height:42px;border-radius:50%;border:0;background:transparent;color:#fff;display:grid;place-items:center;cursor:pointer;flex:none}
+.progress{height:4px;background:rgba(255,255,255,.2);border-radius:2px;margin-top:8px;overflow:hidden}
+.progress i{display:block;height:100%;background:var(--gold);transition:width .3s}
+.stepper{display:flex;gap:6px;overflow-x:auto;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--line);scrollbar-width:none}
+.stepper::-webkit-scrollbar{display:none}
+.st{flex:none;border:1px solid var(--line);background:transparent;border-radius:999px;padding:6px 12px 6px 8px;font-size:13px;display:flex;gap:6px;align-items:center;cursor:pointer;color:var(--muted)}
+.st b{width:22px;height:22px;border-radius:50%;background:var(--mint);color:var(--forest-2);display:grid;place-items:center;font-size:12px}
+.st.on{border-color:var(--forest-2);color:var(--ink);font-weight:600}.st.on b{background:var(--forest-2);color:#fff}
+.st.bad b{background:var(--danger);color:#fff}
+.page{padding:16px}
+
+.sec{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);margin-bottom:14px;overflow:hidden}
+.sech{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 14px;background:var(--mint-2);border-bottom:1px solid var(--line)}
+.sech h3{margin:0;font-size:16px}
+.secb{padding:2px 14px 14px}
+details.sec>summary{list-style:none;cursor:pointer}
+details.sec>summary::-webkit-details-marker{display:none}
+.field{display:block;margin-top:12px}
+.field>span,.flabel{display:block;font-size:14px;color:var(--muted);margin-bottom:4px}
+.req::after{content:" *";color:var(--danger)}
+.opt{font-size:12px;color:var(--muted);font-weight:400}
+.inp,.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:var(--r-sm);padding:11px 12px;min-height:46px}
+textarea{min-height:96px;resize:vertical}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.err .inp,.err input,.err select,.err textarea,input.err,textarea.err,select.err{border-color:var(--danger)!important;background:var(--danger-soft)!important}
+.errtxt{color:var(--danger);font-size:13px;margin-top:4px}
+.flash{animation:flash 1.4s ease}
+@keyframes flash{0%,60%{box-shadow:0 0 0 4px var(--gold)}100%{box-shadow:0 0 0 0 transparent}}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:9px 14px;font-size:14px;cursor:pointer;min-height:40px}
+.chip.on{background:var(--forest-2);border-color:var(--forest-2);color:#fff}
+.chips.err .chip{border-color:var(--danger)}
+.seg{display:flex;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
+.seg button{flex:1;border:0;background:var(--surface);padding:11px 4px;font-size:15px;cursor:pointer;min-height:46px}
+.seg button+button{border-right:1px solid var(--line)}
+.seg button.on{background:var(--forest-2);color:#fff}
+.seg.err{border-color:var(--danger)}
+.bigseg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.bigseg button{border:1px solid var(--line);background:var(--surface);border-radius:var(--r-md);padding:14px 6px;cursor:pointer;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--leaf)}
+.bigseg button span{color:var(--ink);font-size:14px}
+.bigseg button.on{border-color:var(--forest-2);background:var(--mint);box-shadow:inset 0 0 0 1px var(--forest-2)}
+.bigseg.err button{border-color:var(--danger)}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0}
+.toggle span{font-weight:500}
+.sw{width:52px;height:30px;border-radius:15px;background:var(--line);border:0;position:relative;cursor:pointer;flex:none}
+.sw::after{content:"";position:absolute;top:3px;right:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:right .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.sw[aria-checked="true"]{background:var(--leaf)}.sw[aria-checked="true"]::after{right:25px}
+.check{display:flex;gap:10px;align-items:flex-start;padding:10px 0;cursor:pointer}
+.check input{width:24px;height:24px;accent-color:var(--forest-2);flex:none;margin:0}
+.check.err{color:var(--danger)}
+.item{border:1px solid var(--line);border-radius:var(--r-md);padding:4px 12px 14px;margin-top:12px}
+.itemh{display:flex;justify-content:space-between;align-items:center;padding-top:8px;gap:8px}
+.itemh strong{font-size:15px}
+.btn{border:0;border-radius:var(--r-md);padding:13px 18px;font-weight:600;cursor:pointer;background:var(--forest-2);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;text-decoration:none}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
+.btn.gold{background:var(--gold);color:var(--forest)}
+.btn.sm{padding:8px 12px;font-size:14px;min-height:40px;border-radius:var(--r-sm)}
+.btn.w{width:100%}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.link{border:0;background:transparent;color:var(--forest-2);font-weight:600;cursor:pointer;padding:6px 4px;font-size:14px}
+:root[data-theme="dark"] .link{color:var(--leaf)}
+.del{border:0;background:transparent;color:var(--danger);font-size:14px;cursor:pointer;padding:8px}
+.hint{font-size:13px;color:var(--muted);margin:8px 0 0}
+.note{background:var(--gold-soft);border-radius:var(--r-md);padding:10px 12px;font-size:14px;margin-top:12px}
+.dbtag{display:inline-block;font-size:12px;background:var(--gold-soft);color:#7a6634;border-radius:6px;padding:2px 8px;margin-top:6px}
+.footer{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom));z-index:30}
+.footer .in{max-width:568px;margin:0 auto;display:flex;gap:10px}.footer .btn{flex:1}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:14px;margin-bottom:10px;display:flex;gap:10px;align-items:center;cursor:pointer;width:100%;text-align:right}
+.card .main{flex:1;min-width:0}
+.card h4{margin:0;font-size:16px}
+.card p{margin:2px 0 0;font-size:14px;color:var(--muted)}
+.tag{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;background:var(--mint);color:var(--forest-2);font-weight:600}
+.tag.draft{background:var(--gold-soft);color:#7a6634}
+.empty{text-align:center;padding:36px 20px;color:var(--muted)}
+.filters{display:grid;gap:8px;margin-bottom:12px}
+
+.audit{list-style:none;margin:0;padding:0}
+.audit>li{border-bottom:1px solid var(--line);padding:10px 0}
+.audit>li:last-child{border-bottom:0}
+.audit .ah{display:flex;align-items:center;gap:10px;font-weight:600}
+.audit .ok{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--mint);color:var(--forest-2);flex:none;font-size:14px}
+.audit .no{background:var(--danger);color:#fff}
+.audit ul{list-style:none;margin:6px 36px 0 0;padding:0}
+.audit ul button{border:0;background:transparent;color:var(--danger);text-align:right;padding:5px 0;cursor:pointer;font-size:14px;text-decoration:underline}
+
+.sigwrap{margin-top:12px}
+.sigwrap .lbl{display:flex;justify-content:space-between;align-items:center;font-size:14px;color:var(--muted);margin-bottom:4px}
+canvas.sig{width:100%;height:160px;background:#fff;border:1px solid var(--line);border-radius:var(--r-md);touch-action:none;display:block}
+.sigwrap.err canvas{border-color:var(--danger);box-shadow:0 0 0 2px var(--danger-soft)}
+.poison{background:#fff4f2;color:#8a2a22;border:1px solid #f0c9c3;border-radius:var(--r-md);padding:10px 12px;font-weight:600;margin-top:12px;text-align:center}
+
+/* document */
+.paper{background:#fff;color:#1a1a1a;border-radius:6px;box-shadow:0 2px 14px rgba(0,0,0,.12);padding:22px 20px;font-size:12.5px;line-height:1.55;direction:rtl}
+.dh{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:3px solid #1f5236;padding-bottom:10px}
+.dh .co{font-size:18px;font-weight:800;color:#1f5236}
+.dh .meta{font-size:11px;color:#555}
+.dh .mk2{width:44px;height:44px;border-radius:12px;background:#b39c6a;color:#1f5236;display:grid;place-items:center;font-weight:800;font-size:23px;flex:none}
+.dtitle{display:flex;justify-content:space-between;align-items:baseline;margin:12px 0 4px;gap:8px;flex-wrap:wrap}
+.dtitle h2{margin:0;font-size:18px;color:#1f5236}
+.dtitle span{color:#7a6634;font-weight:700}
+.paper h3{font-size:13.5px;margin:14px 0 5px;color:#fff;background:#1f5236;padding:3px 8px;border-radius:3px}
+.kv{display:grid;grid-template-columns:1fr 1fr;gap:1px 14px}
+.kv div{display:flex;gap:5px;padding:2px 0;border-bottom:1px dotted #e1e6e2}
+.kv b{color:#555;font-weight:500;flex:none}
+.kv .full{grid-column:1/-1}
+.tbl{width:100%;border-collapse:collapse;font-size:11px}
+.tbl th{background:#e9f2ec;color:#1f5236;font-weight:600;text-align:right;padding:4px 5px;border:1px solid #d3e0d7}
+.tbl td{padding:4px 5px;border:1px solid #e0e6e2;vertical-align:top}
+.tblwrap{overflow-x:auto}
+.pre{white-space:pre-wrap;margin:0}
+.dsigs{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px}
+.dsigs div{border-top:1px solid #999;padding-top:3px;font-size:11.5px;color:#444;text-align:center}
+.dsigs img{height:64px;display:block;margin:0 auto 3px}
+.dpoison{margin-top:14px;border:2px solid #c8433a;color:#8a2a22;padding:6px 10px;text-align:center;font-weight:700;border-radius:4px}
+.dfoot{margin-top:10px;font-size:10px;color:#777;display:flex;justify-content:space-between}
+.avoid{break-inside:avoid;page-break-inside:avoid}
+
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:60;display:flex;align-items:flex-end;justify-content:center}
+.sheet .in{background:var(--surface);width:100%;max-width:600px;border-radius:22px 22px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));max-height:86vh;overflow:auto}
+.sheet h3{margin:0 0 4px;font-size:18px}
+.pick{display:flex;gap:10px;align-items:center;width:100%;text-align:right;border:1px solid var(--line);background:var(--surface);border-radius:var(--r-md);padding:12px;margin-top:8px;cursor:pointer}
+.pick .main{flex:1;min-width:0}.pick b{display:block}.pick small{color:var(--muted);display:block}
+.pick .plusb{width:34px;height:34px;border-radius:50%;background:var(--leaf);color:#fff;display:grid;place-items:center;flex:none}
+.pvbar{background:var(--gold-soft);border-radius:var(--r-md);padding:10px 12px;margin-bottom:12px;font-size:14px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.paper.draftmark{position:relative;overflow:hidden}
+.paper.draftmark::before{content:"טיוטה – תצוגה מקדימה";position:absolute;top:40%;left:50%;transform:translate(-50%,-50%) rotate(-28deg);font-size:54px;font-weight:800;color:rgba(200,67,58,.09);white-space:nowrap;pointer-events:none}
+.deliver{background:var(--surface);border:2px solid var(--gold);border-radius:var(--r-lg);padding:14px;margin-bottom:14px}
+.deliver h3{margin:0 0 4px;font-size:17px}
+.deliver .status{font-size:14px;color:var(--muted);margin:0 0 12px}
+.deliver .status.bad{color:var(--danger)}
+.stack{display:grid;gap:8px}
+.spin{width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--forest-2);border-radius:50%;display:inline-block;vertical-align:-3px;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.crash{position:fixed;bottom:0;left:0;right:0;background:var(--danger);color:#fff;padding:10px 14px;font-size:13px;z-index:70;max-height:40vh;overflow:auto}
+.crash button{background:#fff;color:var(--danger);border:0;border-radius:8px;padding:6px 10px;margin-top:6px;font-weight:600}
+.phgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.phgrid figure{margin:0;border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden;background:var(--surface)}
+.phgrid img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}
+.phgrid input{width:100%;border:0;border-top:1px solid var(--line);padding:8px;background:transparent;font-size:13px}
+.phgrid .rowb{display:flex;justify-content:space-between;align-items:center;padding:0 6px 4px}
+.cam{display:flex;align-items:center;justify-content:center;gap:8px;border:2px dashed var(--line);border-radius:var(--r-md);padding:18px;color:var(--forest-2);cursor:pointer;text-align:center;margin-top:10px;font-weight:600}
+:root[data-theme="dark"] .cam{color:var(--leaf)}
+.cam input{display:none}
+.dph{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.dph figure{margin:0}
+.dph img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:3px;display:block;border:1px solid #ddd}
+.dph figcaption{font-size:10px;color:#444;padding-top:2px}
+.strow{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.strow:last-child{border-bottom:0}
+.stno{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;flex:none;font-size:15px}
+.strow .mid{flex:1;min-width:0}
+.strow .mid b{display:block;font-size:15px}
+.strow .mid small{color:var(--muted);font-size:12px}
+.strow select{border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--bg);max-width:46%}
+.stdone{opacity:.65}
+.ac{position:relative}
+.aclist{position:absolute;top:100%;right:0;left:0;z-index:40;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:0 10px 30px rgba(0,0,0,.18);max-height:280px;overflow:auto;margin-top:4px}
+.aclist:empty{display:none}
+.acitem{display:flex;gap:10px;align-items:center;width:100%;text-align:right;border:0;border-bottom:1px solid var(--line);background:transparent;padding:12px;cursor:pointer;min-height:56px}
+.acitem:last-child{border-bottom:0}
+.acitem b{display:block;font-size:15px}
+.acitem small{display:block;color:var(--muted);font-size:12.5px}
+.acitem .ico{width:34px;height:34px;border-radius:50%;background:var(--mint);color:var(--forest-2);display:grid;place-items:center;flex:none}
+.acitem mark{background:var(--gold-soft);color:inherit;border-radius:3px;padding:0 1px}
+.achead{padding:8px 12px;font-size:12px;color:var(--muted);background:var(--mint-2)}
+.toast{position:fixed;bottom:110px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--forest);color:#fff;padding:10px 18px;border-radius:999px;font-size:14px;opacity:0;transition:.25s;z-index:50;pointer-events:none;max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media print{
+  body{background:#fff}
+  .top,.footer,.toast,.noprint{display:none!important}
+  #app{max-width:none;padding:0}.page{padding:0}
+  .paper{box-shadow:none;padding:0}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+"use strict";
+/* =========================================================
+   1. CONSTANTS (from the requirements text)
+   ========================================================= */
+const LICENSE_TYPES=['בדירות','במבנים ובשטח פתוח','באיוד','צבאי','במבנים ובשטח פתוח מוגבל למכרסמים בלבד','במבנים ובשטח פתוח מוגבל לחרקים בלבד'];
+const OP_KINDS=['הדברה רגילה','איוד','ערפול'];
+const ROLES=['בעל בית','שוכר הדירה','ועד הבית','מנהל המבנה','מנהל אחזקה','אחר'];
+const BUILDING_TYPES=['מוסד חינוכי','חדר אשפה','מפעל','בית מלון','מבנה אחר'];
+const SITE_TYPES=['נחל','שדה','בור מים','שטח ציבורי','אחר'];
+const LEVELS=['נמוכה','בינונית','גבוהה'];
+const METHODS=['ריסוס','פיזור גרגירים','ערפול','איבוק','תחנות האכלה','אחר'];
+const UNITS=['ליטר/מ"ר','מ"ל/מ"ר','ליטר/מ"א','ליטר/מ"ק','גרם/מ"ר','גרם/מ"א','ק"ג/דונם','ליטר/דונם','תחנות/מ"א','מלכודות/מ"ר','אחר'];
+const FIND_LIB=["תיקנים חיים/פגרים/גללים.", "שיירות נמלים.", "גללים/כרסומים של חולדות/עכברים.", "מחילות מכרסמים.", "פשפש מיטה / כתמי דם / ביצים / נינמפה", "פרעושים - פרטים חיים בניטור.", "קרציות - פרטים חיים בניטור.", "יתושים בוגרים/זחלים במים.", "זבובים בוגרים", "רימות זבובים", "קן צרעות.", "נדלים,צרעות המגיעות לנזילת מים שטופלה לא נמצא קן באיזור", "טרמיטים - פועלות/תעלות בוץ/פרטים מכונפים.", "אחרים - פרטים חיים.", "דיווח לקוח."];
+const CIRC_LIB=["נמצאה פעילות מזיקים בביקורת – נדרש טיפול להפחתת הפעילות.", "נמצאו סימני פעילות טריים/לכידות – ניטור בלבד אינו נותן מענה מספק.", "נמצאה נגיעות חוזרת במוקד מוכר – פעולות המניעה הקיימות אינן מספיקות.", "נמצא מוקד פעיל/אזור קינון – נדרש טיפול ישיר במוקד.", "הפעילות נמשכת למרות פעולות מניעה, איטום, ניקיון או מלכודות – נדרש טיפול משלים.", "נמשכת פעילות מביקור קודם – נדרשת השלמת הטיפול עד להשגת שליטה בנגיעות.", "לא נמצאה פעילות המצדיקה הדברה – בוצעו ביקורת וניטור בלבד."];
+const PREV_LIB=["איטום סדקים ופתחים בקירות ובצנרת.", "תיקון נזילות ומקורות רטיבות.", "סילוק פסולת ושאריות מזון והקפדה על פינוי יומי.", "אחסון מזון בכלים אטומים.", "ניקוי שומנים ושאריות מאחורי ציוד המטבח.", "סתימת פערים סביב צנרת וכבלים.", "התקנת רשתות והתקני מניעה בפתחים.", "גיזום צמחייה צמודה למבנה.", "ייבוש וסילוק מקווי מים עומדים.", "הדרכת הלקוח על סדר וניקיון במוקדים."];
+const NATURE_LIB=["ריסוס שאריתי בנקודות מפתח ובמסתורים.", "פיזור פיתיון בתחנות האכלה נעולות ומסומנות.", "יישום ג'ל בנקודות מסתור ומעבר.", "ערפול חלל באזור המטופל.", "איבוק חללים סמויים.", "טיפול נקודתי במוקד הפעילות.", "הצבת מלכודות ניטור והדבקה."];
+const NATURE_AFTER_LIB=["בוצע ריסוס שאריתי כמתוכנן במוקדים שאותרו.", "בוצע פיזור פיתיון בתחנות נעולות ומיקומן סומן.", "בוצע יישום ג'ל בנקודות המסתור שאותרו.", "בוצע ערפול חלל בהתאם לתכנון.", "בוצע טיפול נקודתי במוקד הפעילות.", "הוצבו מלכודות ניטור לבקרה עד הביקור הבא.", "לא בוצעה הדברה – בוצעו ביקורת וניטור בלבד.", "בוצע טיפול חלקי – נדרשת השלמה בביקור נוסף."];
+const WARN_LIB=["יש לאוורר את האזור המטופל לפני הכניסה.", "אין לשטוף את המשטחים שטופלו למשך שבוע.", "יש להרחיק ילדים ובעלי חיים עד להתייבשות מלאה.", "יש לאסוף פגרי מזיקים ולסלקם לפח סגור.", "אין לגעת בתחנות הפיתיון ואין להזיזן.", "יש לדווח על פעילות חוזרת לצורך טיפול משלים.", "מומלץ ביקור בקרה בהתאם למצב הנגיעות."];
+const WARRANTY_LIB=["האחריות בתוקף בכפוף לביצוע פעולות המניעה שהומלצו.", "האחריות אינה חלה על נגיעות חדשה ממקור חיצוני.", "קריאת שירות במסגרת האחריות ללא תשלום.", "האחריות מותנית בשמירה על תנאי תברואה תקינים.", "האחריות אינה כוללת נזק שנגרם על ידי צד שלישי."];
+const WARRANTY_PERIODS=['ללא אחריות','30 יום','3 חודשים','6 חודשים','12 חודשים','לפי הסכם'];
+const ST_TYPES=[
+ {k:'bp',n:'תחנת האכלה עם רעל',c:'#d9822b'},{k:'bf',n:'תחנת האכלה ללא רעל (ניטור)',c:'#3f9d5a'},
+ {k:'gl',n:'מלכודת הדבקה',c:'#7a5a44'},{k:'in',n:'מלכודת ניטור חרקים',c:'#2e9fbf'},
+ {k:'mo',n:'מלכודת עש',c:'#8a8f98'},{k:'fl',n:'מלכודת זבובים',c:'#6b54c9'},{k:'ot',n:'אחר',c:'#5d6f63'}];
+const ST_STATUS=['תקין','נצרך חלקית','נצרך במלואו','הוחלף פיתיון','נמצאה פעילות','פגום','חסר / נעלם','לא נבדק'];
+const stTypeOf=k=>ST_TYPES.find(t=>t.k===k)||ST_TYPES[6];
+const PEST_CHIPS=['תיקן גרמני','תיקן אמריקאי','נמלים','עכברים','חולדות','פשפשי מיטה','פרעושים','קרציות','יתושים','זבובים','טרמיטים','חיפושיות מזיקות','צרעות','עקרבים'];
+/* Annex A special cases */
+const ANNEX=[
+  {re:/קרצי/,label:'סוג הקרציות',opts:['קשות','רכות']},
+  {re:/יתוש/,label:'יתושים',opts:['בוגרים','זחלים']},
+  {re:/טרמיט/,label:'סוג הטרמיטים',opts:['טרמיטי קרקע','טרמיטי עץ']},
+  {re:/חיפושי|יקרונ|ליקטוס|חדקונ/,label:'פירוט ברמת המשפחה',free:'למשל יקרוניות, ליקטוס, חדקוניות'}
+];
+const POISON='במקרה של חשד הרעלה ניתן לפנות למרכז הארצי להרעלות: 04-7771900';
+const RETENTION_YEARS=3;
+const STEPS=['לקוח ומיקום','ניטור וממצאים','מניעה והחלטה על הדברה','תכשירים ויישום','אזהרות','חתימות וסיום'];
+const GROUPS=[
+  {name:'פרטי מדביר',step:0},{name:'מזמין',step:0},{name:'מקום',step:0},
+  {name:'ניטור וממצאים',step:1},{name:'פעולות מניעה/חלופות',step:2},
+  {name:'אזהרות לפני ההדברה',step:4},{name:'פרטי תכשירים ויישום',step:3},
+  {name:'אזהרות בסיום',step:4},{name:'מסירת היומן וחתימות',step:5}
+];
+const BUILTIN=([["למבדה סטאר אולטרה קאפ - CS","lambda-cyhalothrin 9.70%","תרכיז רחיף מיקרוקפסולרי (CS)","חברת רימי כימיקלים בע\"מ","חרקים זוחלים אחרים, נמלים, פישפשי מיטה, פרעושים, קרציות קשות, תיקנים"],["באג","bifenthrin 4.00%, imidacloprid 5.00%","תרחיף נוזלי","","יתושים בוגרים"],["זירו-פליי לתברואה","Dinotefuran 18.00%","תרכיז נוזלי","תפזול תעשיות כימיות בע\"מ","זבובים בוגרים, חרקים זוחלים אחרים, נמלים, פישפשי מיטה, פרעושים, תיקנים"],["שובל","White mineral oil (petroleum) 97.00%","שמן","דור.קי פיתוח ושיווק בע\"מ","זחלי יתושים"],["וולקנו","fipronil 0.05%","פיתיון מוכן לשימוש גרגירים","דורקי פיתוח ושיווק בע\"מ","נמלים, נמלת האש הקטנה"],["רייד מקס דלתא - גוקים","deltamethrin 0.05%, imiprothrin 0.10%","אירוסול","אס.סי. גונסון ישראל בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["ברודיטופ וקס בלוק","brodifacoum 0.01%","פתיון מוכן לשימוש בלוקים","תפזול תעשיות כימיות בע\"מ","חולדות, עכברים"],["ברודיטופ ג'ל","brodifacoum 0.01%","פתיון ג'ל","תפזול תעשיות כימיות בע\"מ","חולדות, עכברים"],["סנו K 4000","1R-TRANS-Phenothrin 0.14%, Piperonyl Butoxide 0.60%, prallethrin 0.10%","מיקרואמולסיה","סנו מפעלי ברונוס בע\"מ","זבובים בוגרים, חרקים מעופפים אחרים, יתושים בוגרים"],["בנגל החדש סלילים לבעירה איטית קוטל יתושים","prallethrin 0.10%","סלילים","גורי ע.ע.ע. בע\"מ","יתושים בוגרים"],["רעם","bifenthrin 10.00%","תרכיז רחיף","אר.פי.סי החברה להדברה - נס הרים","נמלים"],["כופתיון פלוס","brodifacoum 0.01%","פתיון מוכן לשימוש כופתיות","אר.פי.סי החברה להדברה - נס הרים","חולדות, עכברים"],["בלוקיון פלוס","brodifacoum 0.01%","פתיון מוכן לשימוש בלוקים","אר.פי.סי החברה להדברה - נס הרים","חולדות, עכברים"],["פסטיון פלוס פסטה","brodifacoum 0.01%","פיתיון מוכן לשימוש בצורת פסטה","אר.פי.סי החברה להדברה - נס הרים","חולדות, עכברים"],["פרו ג'ל נמלת האש הקטנה","fipronil 0.01%","פתיון ג'ל","תפזול תעשיות כימיות בע\"מ","נמלת האש הקטנה"],["דלתא סופר","deltamethrin 2.50%, s-bioallethrin 2.00%","תרכיז מתחלב","תפזול תעשיות כימיות בע\"מ","זבובים בוגרים, חרקים זוחלים אחרים, חרקים מעופפים אחרים, פישפשי מיטה, תיקנים"],["אדוויון 20","indoxacarb 20.00%","גרגרים רחיפים","זרעים גדרה בע\"מ","נמלים"],["קומנדו 313","bifenthrin 0.05%","תמיסה","סאסאטק אגש\"ח בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["K 300 פלוס 8","lambda-cyhalothrin 0.03%, novaluron 0.10%, prallethrin 0.10%","אירוסול","סנו מפעלי ברונוס בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["in2care","Beauveria bassiana 10.00%, Pyriproxyfen 75.00%","פתיון מרוכז אבקה","גדות אגרו בע\"מ","זחלי יתושים, יתושים בוגרים"],["פיקס ג'ל","fipronil 0.01%","ג'ל","אר.פי.סי החברה להדברה - נס הרים","נמלים, נמלת האש הקטנה"],["ספיר","MGK 264 6.40%, cypermethrin cis/trans 40/60 20.00%","מיקרואמולסיה","חברת רימי כימיקלים בע\"מ","זבובים בוגרים, יתושים בוגרים, נמלים, פרוקי רגלים אחרים, פרעושים, תיקנים"],["פרמיס 350","imidacloprid 30.40%, imidacloprid 30.50%","תרכיז רחיף","לידור אלמנטס בע\"מ- ירושלים","טרמיטים"],["טאצ' די תוש ספריי קוטל חרקים מעופפים","Bioallethrin 0.15%, Piperonyl Butoxide 0.60%, TETRAMETHRIN 0.15%","אירוסול","סאסאטק אגש\"ח בע\"מ","זבובים בוגרים, חרקים מעופפים אחרים, יתושים בוגרים"],["סנו K-2000","cyphenothrin 0.30%","תמיסה מוכנה לשימוש בתוארית מיקרוקפסולרית","אלמנדה ישראל בע\"מ","חרקים זוחלים אחרים, פרעושים, תיקנים"],["מאסטר פליי","Dinotefuran 12.00%","נוזל","סאסאטק אגש\"ח בע\"מ","זבובים בוגרים"],["פליי - אוף","Dinotefuran 0.30%","תרסיס","סאסאטק אגש\"ח בע\"מ","זבובים בוגרים"],["סופר ג'ל","fipronil 0.05%","ג'ל","אר.פי.סי החברה להדברה - נס הרים","תיקנים"],["סנו שמפו שטיחים פלוס דוחה קרדית אבק הבית","perfume 1.70%","אירוסול","סנו מפעלי ברונוס בע\"מ","קרדית אבק הבית"],["מארש","emamectin benzoate 1.92%","נוזל","אר.פי.סי החברה להדברה - נס הרים","תהלוכן האורן"],["מדביר יתושים וזבובים","Bioallethrin 0.15%, Piperonyl Butoxide 0.40%, TETRAMETHRIN 0.15%, cypermethrin cis/trans 40/60 0.10%","אירוסול","סאסאטק אגש\"ח בע\"מ","זבובים בוגרים, יתושים בוגרים"],["קינג ג'ל","fipronil 0.05%","ג'ל","א.ע יזמות ופרוייקטים","תיקנים"],["קווין ג'ל פיתיון","fipronil 0.01%","ג'ל","א.ע יזמות ופרוייקטים","נמלים"],["סולו בלוק","brodifacoum 0.01%","פתיון מוכן לשימוש בלוקים","חברת רימי כימיקלים בע\"מ","חולדות, עכברים"],["אלמוג","deltamethrin 4.75%","תרכיז רחיף","חברת רימי כימיקלים בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["דרגון","bifenthrin 9.60%","תרכיז רחיף","אר.פי.סי החברה להדברה - נס הרים","חרקים זוחלים אחרים, פישפשי מיטה, תיקנים"],["פרו ג'ל נמלים וטרמיטים","fipronil 0.01%","ג'ל","תפזול תעשיות כימיות בע\"מ","טרמיטים, נמלים"],["K3 פתיון ג'ל - קוטל נמלים בבית ובחצר","fipronil 0.01%","ג'ל","סנו מפעלי ברונוס בע\"מ","נמלים"],["נוזל ניקוי רצפות דוחה תיקנים \"המותג/מג'יק פואוור\"","Perfume Citronella 2.00%","נוזל","סאסאטק אגש\"ח בע\"מ","תיקנים"],["דלתא מקס","Piperonyl Butoxide 5.00%, Pyriproxyfen 1.00%, deltamethrin 1.60%","נוזל מתחלב","סיקמקס בע\"מ","פרעושים, תיקנים"],["אנטי אנט","fipronil 0.05%","גרגרים","אקו רד (כמיארט) בע\"מ","נמלת האש הקטנה"],["טרמיטקס","diflubenzuron 0.25%","פתיון מוכן לשימוש אבקה","א.ע יזמות ופרוייקטים","טרמיטים"],["דרקר 10.2","Piperonyl Butoxide 10.00%, TETRAMETHRIN 2.00%, cypermethrin cis/trans 40/60 10.00%","תרכיז רחיף מיקרוקפסולרי","אר.פי.סי החברה להדברה - נס הרים","זבובים בוגרים, חרקים זוחלים אחרים, חרקים מעופפים אחרים, יתושים בוגרים, נמלים, תיקנים"],["ספירה נוזל דוחה יתושים","prallethrin 1.20%","נוזל/אדים","גורי ע.ע.ע. בע\"מ","יתושים בוגרים"],["פירתרון","MGK 264 10.00%, Piperonyl Butoxide 6.00%, pyrethrum 3.00%","תרכיז לערפול","נורון חברה לייבוא ולייצור בע\"מ","יתושים בוגרים, מזיקי מזון"],["פרמקס 20","Permethrin 20.00%","תרכיז מתחלב","חברת רימי כימיקלים בע\"מ","זבובים בוגרים, יתושים בוגרים"],["ברודיטופ פסטה לתברואה","brodifacoum 0.01%","פיתיון מוכן לשימוש בצורת פסטה","תפזול תעשיות כימיות בע\"מ","חולדות, עכברים"],["שוהם","bifenthrin 10.00%","תרכיז רחיף","חברת רימי כימיקלים בע\"מ","חרקים זוחלים אחרים, טרמיטים, נמלים, פרעושים, תיקנים"],["רטרים בלוק","bromadiolone 0.01%","פתיון מוכן לשימוש בלוקים","חברת רימי כימיקלים בע\"מ","חולדות, עכברים"],["טאצ' די תיקן פורטה","Piperonyl Butoxide 0.34%, TETRAMETHRIN 0.20%, cyfluthrin 0.10%, cypermethrin cis/trans 40/60 0.17%","אירוסול","סאסאטק אגש\"ח בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["גוליבר תיקנים","fipronil 0.05%","ג'ל","אפקטיבי הדברות","תיקנים"],["גוליבר נמלים","fipronil 0.01%","ג'ל","אפקטיבי הדברות","נמלים"],["פאלקון","bifenthrin 5.00%, imidacloprid 10.00%","תרכיז מתחלב","אר.פי.סי החברה להדברה - נס הרים","נמלים, תיקנים"],["סיפ 20","cypermethrin cis/trans 40/60 20.00%","תרכיז מתחלב","אר.פי.סי החברה להדברה - נס הרים","זבובים בוגרים, זחלי יתושים, חרקים מעופפים אחרים, יתושים בוגרים, תיקנים"],["סנו K-600 (חדש)","MGK 264 1.00%, Piperonyl Butoxide 1.00%, TETRAMETHRIN 0.30%, esbiothrin 0.08%, phenothrin 0.15%","אירוסול","סנו מפעלי ברונוס בע\"מ","זבובים בוגרים, יתושים בוגרים, מזיקי בד אחרים, מזיקי ספרים, עש"],["קילר","bifenthrin 0.05%","תרכיז רחיף","חברת רימי כימיקלים בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["K3 תחנת פתיון","fipronil 0.05%","פתיון מוכן לשימוש בקופסת האכלה","סנו מפעלי ברונוס בע\"מ","תיקנים"],["פרפקט פרו 500","Bioallethrin 0.20%, Piperonyl Butoxide 0.80%, deltamethrin 0.02%","אירוסול","סאסאטק אגש\"ח בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["סנו רצפז פלוס ווקס נוזל להברקת רצפות דוחה תיקנים","perfume 2.00%","נוזל","סנו מפעלי ברונוס בע\"מ","תיקנים"],["רייד בוטני קוטל זוחלים ומעופפים","Piperonyl Butoxide 1.05%, pyrethrum 0.25%","אירוסול","אס.סי. גונסון ישראל בע\"מ","זבובים בוגרים, חרקים זוחלים אחרים, חרקים מעופפים אחרים, יתושים בוגרים, נמלים, פרעושים, צרעות, תיקנים"],["טאץ' רב קוטל","Piperonyl Butoxide 0.50%, TETRAMETHRIN 0.15%, cyfluthrin 0.10%, cypermethrin cis/trans 40/60 0.15%","אירוסול","סאסאטק אגש\"ח בע\"מ","זבובים בוגרים, חרקים זוחלים אחרים, חרקים מעופפים אחרים, יתושים בוגרים, נמלים, תיקנים"],["טופז","D-limonene 1.50%, pyrethrum 0.25%","תרסיס","דע קדם פרוייקטים (1987) בע\"מ","תיקנים"],["אנט ג'ל","fipronil 0.01%","ג'ל","סיקמקס בע\"מ","נמלים"],["דוחה תיקנים רמי לוי","perfume 3.00%","נוזל","קומפלקס כימיקלים בע\"מ","תיקנים"],["פרמתרול 25","Permethrin 25.00%","אבקה רטיבה","תפזול תעשיות כימיות בע\"מ","זבובים בוגרים, יתושים בוגרים, נמלים, תיקנים"],["מורין דיפה פסטה","difenacoum 0.01%","פיתיון מוכן לשימוש בצורת פסטה","אדמה פתרונות לחקלאות בע\"מ-ארומה","חולדות, עכברים"],["סנטור","lambda-cyhalothrin 9.70%","תחליב שמן במים","אדמה פתרונות לחקלאות בע\"מ-ארומה","זבובים בוגרים, חרקים זוחלים אחרים, חרקים מעופפים אחרים, יתושים בוגרים, פישפשי מיטה, קרציות קשות, תיקנים"],["סיזמיק","lambda-cyhalothrin 9.70%","תרכיז רחיף מיקרוקפסולרי","אדמה פתרונות לחקלאות בע\"מ-ארומה","זבובים בוגרים, חרקים זוחלים אחרים, יתושים בוגרים, נמלים, פרוקי רגלים אחרים, תיקנים"],["אנטיפליי","Dinotefuran 0.30%","נוזל","חברת רימי כימיקלים בע\"מ","זבובים בוגרים"],["ברקת","MGK 264 6.40%, Pyriproxyfen 0.80%, cypermethrin cis/trans 40/60 20.00%","מיקרואמולסיה","חברת רימי כימיקלים בע\"מ","פרעושים"],["פרמנונה 200","Permethrin 20.00%","נוזל מתחלב","סיקמקס בע\"מ","זבובים בוגרים, חרקים זוחלים אחרים, חרקים מעופפים אחרים, יתושים בוגרים, נמלים, תיקנים"],["גרנולר - פיתיוןגרגירי לנמלת האש הקטנה ונמלים אחר","fipronil 0.05%","פתיון מוכן לשימוש גרגירים","אר.פי.סי החברה להדברה - נס הרים","נמלים, נמלת האש הקטנה"],["פנטום פרו","cyphenothrin 10.00%","תרכיז רחיף מיקרוקפסולרי","אלמנדה ישראל בע\"מ","פרעושים, תיקנים"],["סיפזול 20","cypermethrin cis/trans 40/60 20.00%","תרכיז מתחלב","תפזול תעשיות כימיות בע\"מ","זבובים בוגרים, תיקנים"],["אודם","bifenthrin 4.00%, imidacloprid 5.00%","תרכיז רחיף","חברת רימי כימיקלים בע\"מ","חרקים זוחלים אחרים, יתושים בוגרים, נמלים, תיקנים"],["פרו ג'ל נמלים","fipronil 0.01%","פתיון ג'ל","תפזול תעשיות כימיות בע\"מ","נמלים"],["רימקס","Permethrin 25.00%","אבקה רטיבה","חברת רימי כימיקלים בע\"מ","זבובים בוגרים, חרקים זוחלים אחרים, יתושים בוגרים, נמלים, תיקנים"],["דמנד","lambda-cyhalothrin 9.60%","תרכיז רחיף מיקרוקפסולרי","זרעים גדרה בע\"מ","נמלים, פישפשי מיטה, תיקנים"],["ספירה מאט טבליות קוטלי יתושים","prallethrin 1.33%","טבליות אידוי","גורי ע.ע.ע. בע\"מ","יתושים בוגרים"],["סיפרין לתברואה","cypermethrin cis/trans 40/60 20.00%","תרכיז מתחלב","חברת רימי כימיקלים בע\"מ","זבובים בוגרים, זחלי יתושים, יתושים בוגרים, נמלים, פרעושים, תיקנים"],["טיגריס","Dinotefuran 0.15%","תרסיס","חברת רימי כימיקלים בע\"מ","יתושים בוגרים"],["אדוויון פתיון ג'ל להדברת תיקנים","indoxacarb 0.60%","ג'ל","זרעים גדרה בע\"מ","תיקנים"],["אדוויון פתיון ג'ל להדברת נמלים","indoxacarb 0.05%","ג'ל","זרעים גדרה בע\"מ","נמלים"],["K3 נמלת האש פיתיון ג'ל קוטל את נמלת האש הקטנה בבית","fipronil 0.01%","ג'ל","סנו מפעלי ברונוס בע\"מ","נמלת האש הקטנה"],["רימי 90 נוזלי","Pyriproxyfen 5.00%","תרכיז מתחלב","חברת רימי כימיקלים בע\"מ","זחלי יתושים, זחלי פרעושים, רימות זבובים, תיקנים"],["סיפרימי","cypermethrin cis/trans 40/60 10.00%","אבקה רטיבה","חברת רימי כימיקלים בע\"מ","זבובים בוגרים, חרקים זוחלים אחרים, חרקים מעופפים אחרים, יתושים בוגרים, נמלים, תיקנים"],["פורסטאר","Bacillus sphaericus 6.00%, bacillus thuringiensis var israelensis 1.00%","בלוק","חברת רימי כימיקלים בע\"מ","זחלי יתושים"],["טופ גריין","fipronil 0.05%","גרגרים","חברת רימי כימיקלים בע\"מ","נמלים, נמלת האש הקטנה"],["אינוויקט גולד","imidacloprid 2.15%","ג'ל","חברת רימי כימיקלים בע\"מ","תיקנים"],["אדמירל","bifenthrin 7.90%","תרכיז רחיף","אדמה פתרונות לחקלאות בע\"מ","טרמיטים, נמלים, פרעושים, תיקנים"],["מגלון בלוק לתברואה","bromadiolone 0.01%","פתיון מוכן לשימוש בלוקים","סיקמקס בע\"מ","חולדות, עכברים"],["זאגור פסטה","brodifacoum 0.01%","פיתיון מוכן לשימוש בצורת פסטה","סיקמקס בע\"מ","חולדות, עכברים"],["סיפרמקס","cypermethrin cis/trans 40/60 20.00%","נוזל מתחלב","סיקמקס בע\"מ","זבובים בוגרים, זחלי יתושים, חרקים מעופפים אחרים"],["רייד זבובים ויתושים מבושם","d-phenothrin 0.13%, prallethrin 0.10%","אירוסול","","זבובים בוגרים, יתושים בוגרים"],["רייד קוטל נמלים 2 ב-1","cypermethrin cis/trans 40/60 0.10%, imiprothrin 0.10%","אירוסול","","נמלים"],["אימפקט","cypermethrin cis/trans 40/60 20.00%, cyromazine 5.00%","תרכיז רחיף","","פרעושים"],["בק תוש","bacillus thuringiensis var israelensis","תרכיז נוזלי","","זחלי יתושים"],["רייד נגד עש ג'ל - \"לבנדר\"","transfluthrin 0.15%","ג'ל","","עש"],["מקספורס פורטה","fipronil 0.05%","ג'ל","","תיקנים"],["אקואטיין AMF","silicone fluid 87.50%","נוזל","לוכסמבורג תעשיות בע\"מ","זחלי יתושים"],["צרעון","Piperonyl Butoxide 0.85%, TETRAMETHRIN 0.18%, cypermethrin cis/trans 40/60 0.09%","אירוסול","סאסאטק אגש\"ח בע\"מ","צרעות"],["גרגירמקס","fipronil 0.05%","גרגרים","א.ע יזמות ופרוייקטים","נמלים, נמלת האש הקטנה"],["תרסיפ 20","cypermethrin cis/trans 40/60 20.00%","תרכיז מתחלב","תרסיס חברה לחימיקלים חקלאיים ותעשיתיים בעמ","זחלי יתושים"],["פרו-ג'ל","fipronil 0.05%","פתיון ג'ל","תפזול תעשיות כימיות בע\"מ","תיקנים"],["רייד זבובים ויתושים","d-phenothrin 0.13%, prallethrin 0.11%","אירוסול","אס.סי. גונסון ישראל בע\"מ","חרקים מעופפים אחרים"],["אדוויון פתיון גרגרי להדברת נמלת האש","indoxacarb 0.05%","גרגרים","זרעים גדרה בע\"מ","נמלים, נמלת האש הקטנה"],["מקפז","MGK 264 0.50%, Piperonyl Butoxide 0.50%, TETRAMETHRIN 0.40%, deltamethrin 0.04%","אירוסול","סנו מפעלי ברונוס בע\"מ","חרקים זוחלים אחרים, תיקנים"],["טפיר","bifenthrin 5.00%, imidacloprid 25.00%","תרכיז רחיף","אדמה פתרונות לחקלאות בע\"מ-ארומה","נמלים"],["סנו K-400","MGK 264 1.00%, Piperonyl Butoxide 0.60%, TETRAMETHRIN 0.65%","אירוסול","סנו מפעלי ברונוס בע\"מ","זבובים בוגרים, חרקים מעופפים אחרים, יתושים בוגרים"],["סנו K מעופפים פירטרום - קוטל יתושים, זבובים","Piperonyl Butoxide 1.50%, pyrethrum 0.25%","אירוסול","סנו מפעלי ברונוס בע\"מ","זבובים בוגרים, חרקים מעופפים אחרים, יתושים בוגרים"],["סנו רצפז פלוס - נוזל לניקוי רצפה - דוחה תקנים","perfume 2.00%","נוזל","סנו מפעלי ברונוס בע\"מ","תיקנים"],["מוריברום ברודיפקום בלוק","brodifacoum 0.01%","פתיון מוכן לשימוש בלוקים","א.ע יזמות ופרוייקטים","חולדות, עכברים"],["מוריברום ברודיפקום פסטה","brodifacoum 0.01%","פיתיון מוכן לשימוש בצורת פסטה","א.ע יזמות ופרוייקטים","חולדות, עכברים"],["סיפרפקט 200 לתברואה","D-limonene 5.00%, cypermethrin cis/trans 40/60 20.00%","תרכיז מתחלב","דור.קי פיתוח ושיווק בע\"מ","זבובים בוגרים, חרקים זוחלים אחרים, חרקים מעופפים אחרים, יתושים בוגרים, תיקנים"],["ווינר","Piperonyl Butoxide 0.30%, TETRAMETHRIN 0.06%, cypermethrin cis/trans 40/60 0.30%","תמיסה מוכנה לשימוש בתוארית מיקרוקפסולרית","אר.פי.סי החברה להדברה - נס הרים","זבובים בוגרים, חרקים זוחלים אחרים, חרקים מעופפים אחרים, יתושים בוגרים, נמלים, תיקנים"],["נפורקס 2%","cyromazine 2.00%","גרגרים","אביק תוצרים וטרינריים בע\"מ","זחלי פרעושים, רימות זבובים"],["הדרית","D-limonene 7.00%","תרסיס","דע קדם פרוייקטים (1987) בע\"מ","חרקים מעופפים אחרים, יתושים בוגרים, נמלים"],["טמפריד","Beta-Cyfluthrin 10.88%, imidacloprid 21.65%","","לידור אלמנטס בע\"מ- ירושלים","זבובים בוגרים, חרקים זוחלים אחרים, נמלים, פישפשי מיטה, פרוקי רגלים אחרים, תיקנים"],["דיפון 100","difenacoum 0.08%","תרסיס","סאסאטק אגש\"ח בע\"מ","חולדות, עכברים"],["סנו K-333 נוזל - קוטל תיקנים נמלים וחרקים זוחלים א","bifenthrin 0.05%","תרחיף נוזלי","סנו מפעלי ברונוס בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["K3 פיתיון ג'ל","fipronil 0.05%","ג'ל","סנו מפעלי ברונוס בע\"מ","תיקנים"],["K 500","lambda-cyhalothrin 0.03%, prallethrin 0.10%","אירוסול","סנו מפעלי ברונוס בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["סנו K רב קוטל","Piperonyl Butoxide 1.00%, deltamethrin 0.02%, prallethrin 0.10%","אירוסול","סנו מפעלי ברונוס בע\"מ","זבובים בוגרים, חרקים זוחלים אחרים, חרקים מעופפים אחרים, יתושים בוגרים, נמלים, תיקנים"],["סנו רצפז פלוס-מטליות","perfume 1.00%","אחר","סנו מפעלי ברונוס בע\"מ","תיקנים"],["סנו k 303 פלוס 8 - קוטל תיקנים נמלים וחרקים זוחלים","Piperonyl Butoxide 1.20%, deltamethrin 0.05%, esbiothrin 0.30%, novaluron 0.10%","אירוסול","סנו מפעלי ברונוס בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["סנו k303 - קוטל תיקנים נמלים וחרקים זוחלים אחרים","Piperonyl Butoxide 1.20%, deltamethrin 0.05%, esbiothrin 0.30%","אירוסול","סנו מפעלי ברונוס בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["סנו K800","Piperonyl Butoxide 1.00%, cypermethrin cis/trans 40/60 0.10%, imiprothrin 0.10%","אירוסול","סנו מפעלי ברונוס בע\"מ","נמלים"],["K 300","Piperonyl Butoxide 1.00%, lambda-cyhalothrin 0.03%, prallethrin 0.10%","אירוסול","סנו מפעלי ברונוס בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["ז-אפס-3","Bioallethrin 0.20%, Piperonyl Butoxide 0.50%, TETRAMETHRIN 0.20%, cyfluthrin 0.10%","אירוסול","סאסאטק אגש\"ח בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["ז-אפס מיקרוקפסולרי","Piperonyl Butoxide 0.30%, TETRAMETHRIN 0.06%, cypermethrin cis/trans 40/60 0.30%","תמיסה מוכנה לשימוש בתוארית מיקרוקפסולרית","סאסאטק אגש\"ח בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["דינופליי","Dinotefuran 12.00%","אבקה מסיסה","חברת רימי כימיקלים בע\"מ","זבובים בוגרים, פישפשי מיטה"],["טרמיט ג'ל","fipronil 0.05%","פיתיון מוכן לשימוש ג'ל","אר.פי.סי החברה להדברה - נס הרים","טרמיטים"],["סנו מט דוחה יתושים לוחיות אידוי","prallethrin 1.33%","טבליות אידוי","סנו מפעלי ברונוס בע\"מ","יתושים בוגרים"],["נמסיס פיתיון לטרמיטים","N-(4-(3-chloro-5-trifluoromethyl-2-pyridinyl-oxy)-3,5-dichloro-phenyl-aminocarbonyl)-2,6-difluorobenzamide 0.10%","פיתיון מרוכז אבקה","חברת רימי כימיקלים בע\"מ","טרמיטים"],["סנומט דוחה יתושים - נוזלי","prallethrin 1.20%","נוזל","סנו מפעלי ברונוס בע\"מ","יתושים בוגרים"],["בי-10","bifenthrin 10.00%","נוזל","סיקמקס בע\"מ","נמלים, תיקנים"],["בזלת","hydramethylnon 0.37%, methoprene 0.25%","פתיון מוכן לשימוש גרגירים","חברת רימי כימיקלים בע\"מ","נמלים, נמלת האש הקטנה"],["פרמתרול אבוקות עשן","Permethrin 13.50%","אבוקת עשן","תפזול תעשיות כימיות בע\"מ","חרקי מחסן, תיקנים"],["רטרים פסטה","brodifacoum 0.01%","פיתיון מוכן לשימוש בצורת פסטה","חברת רימי כימיקלים בע\"מ","חולדות, עכברים"],["טורפדו ג'ל פיתיון קוטל תיקנים","fipronil 0.05%","ג'ל","רועי נעים","תיקנים"],["טופ ג'ל פתיון קוטל נמלים","fipronil 0.01%","ג'ל","רועי נעים","נמלים"],["אלפא ג'ל","fipronil 0.01%","ג'ל","רועי נעים","טרמיטים, נמלים"],["פזטוקס (חדש)","Piperonyl Butoxide 1.00%, phenothrin 0.06%, prallethrin 0.05%","אירוסול","סנו מפעלי ברונוס בע\"מ","זבובים בוגרים, חרקים מעופפים אחרים, יתושים בוגרים"],["דורפליי נוזל לתברואה","Dinotefuran 12.00%","תרכיז נוזלי","דור.קי פיתוח ושיווק בע\"מ","זבובים בוגרים"],["דלתא פורטה לתברואה","Pyriproxyfen 1.00%, deltamethrin 1.60%","תחליב שמן במים","","נמלים, פרעושים, תיקנים"],["רקויאם","chlorfluazuron 0.10%","אבקה מסיסה","","טרמיטים"],["רייד נגד עש ג'ל - \"עץ ארז\"","transfluthrin 0.15%","ג'ל","","עש"],["פלייקו 2 לתברואה","D-limonene 3.50%, Permethrin 20.00%, Piperonyl Butoxide 10.00%, citronella oil 3.50%","תרכיז מתחלב","","זבובים בוגרים, חרקים זוחלים אחרים, חרקים מעופפים אחרים, יתושים בוגרים, תיקנים"],["רייד נוזל","prallethrin 1.20%","נוזל","","יתושים בוגרים"],["רייד נוזל בריח אקליפטוס","prallethrin 1.20%","נוזל","","יתושים בוגרים"],["אקספרו 314","bifenthrin 9.60%","תרכיז רחיף","א.ע יזמות ופרוייקטים","חרקים זוחלים אחרים, נמלים, פישפשי מיטה, תיקנים"]]).map(([n,a,f,h,p])=>({n,a,f,h,p}));
+
+/* =========================================================
+   2. HELPERS
+   ========================================================= */
+const $=s=>document.querySelector(s);
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const today=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)};
+const nowTime=()=>new Date().toTimeString().slice(0,5);
+const fmtD=s=>{if(!s)return '';const [y,m,d]=s.split('-');return `${d}/${m}/${y}`};
+const clone=o=>JSON.parse(JSON.stringify(o));
+const norm=s=>String(s||'').replace(/["'״׳]/g,'').replace(/\s+/g,' ').trim().toLowerCase();
+const getP=(o,p)=>p.split('.').reduce((x,k)=>x==null?x:x[k],o);
+function setP(o,p,v){const k=p.split('.');let x=o;
+  for(let i=0;i<k.length-1;i++){const key=k[i];let n=x[key];
+    if(n==null||typeof n!=='object'||Object.isFrozen(n)||!Object.isExtensible(n)){n=n==null?{}:clone(n);try{x[key]=n}catch(e){}}
+    x=n}
+  try{x[k[k.length-1]]=v}catch(e){/* read-only target (e.g. cloud copy) */
+    if(o===cur){cur=clone(cur);S.journals[cur.id]=cur;setP(cur,p,v)}else throw e}}
+const blankStr=v=>v==null||v===false||String(v).trim()==='';
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2800)}
+const I={
+ plus:'<path d="M12 5v14M5 12h14"/>',back:'<path d="M9 18l6-6-6-6"/>',
+ book:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/>',
+ edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
+ user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 4-6 8-6s7.2 2 8 6"/>',
+ users:'<circle cx="9" cy="8" r="3.4"/><path d="M2.5 20c.6-3.4 3.3-5.4 6.5-5.4s5.9 2 6.5 5.4"/><circle cx="17.5" cy="9" r="2.5"/><path d="M18 14.2c2.2.4 3.6 2 3.9 4.6"/>',
+ home:'<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+ bld:'<rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2"/>',
+ tree:'<path d="M12 3l6 9h-4l4 6H6l4-6H6z"/><path d="M12 18v3"/>',
+ pdf:'<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M12 12v6M9 15l3 3 3-3"/>',
+ share:'<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>',
+ print:'<path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/>',
+ pin:'<path d="M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/>',
+ check:'<path d="M5 12l5 5L20 7"/>',cam:'<path d="M3 8a2 2 0 0 1 2-2h2l2-2h6l2 2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="4"/>',sms:'<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1.2-4.4A8 8 0 1 1 21 12z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/>',eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',hist:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>',trash:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',copy:'<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M4 16V6a2 2 0 0 1 2-2h10"/>'
+};
+const ic=(n,s=22)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]}</svg>`;
+
+/* =========================================================
+   3. DATA MODEL
+   ========================================================= */
+const PROFILE_DEFAULT={company:'יצחק אחזקות והדברות',vat:'558436135',companyPhone:'02-6420555',companyEmail:'Itzhakprojects@gmail.com',
+  name:'',license:'',phone:'',email:'',address:'',licenseType:''};
+const newFinding=()=>({id:uid(),pest:'',subtype:'',identification:'',stage:'',signs:'',location:'',level:''});
+const newApp=()=>({id:uid(),pest:'',product:'',active:'',conc:'',batch:'',dose:'',unit:'',unitOther:'',rtu:false,useConc:'',method:'',methodOther:'',fromDb:false});
+const newAssistant=()=>({id:uid(),name:'',license:'',licenseType:'',phone:'',email:'',sig:null});
+function blankJournal(no,profile){
+  return {id:uid(),no,status:'draft',createdAt:Date.now(),updatedAt:Date.now(),completedAt:null,step:0,
+    date:today(),time:nowTime(),opKind:'הדברה רגילה',
+    company:{name:profile.company,vat:profile.vat,phone:profile.companyPhone,email:profile.companyEmail},
+    tech:{name:profile.name,license:profile.license,phone:profile.phone,email:profile.email,address:profile.address,licenseType:profile.licenseType},
+    geo:null,stationChecks:{},/* {lat,lng,acc,at} – נ"צ שנלכד במקום ביצוע ההדברה */
+    hasOperator:false,operator:{name:'',phone:'',email:'',address:''},
+    client:{name:'',role:'',roleOther:'',phone:''},
+    place:{kind:'',city:'',street:'',houseNo:'',aptNo:'',buildingType:'',buildingTypeOther:'',houseApt:'',authority:'',siteType:'',siteTypeOther:'',siteDesc:'',coords:'',neighborhood:''},
+    findings:[newFinding()],
+    prevention:'',circumstances:'',
+    warnBefore:{nature:'',product:'',active:'',riskHuman:'',riskAnimals:'',reentry:'',other:''},
+    apps:[newApp()],sealing:'',publicNotice:'',
+    warnAfter:'',supplementary:'',needSupplementary:false,natureAfter:'',warranty:{period:'',note:''},
+    hasAssistants:false,assistants:[],assistGuidance:false,assistCopy:false,
+    handover:{delivered:false,receiverName:'',receiverSig:null},techSig:null};
+}
+const annexFor=pest=>ANNEX.find(a=>a.re.test(pest||''));
+function placeText(p){
+  if(p.kind==='home')return [p.street&&`${p.street} ${p.houseNo}`.trim(),p.aptNo&&`דירה ${p.aptNo}`,p.city].filter(Boolean).join(', ');
+  if(p.kind==='building')return [(p.buildingType==='מבנה אחר'?p.buildingTypeOther:p.buildingType),p.street&&`${p.street} ${p.houseApt}`.trim(),p.city].filter(Boolean).join(', ');
+  if(p.kind==='open')return [(p.siteType==='אחר'?p.siteTypeOther:p.siteType),p.authority].filter(Boolean).join(', ');
+  return '';
+}
+function geoBox(){
+  const g=cur.geo;
+  return `<div class="item" style="margin-top:14px"><div class="itemh"><strong>${ic('pin',18)} נ"צ ביצוע ההדברה</strong>${g?`<button class="del" data-a="clrGeo">הסרה</button>`:''}</div>
+   ${g?`<p class="hint" style="margin-top:6px"><b>${g.lat.toFixed(6)}, ${g.lng.toFixed(6)}</b><br>${g.manual?'הוזן ידנית':'נלכד אוטומטית, דיוק '+Math.round(g.acc)+' מ׳'} · ${new Date(g.at).toLocaleString('he-IL')}</p>
+     <div class="stack" style="margin-top:8px"><a class="btn ghost sm" href="${mapLink(g)}" target="_blank" rel="noopener">${ic('eye',16)} צפייה במפה</a><button class="btn ghost sm" data-a="gps">${ic('pin',16)} לכידה מחדש</button></div>`
+   :`<button class="btn w sm" style="margin-top:8px" data-a="gps">${ic('pin',18)} לכידת מיקום נוכחי</button>
+     <label class="field"><span>או הדבקת נ"צ / קישור ממפות <span class="opt">(לא חובה)</span></span><input class="inp" id="geoPaste" placeholder="31.750123, 35.091234 או קישור מ-Google Maps / Waze"></label>
+     <button class="btn ghost sm w" data-a="geoPaste">הוספת הנ"צ</button>
+     <p class="hint">במפות: לחיצה ארוכה על הנקודה, ואז העתקת הנ"צ או שיתוף הקישור לכאן.</p>`}
+  </div>`;
+}
+function parseGeo(t){
+  t=String(t||'').trim();if(!t)return null;
+  let m=t.match(/[?&]q=(-?\d{1,3}\.\d+)[,\s]+(-?\d{1,3}\.\d+)/)||t.match(/[@\/](-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/)||t.match(/ll=(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/)||t.match(/^\s*(-?\d{1,3}\.\d+)\s*[,\s]\s*(-?\d{1,3}\.\d+)\s*$/);
+  if(!m)return null;const lat=+m[1],lng=+m[2];
+  if(Math.abs(lat)>90||Math.abs(lng)>180)return null;
+  return {lat,lng,acc:0,at:Date.now(),manual:true};
+}
+const mapLink=g=>`https://www.google.com/maps?q=${g.lat},${g.lng}`;
+const PLACE_KIND={home:'בית/דירה',building:'מבנה',open:'שטח פתוח'};
+
+/* =========================================================
+   4. CENTRAL VALIDATION SCHEMA (conditional)
+   ========================================================= */
+function validate(j){
+  const E=[];const add=(g,path,msg)=>E.push({g,step:GROUPS[g].step,path,msg});
+  const req=(g,path,msg)=>{if(blankStr(getP(j,path)))add(g,path,msg)};
+  // 0 tech (+ date/time, operator when exists)
+  req(0,'date','תאריך ביצוע ההדברה');req(0,'time','שעת ביצוע ההדברה');
+  [['name','שם מלא של המדביר'],['license','מספר רישיון'],['phone','טלפון נייד'],['email','דוא"ל'],['address','כתובת'],['licenseType','סוג רישיון']].forEach(([k,m])=>req(0,'tech.'+k,m));
+  if(j.hasOperator)[['name','שם המפעיל'],['phone','טלפון המפעיל'],['email','דוא"ל המפעיל'],['address','כתובת המפעיל']].forEach(([k,m])=>req(0,'operator.'+k,m));
+  // 1 client
+  req(1,'client.name','שם מלא של המזמין');req(1,'client.role','תפקיד המזמין');
+  if(j.client.role==='אחר')req(1,'client.roleOther','פירוט תפקיד המזמין');
+  req(1,'client.phone','טלפון המזמין');
+  // 2 place
+  const p=j.place;
+  if(!p.kind)add(2,'place.kind','בחירת סוג מקום ההדברה');
+  else if(p.kind==='home'){req(2,'place.city','עיר');req(2,'place.street','רחוב');req(2,'place.houseNo','מספר בית');req(2,'place.aptNo','מספר דירה')}
+  else if(p.kind==='building'){req(2,'place.buildingType','סוג המבנה');if(p.buildingType==='מבנה אחר')req(2,'place.buildingTypeOther','פירוט סוג המבנה');req(2,'place.city','עיר');req(2,'place.street','רחוב');req(2,'place.houseApt','מספר בית/דירה')}
+  else if(p.kind==='open'){req(2,'place.authority','שם הרשות המקומית');req(2,'place.siteType','שם/סוג האתר');if(p.siteType==='אחר')req(2,'place.siteTypeOther','פירוט האתר');req(2,'place.siteDesc','תיאור האתר');req(2,'place.coords','נ"צ')}
+  // 3 findings
+  if(!j.findings.length)add(3,'findings','יש להוסיף לפחות מזיק אחד');
+  j.findings.forEach((f,i)=>{const n=`מזיק ${i+1}: `;
+    req(3,`findings.${i}.pest`,n+'שם המזיק');
+    const ax=annexFor(f.pest);if(ax)req(3,`findings.${i}.subtype`,n+ax.label);
+    req(3,`findings.${i}.identification`,n+'פעולות הזיהוי שבוצעו');
+    req(3,`findings.${i}.signs`,n+'סימני הנגיעות');
+    req(3,`findings.${i}.location`,n+'מיקום הנגיעות');
+    req(3,`findings.${i}.level`,n+'רמת הנגיעות');});
+  // 4 prevention
+  req(4,'prevention','פעולות מניעה ו/או טיפול שבוצעו או הומלצו');
+  req(4,'circumstances','הנסיבות שבהן הוחלט לנקוט בהדברה');
+  // 5 warn before
+  [['nature','טיב ההדברה'],['product','שם התכשיר'],['active','החומר הפעיל'],['riskHuman','סיכונים לאדם'],['riskAnimals','סיכונים לבעלי חיים'],['reentry','זמן כניסה לאחר ההדברה']].forEach(([k,m])=>req(5,'warnBefore.'+k,'לפני ההדברה: '+m));
+  // 6 applications + special conditions
+  if(!j.apps.length)add(6,'apps','יש להוסיף לפחות תכשיר אחד');
+  j.apps.forEach((a,i)=>{const n=`תכשיר ${i+1}: `;
+    [['pest','שם המזיק'],['product','השם המסחרי'],['active','שם החומר הפעיל'],['conc','ריכוז החומר הפעיל בתכשיר'],['batch','מספר אצווה'],['dose','מינון'],['unit','יחידת מידה']].forEach(([k,m])=>req(6,`apps.${i}.${k}`,n+m));
+    if(a.unit==='אחר')req(6,`apps.${i}.unitOther`,n+'פירוט יחידת המידה');
+    if(!a.rtu)req(6,`apps.${i}.useConc`,n+'ריכוז בתכשיר המוכן לשימוש');
+    req(6,`apps.${i}.method`,n+'שיטת היישום');
+    if(a.method==='אחר')req(6,`apps.${i}.methodOther`,n+'פירוט שיטת היישום');});
+  if(j.opKind==='איוד')req(6,'sealing','פעולות איטום שנעשו לפני ההדברה');
+  if(j.opKind==='ערפול')req(6,'publicNotice','האם בוצעה התראה מראש לציבור');
+  // 7 warn after
+  req(7,'warnAfter','אזהרות ומידע ללקוח במהלך ההדברה ובסיומה');
+  // 8 handover & signatures
+  if(!j.handover.delivered)add(8,'handover.delivered','אישור שהיומן הושאר/נמסר אצל המזמין');
+  req(8,'handover.receiverName','שם מקבל היומן');req(8,'handover.receiverSig','חתימת מקבל היומן');req(8,'techSig','חתימת המדביר');
+  if(j.hasAssistants){
+    if(!j.assistants.length)add(8,'assistants','יש להוסיף מדביר מסייע או לבטל את הסעיף');
+    j.assistants.forEach((a,i)=>{const n=`מסייע ${i+1}: `;
+      [['name','שם מלא'],['license','מספר רישיון'],['licenseType','סוג רישיון'],['phone','טלפון נייד'],['email','דוא"ל'],['sig','חתימה']].forEach(([k,m])=>req(8,`assistants.${i}.${k}`,n+m));});
+  }
+  return E;
+}
+
+/* =========================================================
+   5. STORAGE: local cache + cloud db (3-year archive)
+   ========================================================= */
+const LS='yp-reg-log-v2';
+let S=loadLocal();
+let DB=null,SYNC='local',pushT={},saveT=null;
+function loadLocal(){try{const r=localStorage.getItem(LS);if(r){const d=JSON.parse(r);return Object.assign({journals:{},clients:{},profile:{...PROFILE_DEFAULT},counter:1000,pending:{},mine:[]},d,{profile:Object.assign({...PROFILE_DEFAULT},d.profile||{})})}}catch(e){}
+  return {journals:{},clients:{},profile:{...PROFILE_DEFAULT},counter:1000,pending:{},mine:[]}}
+function saveLocal(){try{localStorage.setItem(LS,JSON.stringify(S));return true}catch(e){toast('האחסון המקומי מלא. ודאו חיבור לאינטרנט לסנכרון.');return false}}
+const saveLocalSoon=()=>{clearTimeout(saveT);saveT=setTimeout(saveLocal,300)};
+function setSync(s){SYNC=s;const el=$('#sync');if(el)el.textContent=syncLabel()}
+const syncLabel=()=>({local:'שמור במכשיר',saving:'שומר...',ok:'מסונכרן לענן',offline:'ממתין לחיבור'}[SYNC]);
+async function pushJournal(j){
+  S.pending[j.id]=1;saveLocalSoon();
+  if(!DB){setSync('local');return}
+  try{setSync('saving');await DB.collection('pest_logs').doc(j.id).set(clone(j));delete S.pending[j.id];saveLocalSoon();setSync(Object.keys(S.pending).length?'offline':'ok')}
+  catch(e){setSync('offline')}
+}
+function queuePush(j,ms=1500){clearTimeout(pushT[j.id]);pushT[j.id]=setTimeout(()=>pushJournal(j),ms)}
+async function pushClient(c){if(!DB)return;try{await DB.collection('pest_clients').doc(c.id).set(clone(c))}catch(e){}}
+async function pushProfile(){if(!DB)return;try{await DB.collection('data/users/me').doc('pest_profile').set(clone(S.profile))}catch(e){}}
+async function flushPending(){for(const id of Object.keys(S.pending)){const j=S.journals[id];if(j)await pushJournal(j);else delete S.pending[id]}}
+async function initCloud(){
+  try{if(!window.claude||!window.claude.use)return;DB=await window.claude.use('db')}catch(e){DB=null}
+  if(!DB){setSync('local');return}
+  try{
+    setSync('saving');
+    const snap=await DB.collection('pest_logs').get();
+    snap.docs.forEach(d=>{const r=d.data();if(!r)return;const l=S.journals[d.id];if(!l||(r.updatedAt||0)>(l.updatedAt||0)){if(cur&&cur.id===d.id)return;S.journals[d.id]=clone(r)}});
+    try{const ft=await DB.collection('data/users/me').doc('pest_find_templates').get();if(ft.exists&&ft.data()){const r=ft.data();TPL_STORES.forEach(k=>{if(Array.isArray(r[k]))S[k]=[...new Set([...S[k],...clone(r[k])])]});if(Array.isArray(r.list))S.findTpl=[...new Set([...S.findTpl,...clone(r.list)])];if(Array.isArray(r.circ))S.circTpl=[...new Set([...S.circTpl,...clone(r.circ)])]}}catch(e){}
+    try{const ss=await DB.collection('pest_stations').get();ss.docs.forEach(x=>{const r=x.data();if(r)S.stations[x.id]=clone(r)})}catch(e){}
+    try{const ps=await DB.collection('pest_photos').get();ps.docs.forEach(x=>{const r=x.data();if(r)S.photos[x.id]=clone(r)})}catch(e){}
+    const cs=await DB.collection('pest_clients').get();cs.docs.forEach(d=>{const r=d.data();if(r)S.clients[d.id]=clone(r)});
+    try{const pr=await DB.collection('data/users/me').doc('pest_profile').get();if(pr.exists&&pr.data()){const r=pr.data();if(!S.profile.name||r.name)S.profile=Object.assign({...PROFILE_DEFAULT},clone(r))}else if(S.profile.name)pushProfile()}catch(e){}
+    try{const m=await DB.doc('pest_meta/counter').get();if(m.exists)S.counter=Math.max(S.counter,+m.data().last||0)}catch(e){}
+    for(const id in S.journals){const l=S.journals[id];if(!snap.docs.find(d=>d.id===id))S.pending[id]=1}
+    saveLocal();await flushPending();setSync(Object.keys(S.pending).length?'offline':'ok');
+    if(!cur)render();
+  }catch(e){setSync('offline')}
+}
+async function nextNo(){
+  let n=Math.max(S.counter,...Object.values(S.journals).map(j=>+j.no||0))+1;
+  if(DB){try{const ref=DB.doc('pest_meta/counter');const m=await ref.get();if(m.exists)n=Math.max(n,(+m.data().last||0)+1);await ref.set({last:n,updatedAt:Date.now()})}catch(e){}}
+  S.counter=n;saveLocal();return n;
+}
+window.addEventListener('online',flushPending);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&DB)flushPending()});
+
+/* photos are stored separately from the journal (a journal document has a size limit) */
+if(!S.photos)S.photos={};
+if(!S.stations)S.stations={};
+if(!S.findTpl)S.findTpl=[];
+if(!S.circTpl)S.circTpl=[];
+['prevTpl','natureTpl','natureAfterTpl','warnTpl','warTpl'].forEach(k=>{if(!S[k])S[k]=[]});
+const LIBS={
+  signs:{title:'ממצאי ניטור',lib:()=>FIND_LIB,store:'findTpl',hint:'בוחרים ממצאים מהרשימה ומוסיפים ליומן. אפשר לבחור כמה.'},
+  circum:{title:'הנסיבות לבחירה בהדברה',store:'circTpl',lib:()=>CIRC_LIB,hint:'בוחרים את הנסיבות שבהן הוחלט לנקוט בהדברה ולא בטיפול אחר.'},
+  prevention:{title:'פעולות מניעה',store:'prevTpl',lib:()=>PREV_LIB,hint:'פעולות מניעה שבוצעו או הומלצו ללקוח.'},
+  nature:{title:'טיב ההדברה לפני ביצועה',store:'natureTpl',lib:()=>NATURE_LIB,hint:'תיאור ההדברה המתוכננת, כפי שנמסר ללקוח לפני תחילת העבודה.'},
+  natureAfter:{title:'טיב ההדברה לאחר הביצוע',store:'natureAfterTpl',lib:()=>NATURE_AFTER_LIB,hint:'תיאור ההדברה שבוצעה בפועל.'},
+  warn:{title:'אזהרות ומידע בסיום',store:'warnTpl',lib:()=>WARN_LIB,hint:'הנחיות ללקוח במהלך ההדברה ובסיומה.'},
+  warranty:{title:'הערות לאחריות',store:'warTpl',lib:()=>WARRANTY_LIB,hint:'תנאים והערות לאחריות על הטיפול.'}
+};
+const TPL_STORES=['findTpl','circTpl','prevTpl','natureTpl','natureAfterTpl','warnTpl','warTpl'];
+/* every text the exterminator writes is kept as a template for next time */
+function learnTemplates(j){
+  const pairs=[['findTpl',j.findings.map(f=>f.signs)],['circTpl',[j.circumstances]],['prevTpl',[j.prevention]],
+    ['natureTpl',[j.warnBefore.nature]],['natureAfterTpl',[j.natureAfter]],['warnTpl',[j.warnAfter]],['warTpl',[(j.warranty||{}).note]]];
+  const seeds={findTpl:FIND_LIB,circTpl:CIRC_LIB,prevTpl:PREV_LIB,natureTpl:NATURE_LIB,natureAfterTpl:NATURE_AFTER_LIB,warnTpl:WARN_LIB,warTpl:WARRANTY_LIB};
+  let added=0;
+  pairs.forEach(([store,texts])=>texts.filter(Boolean).forEach(txt=>{
+    String(txt).split('\n').map(x=>x.trim()).filter(x=>x.length>3).forEach(x=>{
+      if(!seeds[store].includes(x)&&!S[store].includes(x)){S[store].unshift(x);added++}});
+    if(S[store].length>120)S[store]=S[store].slice(0,120);
+  }));
+  if(added){saveLocal();pushTpl()}
+  return added;
+}
+async function pushTpl(){if(!DB)return;try{const o={updatedAt:Date.now()};TPL_STORES.forEach(k=>o[k]=clone(S[k]));o.list=clone(S.findTpl);o.circ=clone(S.circTpl);await DB.collection('data/users/me').doc('pest_find_templates').set(o)}catch(e){}}
+const photosOf=(jid,kind)=>Object.values(S.photos).filter(p=>p.jid===jid&&(!kind||p.kind===kind)).sort((a,b)=>a.at-b.at);
+const siteKey=j=>norm(j.client?j.client.name:'')+'|'+norm(placeText(j.place||{}));
+const stationsOf=key=>Object.values(S.stations).filter(x=>x.site===key&&!x.removed).sort((a,b)=>a.no-b.no);
+async function pushStation(st){if(!DB)return;try{await DB.collection('pest_stations').doc(st.id).set(clone(st))}catch(e){}}
+function addStation(site,label,type,loc){
+  const no=Math.max(0,...stationsOf(site).map(x=>x.no))+1;
+  const st={id:uid(),site,label:label||'',no,type:type||'bp',loc:loc||'',at:Date.now()};
+  S.stations[st.id]=st;saveLocal();pushStation(st);return st;
+}
+async function pushPhoto(ph){if(!DB)return;try{await DB.collection('pest_photos').doc(ph.id).set(clone(ph))}catch(e){}}
+async function delPhoto(id){delete S.photos[id];saveLocal();if(DB){try{await DB.collection('pest_photos').doc(id).delete()}catch(e){}}}
+function compressImg(file,max=1000,q=.55){return new Promise((res,rej)=>{
+  const fr=new FileReader();
+  fr.onload=()=>{const im=new Image();
+    im.onload=()=>{const sc=Math.min(1,max/Math.max(im.width,im.height));
+      const c=document.createElement('canvas');c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);
+      const ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(im,0,0,c.width,c.height);
+      let out=c.toDataURL('image/jpeg',q);
+      if(out.length>180000)out=c.toDataURL('image/jpeg',.4);
+      res(out)};
+    im.onerror=()=>rej(new Error('לא ניתן לקרוא את התמונה'));im.src=fr.result};
+  fr.onerror=()=>rej(new Error('קריאת הקובץ נכשלה'));fr.readAsDataURL(file)})}
+/* products: built-in registry + products the user typed */
+let prodIdx=new Map();
+function buildIdx(){prodIdx=new Map();[...BUILTIN,...(S.mine||[])].forEach(p=>prodIdx.set(norm(p.n),p))}
+buildIdx();
+function splitActive(a){ // "x 5.00%, y 10.00%" -> names / concentrations, as stored in the registry
+  const parts=String(a||'').split(/,\s*(?=[^,]*\d[\d.]*\s*%)/);const names=[],concs=[];
+  parts.forEach(s=>{const m=s.trim().match(/^(.*?)\s*([\d.]+\s*%)\s*$/);if(m){names.push(m[1].trim());concs.push(m[2].replace(/\s/g,''))}else if(s.trim())names.push(s.trim())});
+  return {active:names.join(', '),conc:concs.join(', ')};
+}
+
+/* =========================================================
+   6. APP STATE / ROUTER
+   ========================================================= */
+let view='home',param=null,cur=null,showErr=false,flt={q:'',from:'',to:'',status:''};
+function go(v,p=null){view=v;param=p;render();window.scrollTo(0,0)}
+function touch(){if(!cur)return;cur.updatedAt=Date.now();S.journals[cur.id]=cur;saveLocalSoon();queuePush(cur)}
+
+/* =========================================================
+   7. VIEWS
+   ========================================================= */
+const journals=()=>Object.values(S.journals).sort((a,b)=>(b.no||0)-(a.no||0));
+function topbar(title,back,sub='',extra=''){return `<header class="top"><div class="toprow"><button class="iconbtn" data-a="go" data-v="${back}" aria-label="חזרה">${ic('back')}</button><h1>${esc(title)}</h1>${extra||'<span style="width:42px"></span>'}</div>${sub}</header>`}
+function profileComplete(){const p=S.profile;return ['name','license','phone','email','address','licenseType'].every(k=>!blankStr(p[k]))}
+
+function vHome(){
+  const all=journals(),drafts=all.filter(j=>j.status==='draft');
+  return `<section class="hero"><div class="brandrow"><div class="brand"><div class="mark">י</div><div><div class="bname">${esc(S.profile.company)}</div><div class="bsub">יומן ביצוע הדברה</div></div></div><span class="sync" id="sync">${syncLabel()}</span></div>
+  <p class="hello">שלום${S.profile.name?', '+esc(S.profile.name.split(' ')[0]):''}</p></section>
+  <nav class="grid" aria-label="ניווט ראשי">
+   <button class="tile primary" data-a="newJ">${ic('plus',28)}<b>יומן חדש</b><small>מתחילים הדברה</small></button>
+   <button class="tile" data-a="go" data-v="archive">${ic('book',28)}<b>יומני הדברה</b><small>${all.filter(j=>j.status==='done').length} הושלמו</small></button>
+   <button class="tile" data-a="go" data-v="archive" data-p="draft">${ic('edit',28)}<b>טיוטות</b><small>ממשיכים מאיפה שעצרתם</small>${drafts.length?`<i class="badge">${drafts.length}</i>`:''}</button>
+   <button class="tile" data-a="go" data-v="clients">${ic('users',28)}<b>לקוחות</b><small>${Object.keys(S.clients).length} שמורים</small></button>
+   <button class="tile" data-a="go" data-v="profile">${ic('user',28)}<b>פרופיל מדביר</b><small>${profileComplete()?'מלא':'יש להשלים'}</small>${profileComplete()?'':'<i class="badge">!</i>'}</button>
+  </nav>
+  ${profileComplete()?'':`<div class="block"><div class="note">כדאי למלא פעם אחת את פרטי המדביר בפרופיל. הם יוכנסו אוטומטית לכל יומן. <button class="link" data-a="go" data-v="profile">למילוי</button></div></div>`}
+  <section class="block"><h2>אחרונים</h2>${all.slice(0,4).map(jCard).join('')||'<div class="empty">עוד אין יומנים.</div>'}</section>`;
+}
+function jCard(j){
+  return `<button class="card" data-a="openJ" data-p="${j.id}"><div class="main"><h4>#${j.no} · ${esc(j.client.name||'ללא מזמין')}</h4><p>${fmtD(j.date)} ${esc(j.time)} | ${esc(placeText(j.place)||'מקום לא הוזן')}</p><p>${j.status==='done'?'<span class="tag">הושלם</span>':'<span class="tag draft">טיוטה</span>'} ${esc(j.findings.map(f=>f.pest).filter(Boolean).join(', '))}</p></div></button>`;
+}
+
+/* ---- form primitives ---- */
+const errSet=()=>showErr&&cur?new Set(validate(cur).map(e=>e.path)):new Set();
+let ERR=new Set();
+const ec=path=>ERR.has(path)?' err':'';
+function fInput(label,path,{type='text',req=true,ph='',opt=false,list='',mode=''}={}){
+  const v=getP(cur,path);
+  return `<label class="field${ec(path)}"><span class="${req?'req':''}">${label}${opt?' <span class="opt">(לא חובה)</span>':''}</span><input type="${type}" data-f="${path}" value="${esc(v)}" placeholder="${esc(ph)}"${list?` list="${list}"`:''}${mode?` inputmode="${mode}"`:''} autocomplete="off"></label>`;
+}
+function fText(label,path,{req=true,ph='',opt=false}={}){
+  return `<label class="field${ec(path)}"><span class="${req?'req':''}">${label}${opt?' <span class="opt">(לא חובה)</span>':''}</span><textarea data-f="${path}" placeholder="${esc(ph)}">${esc(getP(cur,path))}</textarea></label>`;
+}
+function fChips(label,path,opts,{req=true}={}){
+  const v=getP(cur,path);
+  return `<div class="field"><span class="flabel ${req?'req':''}">${label}</span><div class="chips${ec(path)}" data-fw="${path}" role="radiogroup" aria-label="${esc(label)}">${opts.map(o=>`<button type="button" role="radio" aria-checked="${o===v}" class="chip ${o===v?'on':''}" data-a="setv" data-f="${path}" data-val="${esc(o)}">${esc(o)}</button>`).join('')}</div></div>`;
+}
+function fSeg(label,path,opts,{req=true}={}){
+  const v=getP(cur,path);
+  return `<div class="field"><span class="flabel ${req?'req':''}">${label}</span><div class="seg${ec(path)}" data-fw="${path}" role="radiogroup" aria-label="${esc(label)}">${opts.map(o=>`<button type="button" role="radio" aria-checked="${o===v}" class="${o===v?'on':''}" data-a="setv" data-f="${path}" data-val="${esc(o)}">${esc(o)}</button>`).join('')}</div></div>`;
+}
+function fToggle(label,path){const v=!!getP(cur,path);return `<div class="toggle"><span>${label}</span><button type="button" class="sw" role="switch" aria-checked="${v}" aria-label="${esc(label)}" data-a="tog" data-f="${path}"></button></div>`}
+function fCheck(label,path,req=false){const v=!!getP(cur,path);return `<label class="check${ec(path)}" data-fw="${path}"><input type="checkbox" data-c="${path}" ${v?'checked':''}><span class="${req?'req':''}">${label}</span></label>`}
+function fSig(label,path){return `<div class="sigwrap${ec(path)}" data-fw="${path}"><div class="lbl"><span class="req">${label}</span><button type="button" class="del" data-a="clrSig" data-f="${path}">נקה</button></div><canvas class="sig" data-sig="${path}" aria-label="${esc(label)} – חתמו באצבע"></canvas></div>`}
+
+/* ---- wizard ---- */
+function vWizard(){
+  ERR=errSet();
+  const s=cur.step,errs=showErr?validate(cur):[];
+  const badSteps=new Set(errs.map(e=>e.step));
+  const pct=Math.round((s+1)/STEPS.length*100);
+  const sub=`<div class="sub">שלב ${s+1} מתוך ${STEPS.length} · ${STEPS[s]} · <span id="sync">${syncLabel()}</span></div><div class="progress" aria-hidden="true"><i style="width:${pct}%"></i></div>`;
+  return `${topbar('יומן הדברה #'+cur.no,'home',sub,`<button class="iconbtn" data-a="preview" aria-label="תצוגה מקדימה">${ic('eye',22)}</button>`)}
+  <nav class="stepper" aria-label="שלבי היומן">${STEPS.map((n,i)=>`<button class="st ${i===s?'on':''} ${badSteps.has(i)?'bad':''}" data-a="step" data-i="${i}" ${i===s?'aria-current="step"':''}><b>${i+1}</b>${n}</button>`).join('')}</nav>
+  <main class="page">${[w0,w1,w2,w3,w4,w5][s]()}</main>
+  <div class="footer"><div class="in">${s>0?`<button class="btn ghost" data-a="step" data-i="${s-1}">הקודם</button>`:''}${s<STEPS.length-1?`<button class="btn" data-a="step" data-i="${s+1}">הבא</button>`:`<button class="btn ghost" data-a="preview">${ic('eye',18)} תצוגה מקדימה</button><button class="btn gold" data-a="complete">סיום היומן</button>`}</div></div>`;
+}
+
+function w0(){
+  const t=cur.tech,techBad=['name','license','phone','email','address','licenseType'].some(k=>ERR.has('tech.'+k));
+  const clientsList=Object.values(S.clients);
+  const match=S.clients[findClientId(cur.client.name,cur.client.phone)];
+  const p=cur.place;
+  return `
+  <div class="sec"><div class="sech"><h3>מועד וסוג הפעולה</h3></div><div class="secb">
+    <div class="two">${fInput('תאריך ביצוע','date',{type:'date'})}${fInput('שעת ביצוע','time',{type:'time'})}</div>
+    ${fSeg('סוג הפעולה','opKind',OP_KINDS)}
+    ${cur.opKind==='הדברה רגילה'?'':`<p class="hint">${cur.opKind==='איוד'?'בשלב התכשירים יתווסף שדה פעולות איטום.':'בשלב התכשירים תתווסף שאלת התראה לציבור, ובמקום ההדברה ניתן להזין שכונה.'}</p>`}
+  </div></div>
+
+  <details class="sec" ${techBad||!t.name?'open':''}><summary class="sech"><h3>פרטי המדביר</h3><span class="hint" style="margin:0">${esc(t.name||'לא הוזן')}${t.license?' · '+esc(t.license):''} ▾</span></summary><div class="secb">
+    ${fInput('שם מלא','tech.name')}${fInput('מספר רישיון','tech.license')}
+    <div class="two">${fInput('טלפון נייד','tech.phone',{type:'tel',mode:'tel'})}${fInput('דוא"ל','tech.email',{type:'email'})}</div>
+    ${fInput('כתובת','tech.address')}
+    ${fChips('סוג רישיון','tech.licenseType',LICENSE_TYPES)}
+    <button class="link" data-a="techToProfile">שמירת הפרטים בפרופיל</button>
+  </div></details>
+
+  <div class="sec"><div class="sech"><h3>פרטי המפעיל</h3></div><div class="secb">
+    ${fToggle('קיים מפעיל','hasOperator')}
+    ${cur.hasOperator?`${fInput('שם המפעיל','operator.name')}<div class="two">${fInput('טלפון','operator.phone',{type:'tel',mode:'tel'})}${fInput('דוא"ל','operator.email',{type:'email'})}</div>${fInput('כתובת','operator.address')}`:'<p class="hint" style="margin:0 0 4px">אין מפעיל – הסעיף לא יופיע ביומן.</p>'}
+  </div></div>
+
+  <div class="sec"><div class="sech"><h3>פרטי המזמין</h3></div><div class="secb">
+    <div class="ac">${fInput('שם מלא','client.name',{ph:'הקלידו אות ראשונה והשמות יופיעו'})}<div class="aclist" id="acList"></div></div>
+    ${(()=>{const L=lastForClient(cur.client.name,cur.client.phone,cur.id);return L?`<button class="btn gold w sm" style="margin-top:10px" data-a="loadLastSheet" data-p="${L.id}">${ic('hist',18)} טעינה מהיומן האחרון של הלקוח (#${L.no}, ${fmtD(L.date)})</button>`:''})()}
+    ${match&&match.places&&match.places.length?`<div class="note"><b>לקוח חוזר.</b> כתובות קודמות:<div class="chips" style="margin-top:8px">${match.places.map((pl,i)=>`<button class="chip" data-a="usePlace" data-p="${match.id}" data-i="${i}">${ic('pin',16)} ${esc(placeText(pl))}</button>`).join('')}</div></div>`:''}
+    ${fChips('תפקיד','client.role',ROLES)}
+    ${cur.client.role==='אחר'?fInput('פירוט התפקיד','client.roleOther'):''}
+    ${fInput('טלפון','client.phone',{type:'tel',mode:'tel'})}
+  </div></div>
+
+  <div class="sec"><div class="sech"><h3>מקום ההדברה</h3></div><div class="secb">
+    <div class="field"><span class="flabel req">סוג המקום</span><div class="bigseg${ec('place.kind')}" data-fw="place.kind" role="radiogroup" aria-label="סוג המקום">
+      ${[['home','בית/דירה','home'],['building','מבנה','bld'],['open','שטח פתוח','tree']].map(([k,l,icn])=>`<button type="button" role="radio" aria-checked="${p.kind===k}" class="${p.kind===k?'on':''}" data-a="setv" data-f="place.kind" data-val="${k}">${ic(icn,28)}<span>${l}</span></button>`).join('')}
+    </div></div>
+    ${p.kind==='home'?`${fInput('עיר','place.city')}${fInput('רחוב','place.street')}<div class="two">${fInput('מספר בית','place.houseNo',{mode:'numeric'})}${fInput('מספר דירה','place.aptNo',{mode:'numeric'})}</div>`:''}
+    ${p.kind==='building'?`${fChips('סוג המבנה','place.buildingType',BUILDING_TYPES)}${p.buildingType==='מבנה אחר'?fInput('פירוט סוג המבנה','place.buildingTypeOther'):''}${fInput('עיר','place.city')}${fInput('רחוב','place.street')}${fInput('מספר בית/דירה','place.houseApt')}`:''}
+    ${p.kind==='open'?`${fInput('שם הרשות המקומית','place.authority')}${fChips('שם/סוג האתר','place.siteType',SITE_TYPES)}${p.siteType==='אחר'?fInput('פירוט האתר','place.siteTypeOther'):''}${fText('תיאור האתר','place.siteDesc')}
+      <label class="field${ec('place.coords')}"><span class="req">נ"צ</span><div style="display:flex;gap:8px"><input class="inp" data-f="place.coords" value="${esc(p.coords)}" placeholder="קו רוחב, קו אורך" style="flex:1"><button type="button" class="btn sm ghost" data-a="gps">${ic('pin',18)} מיקום נוכחי</button></div></label>`:''}
+    ${cur.opKind==='ערפול'?fInput('שם שכונה','place.neighborhood',{req:false,opt:true}):''}
+    ${geoBox()}
+  </div></div>`;
+}
+
+function w1(){
+  return `<p class="hint" style="margin:0 0 12px">ממצאי ניטור וזיהוי המזיק. אפשר לתעד כמה מזיקים באותה פעולה.</p>
+  ${cur.findings.map((f,i)=>{const ax=annexFor(f.pest);return `<div class="sec"><div class="sech"><h3>מזיק ${i+1}${f.pest?': '+esc(f.pest):''}</h3>${cur.findings.length>1?`<button class="del" data-a="rm" data-k="findings" data-i="${i}">הסר</button>`:''}</div><div class="secb">
+    ${fInput('המזיק שנמצא',`findings.${i}.pest`,{list:'pestlist'})}
+    <div class="chips" style="margin-top:8px">${PEST_CHIPS.map(pc=>`<button type="button" class="chip ${f.pest===pc?'on':''}" data-a="setv" data-f="findings.${i}.pest" data-val="${pc}">${pc}</button>`).join('')}</div>
+    ${ax?(ax.free?fInput(ax.label,`findings.${i}.subtype`,{ph:ax.free}):fSeg(ax.label,`findings.${i}.subtype`,ax.opts)):''}
+    ${fText('פעולות הזיהוי שבוצעו',`findings.${i}.identification`,{ph:'מה נבדק ואיך זוהה המזיק'})}
+    ${fInput('דרגת ההתפתחות',`findings.${i}.stage`,{req:false,opt:true,ph:'כאשר רלוונטי'})}
+    <div class="field${ec(`findings.${i}.signs`)}"><span class="flabel req" style="display:flex;justify-content:space-between;align-items:center">ממצאי הניטור וסימני הנגיעות
+      ${tplBtn('signs',`findings.${i}.signs`)}</span>
+      <textarea data-f="findings.${i}.signs" placeholder="הקלד או הוסף מתבנית קיימת..">${esc(f.signs)}</textarea></div>
+    ${fInput('מיקום הנגיעות',`findings.${i}.location`)}
+    ${fSeg('רמת נגיעות',`findings.${i}.level`,LEVELS)}
+  </div></div>`}).join('')}
+  <datalist id="pestlist">${PEST_CHIPS.map(p=>`<option value="${p}">`).join('')}</datalist>
+  <button class="btn ghost w" data-a="addFinding">${ic('plus',18)} הוספת מזיק</button>
+  ${photoBox('hazard','תיעוד מפגעים','צילום המפגעים שנמצאו: סדקים, נזילות, פסולת, מקורות מזון ומים, סימני פעילות.')}`;
+}
+
+function w2(){
+  return `<div class="sec"><div class="sech"><h3>מניעה וחלופות להדברה</h3></div><div class="secb">
+    <div class="note">לפני שימוש בתכשיר: תעדו מה נבדק, אילו פעולות מניעה או טיפול אחר בוצעו או הומלצו, ולמה בכל זאת הוחלט להדביר.</div>
+    <div class="field${ec('prevention')}"><span class="flabel req" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span>פעולות מניעה ו/או טיפול שבוצעו או הומלצו ללקוח</span>${tplBtn('prevention','prevention')}</span>
+      <textarea data-f="prevention" placeholder="הקלד או הוסף מתבנית קיימת..">${esc(cur.prevention)}</textarea></div>
+    <div class="field${ec('circumstances')}"><span class="flabel req" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span>הנסיבות שבהן הוחלט לנקוט בהדברה ולא בטיפול אחר</span>${tplBtn('circum','circumstances')}</span>
+      <textarea data-f="circumstances" placeholder="הקלד ליצירת תבנית או הוסף מתבנית קיימת..">${esc(cur.circumstances)}</textarea></div>
+  </div></div>
+  ${photoBox('prevent','תיעוד פעולות מניעה','צילום הפעולות שבוצעו או שנדרשות מהלקוח: איטום, תיקון, ניקיון, סילוק פסולת.')}`;
+}
+
+function w3(){
+  const pests=[...new Set(cur.findings.map(f=>f.pest).filter(Boolean))];
+  return `<datalist id="prodlist">${[...prodIdx.values()].map(p=>`<option value="${esc(p.n)}">${esc(p.a||'')}</option>`).join('')}</datalist>
+  ${(()=>{const L=lastForClient(cur.client.name,cur.client.phone,cur.id);return L?`<button class="btn gold w" style="margin-bottom:10px" data-a="loadLastApps" data-p="${L.id}">${ic('hist',18)} טעינת תכשירים ואצוות מיומן #${L.no} של ${esc(L.client.name)}</button>`:''})()}
+  ${recentApps().length?`<button class="btn ghost w" style="margin-bottom:14px" data-a="loadRecent">${ic('hist',18)} טעינת תכשירים ואצוות מיומנים אחרונים</button>`:''}
+  ${cur.apps.map((a,i)=>`<div class="sec"><div class="sech"><h3>תכשיר ${i+1}${a.product?': '+esc(a.product):''}</h3>${cur.apps.length>1?`<button class="del" data-a="rm" data-k="apps" data-i="${i}">הסר</button>`:''}</div><div class="secb">
+    ${fInput('שם המזיק',`apps.${i}.pest`)}
+    ${pests.length?`<div class="chips" style="margin-top:8px">${pests.map(p=>`<button type="button" class="chip ${a.pest===p?'on':''}" data-a="setv" data-f="apps.${i}.pest" data-val="${esc(p)}">${esc(p)}</button>`).join('')}</div>`:''}
+    ${fInput('השם המסחרי של התכשיר',`apps.${i}.product`,{list:'prodlist',ph:'הקלידו שם תכשיר'})}
+    <div id="dbnote-${i}">${a.fromDb?dbNote(i):''}${a.fromRecent?'<span class="dbtag">נטען מיומן קודם – יש להזין מזיק ומינון ולוודא אצווה</span>':''}</div>
+    ${fInput('שם החומר הפעיל',`apps.${i}.active`)}
+    ${fInput('ריכוז החומר הפעיל בתכשיר',`apps.${i}.conc`,{ph:'למשל 10%'})}
+    ${fInput('מספר אצווה / סדרת ייצור',`apps.${i}.batch`,{list:'batches-'+i})}<datalist id="batches-${i}">${batchesFor(a.product).map(b=>`<option value="${esc(b)}">`).join('')}</datalist>
+    <div class="two">${fInput('מינון',`apps.${i}.dose`,{mode:'decimal',ph:'כמות'})}
+      <label class="field${ec(`apps.${i}.unit`)}"><span class="req">יחידת מידה</span><select data-f="apps.${i}.unit"><option value="">בחרו</option>${UNITS.map(u=>`<option ${a.unit===u?'selected':''}>${u}</option>`).join('')}</select></label></div>
+    ${a.unit==='אחר'?fInput('פירוט יחידת המידה',`apps.${i}.unitOther`,{ph:'כמות תמיסה/תערובת/מלכודות ליחידת אורך, שטח או נפח'}):''}
+    <p class="hint">מינון: כמות תמיסה, תערובת או מלכודות ליחידת אורך, שטח או נפח.</p>
+    ${fToggle('תכשיר מוכן לשימוש',`apps.${i}.rtu`)}
+    ${a.rtu?'':fInput('ריכוז החומר הפעיל בתכשיר המוכן לשימוש',`apps.${i}.useConc`,{ph:'ריכוז בתמיסה שהוכנה'})}
+    ${fChips('שיטת היישום',`apps.${i}.method`,METHODS)}
+    ${a.method==='אחר'?fInput('פירוט שיטת היישום',`apps.${i}.methodOther`):''}
+  </div></div>`).join('')}
+  <button class="btn ghost w" data-a="addApp">${ic('plus',18)} הוספת תכשיר / יישום</button>
+  ${stationsBox()}
+  ${cur.opKind==='איוד'?`<div class="sec" style="margin-top:14px"><div class="sech"><h3>איוד</h3></div><div class="secb">${fText('פעולות איטום שנעשו לפני ביצוע ההדברה','sealing')}</div></div>`:''}
+  ${cur.opKind==='ערפול'?`<div class="sec" style="margin-top:14px"><div class="sech"><h3>ערפול</h3></div><div class="secb">${fSeg('האם בוצעה התראה מראש לציבור?','publicNotice',['כן','לא'])}</div></div>`:''}`;
+}
+function lastForClient(name,phone,exceptId){
+  const n=norm(name),ph=String(phone||'').replace(/\D/g,'');
+  if(!n&&!ph)return null;
+  return journals().filter(x=>x.id!==exceptId&&x.status==='done'&&((n&&norm(x.client.name)===n)||(ph.length>6&&String(x.client.phone).replace(/\D/g,'')===ph)))
+    .sort((a,b)=>(b.completedAt||0)-(a.completedAt||0))[0]||null;
+}
+function loadFromJournal(src,mode){
+  const j=cur;
+  j.apps=clone(src.apps).map(a=>Object.assign(a,{id:uid(),fromRecent:true,fromDb:false}));
+  if(mode==='all'){
+    j.opKind=src.opKind;
+    j.findings=clone(src.findings).map(f=>Object.assign(f,{id:uid()}));
+    j.prevention=src.prevention;j.circumstances=src.circumstances;
+    j.warnBefore=clone(src.warnBefore);j.warnAfter=src.warnAfter;j.supplementary=src.supplementary;j.natureAfter=src.natureAfter||'';j.needSupplementary=!!src.needSupplementary;j.warranty=clone(src.warranty||{period:'',note:''});
+    j.sealing=src.sealing;j.publicNotice=src.publicNotice;
+    j.place=Object.assign(clone(src.place),{});
+    j.client=Object.assign(clone(src.client),{});
+    j.hasOperator=src.hasOperator;j.operator=clone(src.operator);
+  }
+  touch();
+}
+const PHOTO_KINDS={hazard:'מפגע',prevent:'פעולת מניעה',general:'תיעוד כללי'};
+function photoBox(kind,title,hint){
+  const list=photosOf(cur.id,kind);
+  return `<div class="sec"><div class="sech"><h3>${ic('cam',18)} ${title}</h3><span class="tag">${list.length}</span></div><div class="secb">
+   <p class="hint" style="margin-top:10px">${hint}</p>
+   <label class="cam">${ic('cam',24)} צילום או בחירה מהגלריה<input type="file" accept="image/*" multiple data-photo="${kind}"></label>
+   <div class="phgrid">${list.map(ph=>`<figure><img src="${ph.src}" alt="${esc(ph.caption||PHOTO_KINDS[kind])}">
+     <input data-pcap="${ph.id}" value="${esc(ph.caption)}" placeholder="תיאור התמונה">
+     <div class="rowb"><span class="opt">${new Date(ph.at).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})}</span><button class="del" data-a="delPhoto" data-p="${ph.id}">מחיקה</button></div></figure>`).join('')}</div>
+  </div></div>`;
+}
+function renderLib(){
+  const cfg=LIBS[A._lk],q=norm(A._fq||''),store=S[cfg.store];
+  const mine=store.filter(t=>!q||norm(t).includes(q));
+  const lib=cfg.lib().filter(t=>!q||norm(t).includes(q));
+  const row=(t,own)=>`<div style="display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line);padding:10px 0">
+    <button class="chip ${A._fsel.has(t)?'on':''}" style="min-width:34px;padding:8px 10px" data-a="fToggleSel" data-t="${esc(t)}" aria-pressed="${A._fsel.has(t)}">${A._fsel.has(t)?'✓':''}</button>
+    <span style="flex:1;font-size:15px">${esc(t)}</span>
+    ${own?`<button class="del" data-a="fDelTpl" data-t="${esc(t)}" aria-label="מחיקה">${ic('trash',18)}</button>`:''}</div>`;
+  sheet(`<h3>${cfg.title}</h3><p class="hint" style="margin:0 0 10px">${cfg.hint}</p>
+   <input class="inp" id="fqi" placeholder="חיפוש..." value="${esc(A._fq||'')}">
+   <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px"><span class="hint" style="margin:0">${A._fsel.size} נבחרו</span>${A._fsel.size?`<button class="link" data-a="fClearSel">ניקוי בחירה</button>`:''}</div>
+   <div style="max-height:44vh;overflow:auto;margin-top:6px">
+    ${mine.length?`<p class="hint" style="margin:6px 0 0"><b>התבניות שלי</b></p>${mine.map(t=>row(t,true)).join('')}`:''}
+    <p class="hint" style="margin:12px 0 0"><b>תבניות מערכת</b></p>${lib.map(t=>row(t,false)).join('')||'<p class="hint">לא נמצאו פריטים</p>'}
+   </div>
+   <div class="stack" style="margin-top:12px">
+    <button class="btn gold" data-a="fAddSel">הוסף נבחרים${A._fsel.size?` (${A._fsel.size})`:''}</button>
+    <button class="btn ghost sm" data-a="fSaveTpl">שמירת הטקסט שביומן כתבנית</button>
+    <button class="btn ghost sm" data-a="closeSheet">סגירה</button>
+   </div>`);
+  const qi=document.getElementById('fqi');
+  if(qi)qi.oninput=e=>{A._fq=e.target.value;const pos=e.target.selectionStart;renderLib();const n=document.getElementById('fqi');n.focus();try{n.setSelectionRange(pos,pos)}catch(_){}};
+}
+const tplBtn=(k,path)=>`<button type="button" data-a="openLib" data-k="${k}" data-path="${path}" style="border:1px solid var(--forest-2);color:var(--forest-2);background:transparent;border-radius:999px;padding:4px 12px;font-size:13px;cursor:pointer">הוסף מתבנית</button>`;
+function acRender(q){
+  const box=document.getElementById('acList');if(!box)return;
+  const n=norm(q),digits=String(q||'').replace(/\D/g,'');
+  let list=Object.values(S.clients);
+  if(n||digits){list=list.filter(c=>norm(c.name).includes(n)||(digits.length>2&&String(c.phone||'').replace(/\D/g,'').includes(digits)))}
+  list=list.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)).slice(0,25);
+  if(!list.length){box.innerHTML='';return}
+  const hl=t=>{if(!n)return esc(t);const i=norm(t).indexOf(n);return i<0?esc(t):esc(t.slice(0,i))+'<mark>'+esc(t.slice(i,i+q.trim().length))+'</mark>'+esc(t.slice(i+q.trim().length))};
+  box.innerHTML=`<div class="achead">${list.length} לקוחות שמורים${n?' · תואמים לחיפוש':''}</div>`+list.map(c=>{
+    const pl=(c.places&&c.places[0])?placeText(c.places[0]):'';
+    const cnt=journals().filter(x=>norm(x.client.name)===norm(c.name)).length;
+    return `<button type="button" class="acitem" data-a="acPick" data-p="${c.id}"><span class="ico">${ic('user',18)}</span>
+     <span style="flex:1;min-width:0"><b>${hl(c.name)}</b><small>${esc(c.phone||'')}${pl?' · '+esc(pl):''}${cnt?' · '+cnt+' יומנים':''}</small></span></button>`}).join('');
+}
+function stationsBox(){
+  const key=siteKey(cur),list=stationsOf(key);
+  const done=list.filter(x=>{const c=cur.stationChecks[x.id];return c&&c.status&&c.status!=='לא נבדק'}).length;
+  if(!cur.client.name||!cur.place.kind)return '';
+  return `<div class="sec"><div class="sech"><h3>תחנות האכלה וניטור</h3><span class="tag ${list.length&&done<list.length?'draft':''}">${done}/${list.length}</span></div><div class="secb">
+   ${list.length?`<div style="display:flex;gap:8px;margin:10px 0"><button class="btn sm ghost" style="flex:1" data-a="stAllOk">סימון הכל כתקין</button><button class="btn sm ghost" style="flex:1" data-a="stManage">ניהול התחנות</button></div>
+     ${list.map(x=>{const c=cur.stationChecks[x.id]||{};const t=stTypeOf(x.type);return `<div class="strow ${c.status&&c.status!=='לא נבדק'?'stdone':''}">
+       <span class="stno" style="background:${t.c}">${x.no}</span>
+       <div class="mid"><b>${esc(x.label||t.n)}</b><small>${esc(x.loc)||t.n}</small></div>
+       <select data-st="${x.id}"><option value="">בחרו מצב</option>${ST_STATUS.map(o=>`<option ${c.status===o?'selected':''}>${o}</option>`).join('')}</select>
+     </div>`}).join('')}
+     ${done<list.length?`<p class="hint">${list.length-done} תחנות עוד לא נבדקו בביקור הזה.</p>`:'<p class="hint">כל התחנות תועדו.</p>'}`
+   :`<p class="hint" style="margin-top:10px">לאתר הזה (${esc(cur.client.name)} · ${esc(placeText(cur.place))}) עוד לא הוגדרו תחנות.</p>
+     <button class="btn w sm" style="margin-top:8px" data-a="stManage">${ic('plus',18)} הגדרת תחנות לאתר</button>`}
+  </div></div>`;
+}
+function stationSheet(){
+  const key=A._stSite,list=stationsOf(key),label=A._stLabel||'';
+  sheet(`<h3>ניהול תחנות</h3><p class="hint" style="margin:0">${esc(label)}</p>
+   <div style="max-height:44vh;overflow:auto;margin-top:10px">
+   ${list.map(x=>{const t=stTypeOf(x.type);return `<div class="strow"><span class="stno" style="background:${t.c}">${x.no}</span>
+     <div class="mid"><input class="inp" style="padding:8px" data-sted="${x.id}" value="${esc(x.loc)}" placeholder="מיקום התחנה (מחסן צפוני, פינת מטבח)"><small>${t.n}</small></div>
+     <button class="del" data-a="stDel" data-p="${x.id}" aria-label="מחיקה">${ic('trash',18)}</button></div>`}).join('')||'<p class="hint">אין עדיין תחנות.</p>'}
+   </div>
+   <div class="field"><span class="flabel">הוספת תחנה</span>
+    <div class="chips">${ST_TYPES.map(t=>`<button class="chip ${(A._stType||'bp')===t.k?'on':''}" data-a="stType" data-k="${t.k}"><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${t.c};margin-left:6px"></i>${t.n}</button>`).join('')}</div>
+    <input class="inp" id="stLoc" placeholder="מיקום התחנה" style="margin-top:8px">
+    <div class="two" style="margin-top:8px"><button class="btn" data-a="stAdd">הוספת תחנה</button><button class="btn ghost" data-a="stAddMany">הוספת כמה תחנות</button></div>
+   </div>
+   <button class="btn ghost w" style="margin-top:10px" data-a="stClose">סיום</button>`);
+}
+function recentApps(){
+  const out=[],seen=new Set();
+  journals().filter(j=>j.status==='done'&&(!cur||j.id!==cur.id)).sort((a,b)=>(b.completedAt||0)-(a.completedAt||0)).slice(0,30).forEach(j=>{
+    j.apps.forEach(a=>{if(!a.product)return;const k=norm(a.product)+'|'+norm(a.batch);if(seen.has(k))return;seen.add(k);out.push({a,j})});
+  });
+  return out;
+}
+function batchesFor(product){if(!product)return [];return [...new Set(recentApps().filter(r=>norm(r.a.product)===norm(product)&&r.a.batch).map(r=>r.a.batch))].slice(0,8)}
+const appIsEmpty=a=>['pest','product','active','conc','batch','dose','unit','useConc','method'].every(k=>blankStr(a[k]));
+function addFromRecent(src){
+  const n=Object.assign(newApp(),{product:src.product,active:src.active,conc:src.conc,batch:src.batch,unit:src.unit,unitOther:src.unitOther,rtu:!!src.rtu,useConc:src.rtu?'':src.useConc,method:src.method,methodOther:src.methodOther,dose:'',pest:'',fromDb:false,fromRecent:true});
+  const empty=cur.apps.findIndex(appIsEmpty);if(empty>-1)cur.apps[empty]=n;else cur.apps.push(n);
+}
+function askNum(msg){return new Promise(res=>{
+  closeSheet();const d=document.createElement('div');d.className='sheet';d.id='sheet';
+  d.innerHTML=`<div class="in"><h3>${esc(msg)}</h3><input class="inp" id="numin" type="number" inputmode="numeric" min="1" max="60" value="10" style="margin-top:10px"><div style="display:flex;gap:10px;margin-top:14px"><button class="btn ghost" style="flex:1" data-dlg="0">ביטול</button><button class="btn gold" style="flex:1" data-dlg="1">הוספה</button></div></div>`;
+  d.addEventListener('click',e=>{const b=e.target.closest('[data-dlg]');if(!b)return;const v=+((document.getElementById('numin')||{}).value||0);d.remove();res(b.dataset.dlg==='1'?v:0)});
+  document.body.appendChild(d);});}
+function ask(msg,{ok='אישור',cancel='ביטול',danger=false,title=''}={}){
+  return new Promise(res=>{
+    closeSheet();const d=document.createElement('div');d.className='sheet';d.id='sheet';d.setAttribute('role','alertdialog');d.setAttribute('aria-modal','true');
+    d.innerHTML=`<div class="in">${title?`<h3>${esc(title)}</h3>`:''}<p style="margin:6px 0 16px;font-size:16px">${esc(msg)}</p><div style="display:flex;gap:10px">${cancel?`<button class="btn ghost" style="flex:1" data-dlg="0">${esc(cancel)}</button>`:''}<button class="btn ${danger?'':'gold'}" style="flex:1;${danger?'background:var(--danger);color:#fff':''}" data-dlg="1">${esc(ok)}</button></div></div>`;
+    const done=v=>{d.remove();res(v)};
+    d.addEventListener('click',e=>{const b=e.target.closest('[data-dlg]');if(b){e.stopPropagation();done(b.dataset.dlg==='1')}else if(e.target===d)done(false)});
+    document.body.appendChild(d);setTimeout(()=>d.querySelector('[data-dlg="1"]')?.focus(),30);
+  });
+}
+const info=(msg,title='')=>ask(msg,{ok:'הבנתי',cancel:'',title});
+function sheet(html){closeSheet();const d=document.createElement('div');d.className='sheet';d.id='sheet';d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');d.innerHTML=`<div class="in">${html}</div>`;d.addEventListener('click',e=>{if(e.target===d)closeSheet()});document.body.appendChild(d)}
+function closeSheet(){document.getElementById('sheet')?.remove()}
+const dbNote=i=>`<span class="dbtag">הוצע מהמאגר – יש לאמת מול התווית</span> <button class="link" data-a="verified" data-i="${i}">אימתתי</button>`;
+
+function w4(){
+  return `<div class="sec"><div class="sech"><h3>לפני ביצוע ההדברה</h3></div><div class="secb">
+    <p class="hint" style="margin-top:10px">אזהרות ומידע שנמסרו ללקוח לפני ביצוע ההדברה</p>
+    <div class="field${ec('warnBefore.nature')}"><span class="flabel req" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span>טיב ההדברה לפני ביצועה</span>${tplBtn('nature','warnBefore.nature')}</span>
+      <textarea data-f="warnBefore.nature" placeholder="תיאור ההדברה המתוכננת, כפי שנמסר ללקוח לפני תחילת העבודה">${esc(cur.warnBefore.nature)}</textarea></div>
+    ${fInput('שם התכשיר','warnBefore.product')}
+    ${fInput('החומר הפעיל','warnBefore.active')}
+    <button class="link" data-a="fillFromApps">${ic('copy',16)} העתקה מטבלת התכשירים</button>
+    ${fText('סיכונים לאדם','warnBefore.riskHuman')}
+    ${fText('סיכונים לבעלי חיים','warnBefore.riskAnimals')}
+    ${fInput('זמן כניסה לאחר ההדברה','warnBefore.reentry',{ph:'לפי תווית התכשיר'})}
+    ${fText('הוראות/אזהרות רלוונטיות נוספות','warnBefore.other',{req:false,opt:true})}
+  </div></div>
+  <div class="sec"><div class="sech"><h3>במהלך ההדברה ובסיומה</h3></div><div class="secb">
+    <div class="field${ec('natureAfter')}"><span class="flabel" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span>טיב ההדברה לאחר פעולת ההדברה <span class="opt">(לא חובה)</span></span>${tplBtn('natureAfter','natureAfter')}</span>
+      <textarea data-f="natureAfter" placeholder="תיאור ההדברה שבוצעה בפועל">${esc(cur.natureAfter)}</textarea></div>
+    <div class="field${ec('warnAfter')}"><span class="flabel req" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span>אזהרות ומידע ללקוח במהלך ההדברה ובסיומה</span>${tplBtn('warn','warnAfter')}</span>
+      <textarea data-f="warnAfter" placeholder="הקלד או הוסף מתבנית קיימת..">${esc(cur.warnAfter)}</textarea></div>
+    ${fToggle('נדרש טיפול משלים','needSupplementary')}
+    ${cur.needSupplementary?fText('פרטי הטיפול המשלים','supplementary',{req:false,opt:true,ph:'מה נדרש ומתי'}):''}
+  </div></div>
+  <div class="sec"><div class="sech"><h3>אחריות והערות</h3></div><div class="secb">
+    ${fChips('אחריות על הטיפול','warranty.period',WARRANTY_PERIODS,{req:false})}
+    <div class="field"><span class="flabel" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span>הערה לאחריות <span class="opt">(לא חובה)</span></span>${tplBtn('warranty','warranty.note')}</span>
+      <textarea data-f="warranty.note" placeholder="הקלד או הוסף מתבנית קיימת..">${esc(cur.warranty.note)}</textarea></div>
+  </div></div>`;
+}
+
+function w5(){
+  const errs=validate(cur);
+  return `<div class="sec"><div class="sech"><h3>מדביר/ים מסייע/ים</h3></div><div class="secb">
+    ${fToggle('השתתפו מדבירים מסייעים','hasAssistants')}
+    ${cur.hasAssistants?`${cur.assistants.map((a,i)=>`<div class="item"><div class="itemh"><strong>מסייע ${i+1}</strong><button class="del" data-a="rm" data-k="assistants" data-i="${i}">הסר</button></div>
+      ${fInput('שם מלא',`assistants.${i}.name`)}${fInput('מספר רישיון',`assistants.${i}.license`)}
+      ${fChips('סוג רישיון',`assistants.${i}.licenseType`,LICENSE_TYPES)}
+      <div class="two">${fInput('טלפון נייד',`assistants.${i}.phone`,{type:'tel',mode:'tel'})}${fInput('דוא"ל',`assistants.${i}.email`,{type:'email'})}</div>
+      ${fSig('חתימת המדביר המסייע',`assistants.${i}.sig`)}</div>`).join('')}
+      <button class="btn ghost w" style="margin-top:12px" data-a="addAssistant">${ic('plus',18)} הוספת מדביר מסייע</button>
+      ${fCheck('ניתנו הנחיות על ידי המדביר המסתייע','assistGuidance')}
+      ${fCheck('נמסר עותק מיומן הביצוע למדביר המסייע','assistCopy')}`:''}
+  </div></div>
+
+  <div class="sec"><div class="sech"><h3>מסירת היומן וחתימות</h3></div><div class="secb">
+    ${fCheck('הושאר/נמסר יומן ביצוע אצל מזמין ההדברה','handover.delivered',true)}
+    ${fInput('שם האדם שקיבל את היומן','handover.receiverName')}
+    <button class="link" data-a="receiverIsClient">המקבל הוא המזמין</button>
+    ${fSig('חתימת מקבל היומן','handover.receiverSig')}
+    ${fSig('חתימת המדביר'+(cur.tech.name?' – '+esc(cur.tech.name):''),'techSig')}
+    <div class="poison">${POISON}</div>
+  </div></div>
+
+  ${photoBox('general','תיעוד כללי','תמונות נוספות מהטיפול, לפי הצורך.')}
+  <div class="sec" id="audit"><div class="sech"><h3>בדיקת תקינות היומן</h3><span class="tag ${errs.length?'draft':''}">${errs.length?errs.length+' חסרים':'תקין'}</span></div><div class="secb">
+    <ul class="audit">${GROUPS.map((g,gi)=>{const ge=errs.filter(e=>e.g===gi);return `<li><div class="ah"><span class="ok ${ge.length?'no':''}" aria-hidden="true">${ge.length?'!':'✓'}</span>${g.name}${ge.length?` <span class="opt">(${ge.length})</span>`:''}</div>${ge.length?`<ul>${ge.map(e=>`<li><button data-a="jump" data-path="${e.path}" data-i="${e.step}">${esc(e.msg)}</button></li>`).join('')}</ul>`:''}</li>`}).join('')}</ul>
+    <p class="hint">לחיצה על פריט חסר מעבירה ישירות לשדה.</p>
+  </div></div>
+  <div style="display:flex;justify-content:space-between;align-items:center"><button class="link" data-a="preview">${ic('eye',16)} תצוגה מקדימה של היומן</button><button class="del" data-a="delJ" data-p="${cur.id}">מחיקת טיוטה</button></div>`;
+}
+
+/* ---- document (screen + PDF) ---- */
+const row=(k,v,full)=>`<div${full?' class="full"':''}><b>${k}:</b><span>${esc(v)||'—'}</span></div>`;
+function docHTML(j){
+  const p=j.place,c=j.company||{};
+  const placeRows=p.kind==='home'?row('עיר',p.city)+row('רחוב',p.street)+row('מספר בית',p.houseNo)+row('מספר דירה',p.aptNo)
+   :p.kind==='building'?row('סוג המבנה',p.buildingType==='מבנה אחר'?p.buildingTypeOther:p.buildingType)+row('עיר',p.city)+row('רחוב',p.street)+row('מספר בית/דירה',p.houseApt)
+   :p.kind==='open'?row('שם הרשות המקומית',p.authority)+row('שם/סוג האתר',p.siteType==='אחר'?p.siteTypeOther:p.siteType)+row('נ"צ',p.coords)+row('תיאור האתר',p.siteDesc,1):'';
+  return `<article class="paper" id="doc">
+  <div class="dh"><div><div class="co">${esc(c.name)}</div><div class="meta">ע.מ ${esc(c.vat)} | טל׳ ${esc(c.phone)} | ${esc(c.email)}</div></div><div class="mk2">י</div></div>
+  <div class="dtitle"><h2>יומן ביצוע הדברה</h2><span>מס׳ ${j.no}${j.status==='draft'?' (טיוטה)':''}</span></div>
+  <div class="kv">${row('תאריך ביצוע',fmtD(j.date))}${row('שעת ביצוע',j.time)}${row('סוג הפעולה',j.opKind)}${row('סטטוס',j.status==='done'?'הושלם':'טיוטה')}</div>
+
+  <div class="avoid"><h3>פרטי המדביר</h3><div class="kv">${row('שם מלא',j.tech.name)}${row('מספר רישיון',j.tech.license)}${row('טלפון נייד',j.tech.phone)}${row('דוא"ל',j.tech.email)}${row('כתובת',j.tech.address)}${row('סוג רישיון',j.tech.licenseType)}</div></div>
+  ${j.hasOperator?`<div class="avoid"><h3>פרטי המפעיל</h3><div class="kv">${row('שם המפעיל',j.operator.name)}${row('טלפון',j.operator.phone)}${row('דוא"ל',j.operator.email)}${row('כתובת',j.operator.address)}</div></div>`:''}
+  <div class="avoid"><h3>פרטי המזמין</h3><div class="kv">${row('שם מלא',j.client.name)}${row('תפקיד',j.client.role==='אחר'?j.client.roleOther:j.client.role)}${row('טלפון',j.client.phone)}</div></div>
+  <div class="avoid"><h3>מקום ההדברה – ${PLACE_KIND[p.kind]||''}</h3><div class="kv">${placeRows}${j.opKind==='ערפול'?row('שכונה',p.neighborhood):''}${j.geo?`<div class="full"><b>נ"צ ביצוע:</b><span>${j.geo.lat.toFixed(6)}, ${j.geo.lng.toFixed(6)} (${j.geo.manual?'הוזן ידנית':'נלכד אוטומטית, דיוק '+Math.round(j.geo.acc)+' מ׳'}, ${new Date(j.geo.at).toLocaleString('he-IL')}) · ${esc(mapLink(j.geo))}</span></div>`:''}</div></div>
+
+  <h3>ממצאי ניטור וזיהוי המזיק</h3>
+  <div class="tblwrap"><table class="tbl"><tr><th>מזיק</th><th>פירוט (נספח א׳)</th><th>פעולות זיהוי</th><th>דרגת התפתחות</th><th>סימני נגיעות</th><th>מיקום</th><th>רמה</th></tr>
+  ${j.findings.map(f=>`<tr><td>${esc(f.pest)}</td><td>${esc(f.subtype)||'—'}</td><td class="pre">${esc(f.identification)}</td><td>${esc(f.stage)||'—'}</td><td class="pre">${esc(f.signs)}</td><td>${esc(f.location)}</td><td>${esc(f.level)}</td></tr>`).join('')}</table></div>
+
+  <div class="avoid"><h3>מניעה והחלטה על ביצוע הדברה</h3>
+  <p class="pre"><b>פעולות מניעה ו/או טיפול שבוצעו או הומלצו ללקוח:</b> ${esc(j.prevention)||'—'}</p>
+  <p class="pre" style="margin-top:4px"><b>הנסיבות שבהן הוחלט לנקוט בהדברה ולא בטיפול אחר:</b> ${esc(j.circumstances)||'—'}</p></div>
+
+  <div class="avoid"><h3>אזהרות ומידע שנמסרו ללקוח לפני ביצוע ההדברה</h3><div class="kv">
+  ${row('טיב ההדברה',j.warnBefore.nature,1)}${row('שם התכשיר',j.warnBefore.product)}${row('החומר הפעיל',j.warnBefore.active)}${row('סיכונים לאדם',j.warnBefore.riskHuman,1)}${row('סיכונים לבעלי חיים',j.warnBefore.riskAnimals,1)}${row('זמן כניסה לאחר ההדברה',j.warnBefore.reentry,1)}${j.warnBefore.other?row('הוראות/אזהרות נוספות',j.warnBefore.other,1):''}</div></div>
+
+  ${j.hasAssistants?`<div class="avoid"><h3>מדביר/ים מסייע/ים</h3><div class="tblwrap"><table class="tbl"><tr><th>שם מלא</th><th>מס׳ רישיון</th><th>סוג רישיון</th><th>טלפון</th><th>דוא"ל</th><th>חתימה</th></tr>
+  ${j.assistants.map(a=>`<tr><td>${esc(a.name)}</td><td>${esc(a.license)}</td><td>${esc(a.licenseType)}</td><td>${esc(a.phone)}</td><td>${esc(a.email)}</td><td>${a.sig?`<img src="${a.sig}" alt="" style="height:34px">`:'—'}</td></tr>`).join('')}</table></div>
+  <p style="margin:4px 0 0">${j.assistGuidance?'☑':'☐'} ניתנו הנחיות על ידי המדביר המסתייע &nbsp; ${j.assistCopy?'☑':'☐'} נמסר עותק מיומן הביצוע למדביר המסייע</p></div>`:''}
+
+  <h3>יישום ההדברה</h3>
+  <div class="tblwrap"><table class="tbl"><tr><th>מזיק</th><th>שם מסחרי</th><th>חומר פעיל</th><th>ריכוז בתכשיר</th><th>אצווה</th><th>מינון</th><th>יחידה</th><th>ריכוז במוכן לשימוש</th><th>שיטת יישום</th></tr>
+  ${j.apps.map(a=>`<tr><td>${esc(a.pest)}</td><td>${esc(a.product)}</td><td>${esc(a.active)}</td><td>${esc(a.conc)}</td><td>${esc(a.batch)}</td><td>${esc(a.dose)}</td><td>${esc(a.unit==='אחר'?a.unitOther:a.unit)}</td><td>${a.rtu?'תכשיר מוכן לשימוש':esc(a.useConc)}</td><td>${esc(a.method==='אחר'?a.methodOther:a.method)}</td></tr>`).join('')}</table></div>
+  ${j.opKind==='איוד'?`<p class="pre" style="margin-top:6px"><b>פעולות איטום שנעשו לפני ביצוע ההדברה:</b> ${esc(j.sealing)||'—'}</p>`:''}
+  ${j.opKind==='ערפול'?`<p style="margin-top:6px"><b>האם בוצעה התראה מראש לציבור:</b> ${esc(j.publicNotice)||'—'}</p>`:''}
+
+  <div class="avoid"><h3>אזהרות ומידע ללקוח במהלך ההדברה ובסיומה</h3>
+  ${j.natureAfter?`<p class="pre"><b>טיב ההדברה שבוצעה:</b> ${esc(j.natureAfter)}</p>`:''}
+  <p class="pre">${esc(j.warnAfter)||'—'}</p>
+  ${j.needSupplementary||j.supplementary?`<p class="pre" style="margin-top:4px"><b>נדרש טיפול משלים:</b> ${esc(j.supplementary)||'כן'}</p>`:''}
+  ${(j.warranty&&(j.warranty.period||j.warranty.note))?`<p class="pre" style="margin-top:4px"><b>אחריות על הטיפול:</b> ${esc(j.warranty.period)||'—'}${j.warranty.note?' · '+esc(j.warranty.note):''}</p>`:''}</div>
+
+  ${(()=>{const cks=Object.entries(j.stationChecks||{}).map(([id,c])=>({id,...c})).filter(c=>c.status).sort((a,b)=>(a.no||0)-(b.no||0));
+    if(!cks.length)return '';
+    return `<h3>תחנות האכלה וניטור</h3><div class="tblwrap"><table class="tbl"><tr><th>מס׳</th><th>סוג</th><th>מיקום</th><th>מצב</th></tr>
+    ${cks.map(c=>`<tr><td>${c.no||''}</td><td>${stTypeOf(c.type).n}</td><td>${esc(c.loc||'')}</td><td>${esc(c.status)}</td></tr>`).join('')}</table></div>`})()}
+  ${(()=>{const ph=photosOf(j.id);if(!ph.length)return '';
+    return `<h3>תיעוד מצולם</h3>${Object.keys(PHOTO_KINDS).map(k=>{const l=ph.filter(x=>x.kind===k);return l.length?`<p style="margin:4px 0 2px"><b>${PHOTO_KINDS[k]}:</b></p><div class="dph">${l.map(x=>`<figure><img src="${x.src}" alt=""><figcaption>${esc(x.caption)||'—'}</figcaption></figure>`).join('')}</div>`:''}).join('')}`})()}
+  <div class="avoid"><h3>מסירת היומן וחתימות</h3>
+  <p style="margin:0">${j.handover.delivered?'☑':'☐'} הושאר/נמסר יומן ביצוע אצל מזמין ההדברה</p>
+  <div class="dsigs"><div>${j.handover.receiverSig?`<img src="${j.handover.receiverSig}" alt="">`:''}מקבל היומן: ${esc(j.handover.receiverName)}</div><div>${j.techSig?`<img src="${j.techSig}" alt="">`:''}המדביר: ${esc(j.tech.name)}</div></div>
+  <div class="dpoison">${POISON}</div></div>
+  <div class="dfoot"><span>הופק ${new Date(j.completedAt||j.updatedAt).toLocaleString('he-IL')}</span><span>יומן #${j.no}</span></div>
+  </article>`;
+}
+
+function vPreview(){
+  if(!cur)return vHome();
+  const errs=validate(cur);
+  return `${topbar('תצוגה מקדימה #'+cur.no,'wizard','<div class="sub">כך ייראה היומן ב-PDF</div>',`<span style="width:42px"></span>`)}
+  <main class="page">
+   <div class="pvbar">${errs.length?`<span>חסרים ${errs.length} פרטים לפני סיום</span><button class="link" data-a="pvToAudit">להשלמה</button>`:`<span>${ic('check',16)} היומן מלא ומוכן לסיום</span>`}</div>
+   ${docHTML(cur).replace('class="paper"','class="paper draftmark"')}
+  </main>
+  <div class="footer"><div class="in"><button class="btn ghost" data-a="pvBack">חזרה לעריכה</button><button class="btn gold" data-a="complete">סיום היומן</button></div></div>`;
+}
+function deliverHTML(j){
+  const c=PDF[j.id]||{state:'idle'};
+  const st=c.state==='busy'?'<span class="spin"></span> מכין את קובץ ה-PDF...':c.state==='ready'?'✓ קובץ ה-PDF מוכן לשליחה':c.state==='error'?`הפקת ה-PDF נכשלה: ${esc(c.err)}`:'';
+  const canShareFile=c.state==='ready'&&navigator.canShare&&(()=>{try{return navigator.canShare({files:[c.file]})}catch(e){return false}})();
+  return `<div class="deliver noprint" id="deliver"><h3>שליחת היומן ללקוח</h3><p class="status ${c.state==='error'?'bad':''}" role="status">${st}</p>
+   <div class="stack">
+    ${j.client.phone?`<a class="btn gold" href="${esc(smsHref(j))}" data-a-link="sms">${ic('sms',20)} SMS ללקוח (${esc(j.client.phone)})</a>`:'<p class="hint">לא הוזן טלפון למזמין.</p>'}
+    ${canShareFile?`<button class="btn" data-a="shareFile" data-p="${j.id}">${ic('share',20)} שליחת קובץ ה-PDF (הודעות / וואטסאפ)</button>`:''}
+    ${c.state==='ready'?`<button class="btn" data-a="savePdf" data-p="${j.id}">${ic('pdf',20)} שמירת ה-PDF במכשיר</button>`:''}
+    ${c.state==='ready'?`<a class="btn ghost" href="${c.url}" download="${esc(pdfName(j))}" target="_blank" rel="noopener">${ic('eye',18)} פתיחת ה-PDF לצפייה</a>`:''}
+    ${c.state==='error'||c.state==='idle'?`<button class="btn ghost" data-a="makePdf" data-p="${j.id}">${ic('pdf',18)} ${c.state==='error'?'נסו שוב להפיק PDF':'הפקת PDF'}</button>`:''}
+    <button class="btn ghost" data-a="print">${ic('print',18)} הדפסה / שמירה כ-PDF</button>
+    <button class="link" data-a="diag" data-p="${j.id}">לא עובד? בדיקת מערכת</button>
+   </div>
+   <p class="hint">ה-SMS נפתח באפליקציית ההודעות עם מספר הלקוח וסיכום היומן. לחיצה על "שליחה" שולחת אותו.</p>
+  </div>`;
+}
+function refreshDeliver(id){if(view==='journal'&&param===id){const el=document.getElementById('deliver');const j=S.journals[id];if(el&&j)el.outerHTML=deliverHTML(j)}}
+function vJournal(){
+  const j=S.journals[param];if(!j)return vArchive();
+  if(!PDF[j.id]||PDF[j.id].ver!==j.updatedAt)setTimeout(()=>ensurePdf(j).catch(()=>{}),60);
+  return `${topbar('יומן הדברה #'+j.no,'archive')}
+  <main class="page">
+   ${deliverHTML(j)}
+   <div class="noprint" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><button class="link" data-a="dup" data-p="${j.id}">יומן חדש לאותו לקוח ומקום</button><button class="del" data-a="delJ" data-p="${j.id}">מחיקה</button></div>
+   ${docHTML(j)}
+  </main>`;
+}
+const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+function smsText(j){
+  const ap=j.apps.filter(a=>a.product);
+  return [`שלום ${j.client.name},`,`יומן ביצוע הדברה מס׳ ${j.no} – ${j.company.name}`,
+    `תאריך: ${fmtD(j.date)} ${j.time}`,`מקום: ${placeText(j.place)}`,j.geo?`מיקום מדויק: ${mapLink(j.geo)}`:'',
+    `מזיקים: ${j.findings.map(f=>f.pest).filter(Boolean).join(', ')}`,
+    `תכשירים: ${ap.map(a=>`${a.product} (${a.active} ${a.conc})`).join('; ')}`,
+    `זמן כניסה לאחר ההדברה: ${j.warnBefore.reentry}`,
+    j.warnAfter?`הנחיות: ${j.warnAfter}`:'',
+    `מדביר: ${j.tech.name}, רישיון ${j.tech.license}, ${j.tech.phone}`,
+    POISON].filter(Boolean).join('\n');
+}
+const smsHref=j=>`sms:${String(j.client.phone||'').replace(/[^\d+]/g,'')}${isIOS?'&':'?'}body=${encodeURIComponent(smsText(j))}`;
+const intlPhone=p=>{let d=String(p).replace(/\D/g,'');if(d.startsWith('0'))d='972'+d.slice(1);return d};
+
+function vArchive(){
+  if(param==='draft'&&!flt._init){flt={q:'',from:'',to:'',status:'draft',_init:1}}
+  const q=norm(flt.q);
+  const list=journals().filter(j=>{
+    if(flt.status&&j.status!==flt.status)return false;
+    if(flt.from&&j.date<flt.from)return false;if(flt.to&&j.date>flt.to)return false;
+    if(!q)return true;
+    const hay=norm([j.no,j.date,fmtD(j.date),j.client.name,j.client.phone,j.place.city,placeText(j.place),j.place.street,j.tech.name,...j.findings.map(f=>f.pest),...j.apps.map(a=>a.product),...j.assistants.map(a=>a.name)].join(' '));
+    return hay.includes(q);
+  });
+  return `${topbar('יומני הדברה','home')}
+  <main class="page">
+   <div class="filters">
+    <input class="inp" type="search" data-flt="q" value="${esc(flt.q)}" placeholder="חיפוש: מספר, לקוח, טלפון, עיר, מזיק, תכשיר, מדביר" aria-label="חיפוש">
+    <div class="two"><label class="field" style="margin:0"><span>מתאריך</span><input type="date" data-flt="from" value="${flt.from}"></label><label class="field" style="margin:0"><span>עד תאריך</span><input type="date" data-flt="to" value="${flt.to}"></label></div>
+    <div class="seg" role="radiogroup" aria-label="סטטוס">${[['','הכול'],['done','הושלם'],['draft','טיוטה']].map(([k,l])=>`<button type="button" class="${flt.status===k?'on':''}" data-a="fltStatus" data-val="${k}">${l}</button>`).join('')}</div>
+   </div>
+   <p class="hint" style="margin:0 0 10px">${list.length} יומנים</p>
+   ${list.map(jCard).join('')||'<div class="empty">לא נמצאו יומנים</div>'}
+   <p class="hint">יומנים שהושלמו נשמרים בענן ולא ניתנים למחיקה לפני ${RETENTION_YEARS} שנים.</p>
+  </main>`;
+}
+
+function vClients(){
+  const q=norm(flt.q);
+  const list=Object.values(S.clients)
+    .map(c=>({c,n:journals().filter(j=>norm(j.client.name)===norm(c.name)).length}))
+    .filter(({c})=>!q||norm(c.name).includes(q)||String(c.phone||'').replace(/\D/g,'').includes(q.replace(/\D/g,''))||(c.places||[]).some(p=>norm(placeText(p)).includes(q)))
+    .sort((a,b)=>(b.c.updatedAt||0)-(a.c.updatedAt||0));
+  return `${topbar('לקוחות','home')}
+  <main class="page">
+   <input class="inp" type="search" data-flt="q" value="${esc(flt.q)}" placeholder="חיפוש לפי שם, טלפון או כתובת" aria-label="חיפוש לקוח" style="margin-bottom:12px">
+   <p class="hint" style="margin:0 0 10px">${list.length} לקוחות</p>
+   ${list.map(({c,n})=>{const pl=(c.places&&c.places[0])?placeText(c.places[0]):'';const stn=(c.places||[]).reduce((a,p)=>a+stationsOf(norm(c.name)+'|'+norm(placeText(p))).length,0);
+     return `<div class="card" style="cursor:default"><button class="main" style="border:0;background:transparent;text-align:right;padding:0" data-a="go" data-v="client" data-p="${c.id}">
+      <h4>${esc(c.name)}</h4><p>${esc(pl||'ללא כתובת שמורה')}</p>
+      <p><span class="tag">${n} יומנים</span>${stn?` <span class="tag gold">${stn} תחנות</span>`:''}${c.phone?' · '+esc(c.phone):''}</p></button>
+      <div class="acts">${c.phone?`<a class="round" href="tel:${esc(c.phone)}" aria-label="חיוג">${ic('phone',18)}</a>`:''}${pl?`<a class="round" target="_blank" rel="noopener" href="https://waze.com/ul?q=${encodeURIComponent(pl)}" aria-label="ניווט">${ic('nav',18)}</a>`:''}</div>
+     </div>`}).join('')||'<div class="empty">לקוחות נשמרים אוטומטית בכל סיום יומן.</div>'}
+  </main>`;
+}
+function vClient(){
+  const c=S.clients[param];if(!c)return vClients();
+  const js=journals().filter(j=>norm(j.client.name)===norm(c.name));
+  const done=js.filter(j=>j.status==='done');
+  return `${topbar(c.name,'clients')}
+  <main class="page">
+   <div class="sec"><div class="sech"><h3>פרטי הלקוח</h3></div><div class="secb">
+    <label class="field"><span>שם</span><input data-cl="name" value="${esc(c.name)}"></label>
+    <label class="field"><span>טלפון</span><input data-cl="phone" type="tel" value="${esc(c.phone||'')}"></label>
+    <label class="field"><span>תפקיד המזמין</span><input data-cl="role" value="${esc(c.role||'')}"></label>
+    <div class="two" style="margin-top:12px">
+     <button class="btn" data-a="newForClient" data-p="${c.id}">${ic('plus',18)} יומן חדש</button>
+     ${done.length?`<button class="btn ghost" data-a="openJ" data-p="${done[0].id}">${ic('book',18)} היומן האחרון</button>`:'<span></span>'}
+    </div>
+   </div></div>
+   ${(c.places&&c.places.length)?`<div class="sec"><div class="sech"><h3>אתרים ותחנות</h3></div><div class="secb">
+    ${c.places.map(p=>{const key=norm(c.name)+'|'+norm(placeText(p));const st=stationsOf(key);
+      return `<div class="strow"><div class="mid"><b>${esc(placeText(p))}</b><small>${st.length?st.length+' תחנות ממוספרות':'לא הוגדרו תחנות'}</small></div>
+       <a class="round" target="_blank" rel="noopener" href="https://waze.com/ul?q=${encodeURIComponent(placeText(p))}" aria-label="ניווט">${ic('nav',18)}</a></div>`}).join('')}
+   </div></div>`:''}
+   <h3 style="font-size:16px;margin:16px 0 8px">יומנים (${js.length})</h3>
+   ${js.map(jCard).join('')||'<p class="hint">אין עדיין יומנים ללקוח זה.</p>'}
+   <button class="del" style="margin-top:12px" data-a="delClient" data-p="${c.id}">מחיקת הלקוח מהרשימה</button>
+  </main>`;
+}
+function vProfile(){
+  const p=S.profile,pe=new Set(A._pfErr||[]),F=(l,k,t='text',m='')=>`<label class="field${pe.has(k)?' err':''}"><span class="req">${l}</span><input type="${t}" data-pf="${k}" value="${esc(p[k])}"${m?` inputmode="${m}"`:''}></label>`;
+  return `${topbar('פרופיל מדביר','home')}
+  <main class="page">
+   <div class="sec"><div class="sech"><h3>פרטי המדביר</h3></div><div class="secb">
+    ${F('שם מלא','name')}${F('מספר רישיון','license')}<div class="two">${F('טלפון נייד','phone','tel','tel')}${F('דוא"ל','email','email')}</div>${F('כתובת','address')}
+    <div class="field"><span class="flabel req">סוג רישיון</span><div class="chips${pe.has('licenseType')?' err':''}">${LICENSE_TYPES.map(o=>`<button type="button" class="chip ${p.licenseType===o?'on':''}" data-a="pfLicense" data-val="${esc(o)}">${o}</button>`).join('')}</div></div>
+   </div></div>
+   <div class="sec"><div class="sech"><h3>כותרת היומן</h3></div><div class="secb">
+    ${F('שם החברה','company')}${F('ע.מ','vat')}<div class="two">${F('טלפון','companyPhone','tel')}${F('דוא"ל','companyEmail','email')}</div>
+   </div></div>
+   <p class="hint">הפרטים נכנסים אוטומטית לכל יומן חדש. ${S.profile.name?'':'יש למלא אותם פעם אחת.'}</p>
+   <p class="hint">מאגר מובנה: ${BUILTIN.length} תכשירים רשומים${S.mine.length?` ועוד ${S.mine.length} שהוזנו ידנית`:''}.</p>
+   <p class="hint">אחסון: ${DB?'היומנים נשמרים בענן ובמכשיר.':'היומנים נשמרים במכשיר בלבד (הענן אינו זמין בתצוגה זו).'}</p>
+  </main>
+  <div class="footer"><div class="in"><button class="btn gold" data-a="saveProfile">${ic('check',20)} שמירת פרופיל</button></div></div>`;
+}
+
+/* =========================================================
+   8. RENDER
+   ========================================================= */
+function render(){
+  const map={home:vHome,preview:vPreview,clients:vClients,client:vClient,wizard:vWizard,journal:vJournal,archive:vArchive,profile:vProfile};
+  $('#app').innerHTML=(map[view]||vHome)();
+  if(view==='wizard')initSigs();
+  const on=document.querySelector('.st.on');on&&on.scrollIntoView({inline:'center',block:'nearest'});
+}
+function initSigs(){
+  document.querySelectorAll('canvas[data-sig]').forEach(cv=>{
+    const path=cv.dataset.sig,dpr=window.devicePixelRatio||1,w=cv.clientWidth,h=cv.clientHeight;
+    cv.width=w*dpr;cv.height=h*dpr;const ctx=cv.getContext('2d');if(!ctx)return;ctx.scale(dpr,dpr);
+    ctx.lineWidth=2.4;ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#14281c';
+    const v=getP(cur,path);if(v){const im=new Image();im.onload=()=>ctx.drawImage(im,0,0,w,h);im.src=v}
+    let dr=false,last,moved=false;const pos=e=>{const r=cv.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]};
+    cv.onpointerdown=e=>{dr=true;moved=false;last=pos(e);cv.setPointerCapture(e.pointerId);e.preventDefault()};
+    cv.onpointermove=e=>{if(!dr)return;const p=pos(e);ctx.beginPath();ctx.moveTo(last[0],last[1]);ctx.lineTo(p[0],p[1]);ctx.stroke();last=p;moved=true};
+    const end=()=>{if(!dr)return;dr=false;if(!moved)return;
+      const o=document.createElement('canvas');o.width=Math.min(600,w*dpr);o.height=Math.round(o.width*h/w);o.getContext('2d').drawImage(cv,0,0,o.width,o.height);
+      setP(cur,path,o.toDataURL('image/png'));touch();cv.closest('.sigwrap')?.classList.remove('err')};
+    cv.onpointerup=end;cv.onpointercancel=end;
+  });
+}
+
+/* =========================================================
+   9. ACTIONS
+   ========================================================= */
+function findClientId(name,phone){const n=norm(name),ph=String(phone||'').replace(/\D/g,'');return (Object.values(S.clients).find(c=>n&&norm(c.name)===n)||Object.values(S.clients).find(c=>ph&&ph.length>6&&String(c.phone).replace(/\D/g,'')===ph)||{}).id}
+function upsertClient(j){
+  const id=findClientId(j.client.name,j.client.phone)||uid();const c=S.clients[id]||{id,places:[]};
+  Object.assign(c,{name:j.client.name,phone:j.client.phone,role:j.client.role,roleOther:j.client.roleOther,updatedAt:Date.now()});
+  const key=j.place.kind+'|'+placeText(j.place);
+  if(j.place.kind&&!c.places.some(pl=>pl.kind+'|'+placeText(pl)===key))c.places.unshift(clone(j.place));c.places=c.places.slice(0,10);
+  S.clients[id]=c;pushClient(c);
+}
+function jumpTo(path,step){
+  cur.step=+step;render();
+  requestAnimationFrame(()=>{
+    let el=document.querySelector(`[data-f="${CSS.escape(path)}"]:not(button)`)||document.querySelector(`[data-fw="${CSS.escape(path)}"]`)||document.querySelector(`[data-c="${CSS.escape(path)}"]`)||document.querySelector(`[data-sig="${CSS.escape(path)}"]`);
+    if(!el)return;const d=el.closest('details');if(d)d.open=true;
+    el.scrollIntoView({block:'center',behavior:'smooth'});
+    const box=el.closest('.field,.sigwrap,.check')||el;box.classList.add('flash');setTimeout(()=>box.classList.remove('flash'),1500);
+    if(el.matches('input,textarea,select'))setTimeout(()=>el.focus({preventScroll:true}),350);
+  });
+}
+const PDF={};/* id -> {state:'idle'|'busy'|'ready'|'error', blob, url, err, ver} */
+async function pdfBlob(j){
+  if(typeof html2canvas==='undefined'||!window.jspdf)throw new Error('ספריית ה-PDF לא נטענה (בדקו חיבור לאינטרנט)');
+  const {jsPDF}=window.jspdf;
+  const host=document.createElement('div');
+  host.setAttribute('aria-hidden','true');
+  host.style.cssText='position:fixed;top:0;left:0;width:760px;background:#fff;z-index:-1;opacity:0;pointer-events:none';
+  host.innerHTML=docHTML(j);document.body.appendChild(host);
+  const paper=host.firstElementChild;paper.style.boxShadow='none';paper.style.borderRadius='0';paper.classList.remove('draftmark');
+  host.querySelectorAll('.tblwrap').forEach(t=>t.style.overflow='visible');
+  try{
+    if(document.fonts&&document.fonts.ready)await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1500))]);
+    const imgs=[...host.querySelectorAll('img')];await Promise.all(imgs.map(im=>im.complete?0:new Promise(r=>{im.onload=im.onerror=r})));
+    const pdf=new jsPDF({unit:'mm',format:'a4',orientation:'portrait',compress:true});
+    const PW=210,PH=297,M=10,CW=PW-2*M,BOTTOM=PH-M;let y=M;
+    const pxToMm=CW/paper.clientWidth;
+    const blocks=[...paper.children];
+    const padL=parseFloat(getComputedStyle(paper).paddingLeft)||0;
+    for(const el of blocks){
+      const canvas=await html2canvas(el,{scale:2,backgroundColor:'#ffffff',logging:false,useCORS:true,windowWidth:760});
+      const wMm=el.offsetWidth*pxToMm, hMm=el.offsetHeight*pxToMm;
+      const x=M+(padL*pxToMm)*0; // blocks already sit inside padded paper; center horizontally
+      const xx=M+(CW-wMm)/2;
+      if(hMm<=BOTTOM-y){pdf.addImage(canvas.toDataURL('image/jpeg',.92),'JPEG',xx,y,wMm,hMm);y+=hMm+1.2;continue}
+      if(hMm<=BOTTOM-M){pdf.addPage();y=M;pdf.addImage(canvas.toDataURL('image/jpeg',.92),'JPEG',xx,y,wMm,hMm);y+=hMm+1.2;continue}
+      // taller than a page: slice
+      const pxPerMm=canvas.height/hMm;let offMm=0;
+      while(offMm<hMm){
+        let avail=BOTTOM-y;if(avail<20){pdf.addPage();y=M;avail=BOTTOM-M}
+        const sliceMm=Math.min(avail,hMm-offMm);
+        const c=document.createElement('canvas');c.width=canvas.width;c.height=Math.ceil(sliceMm*pxPerMm);
+        c.getContext('2d').drawImage(canvas,0,Math.floor(offMm*pxPerMm),canvas.width,c.height,0,0,canvas.width,c.height);
+        pdf.addImage(c.toDataURL('image/jpeg',.92),'JPEG',xx,y,wMm,sliceMm);
+        offMm+=sliceMm;y+=sliceMm;if(offMm<hMm){pdf.addPage();y=M}
+      }
+      y+=1.2;
+    }
+    const n=pdf.getNumberOfPages();
+    for(let i=1;i<=n;i++){pdf.setPage(i);pdf.setFontSize(8);pdf.setTextColor(120);pdf.text(`${i}/${n}  #${j.no}`,PW/2,PH-4,{align:'center'})}
+    return pdf.output('blob');
+  }finally{host.remove()}
+}
+async function ensurePdf(j){
+  const ver=j.updatedAt;const c=PDF[j.id];
+  if(c&&c.ver===ver&&(c.state==='ready'||c.state==='busy'))return c.promise;
+  const entry={state:'busy',ver};PDF[j.id]=entry;refreshDeliver(j.id);
+  entry.promise=pdfBlob(j).then(blob=>{entry.blob=blob;entry.file=new File([blob],pdfName(j),{type:'application/pdf'});if(entry.url)URL.revokeObjectURL(entry.url);entry.url=URL.createObjectURL(blob);entry.state='ready';refreshDeliver(j.id);return blob})
+    .catch(e=>{entry.state='error';entry.err=(e&&e.message)||String(e);refreshDeliver(j.id);throw e});
+  return entry.promise;
+}
+const pdfName=j=>`יומן-הדברה-${j.no}-${j.date}.pdf`;
+
+const A={
+  go:d=>{if(d.v==='clients')flt={q:'',from:'',to:'',status:'',_init:1};if(d.v==='archive')flt=d.p==='draft'?{q:'',from:'',to:'',status:'draft',_init:1}:{q:'',from:'',to:'',status:'',_init:1};cur=null;showErr=false;go(d.v,d.p||null)},
+  newJ:async()=>{const no=await nextNo();cur=clone(blankJournal(no,S.profile));showErr=false;S.journals[cur.id]=cur;touch();go('wizard')},
+  openJ:d=>{let j=S.journals[d.p];if(j.status==='draft'){j=clone(j);S.journals[j.id]=j;cur=j;showErr=false;go('wizard')}else go('journal',j.id)},
+  step:d=>{cur.step=+d.i;touch();render();window.scrollTo(0,0)},
+  setv:(d)=>{const now=getP(cur,d.f);setP(cur,d.f,now===d.val&&!/^place\.kind$|^opKind$/.test(d.f)?'':d.val);
+    if(d.f==='place.kind'&&now!==d.val){/* keep entered data; only visible fields are validated/printed */}
+    if(/^findings\.\d+\.pest$/.test(d.f))setP(cur,d.f.replace('pest','subtype'),'');
+    touch();render()},
+  tog:d=>{setP(cur,d.f,!getP(cur,d.f));if(d.f==='hasAssistants'&&cur.hasAssistants&&!cur.assistants.length)cur.assistants.push(newAssistant());touch();render()},
+  rm:async d=>{if(!await ask('להסיר את הפריט?',{ok:'הסר',danger:true}))return;cur[d.k].splice(+d.i,1);touch();render()},
+  addFinding:()=>{cur.findings.push(newFinding());touch();render();setTimeout(()=>window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'}),50)},
+  addApp:()=>{cur.apps.push(newApp());touch();render();setTimeout(()=>window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'}),50)},
+  addAssistant:()=>{cur.assistants.push(newAssistant());touch();render()},
+  clrSig:d=>{setP(cur,d.f,null);touch();render()},
+  verified:d=>{cur.apps[+d.i].fromDb=false;touch();const n=document.getElementById('dbnote-'+d.i);if(n)n.innerHTML=''},
+  usePlace:d=>{const c=S.clients[d.p];cur.place=Object.assign(cur.place,clone(c.places[+d.i]));if(!cur.client.phone)cur.client.phone=c.phone;if(!cur.client.role){cur.client.role=c.role;cur.client.roleOther=c.roleOther||''}touch();render();toast('הכתובת הוכנסה – בדקו שהיא נכונה')},
+  gps:()=>{
+    if(!navigator.geolocation)return info('שירותי המיקום אינם זמינים כאן. אפשר להזין נ"צ ידנית בשדה למטה.','מיקום');
+    toast('מאתר מיקום...');
+    navigator.geolocation.getCurrentPosition(pos=>{
+      cur.geo={lat:pos.coords.latitude,lng:pos.coords.longitude,acc:pos.coords.accuracy||0,at:Date.now()};
+      if(cur.place.kind==='open'||!cur.place.coords)cur.place.coords=`${cur.geo.lat.toFixed(6)}, ${cur.geo.lng.toFixed(6)}`;
+      touch();render();toast('המיקום נלכד');
+    },err=>{
+      const m={1:'האפליקציה פועלת בתוך מסגרת מוגנת שחוסמת גישה ל-GPS. פתחו את המפות, העתיקו את הנקודה והדביקו אותה בשדה שמתחת לכפתור.',2:'לא הצלחנו לאתר מיקום כרגע. נסו בחוץ או הזינו ידנית.',3:'איתור המיקום ארך זמן רב מדי. נסו שוב.'}[err.code]||err.message;
+      info(m,'מיקום');
+    },{enableHighAccuracy:true,timeout:15000,maximumAge:0});},
+  geoPaste:()=>{const el=document.getElementById('geoPaste');const g=parseGeo(el&&el.value);
+    if(!g)return info('לא זוהה נ"צ. הדביקו שתי מעלות מופרדות בפסיק (למשל 31.750123, 35.091234) או קישור ממפות.','נ"צ');
+    cur.geo=g;if(cur.place.kind==='open'||!cur.place.coords)cur.place.coords=`${g.lat.toFixed(6)}, ${g.lng.toFixed(6)}`;touch();render();toast('הנ"צ נשמר')},
+  clrGeo:async()=>{if(!await ask('להסיר את נ"צ הביצוע?',{ok:'הסרה',danger:true}))return;cur.geo=null;touch();render()},
+  techToProfile:()=>{Object.assign(S.profile,clone(cur.tech));saveLocal();pushProfile();toast('נשמר בפרופיל')},
+  fillFromApps:()=>{const ap=cur.apps.filter(a=>a.product);if(!ap.length)return toast('עוד לא הוזנו תכשירים בשלב 4');
+    cur.warnBefore.product=ap.map(a=>a.product).join(', ');cur.warnBefore.active=[...new Set(ap.map(a=>a.active).filter(Boolean))].join(', ');touch();render()},
+  receiverIsClient:()=>{cur.handover.receiverName=cur.client.name;touch();render()},
+  jump:d=>{showErr=true;if(view!=='wizard')view='wizard';jumpTo(d.path,d.i)},
+  preview:()=>{clearTimeout(saveT);saveLocal();view='preview';render();window.scrollTo(0,0)},
+  pvBack:()=>{view='wizard';render();window.scrollTo(0,0)},
+  pvToAudit:()=>{showErr=true;cur.step=5;view='wizard';render();setTimeout(()=>document.getElementById('audit')?.scrollIntoView({behavior:'smooth'}),60)},
+  openLib:d=>{A._lk=d.k;A._lpath=d.path;A._fsel=new Set();A._fq='';renderLib()},
+  fToggleSel:d=>{A._fsel.has(d.t)?A._fsel.delete(d.t):A._fsel.add(d.t);renderLib()},
+  fClearSel:()=>{A._fsel=new Set();renderLib()},
+  fAddSel:()=>{if(!A._fsel.size)return toast('לא נבחרו פריטים');
+    const old=String(getP(cur,A._lpath)||'').trim();
+    setP(cur,A._lpath,[old,...A._fsel].filter(Boolean).join('\n'));
+    touch();closeSheet();render();toast(`נוספו ${A._fsel.size} פריטים`)},
+  fSaveTpl:()=>{const t=String(getP(cur,A._lpath)||'').trim();if(!t)return toast('אין טקסט לשמירה');
+    const cfg=LIBS[A._lk];
+    t.split('\n').map(x=>x.trim()).filter(Boolean).forEach(x=>{if(!cfg.lib().includes(x)&&!S[cfg.store].includes(x))S[cfg.store].unshift(x)});
+    saveLocal();pushTpl();renderLib();toast('נשמר בתבניות שלי')},
+  fDelTpl:async d=>{if(!await ask('למחוק את התבנית?',{ok:'מחיקה',danger:true}))return;const cfg=LIBS[A._lk];S[cfg.store]=S[cfg.store].filter(x=>x!==d.t);saveLocal();pushTpl();renderLib()},
+  newForClient:d=>{const c=S.clients[d.p];A.newJ().then(()=>{if(!cur)return;
+      cur.client.name=c.name;cur.client.phone=c.phone||'';if(c.role){cur.client.role=c.role;cur.client.roleOther=c.roleOther||''}
+      if(c.places&&c.places[0])cur.place=Object.assign(cur.place,clone(c.places[0]));touch();render()})},
+  delClient:async d=>{const c=S.clients[d.p];
+    if(!await ask(`למחוק את ${c.name} מרשימת הלקוחות? היומנים שלו יישארו בארכיון.`,{ok:'מחיקה',danger:true}))return;
+    delete S.clients[d.p];saveLocal();if(DB){try{await DB.collection('pest_clients').doc(d.p).delete()}catch(e){}}go('clients')},
+  acPick:d=>{const c=S.clients[d.p];if(!c)return;
+    cur.client.name=c.name;if(c.phone)cur.client.phone=c.phone;
+    if(c.role){cur.client.role=c.role;cur.client.roleOther=c.roleOther||''}
+    if(c.places&&c.places[0]&&!cur.place.kind)cur.place=Object.assign(cur.place,clone(c.places[0]));
+    touch();render();
+    const L=lastForClient(c.name,c.phone,cur.id);
+    toast(L?`${c.name} נבחר · יש יומן קודם #${L.no}`:`${c.name} נבחר`)},
+  stManage:()=>{A._stSite=siteKey(cur);A._stLabel=`${cur.client.name} · ${placeText(cur.place)}`;A._stType=A._stType||'bp';stationSheet()},
+  stType:d=>{A._stType=d.k;stationSheet()},
+  stAdd:()=>{const loc=(document.getElementById('stLoc')||{}).value||'';addStation(A._stSite,'',A._stType||'bp',loc);stationSheet();toast('תחנה נוספה')},
+  stAddMany:async()=>{const n=await askNum('כמה תחנות להוסיף?');if(!n)return;const loc=(document.getElementById('stLoc')||{}).value||'';
+    for(let i=0;i<Math.min(n,60);i++)addStation(A._stSite,'',A._stType||'bp',loc);stationSheet();toast(`${Math.min(n,60)} תחנות נוספו`)},
+  stDel:async d=>{if(!await ask('למחוק את התחנה? המספור של השאר לא ישתנה.',{ok:'מחיקה',danger:true}))return;
+    const st=S.stations[d.p];if(st){st.removed=true;pushStation(st)}saveLocal();stationSheet()},
+  stClose:()=>{closeSheet();render()},
+  stAllOk:()=>{stationsOf(siteKey(cur)).forEach(x=>{cur.stationChecks[x.id]=Object.assign(cur.stationChecks[x.id]||{},{status:'תקין',no:x.no})});touch();render();toast('כל התחנות סומנו כתקינות')},
+  loadLastSheet:d=>{const L=S.journals[d.p];
+    sheet(`<h3>טעינה מיומן #${L.no}</h3><p class="hint" style="margin:0">${esc(L.client.name)} · ${fmtD(L.date)} · ${esc(placeText(L.place))}</p>
+      <p class="hint">התכשירים: ${esc(L.apps.map(a=>a.product).filter(Boolean).join(', ')||'—')}</p>
+      <div class="stack" style="margin-top:14px">
+       <button class="btn gold" data-a="loadLastAllFields" data-p="${L.id}">טעינת הכול (מזיקים, תכשירים, אצוות, אזהרות)</button>
+       <button class="btn" data-a="loadLastApps" data-p="${L.id}">תכשירים ואצוות בלבד</button>
+       <button class="btn ghost" data-a="closeSheet">ביטול</button>
+      </div>
+      <p class="hint">התאריך, השעה, החתימות והמיקום תמיד נשארים של הטיפול הנוכחי. ודאו שהאצווה והמינון מתאימים לטיפול הזה.</p>`)},
+  loadLastAllFields:d=>{const L=S.journals[d.p];loadFromJournal(L,'all');closeSheet();render();toast(`נטען מיומן #${L.no} – בדקו אצוות ומינונים`)},
+  loadLastApps:d=>{const L=S.journals[d.p];loadFromJournal(L,'apps');closeSheet();cur.step=3;render();toast(`נטענו ${L.apps.length} תכשירים מיומן #${L.no}`)},
+  loadRecent:()=>{
+    const rows=recentApps();const last=journals().filter(j=>j.status==='done'&&j.apps.some(a=>a.product)).sort((a,b)=>(b.completedAt||0)-(a.completedAt||0))[0];
+    sheet(`<h3>טעינה מיומנים אחרונים</h3><p class="hint" style="margin:0">בוחרים תכשיר ואצווה. מזיק ומינון מזינים מחדש לכל טיפול.</p>
+      ${last?`<button class="btn w" style="margin-top:12px" data-a="loadLastAll" data-p="${last.id}">${ic('copy',18)} כל התכשירים מיומן #${last.no} (${last.apps.filter(a=>a.product).length})</button>`:''}
+      ${rows.map((r,i)=>`<button class="pick" data-a="pickRecent" data-i="${i}"><div class="main"><b>${esc(r.a.product)}</b><small>אצווה: ${esc(r.a.batch)||'—'} · ${esc(r.a.active)} ${esc(r.a.conc)}</small><small>${esc(r.a.method==='אחר'?r.a.methodOther:r.a.method)}${r.a.unit?' · '+esc(r.a.unit==='אחר'?r.a.unitOther:r.a.unit):''} · יומן #${r.j.no}, ${fmtD(r.j.date)}</small></div><span class="plusb" aria-hidden="true">${ic('plus',18)}</span></button>`).join('')}
+      <button class="btn ghost w" style="margin-top:12px" data-a="closeSheet">סגירה</button>`);
+    A._recent=rows;
+  },
+  pickRecent:d=>{const r=A._recent[+d.i];addFromRecent(r.a);touch();closeSheet();render();toast(`${r.a.product} נוסף – השלימו מזיק ומינון`)},
+  loadLastAll:d=>{const j=S.journals[d.p];j.apps.filter(a=>a.product).forEach(addFromRecent);touch();closeSheet();render();toast(`נטענו התכשירים מיומן #${j.no} – השלימו מזיק ומינון`)},
+  closeSheet:()=>closeSheet(),
+  complete:async()=>{
+    const errs=validate(cur);
+    if(errs.length){showErr=true;cur.step=5;view='wizard';render();setTimeout(()=>document.getElementById('audit')?.scrollIntoView({behavior:'smooth'}),60);info(`חסרים ${errs.length} פרטים. הרשימה מופיעה ב"בדיקת תקינות היומן" – לחיצה על פריט מעבירה לשדה.`,'לא ניתן לסיים עדיין');return}
+    if(!await ask('לאחר הסיום לא ניתן לערוך את היומן. ה-PDF יופק מיד.',{title:`סיום יומן #${cur.no}`,ok:'סיום והפקה'}))return;
+    cur.status='done';cur.completedAt=Date.now();delete cur.step;
+    cur.apps.forEach(a=>{if(a.product&&!prodIdx.has(norm(a.product))){S.mine.push({n:a.product,a:[a.active,a.conc].filter(Boolean).join(' ')})}});buildIdx();
+    const learned=learnTemplates(cur);upsertClient(cur);touch();pushJournal(cur);const id=cur.id;cur=null;showErr=false;go('journal',id);
+    if(learned)setTimeout(()=>toast(`${learned} ניסוחים נשמרו לתבניות שלך`),2600);
+    ensurePdf(S.journals[id]).then(()=>{if(view==='journal'&&param===id)toast('ה-PDF מוכן')}).catch(e=>{});
+    info(`היומן נשמר בארכיון. קובץ ה-PDF מופק כעת ויופיע במסך למעלה.`,`יומן #${S.journals[id].no} הושלם`)},
+  makePdf:d=>{const j=S.journals[d.p];delete PDF[j.id];ensurePdf(j).catch(()=>{})},
+  pdf:d=>A.makePdf(d),
+  savePdf:async d=>{const j=S.journals[d.p],c=PDF[j.id];if(!c||c.state!=='ready')return toast('הקובץ עדיין מוכן');
+    let dl=null;try{dl=window.claude&&window.claude.use?await window.claude.use('downloads'):null}catch(e){dl=null}
+    if(dl){try{await dl.save({filename:pdfName(j),data:c.blob});toast('ה-PDF נשמר במכשיר');return}catch(e){if(e&&e.code==='declined')return;info('השמירה נכשלה: '+((e&&e.message)||e))}}
+    const a=document.createElement('a');a.href=c.url;a.download=pdfName(j);a.rel='noopener';document.body.appendChild(a);a.click();a.remove();
+    if(!dl)toast('אם הקובץ לא נשמר – נסו "פתיחת ה-PDF לצפייה" או "הדפסה"')},
+  diag:async d=>{const j=S.journals[d.p],c=PDF[j.id]||{};let dl='לא';try{dl=(window.claude&&window.claude.use&&await window.claude.use('downloads'))?'כן':'לא'}catch(e){dl='שגיאה'}
+    let share='לא';try{share=(navigator.canShare&&c.file&&navigator.canShare({files:[c.file]}))?'כן':(navigator.share?'טקסט בלבד':'לא')}catch(e){share='לא'}
+    info(['ספריית תמונה: '+(typeof html2canvas!=='undefined'?'נטענה':'לא נטענה'),
+      'ספריית PDF: '+(window.jspdf?'נטענה':'לא נטענה'),
+      'מצב הקובץ: '+(c.state||'לא התחיל')+(c.err?' – '+c.err:''),
+      'שמירה למכשיר: '+dl,'שיתוף קבצים: '+share,
+      'ענן: '+(DB?'מחובר':'לא מחובר'),'גרסה: 2.3'].join('\n'),'בדיקת מערכת')},
+  shareFile:d=>{const j=S.journals[d.p],c=PDF[j.id];if(!c||c.state!=='ready')return;
+    // call share synchronously inside the tap (iOS requires a user gesture)
+    navigator.share({files:[c.file],title:`יומן הדברה #${j.no}`,text:`יומן ביצוע הדברה מס׳ ${j.no} – ${j.company.name}`}).catch(e=>{if(e&&e.name!=='AbortError')info('השיתוף נכשל: '+(e.message||e.name))})},
+  print:()=>{try{window.print()}catch(e){toast('ההדפסה אינה זמינה כאן')}},
+  dup:async d=>{const s=S.journals[d.p];const no=await nextNo();cur=blankJournal(no,S.profile);
+    cur.client=clone(s.client);cur.place=clone(s.place);cur.opKind=s.opKind;cur.hasOperator=s.hasOperator;cur.operator=clone(s.operator);
+    S.journals[cur.id]=cur;touch();toast('פרטי לקוח ומקום הועתקו. שאר היומן ריק.');go('wizard')},
+  delPhoto:async d=>{if(!await ask('למחוק את התמונה?',{ok:'מחיקה',danger:true}))return;await delPhoto(d.p);render()},
+  delJ:async d=>{const j=S.journals[d.p];
+    if(j.status==='done'){const until=new Date(j.completedAt);until.setFullYear(until.getFullYear()+RETENTION_YEARS);if(Date.now()<until){await info(`יומן שהושלם נשמר לפחות ${RETENTION_YEARS} שנים. ניתן למחוק אותו החל מ-${until.toLocaleDateString('he-IL')}.`,'לא ניתן למחוק');return}}
+    if(!await ask(j.status==='draft'?'למחוק את הטיוטה?':'למחוק את היומן לצמיתות?',{ok:'מחיקה',danger:true}))return;if(cur&&cur.id===j.id)cur=null;delete S.journals[j.id];delete S.pending[j.id];saveLocal();if(DB){try{await DB.collection('pest_logs').doc(j.id).delete()}catch(e){}}go('archive')},
+  fltStatus:d=>{flt.status=d.val;render()},
+  pfLicense:d=>{S.profile.licenseType=d.val;A._pfErr=(A._pfErr||[]).filter(k=>k!=='licenseType');saveLocal();render()},
+  saveProfile:async()=>{
+    const labels={name:'שם מלא',license:'מספר רישיון',phone:'טלפון נייד',email:'דוא"ל',address:'כתובת',licenseType:'סוג רישיון',company:'שם החברה',vat:'ע.מ',companyPhone:'טלפון החברה',companyEmail:'דוא"ל החברה'};
+    const miss=Object.keys(labels).filter(k=>blankStr(S.profile[k]));
+    A._pfErr=miss;
+    if(miss.length){render();toast('חסר: '+miss.map(k=>labels[k]).join(', '));const el=document.querySelector('.field.err input,.chips.err');el&&el.scrollIntoView({block:'center',behavior:'smooth'});return}
+    if(!saveLocal())return;
+    if(cur&&cur.status==='draft'){/* refresh tech details in the open draft only if empty */}
+    if(DB){try{await DB.collection('data/users/me').doc('pest_profile').set(clone(S.profile));toast('הפרופיל נשמר בענן ובמכשיר')}catch(e){toast('הפרופיל נשמר במכשיר. יסונכרן לענן כשיהיה חיבור')}}
+    else toast('הפרופיל נשמר');
+    go('home')},
+};
+
+document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(!el)return;if(el.tagName==='A')return;e.preventDefault();const f=A[el.dataset.a];f&&f(el.dataset,e,el)});
+document.addEventListener('input',e=>{
+  const t=e.target;
+  if(t.dataset.sted){const st=S.stations[t.dataset.sted];if(st){st.loc=t.value;saveLocalSoon();clearTimeout(A._sl);A._sl=setTimeout(()=>pushStation(st),1000)}return}
+  if(t.dataset.pcap){const ph=S.photos[t.dataset.pcap];if(ph){ph.caption=t.value;saveLocalSoon();clearTimeout(A._pc);A._pc=setTimeout(()=>pushPhoto(ph),1200)}return}
+  if(t.dataset.flt!==undefined){flt[t.dataset.flt]=t.value;const k=t.dataset.flt,pos=t.selectionStart;render();const n=document.querySelector(`[data-flt="${k}"]`);if(n){n.focus();if(k==='q')try{n.setSelectionRange(pos,pos)}catch(_){}}return}
+  if(t.dataset.cl){const c=S.clients[param];if(c){const k=t.dataset.cl,old=c.name;c[k]=t.value;c.updatedAt=Date.now();
+    if(k==='name')journals().forEach(j=>{if(norm(j.client.name)===norm(old)){j.client.name=t.value;S.journals[j.id]=j;queuePush(j)}});
+    saveLocalSoon();clearTimeout(A._clp);A._clp=setTimeout(()=>pushClient(c),1000)}return}
+  if(t.dataset.pf){S.profile[t.dataset.pf]=t.value;if(A._pfErr){A._pfErr=A._pfErr.filter(k=>k!==t.dataset.pf);t.closest('.field')?.classList.remove('err')}saveLocalSoon();clearTimeout(A._pf);A._pf=setTimeout(pushProfile,1200);return}
+  const f=t.dataset.f;if(!f||!cur)return;
+  setP(cur,f,t.value);t.classList.remove('err');t.closest('.field')?.classList.remove('err');
+  const m=f.match(/^apps\.(\d+)\.product$/);if(m)productPicked(+m[1]);
+  if(f==='client.name'){acRender(t.value);touch();
+    clearTimeout(A._cl);A._cl=setTimeout(()=>{
+      const want=!!lastForClient(cur.client.name,cur.client.phone,cur.id),have=!!document.querySelector('[data-a="loadLastSheet"]');
+      if(want===have)return;
+      const el=document.querySelector('[data-f="client.name"]'),pos=el?el.selectionStart:0,open=!!document.querySelector('#acList .acitem');
+      render();
+      const n=document.querySelector('[data-f="client.name"]');
+      if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(_){}if(open)acRender(n.value)}
+    },700);
+    return}
+  touch();
+});
+document.addEventListener('change',async e=>{
+  const t=e.target;
+  if(t.dataset.photo&&cur){
+    const files=[...t.files];t.value='';if(!files.length)return;
+    toast(files.length>1?`מעבד ${files.length} תמונות...`:'מעבד תמונה...');
+    for(const f of files){
+      try{const src=await compressImg(f);const ph={id:uid(),jid:cur.id,kind:t.dataset.photo,caption:'',src,at:Date.now()};
+        S.photos[ph.id]=ph;pushPhoto(ph);}
+      catch(err){info((err&&err.message)||'התמונה לא נקראה','תמונה')}
+    }
+    if(!saveLocal())info('אין מספיק מקום במכשיר לתמונות נוספות. מחקו תמונות ישנות.','אחסון');
+    render();toast('התמונות נוספו');return;
+  }
+  if(t.dataset.st&&cur){const id=t.dataset.st;const st=S.stations[id];
+    cur.stationChecks[id]=Object.assign(cur.stationChecks[id]||{},{status:t.value,no:st?st.no:0,type:st?st.type:'',loc:st?st.loc:''});touch();render();return}
+  if(t.dataset.sted){const st=S.stations[t.dataset.sted];if(st){st.loc=t.value;saveLocalSoon();clearTimeout(A._sl);A._sl=setTimeout(()=>pushStation(st),1000)}return}
+  if(t.dataset.pcap){const ph=S.photos[t.dataset.pcap];if(ph){ph.caption=t.value;saveLocalSoon();pushPhoto(ph)}return}
+  if(t.dataset.c&&cur){setP(cur,t.dataset.c,t.checked);t.closest('.check')?.classList.remove('err');touch();return}
+  if(t.tagName==='SELECT'&&t.dataset.f&&cur){setP(cur,t.dataset.f,t.value);touch();render()}
+});
+function productPicked(i){
+  const a=cur.apps[i],p=prodIdx.get(norm(a.product));if(!p)return;
+  const {active,conc}=splitActive(p.a);
+  a.product=p.n;if(active)a.active=active;if(conc)a.conc=conc;a.fromDb=true;
+  [['active',a.active],['conc',a.conc]].forEach(([k,v])=>{const el=document.querySelector(`[data-f="apps.${i}.${k}"]`);if(el)el.value=v});
+  const n=document.getElementById('dbnote-'+i);if(n)n.innerHTML=dbNote(i);
+}
+window.addEventListener('beforeunload',()=>{clearTimeout(saveT);saveLocal()});
+
+function crash(msg){
+  let el=document.getElementById('crash');
+  if(!el){el=document.createElement('div');el.id='crash';el.className='crash';document.body.appendChild(el);
+    el.addEventListener('click',e=>{if(e.target.tagName==='BUTTON')el.remove()})}
+  el.innerHTML=`<b>שגיאה באפליקציה:</b> ${esc(msg)}<br><button>סגירה</button>`;
+}
+window.addEventListener('error',e=>crash((e.message||'')+' · '+(e.filename||'').split('/').pop()+':'+e.lineno));
+window.addEventListener('unhandledrejection',e=>crash('Promise: '+((e.reason&&(e.reason.message||e.reason.code))||e.reason)));
+try{localStorage.setItem('yp-test','1');localStorage.removeItem('yp-test')}catch(e){setTimeout(()=>crash('אין גישה לאחסון המקומי במכשיר: '+e.message),500)}
+document.addEventListener('focusin',e=>{if(e.target.dataset&&e.target.dataset.f==='client.name')acRender(e.target.value)});
+document.addEventListener('focusout',e=>{if(e.target.dataset&&e.target.dataset.f==='client.name')setTimeout(()=>{const b=document.getElementById('acList');if(b&&!b.contains(document.activeElement))b.innerHTML=''},250)});
+render();
+initCloud();
+</script>
+</body>
+</html>
