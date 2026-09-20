@@ -536,10 +536,6 @@ function validate(j){
       req(6,`apps.${i}.pest`,n+'המזיק שטופל');
       if(a.pest&&!(lp.targetPests||[]).includes(a.pest))
         add(6,`apps.${i}.pest`,n+`המזיק ${a.pest} אינו מופיע בתווית של ${lp.nameHe}`);
-      if(needsSurface(lp))req(6,`apps.${i}.surface`,n+'סוג המשטח');
-      req(6,`apps.${i}.dosageId`,n+'מינון מהתווית');
-      if(a.dosageId&&!allowedDosages(lp,a.pest,a.surface).some(d=>d.id===a.dosageId))
-        add(6,`apps.${i}.dosageId`,n+'המינון שנבחר אינו מתאים למזיק או למשטח שנבחרו');
       pendingConditionals(lp,a).forEach(c=>
         add(6,`apps.${i}.${c.questionKey}`,n+c.question,3));
       [['batch','מספר אצווה שעל האריזה'],['pkgExpiry','תאריך תפוגה שעל האריזה'],
@@ -1169,10 +1165,9 @@ function docHTML(j){
     <div class="avoid"><h3>מידע מקצועי למדביר</h3>
     ${g.map(x=>{const p=x.label;const L=(t,arr)=>(arr||[]).length?`<p style="margin:2px 0"><b>${t}:</b> ${arr.map(esc).join(' ')}</p>`:'';
       return `<p style="margin:4px 0 2px"><b>${esc(p.nameHe)}</b></p>
-      ${L('מגבלות שימוש',p.applicationRestrictions)}
       ${(p.professionalPpe||[]).length?L('ציוד מגן אישי',p.professionalPpe):'<p style="margin:2px 0;color:#666">ציוד מגן אישי: לא הוזנו נתונים מהתווית.</p>'}
       ${(p.firstAid||[]).length?L('עזרה ראשונה',p.firstAid):'<p style="margin:2px 0;color:#666">עזרה ראשונה: לא הוזנו נתונים מהתווית.</p>'}`}).join('')}
-    <p style="margin:6px 0 0;font-size:10px;color:#666">המידע מבוסס על התוויות שנבדקו ונרשמו במערכת. חובה לפעול לפי התווית העדכנית ולפי תנאי רישיון המדביר.</p></div>`})()}
+    <p style="margin:6px 0 0;font-size:10px;color:#666">מינונים ומגבלות ריסוס אינם נשמרים במערכת ויש לקחתם מהתווית העדכנית. המידע מבוסס על התוויות שנבדקו ונרשמו במערכת. חובה לפעול לפי התווית העדכנית ולפי תנאי רישיון המדביר.</p></div>`})()}
   <div class="avoid"><h3>אזהרות ומידע ללקוח במהלך ההדברה ובסיומה</h3>
   ${j.natureAfter?`<p class="pre"><b>טיב ההדברה שבוצעה:</b> ${esc(j.natureAfter)}</p>`:''}
   <p class="pre">${esc(j.warnAfter)||'—'}</p>
@@ -2292,7 +2287,7 @@ A.newJ=async()=>{
    להעתיק נתון מתכשיר אחר, גם אם החומר הפעיל דומה.
    ========================================================= */
 /*PESTICIDES_START*/
-const PEST_CATALOG={"schemaVersion":1,"generatedAt":"2026-09-20","disclaimer":"המידע מבוסס על התוויות שנבדקו ונרשמו כאן. אין בו אישור גורף לעמידה בחוק. חובה לפעול לפי התווית העדכנית של המוצר ולפי תנאי רישיון המדביר.","products":[{"id":"dragon","nameHe":"דרגון","category":"crawling_insects","formulation":"","registrationNumber":"640","registrationExpiry":"2030","activeIngredients":[{"name":"Bifenthrin","percent":"9.6%"}],"targetPests":["תיקנים","פשפש המיטה","חרקים זוחלים אחרים"],"warningsHuman":["רעיל בבליעה.","עלול להיות קטלני בבליעה ובחדירה לנתיבי האוויר.","עלול לגרום לתגובה אלרגית בעור.","עלול לגרום נזק לאיברים בחשיפה ממושכת או חוזרת."],"warningsAnimals":["רעיל לדבורים; אין לרסס בזמן פעילות דבורים, סמוך לכוורות או על צמחים פורחים המייצרים צוף או אבקה."],"warningsEnvironment":["רעיל מאוד לדגים וליצורים החיים במים ועלול לגרום נזק ארוך טווח לסביבה המימית.","אין לרוקן למערכות ביוב."],"customerInstructionsBefore":[],"customerInstructionsAfter":["כניסה מחדש רק לאחר התייבשות החומר ואוורור המקום, ולא פחות משעה לאחר הריסוס."],"professionalPpe":[],"firstAid":[],"applicationRestrictions":["אין לרסס מזרנים, מצעים וכלי מיטה."],"dosages":[{"id":"dragon-crawling","conditionType":"pest","forPests":["תיקנים","חרקים זוחלים אחרים"],"method":"spray","text":"100 סמ\"ק ל-10 ליטר מים; ליטר תרסיס לכ-25 מ\"ר.","concentrate":"100 סמ\"ק","water":"10 ליטר","coverage":"ליטר תרסיס לכ-25 מ\"ר"},{"id":"dragon-bedbug","conditionType":"pest","forPests":["פשפש המיטה"],"method":"spray","text":"100 סמ\"ק ל-10 ליטר מים; ליטר תרסיס לכ-10 מ\"ר.","concentrate":"100 סמ\"ק","water":"10 ליטר","coverage":"ליטר תרסיס לכ-10 מ\"ר"}],"reentry":{"type":"numeric","minutes":60,"text":"כניסה מחדש רק לאחר התייבשות החומר ואוורור המקום, ולא פחות משעה לאחר הריסוס."},"officialLabelUrl":"https://documents.sviva.gov.il/PesticideLabel_781.pdf","sourceType":"official_ministry","verificationStatus":"verified","isSelectable":true,"lastVerifiedAt":"2026-09-20","labelSha256":"","statusLabel":"אומת מתווית רשמית","verificationMethod":"label_transcribed_by_licensee","verificationNote":"הנתונים הועתקו מתווית המוצר על ידי בעל הרישיון. קובץ התווית לא הורד ולא אומת אוטומטית על ידי המערכת (labelSha256 ריק). חובה לפעול לפי התווית העדכנית ולפי תנאי רישיון המדביר.","conditionalInstructions":[{"id":"dragon-bedframe-24h","audience":"customer","forPests":["פשפש המיטה"],"question":"האם רוסס גוף או בסיס המיטה?","questionKey":"bedFrameSprayed","text":"אם רוסס גוף או מסגרת המיטה, אין לישון עליהם במשך 24 שעות."}],"preparationSteps":[],"stationTracking":false},{"id":"draker-10-2","nameHe":"דרקר 10.2","category":"crawling_insects","formulation":"","registrationNumber":"569","registrationExpiry":"2028","activeIngredients":[{"name":"Cypermethrin","percent":"10%"},{"name":"Tetramethrin","percent":"2%"},{"name":"Piperonyl Butoxide","percent":"10%"}],"targetPests":["תיקנים","נמלים","חרקים זוחלים אחרים","זבובים","יתושים","חרקים מעופפים אחרים"],"warningsHuman":["רעיל בבליעה.","גורם לגירוי בעור.","גורם לגירוי חמור בעיניים.","גורם לגירוי במערכת הנשימה.","חשוד כגורם לסרטן במקרה של שאיפה.","עלול לגרום לתחושת נימול."],"warningsAnimals":["רעיל לדבורים ולמאביקים; אין לרסס בזמן פעילות דבורים, בקרבת כוורות או על צמחים פורחים.","אין לרסס על בעלי חיים."],"warningsEnvironment":["רעיל ליצורים החיים במים ועלול לגרום השפעות ארוכות טווח לסביבה המימית.","אין לזהם בריכות דגים או מאגרי מי שתייה."],"customerInstructionsBefore":[],"customerInstructionsAfter":["כניסה מחדש לאחר התייבשות החומר, אוורור המקום ולפחות שעה לאחר הריסוס."],"professionalPpe":[],"firstAid":[],"applicationRestrictions":["אין לרסס על בעלי חיים, מזון, מזון לבעלי חיים, מספוא, כלי אוכל או משטחי הכנת מזון.","אין לרסס באוויר לצורך הדברת חרקים מעופפים; יש לרסס רק משטחים בהתאם לתווית."],"dosages":[{"id":"draker-nonabsorbent","conditionType":"surface","conditionLabel":"סוג המשטח","conditionValue":"משטח שאינו סופג","forPests":["תיקנים","נמלים","חרקים זוחלים אחרים","זבובים","יתושים","חרקים מעופפים אחרים"],"method":"spray","text":"5-10 מ\"ל לליטר מים; ליטר תמיסה מוכן לכ-25 מ\"ר.","concentrate":"5-10 מ\"ל","water":"ליטר","coverage":"ליטר תמיסה מוכן לכ-25 מ\"ר"},{"id":"draker-absorbent","conditionType":"surface","conditionLabel":"סוג המשטח","conditionValue":"משטח סופג","forPests":["תיקנים","נמלים","חרקים זוחלים אחרים","זבובים","יתושים","חרקים מעופפים אחרים"],"method":"spray","text":"10-20 מ\"ל לליטר מים; ליטר תמיסה מוכן לכ-25 מ\"ר.","concentrate":"10-20 מ\"ל","water":"ליטר","coverage":"ליטר תמיסה מוכן לכ-25 מ\"ר"}],"reentry":{"type":"numeric","minutes":60,"text":"כניסה מחדש לאחר התייבשות החומר, אוורור המקום ולפחות שעה לאחר הריסוס."},"officialLabelUrl":"https://rpc.co.il/docs/draker-tavit.pdf","sourceType":"manufacturer_label","verificationStatus":"verified","isSelectable":true,"lastVerifiedAt":"2026-09-20","labelSha256":"","statusLabel":"אומת מתווית היצרן","verificationMethod":"label_transcribed_by_licensee","verificationNote":"הנתונים הועתקו מתווית המוצר על ידי בעל הרישיון. קובץ התווית לא הורד ולא אומת אוטומטית על ידי המערכת (labelSha256 ריק). חובה לפעול לפי התווית העדכנית ולפי תנאי רישיון המדביר.","conditionalInstructions":[],"preparationSteps":[],"stationTracking":false},{"id":"pastion-plus-pasta","nameHe":"פסטיון פלוס פסטה","category":"rodents","formulation":"","registrationNumber":"584","registrationExpiry":"2030","activeIngredients":[{"name":"Brodifacoum","percent":"0.005%"},{"name":"Denatonium Benzoate","percent":"0.001%","role":"חומר מר"}],"targetPests":["עכברים","חולדות"],"warningsHuman":["רעיל במגע עם העור ובבליעה.","עלול לגרום נזק למערכת הדם בחשיפה ממושכת או חוזרת.","עלול לפגוע בפוריות או בעובר."],"warningsAnimals":["רעיל לבעלי חיים, לרבות ציפורים וחיות מחמד."],"warningsEnvironment":["רעיל לדגים וליצורים החיים במים.","אין להשתמש בקרבת מקווה מים."],"customerInstructionsBefore":[],"customerInstructionsAfter":["אין לגעת בשקיות הפיתיון בידיים חשופות.","אין להזיז את תיבות ההאכלה."],"professionalPpe":[],"firstAid":[],"applicationRestrictions":["יש להשתמש בפיתיונות בתוך תיבות האכלה בלבד, למעט החריגים המפורשים בתווית לגבי עומק מחילות ובורות ביוב.","יש לקבע את הפיתיון בתוך תיבת ההאכלה ולקבע את התיבה כך שלא יהיה ניתן להזיזה.","יש לבדוק את התיבות לפי הצורך.","בסיום העבודה יש לאסוף את תיבות ההאכלה ואת פגרי המכרסמים הנראים בשטח.","אין לגעת בשקיות הפיתיון בידיים חשופות."],"dosages":[{"id":"pastion-rats","conditionType":"pest","forPests":["חולדות"],"method":"bait_station","text":"כ-100-300 גרם לתיבת האכלה; מרחק של 5-15 מטר בין התיבות, בהתאם לנגיעות ולתוואי.","amountPerStation":"100-300 גרם לתיבת האכלה","stationSpacing":"5-15 מטר בין התיבות, בהתאם לנגיעות ולתוואי"},{"id":"pastion-mice","conditionType":"pest","forPests":["עכברים"],"method":"bait_station","text":"כ-10-60 גרם לתיבת האכלה; מרחק של 2-5 מטר בין התיבות, בהתאם לנגיעות ולתוואי.","amountPerStation":"10-60 גרם לתיבת האכלה","stationSpacing":"2-5 מטר בין התיבות, בהתאם לנגיעות ולתוואי"}],"reentry":{"type":"not_applicable_by_label","minutes":null,"text":"פיתיון בתיבות האכלה; יש לפעול לפי מגבלות התווית ומיקום התיבות"},"officialLabelUrl":"https://documents.sviva.gov.il/PesticideLabel_701.pdf","sourceType":"official_ministry","verificationStatus":"verified","isSelectable":true,"lastVerifiedAt":"2026-09-20","labelSha256":"","statusLabel":"אומת מתווית רשמית","verificationMethod":"label_transcribed_by_licensee","verificationNote":"הנתונים הועתקו מתווית המוצר על ידי בעל הרישיון. קובץ התווית לא הורד ולא אומת אוטומטית על ידי המערכת (labelSha256 ריק). חובה לפעול לפי התווית העדכנית ולפי תנאי רישיון המדביר.","conditionalInstructions":[],"preparationSteps":[],"stationTracking":true},{"id":"blokion-plus","nameHe":"בלוקיון פלוס","category":"rodents","formulation":"","registrationNumber":"","registrationExpiry":"","activeIngredients":[],"targetPests":[],"warningsHuman":[],"warningsAnimals":[],"warningsEnvironment":[],"customerInstructionsBefore":[],"customerInstructionsAfter":[],"professionalPpe":[],"firstAid":[],"applicationRestrictions":[],"dosages":[],"reentry":{"type":"","minutes":null,"text":""},"officialLabelUrl":"","sourceType":"","verificationStatus":"blocked","isSelectable":false,"lastVerifiedAt":"","labelSha256":"","statusLabel":"ממתין לאימות תווית ורישום בתוקף","verificationMethod":"","verificationNote":"לא אותרה תווית רשמית בתוקף עבור מוצר זה. גישת הרשת לאתרי המשרד להגנת הסביבה חסומה בסביבת הפיתוח, ולכן לא בוצע חיפוש במאגר הרשמי. אין להשתמש במוצר ביומן טיפול עד לאיתור תווית רשמית ועדכנית ואימות כל הנתונים מולה. אין להעתיק לכאן נתונים מפסטיון פלוס או מכל תכשיר אחר.","conditionalInstructions":[],"preparationSteps":[],"stationTracking":true}]};
+const PEST_CATALOG={"schemaVersion":1,"generatedAt":"2026-09-20","disclaimer":"מינונים ומגבלות ריסוס אינם נשמרים במערכת ואינם מוצגים בה. יש לקחת אותם מהתווית העדכנית של המוצר בכל טיפול. המערכת מציגה את אזהרות הסיכון, ההנחיות ללקוח וזמן הכניסה מחדש שנרשמו מהתווית. אין באמור אישור גורף לעמידה בחוק; חובה לפעול לפי התווית העדכנית ולפי תנאי רישיון המדביר.","products":[{"id":"dragon","nameHe":"דרגון","category":"crawling_insects","formulation":"","registrationNumber":"640","registrationExpiry":"2030","activeIngredients":[{"name":"Bifenthrin","percent":"9.6%"}],"targetPests":["תיקנים","פשפש המיטה","חרקים זוחלים אחרים"],"warningsHuman":["רעיל בבליעה.","עלול להיות קטלני בבליעה ובחדירה לנתיבי האוויר.","עלול לגרום לתגובה אלרגית בעור.","עלול לגרום נזק לאיברים בחשיפה ממושכת או חוזרת."],"warningsAnimals":["רעיל לדבורים; אין לרסס בזמן פעילות דבורים, סמוך לכוורות או על צמחים פורחים המייצרים צוף או אבקה."],"warningsEnvironment":["רעיל מאוד לדגים וליצורים החיים במים ועלול לגרום נזק ארוך טווח לסביבה המימית.","אין לרוקן למערכות ביוב."],"customerInstructionsBefore":[],"customerInstructionsAfter":["כניסה מחדש רק לאחר התייבשות החומר ואוורור המקום, ולא פחות משעה לאחר הריסוס."],"professionalPpe":[],"firstAid":[],"applicationRestrictions":[],"dosages":[],"reentry":{"type":"numeric","minutes":60,"text":"כניסה מחדש רק לאחר התייבשות החומר ואוורור המקום, ולא פחות משעה לאחר הריסוס."},"officialLabelUrl":"https://documents.sviva.gov.il/PesticideLabel_781.pdf","sourceType":"official_ministry","verificationStatus":"verified","isSelectable":true,"lastVerifiedAt":"2026-09-20","labelSha256":"","statusLabel":"אומת מתווית רשמית","verificationMethod":"label_transcribed_by_licensee","verificationNote":"הנתונים הועתקו מתווית המוצר על ידי בעל הרישיון. קובץ התווית לא הורד ולא אומת אוטומטית על ידי המערכת (labelSha256 ריק). חובה לפעול לפי התווית העדכנית ולפי תנאי רישיון המדביר.","conditionalInstructions":[{"id":"dragon-bedframe-24h","audience":"customer","forPests":["פשפש המיטה"],"question":"האם רוסס גוף או בסיס המיטה?","questionKey":"bedFrameSprayed","text":"אם רוסס גוף או מסגרת המיטה, אין לישון עליהם במשך 24 שעות."}],"preparationSteps":[],"stationTracking":false},{"id":"draker-10-2","nameHe":"דרקר 10.2","category":"crawling_insects","formulation":"","registrationNumber":"569","registrationExpiry":"2028","activeIngredients":[{"name":"Cypermethrin","percent":"10%"},{"name":"Tetramethrin","percent":"2%"},{"name":"Piperonyl Butoxide","percent":"10%"}],"targetPests":["תיקנים","נמלים","חרקים זוחלים אחרים","זבובים","יתושים","חרקים מעופפים אחרים"],"warningsHuman":["רעיל בבליעה.","גורם לגירוי בעור.","גורם לגירוי חמור בעיניים.","גורם לגירוי במערכת הנשימה.","חשוד כגורם לסרטן במקרה של שאיפה.","עלול לגרום לתחושת נימול."],"warningsAnimals":["רעיל לדבורים ולמאביקים; אין לרסס בזמן פעילות דבורים, בקרבת כוורות או על צמחים פורחים.","אין לרסס על בעלי חיים."],"warningsEnvironment":["רעיל ליצורים החיים במים ועלול לגרום השפעות ארוכות טווח לסביבה המימית.","אין לזהם בריכות דגים או מאגרי מי שתייה."],"customerInstructionsBefore":[],"customerInstructionsAfter":["כניסה מחדש לאחר התייבשות החומר, אוורור המקום ולפחות שעה לאחר הריסוס."],"professionalPpe":[],"firstAid":[],"applicationRestrictions":[],"dosages":[],"reentry":{"type":"numeric","minutes":60,"text":"כניסה מחדש לאחר התייבשות החומר, אוורור המקום ולפחות שעה לאחר הריסוס."},"officialLabelUrl":"https://rpc.co.il/docs/draker-tavit.pdf","sourceType":"manufacturer_label","verificationStatus":"verified","isSelectable":true,"lastVerifiedAt":"2026-09-20","labelSha256":"","statusLabel":"אומת מתווית היצרן","verificationMethod":"label_transcribed_by_licensee","verificationNote":"הנתונים הועתקו מתווית המוצר על ידי בעל הרישיון. קובץ התווית לא הורד ולא אומת אוטומטית על ידי המערכת (labelSha256 ריק). חובה לפעול לפי התווית העדכנית ולפי תנאי רישיון המדביר.","conditionalInstructions":[],"preparationSteps":[],"stationTracking":false},{"id":"pastion-plus-pasta","nameHe":"פסטיון פלוס פסטה","category":"rodents","formulation":"","registrationNumber":"584","registrationExpiry":"2030","activeIngredients":[{"name":"Brodifacoum","percent":"0.005%"},{"name":"Denatonium Benzoate","percent":"0.001%","role":"חומר מר"}],"targetPests":["עכברים","חולדות"],"warningsHuman":["רעיל במגע עם העור ובבליעה.","עלול לגרום נזק למערכת הדם בחשיפה ממושכת או חוזרת.","עלול לפגוע בפוריות או בעובר."],"warningsAnimals":["רעיל לבעלי חיים, לרבות ציפורים וחיות מחמד."],"warningsEnvironment":["רעיל לדגים וליצורים החיים במים.","אין להשתמש בקרבת מקווה מים."],"customerInstructionsBefore":[],"customerInstructionsAfter":["אין לגעת בשקיות הפיתיון בידיים חשופות.","אין להזיז את תיבות ההאכלה."],"professionalPpe":[],"firstAid":[],"applicationRestrictions":[],"dosages":[],"reentry":{"type":"not_applicable_by_label","minutes":null,"text":"פיתיון בתיבות האכלה; יש לפעול לפי מגבלות התווית ומיקום התיבות"},"officialLabelUrl":"https://documents.sviva.gov.il/PesticideLabel_701.pdf","sourceType":"official_ministry","verificationStatus":"verified","isSelectable":true,"lastVerifiedAt":"2026-09-20","labelSha256":"","statusLabel":"אומת מתווית רשמית","verificationMethod":"label_transcribed_by_licensee","verificationNote":"הנתונים הועתקו מתווית המוצר על ידי בעל הרישיון. קובץ התווית לא הורד ולא אומת אוטומטית על ידי המערכת (labelSha256 ריק). חובה לפעול לפי התווית העדכנית ולפי תנאי רישיון המדביר.","conditionalInstructions":[],"preparationSteps":[],"stationTracking":true},{"id":"blokion-plus","nameHe":"בלוקיון פלוס","category":"rodents","formulation":"","registrationNumber":"","registrationExpiry":"","activeIngredients":[],"targetPests":[],"warningsHuman":[],"warningsAnimals":[],"warningsEnvironment":[],"customerInstructionsBefore":[],"customerInstructionsAfter":[],"professionalPpe":[],"firstAid":[],"applicationRestrictions":[],"dosages":[],"reentry":{"type":"","minutes":null,"text":""},"officialLabelUrl":"","sourceType":"","verificationStatus":"blocked","isSelectable":false,"lastVerifiedAt":"","labelSha256":"","statusLabel":"ממתין לאימות תווית ורישום בתוקף","verificationMethod":"","verificationNote":"לא אותרה תווית רשמית בתוקף עבור מוצר זה. גישת הרשת לאתרי המשרד להגנת הסביבה חסומה בסביבת הפיתוח, ולכן לא בוצע חיפוש במאגר הרשמי. אין להשתמש במוצר ביומן טיפול עד לאיתור תווית רשמית ועדכנית ואימות כל הנתונים מולה. אין להעתיק לכאן נתונים מפסטיון פלוס או מכל תכשיר אחר.","conditionalInstructions":[],"preparationSteps":[],"stationTracking":true}]};
 /*PESTICIDES_END*/
 const PRODUCTS=()=>(PEST_CATALOG.products||[]);
 const prodById=id=>PRODUCTS().find(p=>p.id===id)||null;
@@ -2462,17 +2457,7 @@ function professionalView(j){
    ${groups.map(g=>{const p=g.label;return `<div class="pgroup pro">
      <div class="pgh">${esc(p.nameHe)}</div>
      ${labelMeta(p)}
-     ${listBox('מגבלות שימוש',p.applicationRestrictions)}
-     ${(()=>{/* רק המינונים הרלוונטיים לטיפול הזה, כדי שמינון של מזיק אחר לא יוצג */
-       const mine=(j.apps||[]).filter(x=>(x.pid||((x.labelSnapshot||{}).id))===p.id);
-       const picked=mine.some(x=>x.pest)
-         ? [...new Set(mine.flatMap(x=>allowedDosages(p,x.pest,x.surface)).map(d=>d.id))]
-             .map(id=>(p.dosages||[]).find(d=>d.id===id)).filter(Boolean)
-         : (p.dosages||[]);
-       const rest=(p.dosages||[]).length-picked.length;
-       return listBox(mine.some(x=>x.pest)?'מינון מהתווית לטיפול הזה':'מינונים מהתווית',
-         picked.map(d=>(d.conditionValue?d.conditionValue+': ':'')+d.text+((d.forPests||[]).length?' ('+d.forPests.join(', ')+')':'')))
-         +(rest>0?`<p class="opt">בתווית יש עוד ${rest} מינונים למזיקים או למשטחים אחרים. לצפייה בהם פתחו את התווית המקורית.</p>`:'')})()}
+     ${emptyNote('מינונים ומגבלות ריסוס אינם נשמרים במערכת. יש לקחת אותם מהתווית העדכנית של המוצר.')}
      ${(p.professionalPpe||[]).length?listBox('ציוד מגן אישי',p.professionalPpe)
        :emptyNote('ציוד מגן אישי: לא הוזנו נתונים מהתווית. יש לפעול לפי התווית ולפי תנאי הרישיון.')}
      ${(p.firstAid||[]).length?listBox('עזרה ראשונה',p.firstAid)
@@ -2491,8 +2476,6 @@ function catalogBox(a,i){
     ${blockedNote()}
    </div></div>`;
   const pests=p.targetPests||[];
-  const surf=needsSurface(p),sOpts=surfaceOptions(p);
-  const dos=allowedDosages(p,a.pest,a.surface);
   const pend=pendingConditionals(p,a);
   return `<div class="sec"><div class="sech"><h3>${esc(p.nameHe)}</h3>
      <button class="del" data-a="clearProd" data-i="${i}">החלפת תכשיר</button></div><div class="secb">
@@ -2502,10 +2485,6 @@ function catalogBox(a,i){
      <div class="chips${ec(`apps.${i}.pest`)}" data-fw="apps.${i}.pest">
        ${pests.map(x=>`<button type="button" class="chip ${a.pest===x?'on':''}" data-a="setPest" data-i="${i}" data-val="${esc(x)}">${esc(x)}</button>`).join('')}</div>
      <p class="hint">ניתן לבחור רק מזיק המופיע בתווית של ${esc(p.nameHe)}.</p></div>
-   ${surf?`<div class="field"><span class="flabel req">סוג המשטח</span>
-     <div class="seg${ec(`apps.${i}.surface`)}" data-fw="apps.${i}.surface">
-      ${sOpts.map(x=>`<button type="button" class="${a.surface===x?'on':''}" data-a="setSurface" data-i="${i}" data-val="${esc(x)}">${esc(x)}</button>`).join('')}</div>
-     ${a.surface?'':'<p class="hint">יש לבחור סוג משטח לפני הצגת המינון.</p>'}</div>`:''}
    ${pend.map(c=>`<div class="qbox" data-fw="apps.${i}.${c.questionKey}">
       <b>${esc(c.question)}</b>
       <div class="seg"><button type="button" data-a="setCond" data-i="${i}" data-k="${c.questionKey}" data-val="yes">כן</button>
@@ -2514,14 +2493,8 @@ function catalogBox(a,i){
      `<div class="qbox done"><b>${esc(c.question)}</b> <span>${a[c.questionKey]?'כן':'לא'}</span>
       <button class="link" data-a="setCond" data-i="${i}" data-k="${c.questionKey}" data-val="clear">שינוי</button>
       ${a[c.questionKey]?`<p class="bad">${esc(c.text)}</p>`:''}</div>`).join('')}
-   <div class="field"><span class="flabel req">מינון מהתווית</span>
-     ${(surf&&!a.surface)?'<p class="hint">בחרו סוג משטח כדי לראות את המינון המאושר.</p>'
-      :!a.pest?'<p class="hint">בחרו מזיק כדי לראות את המינון המאושר.</p>'
-      :dos.length?`<div class="dosset${ec(`apps.${i}.dosageId`)}" data-fw="apps.${i}.dosageId">${dos.map(d=>`<button type="button" class="dos ${a.dosageId===d.id?'on':''}" data-a="setDos" data-i="${i}" data-p="${d.id}">
-          <b>${esc(d.text)}</b>${d.amountPerStation?`<small>${esc(d.amountPerStation)} · ${esc(d.stationSpacing||'')}</small>`:''}
-          ${d.conditionValue?`<small>${esc(d.conditionValue)}</small>`:''}</button>`).join('')}</div>`
-      :'<p class="errtxt">אין בתווית מינון למזיק שנבחר. יש לבחור מזיק אחר או תכשיר אחר.</p>'}</div>
-   <div class="note">אזהרות המוצר, מגבלות השימוש וזמן הכניסה מחדש נטענים מהתווית ואינם ניתנים לעריכה ידנית.</div>
+   <div class="note">אזהרות המוצר וזמן הכניסה מחדש נטענים מהתווית ואינם ניתנים לעריכה ידנית.
+     מינונים ומגבלות ריסוס אינם נשמרים במערכת – יש לקחת אותם מהתווית העדכנית בכל טיפול.</div>
   </div></div>`;
 }
 const blockedNote=()=>{
@@ -2572,8 +2545,7 @@ const TREATMENTS=[
   needsAnswer:'bedFrameSprayed'},
  {id:'t-draker-crawling',pid:'draker-10-2',name:'דרקר 10.2 – חרקים זוחלים',
   pests:['תיקנים','נמלים','חרקים זוחלים אחרים'],
-  method:'ריסוס נקודתי במקומות מסתור',
-  needsSurface:true},
+  method:'ריסוס נקודתי במקומות מסתור'},
  {id:'t-pastion-mice',pid:'pastion-plus-pasta',name:'פסטיון פלוס – עכברים',
   pests:['עכברים'],pest:'עכברים',
   method:'הצבת פיתיון בתיבות האכלה'},
@@ -2596,7 +2568,7 @@ const TPL_STATE_TXT={ok:'מוכנה לשימוש',choice:'דורשת השלמת 
 function tplCard(t){
   const p=prodById(t.pid),st=tplState(t);
   const why=st==='blocked'?(t.lockedNote||prodBlockReason(p)):
-    st==='choice'?(t.needsSurface?'יש לבחור סוג משטח':'יש להשיב על שאלת ההכנה'):'';
+    st==='choice'?'יש להשיב על שאלת ההכנה':'';
   return `<button type="button" class="tcard ${st}" ${st==='blocked'?'disabled aria-disabled="true"':''}
     data-a="useTpl" data-p="${t.id}">
     <span class="ticon">${st==='blocked'?ic('lock',24):ic(p&&p.category==='rodents'?'mouse':'bug',24)}</span>
@@ -2790,11 +2762,6 @@ function applyTreatment(j,t){
   const p=prodById(t.pid);if(!p||prodBlocked(p))return;
   const a=j.apps[0]||newApp();
   applyProduct(a,p,{pest:t.pest||null});
-  if(t.pest&&(p.targetPests||[]).includes(t.pest)){
-    const d=allowedDosages(p,t.pest,'');
-    if(d.length===1)a.dosageId=d[0].id;
-    syncDose(a);
-  }
   j.apps=[a];
   j.tplId=t.id;j.tplName=t.name;j.tplMethod=t.method||'';
   if(t.pest&&!(j.findings||[]).some(f=>f.pest===t.pest)){

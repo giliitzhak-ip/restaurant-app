@@ -60,6 +60,14 @@ ok('אזהרות פסטיון לא הועתקו לבלוקיון',
 ok('לא נטען hash של קובץ תווית לאף מוצר',SEED.products.every(p=>p.labelSha256===''));
 ok('לכל מוצר פעיל יש הערת מקור המסבירה את האימות',
    SEED.products.filter(p=>p.verificationStatus!=='blocked').every(p=>!!p.verificationNote));
+ok('אין מינונים באף מוצר',SEED.products.every(p=>p.dosages.length===0),
+   SEED.products.map(p=>p.id+':'+p.dosages.length).join(' '));
+ok('אין מגבלות ריסוס באף מוצר',SEED.products.every(p=>p.applicationRestrictions.length===0),
+   SEED.products.map(p=>p.id+':'+p.applicationRestrictions.length).join(' '));
+ok('אזהרות הסיכון נשמרו',byId('dragon').warningsHuman.length===4&&byId('draker-10-2').warningsHuman.length===6);
+ok('ההנחיות ללקוח בסיום נשמרו',byId('dragon').customerInstructionsAfter.length===1);
+ok('זמני הכניסה מחדש נשמרו',byId('dragon').reentry.minutes===60&&
+   byId('pastion-plus-pasta').reentry.type==='not_applicable_by_label');
 
 console.log('\n2. מזיקים ומינונים – רק מהתווית');
 await page(async p=>{
@@ -68,39 +76,31 @@ await page(async p=>{
     dragonPests:prodById('dragon').targetPests,
     drakerPests:prodById('draker-10-2').targetPests,
     pastionPests:prodById('pastion-plus-pasta').targetPests,
-    dragonRoach:allowedDosages(prodById('dragon'),'תיקנים','').map(d=>d.text),
-    dragonBed:allowedDosages(prodById('dragon'),'פשפש המיטה','').map(d=>d.text),
-    ratsOnly:allowedDosages(prodById('pastion-plus-pasta'),'חולדות','').map(d=>d.id),
-    miceOnly:allowedDosages(prodById('pastion-plus-pasta'),'עכברים','').map(d=>d.id)
+    anyDos:PRODUCTS().reduce((n,x)=>n+(x.dosages||[]).length,0),
+    anyRes:PRODUCTS().reduce((n,x)=>n+(x.applicationRestrictions||[]).length,0)
   }));
   ok('דרגון – תיקנים, פשפש המיטה וחרקים זוחלים',
      r.dragonPests.includes('תיקנים')&&r.dragonPests.includes('פשפש המיטה'));
   ok('דרקר – זוחלים ומעופפים',r.drakerPests.includes('נמלים')&&r.drakerPests.includes('יתושים'));
   eq('פסטיון – עכברים וחולדות בלבד',r.pastionPests,['עכברים','חולדות']);
-  ok('דרגון – מינון תיקנים 25 מ"ר',r.dragonRoach.length===1&&r.dragonRoach[0].includes('25 מ"ר'),r.dragonRoach.join());
-  ok('דרגון – מינון פשפש המיטה 10 מ"ר',r.dragonBed.length===1&&r.dragonBed[0].includes('10 מ"ר'),r.dragonBed.join());
-  eq('תבנית חולדות אינה מציגה מינון עכברים',r.ratsOnly,['pastion-rats']);
-  eq('תבנית עכברים אינה מציגה מינון חולדות',r.miceOnly,['pastion-mice']);
+  eq('אין מינונים בזיכרון האפליקציה',r.anyDos,0);
+  eq('אין מגבלות ריסוס בזיכרון האפליקציה',r.anyRes,0);
 });
 
-console.log('\n3. דרקר – מינון לפי סוג המשטח');
+console.log('\n3. אין מינונים ומגבלות ריסוס במסך');
 await page(async p=>{
   await startJ(p);
   await p.click('[data-a="pickProd"][data-p="draker-10-2"]');
   await p.evaluate(()=>{A.setPest({i:0,val:'תיקנים'})});
-  ok('בלי בחירת משטח לא מוצג מינון',(await p.textContent('#app')).includes('בחרו סוג משטח'));
-  eq('אין מינון זמין לפני בחירת משטח',
-     await p.evaluate(()=>allowedDosages(prodById('draker-10-2'),'תיקנים','').length),0);
-  const r=await p.evaluate(()=>({
-    non:allowedDosages(prodById('draker-10-2'),'תיקנים','משטח שאינו סופג').map(d=>d.text),
-    abs:allowedDosages(prodById('draker-10-2'),'תיקנים','משטח סופג').map(d=>d.text)}));
-  ok('משטח שאינו סופג – 5-10 מ"ל',r.non.length===1&&r.non[0].includes('5-10 מ"ל'),r.non.join());
-  ok('משטח סופג – 10-20 מ"ל',r.abs.length===1&&r.abs[0].includes('10-20 מ"ל'),r.abs.join());
-  ok('שני המינונים שונים זה מזה',r.non[0]!==r.abs[0]);
-  await p.evaluate(()=>{A.setSurface({i:0,val:'משטח סופג'})});
-  ok('לאחר בחירת משטח מוצג המינון',(await p.textContent('#app')).includes('10-20 מ"ל'));
-  await p.evaluate(()=>{A.setDos({i:0,p:'draker-absorbent'});A.setSurface({i:0,val:'משטח שאינו סופג'})});
-  eq('שינוי המשטח מבטל מינון שאינו מתאים',await p.evaluate(()=>cur.apps[0].dosageId),'');
+  const t=await p.textContent('#app');
+  ok('לא מוצגת בחירת סוג משטח',!t.includes('סוג המשטח'));
+  ok('לא מוצג מינון מהתווית',!t.includes('מינון מהתווית'));
+  ok('לא מוצגים ערכי מינון',!t.includes('5-10 מ"ל')&&!t.includes('10-20 מ"ל'));
+  ok('לא מוצגות מגבלות שימוש',!t.includes('מגבלות שימוש'));
+  ok('מוצגת הבהרה מאיפה לקחת מינון',t.includes('יש לקחת אותם מהתווית העדכנית'));
+  eq('לא נשמר מינון ביישום',await p.evaluate(()=>cur.apps[0].dosageId),'');
+  eq('אין דרישת מינון בבדיקת התקינות',
+     await p.evaluate(()=>validate(cur).filter(e=>e.msg.includes('מינון')).length),0);
 });
 
 console.log('\n4. דרגון – כניסה מחדש והוראת 24 השעות למיטה');
@@ -126,7 +126,8 @@ await page(async p=>{
      re3.conditional[0].product==='דרגון'&&re3.conditional[0].text.includes('24 שעות'),JSON.stringify(re3.conditional));
   eq('זמן הכניסה הכללי נשאר שעה',re3.minutes,60);
   ok('ההוראה מוצגת בהנחיות ללקוח',(await p.textContent('#app')).includes('אין לישון'));
-  ok('איסור ריסוס מזרנים מוצג',(await p.textContent('#app')).includes('אין לרסס מזרנים'));
+  ok('איסור ריסוס מזרנים הוסר עם מגבלות הריסוס',
+     !(await p.textContent('#app')).includes('אין לרסס מזרנים'));
 });
 
 console.log('\n5. פסטיון – בלי זמן כניסה מחדש של ריסוס');
@@ -195,19 +196,19 @@ await page(async p=>{
   ok('הודעת ההפעלה של בלוקיון',t.includes('התבנית תופעל לאחר אימות תווית ורישום בתוקף'));
   const st=await p.evaluate(()=>TREATMENTS.map(x=>[x.id,tplState(x)]));
   eq('מצבי התבניות',st,[['t-dragon-crawling','ok'],['t-dragon-bedbug','choice'],
-     ['t-draker-crawling','choice'],['t-pastion-mice','ok'],['t-pastion-rats','ok'],['t-blokion','blocked']]);
+     ['t-draker-crawling','ok'],['t-pastion-mice','ok'],['t-pastion-rats','ok'],['t-blokion','blocked']]);
 });
 await page(async p=>{
   await startJ(p);
   await p.evaluate(()=>{A.useTplHere({p:'t-pastion-rats'})});
   const r=await p.evaluate(()=>({pid:cur.apps[0].pid,pest:cur.apps[0].pest,dos:cur.apps[0].dosageId,
     batch:cur.apps[0].batch,amount:cur.apps[0].amountUsed,tpl:cur.tplId}));
-  eq('תבנית חולדות טוענת חומר, מזיק ומינון',[r.pid,r.pest,r.dos],
-     ['pastion-plus-pasta','חולדות','pastion-rats']);
+  eq('תבנית חולדות טוענת חומר ומזיק',[r.pid,r.pest],['pastion-plus-pasta','חולדות']);
+  eq('התבנית אינה טוענת מינון',r.dos,'');
   eq('התבנית אינה ממלאת נתוני ביצוע',[r.batch,r.amount],['','']);
   ok('מוצג תג "נטען מתבנית מאומתת"',(await p.textContent('#app')).includes('נטען מתבנית מאומתת'));
-  ok('מוצג מינון חולדות בלבד',(await p.textContent('#app')).includes('100-300 גרם'));
-  ok('לא מוצג מינון עכברים',!(await p.textContent('#app')).includes('10-60 גרם'));
+  ok('לא מוצג שום מינון',!(await p.textContent('#app')).includes('100-300 גרם')&&
+     !(await p.textContent('#app')).includes('10-60 גרם'));
 });
 
 console.log('\n10. תבנית לקוח וטעינה מיומן אחרון');
@@ -226,7 +227,6 @@ await page(async p=>{
     cur.client.name='מסעדת הגפן';cur.place=Object.assign(cur.place,pl);
     const p0=prodById('dragon');
     applyProduct(cur.apps[0],p0,{pest:'תיקנים'});
-    cur.apps[0].dosageId='dragon-crawling';
     cur.apps[0].batch='BX-1';cur.apps[0].pkgExpiry='2027-01-01';
     cur.apps[0].amountUsed='100 סמ"ק';cur.apps[0].waterAmount='10 ליטר';cur.apps[0].areas='מטבח';
     cur.findings[0].pest='תיקנים';cur.findings[0].signs='x';cur.findings[0].level='נמוכה';
@@ -244,10 +244,11 @@ await page(async p=>{
       pendingDose:(cur.verify['dose:'+a.id]||{}).state,
       pendingProd:(cur.verify['product:'+a.id]||{}).state};
   },PLACE);
-  eq('החומר והמינון הועתקו',[r.pid,r.dos],['dragon','dragon-crawling']);
+  eq('החומר הועתק',r.pid,'dragon');
+  eq('אין מינון להעתיק',r.dos,'');
   eq('אצווה, תפוגה וכמויות נוקו',[r.batch,r.exp,r.used,r.water,r.areas,r.stations],['','','','','',0]);
   eq('חתימות לא הועתקו',[r.sig,r.recv],[null,null]);
-  eq('החומר והמינון דורשים אישור מחדש',[r.pendingProd,r.pendingDose],['pending','pending']);
+  eq('החומר דורש אישור מחדש',r.pendingProd,'pending');
 });
 
 console.log('\n11. אזהרות משויכות ותצוגות נפרדות');

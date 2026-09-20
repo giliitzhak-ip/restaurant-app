@@ -50,13 +50,15 @@ function lint(data){
       if(!p.registrationExpiry)err.push(at('מוצר פעיל ללא תוקף רישום'));
       if(!(p.activeIngredients||[]).length)err.push(at('מוצר פעיל ללא חומר פעיל'));
       if(!(p.targetPests||[]).length)err.push(at('מוצר פעיל ללא מזיקי מטרה'));
-      if(!(p.dosages||[]).length)err.push(at('מוצר פעיל ללא מינונים'));
       if(!(p.reentry||{}).type)err.push(at('מוצר פעיל ללא reentry.type'));
       if(!p.lastVerifiedAt)err.push(at('מוצר פעיל ללא lastVerifiedAt'));
       if(!p.labelSha256&&!p.verificationNote)
         err.push(at('אין labelSha256 ואין verificationNote המסביר את מקור הנתונים'));
     }
-    /* כל מינון חייב להתייחס למזיקים שבתווית בלבד */
+    /* מינונים ומגבלות ריסוס אינם נשמרים במערכת – אם חזרו, יש לאמת אותם מול התווית */
+    if((p.dosages||[]).length)err.push(at('מינונים אינם נשמרים במערכת'));
+    if((p.applicationRestrictions||[]).length)err.push(at('מגבלות ריסוס אינן נשמרות במערכת'));
+    /* אם בעתיד יוחזרו מינונים – כל מינון חייב להתייחס למזיקים שבתווית בלבד */
     (p.dosages||[]).forEach(d=>{
       if(!d.id)err.push(at('מינון ללא id'));
       if(!d.text)err.push(at('מינון ללא טקסט'));
