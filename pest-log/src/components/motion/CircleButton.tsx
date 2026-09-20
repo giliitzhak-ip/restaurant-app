@@ -95,9 +95,15 @@ export function CircleButton({
         void activate(event.clientX, event.clientY);
       }}
     >
-      <span className="home-tile-circle" ref={circleRef}>
-        <span className="home-tile-icon" aria-hidden="true">
-          {icon}
+      {/*
+        התג ונקודת ההתראה הם אחים של העיגול ולא ילדיו: העיגול חייב
+        overflow: hidden בשביל גל הלחיצה, והוא היה חותך אותם.
+      */}
+      <span className="home-tile-figure">
+        <span className="home-tile-circle" ref={circleRef}>
+          <span className="home-tile-icon" aria-hidden="true">
+            {icon}
+          </span>
         </span>
         {alertDot ? <span className="home-tile-alert" aria-hidden="true" /> : null}
         {showBadge ? (

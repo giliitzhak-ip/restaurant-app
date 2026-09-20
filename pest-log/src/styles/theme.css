@@ -432,6 +432,11 @@ legend { font-size: 0.86rem; font-weight: 500; padding: 0 0.4rem; color: var(--t
 }
 .home-tile.is-in { opacity: 1; transform: translate3d(0, 0, 0); transition: opacity 260ms ease, transform 260ms cubic-bezier(0.22, 0.61, 0.36, 1); }
 
+.home-tile-figure {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
 .home-tile-circle {
   position: relative;
   width: clamp(100px, 27vw, 116px);
@@ -471,8 +476,8 @@ legend { font-size: 0.86rem; font-weight: 500; padding: 0 0.4rem; color: var(--t
 
 .home-tile-badge {
   position: absolute;
-  top: 6px;
-  inset-inline-end: 6px;
+  top: 2px;
+  inset-inline-end: 2px;
   min-width: 24px;
   height: 24px;
   padding: 0 6px;
@@ -491,8 +496,8 @@ legend { font-size: 0.86rem; font-weight: 500; padding: 0 0.4rem; color: var(--t
 /* נקודת התראה: מלווה תמיד בטקסט ב-aria-label ובתווית שמתחת לכפתור. */
 .home-tile-alert {
   position: absolute;
-  top: 10px;
-  inset-inline-start: 10px;
+  top: 6px;
+  inset-inline-start: 6px;
   width: 13px;
   height: 13px;
   border-radius: 50%;
