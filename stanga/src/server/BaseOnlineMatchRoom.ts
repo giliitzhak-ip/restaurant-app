@@ -297,6 +297,20 @@ export abstract class BaseOnlineMatchRoom extends Room<MatchRoomState> {
         points: record.points,
       });
     });
+    match.events.on('violation', (record) => {
+      this.state.lastViolation.kind = record.kind;
+      this.state.lastViolation.playerId = record.playerId;
+      this.state.lastViolation.offendingTeam = record.offendingTeam;
+      this.state.lastViolation.restartPlayerId = record.restartPlayerId;
+      this.state.lastViolation.restartTeam = record.restartTeam;
+      this.state.lastViolation.tick = record.tick;
+      this.emit({
+        kind: 'violation',
+        playerId: record.playerId,
+        team: record.offendingTeam,
+        detail: record.kind,
+      });
+    });
     match.events.on('kick', (event) => {
       this.emit({ kind: 'kick', playerId: event.playerId, team: event.team, speed: event.power });
     });

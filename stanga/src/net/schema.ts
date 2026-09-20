@@ -158,6 +158,35 @@ defineTypes(NetScore, {
   tick: 'uint32',
 });
 
+/** The last touch-rule call, so a joining client can render the banner. */
+export class NetViolation extends Schema {
+  declare kind: string;
+  declare playerId: string;
+  declare offendingTeam: string;
+  declare restartPlayerId: string;
+  declare restartTeam: string;
+  declare tick: number;
+
+  constructor() {
+    super();
+    this.kind = '';
+    this.playerId = '';
+    this.offendingTeam = '';
+    this.restartPlayerId = '';
+    this.restartTeam = '';
+    this.tick = 0;
+  }
+}
+
+defineTypes(NetViolation, {
+  kind: 'string',
+  playerId: 'string',
+  offendingTeam: 'string',
+  restartPlayerId: 'string',
+  restartTeam: 'string',
+  tick: 'uint32',
+});
+
 /**
  * Room lifecycle, deliberately separate from `MatchPhase`: a room can be
  * waiting for an opponent long before the simulation has a phase at all.
@@ -186,6 +215,7 @@ export class MatchRoomState extends Schema {
   declare players: MapSchema<NetPlayer>;
   declare ball: NetBall;
   declare lastScore: NetScore;
+  declare lastViolation: NetViolation;
 
   constructor() {
     super();
@@ -204,6 +234,7 @@ export class MatchRoomState extends Schema {
     this.players = new MapSchema<NetPlayer>();
     this.ball = new NetBall();
     this.lastScore = new NetScore();
+    this.lastViolation = new NetViolation();
   }
 }
 
@@ -223,4 +254,5 @@ defineTypes(MatchRoomState, {
   players: { map: NetPlayer },
   ball: NetBall,
   lastScore: NetScore,
+  lastViolation: NetViolation,
 });

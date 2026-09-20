@@ -27,6 +27,20 @@ export const SHOT_TYPE_LABELS: Record<ShotType, string> = {
 };
 
 /** Which goal a team attacks, in words, for the lobby. */
+/**
+ * How a team is named on screen. The simulation calls them home and away —
+ * those names are baked into the rules, the goals and the wire format — but a
+ * player reads colours, so 2×2 shows them as orange and blue.
+ */
+export const TEAM_LABELS: Record<TeamId, string> = {
+  home: 'הכתומים',
+  away: 'הכחולים',
+};
+
+export function teamLabel(team: TeamId): string {
+  return TEAM_LABELS[team];
+}
+
 export function attackingGoalLabel(team: TeamId): string {
   return team === 'home' ? 'תוקף את השער הצפוני' : 'תוקף את השער הדרומי';
 }
@@ -39,6 +53,7 @@ export function pointsLabel(points: number): string {
 
 /** Written stand-in for an audio cue, for players who cannot rely on sound. */
 export const AUDIO_CAPTIONS: Record<string, string> = {
+  violation: 'נגיעה כפולה',
   goal: '[שער]',
   post: '[פגיעה בקורה]',
   crossbar: '[פגיעה במשקוף]',

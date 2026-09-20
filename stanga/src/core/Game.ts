@@ -17,6 +17,7 @@ import { MatchEngine } from '../game/MatchEngine';
 import { MatchViews } from '../rendering/MatchViews';
 import { outcomeOf } from '../game/MatchRules';
 import { MatchSession, type MatchMode, type PlayerSlot } from '../game/MatchSession';
+import { canPlayerTouch } from '../game/TouchRuleEngine';
 import type { MatchState, TeamId } from '../game/MatchState';
 import { DeviceManager, type InputDevice } from '../input/DeviceManager';
 import { KeyboardState } from '../input/KeyboardState';
@@ -1121,6 +1122,14 @@ export class Game {
           state,
           humans.map((player) => player.kickCharge),
         );
+        this.ui.setTouchState(
+          state.phase === 'playing'
+            ? {
+                canTouch: canPlayerTouch(state.touch, this.localPlayerId),
+                juggles: state.touch.aerialChainActive ? state.touch.aerialTouchCount : 0,
+              }
+            : null,
+        );
       }
     }
   }
@@ -1206,6 +1215,13 @@ export class Game {
 
     events.on('wallHit', ({ speed }) => {
       this.audio.play('tackle', Math.min(0.7, speed / GameConfig.ball.maxSpeed + 0.2));
+    });
+
+    events.on('violation', () => {
+      this.audio.play('whistle', 0.7);
+      this.audio.vibrate(vibration.whistle);
+      this.ui.showCaption('violation');
+      this.celebratingTeam = null;
     });
 
     events.on('kickoff', () => {

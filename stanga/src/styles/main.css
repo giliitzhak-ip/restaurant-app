@@ -1811,3 +1811,74 @@ kbd {
     align-items: stretch;
   }
 }
+
+/* ── Touch rule indicator ───────────────────────────────────────────────────
+   One touch per turn is the rule the whole game turns on, so the player needs
+   to know at a glance whether the ball is theirs. Small, high on the pitch and
+   never over the ball. */
+
+.hud__touch {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 5.4rem);
+  inset-inline-start: 50%;
+  transform: translateX(50%);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.22rem 0.62rem;
+  border-radius: 999px;
+  background: rgba(12, 13, 15, 0.62);
+  font-size: 0.82rem;
+  font-weight: 700;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.hud__touch[hidden] {
+  display: none;
+}
+
+.hud__touch-dot {
+  width: 0.62rem;
+  height: 0.62rem;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: none;
+}
+
+/* Spent: the ball is not yours until somebody else plays it. */
+.hud__touch.is-spent {
+  color: #ffb4b4;
+}
+
+.hud__touch.is-spent .hud__touch-dot {
+  background: #d4564e;
+}
+
+/* Juggling: the chain is alive for as long as the ball stays up. */
+.hud__touch.is-juggling .hud__touch-dot {
+  animation: touch-pulse 0.6s ease-in-out infinite;
+}
+
+@keyframes touch-pulse {
+  50% {
+    transform: scale(1.5);
+    opacity: 0.6;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud__touch.is-juggling .hud__touch-dot {
+    animation: none;
+  }
+}
+
+/* A touch-rule call is not a celebration: same banner, different voice. */
+.hud__event.is-violation {
+  border-color: #d4564e;
+  background: rgba(70, 22, 20, 0.86);
+}
+
+.hud__event.is-violation .hud__event-kind {
+  color: #ffb4b4;
+}

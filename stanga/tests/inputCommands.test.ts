@@ -177,15 +177,18 @@ describe('AI controller as a PlayerController', () => {
       command = ai.poll('away-1', i + 2, contextFor(state, 'away-1'));
     }
 
-    expect(['ChaseBall', 'ControlBall', 'Attack', 'Aim']).toContain(ai.currentState);
+    expect(['ChaseBall', 'Support', 'Defend']).toContain(ai.currentState);
     // Away attacks -Z, and the ball is at z=4 while the AI sits at z=12.
     expect(command.moveY).toBeLessThan(0);
   });
 
-  it('charges and then releases a shot near the goal it attacks', () => {
+  it('charges on the way in and releases the shot near the goal it attacks', () => {
     const state = liveMatch();
     state.ball.position = { x: 0, y: 0.11, z: -11 };
-    state.players[1]!.position = { x: 0, y: 0, z: -10.6 };
+    // Inside kicking range but not close enough to bump the ball, so the shot
+    // has to be loaded first. Standing on the ball would fire immediately,
+    // which is also correct but is not what this test is about.
+    state.players[1]!.position = { x: 0, y: 0, z: -9.7 };
     state.players[0]!.position = { x: 9, y: 0, z: 9 };
 
     const ai = new AIController('away-1', 'away', 'hard', new Rng(3));
@@ -198,7 +201,9 @@ describe('AI controller as a PlayerController', () => {
       if (command.shootHeld) held = true;
       if (command.shootReleased) released = true;
     }
-    expect(seen.has('Aim')).toBe(true);
+    // Running onto the ball is where the charge happens now: one touch means
+    // the shot has to be loaded before the foot ever reaches the ball.
+    expect(seen.has('ChaseBall')).toBe(true);
     expect(held).toBe(true);
     expect(released).toBe(true);
   });

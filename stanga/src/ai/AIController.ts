@@ -24,9 +24,29 @@ import {
   type PlayerState,
   type TeamId,
 } from '../game/MatchState';
+import { canPlayerTouch } from '../game/TouchRuleEngine';
 
+/**
+ * The states of one-touch football.
+ *
+ * There is no dribbling under the STANGA rule, so there is no "carry the ball"
+ * state: the AI either runs onto the ball with a shot already charging, keeps
+ * it up in the air, or gets out of the way and waits for its turn again.
+ */
 export type AIState =
-  'Kickoff' | 'ChaseBall' | 'ControlBall' | 'Attack' | 'Defend' | 'Aim' | 'Shoot' | 'Recover';
+  | 'Kickoff'
+  /** Running onto the ball with the shot charging. */
+  | 'ChaseBall'
+  /** In range and loaded: release. */
+  | 'Shoot'
+  /** The ball is up and reachable: keep the chain alive. */
+  | 'Juggle'
+  /** Moving into space to be passed to. */
+  | 'Support'
+  | 'Defend'
+  | 'Recover'
+  /** The touch rule says the ball is not ours to play; give it room. */
+  | 'HoldOff';
 
 interface ShotPlan {
   /** Lateral offset on the goal line the AI aims at, in metres. */
@@ -117,7 +137,7 @@ export class AIController implements PlayerController {
 
     if (this.reactionTimer <= 0) {
       this.reactionTimer = this.profile.reactionTime;
-      this.transition(this.decide(state, me, opponent));
+      this.transition(this.decide(state, me));
     }
 
     this.act(state, me, opponent, dt);
@@ -126,37 +146,61 @@ export class AIController implements PlayerController {
 
   // ── Decision ────────────────────────────────────────────────────────────────
 
-  private decide(state: MatchState, me: PlayerState, opponent: PlayerState | undefined): AIState {
+  private decide(state: MatchState, me: PlayerState): AIState {
     if (state.phase === 'kickoff') return 'Kickoff';
-    if (this.state === 'Shoot' && this.stateTime < 0.35) return 'Shoot';
-    if (this.state === 'Recover' && this.stateTime < 0.5) return 'Recover';
+    if (me.stunTimer > 0) return 'Recover';
+    if (this.state === 'Shoot' && this.stateTime < 0.3) return 'Shoot';
 
     const ball = state.ball.position;
+    // The STANGA rule: one touch, then it is somebody else's ball. Crowding it
+    // anyway would just hand the opponent a restart, so the AI backs off.
+    if (!canPlayerTouch(state.touch, me.id)) return 'HoldOff';
+
     const myDistance = horizontalDistance(me.position, ball);
-    const opponentDistance = opponent ? horizontalDistance(opponent.position, ball) : Infinity;
-    const iAmClosest = myDistance <= opponentDistance;
-    const inControl = myDistance <= GameConfig.ball.controlRadius * 1.25;
+    // Only players who are *allowed* to touch the ball count as competition.
+    // Without this the game deadlocks: whoever touched last cannot play it,
+    // and everybody else thinks they are not the nearest.
+    const distanceIfEligible = (player: PlayerState): number =>
+      canPlayerTouch(state.touch, player.id)
+        ? horizontalDistance(player.position, ball)
+        : Number.POSITIVE_INFINITY;
 
-    if (inControl) {
-      const goalZ = attackingGoalZ(this.team);
-      const distanceToGoal = Math.hypot(ball.x, goalZ - ball.z);
-      const angleOk = Math.abs(ball.x) < GameConfig.field.width * 0.42;
-      if (distanceToGoal < this.profile.shootingRange && angleOk) {
-        return this.state === 'Aim' && this.chargeTime >= this.plan.chargeSeconds ? 'Shoot' : 'Aim';
-      }
-      return this.rng.chance(0.75) ? 'Attack' : 'ControlBall';
+    const closestMate = Math.min(
+      ...state.players
+        .filter((player) => player.team === this.team && player.id !== me.id)
+        .map(distanceIfEligible),
+      Number.POSITIVE_INFINITY,
+    );
+    const opponentDistance = Math.min(
+      ...state.players.filter((player) => player.team !== this.team).map(distanceIfEligible),
+      Number.POSITIVE_INFINITY,
+    );
+
+    // The ball is up: a touch in the air keeps the chain alive and is free.
+    if (ball.y > GameConfig.ball.radius * 2.5 && myDistance < GameConfig.kick.range * 1.4) {
+      return 'Juggle';
     }
 
-    if (iAmClosest || opponentDistance > GameConfig.ball.controlRadius * 1.6) {
-      return 'ChaseBall';
+    // Shoot when loaded — or when the ball is about to be reached anyway.
+    // Running into it would spend the one touch on an accidental bump.
+    const loaded = this.chargeTime >= this.plan.chargeSeconds;
+    const aboutToCollide = GameConfig.player.radius + GameConfig.ball.radius + 0.35;
+    if (myDistance <= GameConfig.kick.range * 0.92 && (loaded || myDistance <= aboutToCollide)) {
+      return 'Shoot';
     }
+
+    // Whoever is nearest goes; a team-mate closer than me plays it instead.
+    if (myDistance <= opponentDistance + 0.5 && myDistance <= closestMate) return 'ChaseBall';
+    if (Number.isFinite(closestMate) && closestMate < myDistance) return 'Support';
     return 'Defend';
   }
 
   private transition(next: AIState): void {
     if (next === this.state) return;
-    if (this.state === 'Aim' && next !== 'Shoot') this.chargeTime = 0;
-    if (next === 'Aim') {
+    // Letting go of the ball lets go of the charge; running onto it starts a
+    // fresh plan, because by the time it arrives the picture has changed.
+    if (this.state === 'ChaseBall' && next !== 'Shoot') this.chargeTime = 0;
+    if (next === 'ChaseBall') {
       this.plan = this.makePlan();
       this.chargeTime = 0;
     }
@@ -188,67 +232,11 @@ export class AIController implements PlayerController {
       }
 
       case 'ChaseBall': {
-        // Aim slightly behind the ball so the AI arrives facing the right way.
-        const approach = {
-          x: ball.x - Math.sign(attackZ) * 0 + this.wander() * 0.6,
-          y: 0,
-          z: ball.z - Math.sign(attackZ) * 0.55,
-        };
-        const far = horizontalDistance(me.position, ball) > 4.5;
-        this.moveTowards(me, approach, far);
-        this.faceTowards(me, ball);
-        this.maybeTackle(me, ball, opponent);
-        break;
-      }
-
-      case 'ControlBall': {
-        // Settle on the ball, small lateral drift to shake the defender.
-        const target = {
-          x: ball.x + this.wander() * 1.4,
-          y: 0,
-          z: ball.z + Math.sign(attackZ) * 0.4,
-        };
-        this.moveTowards(me, target, false);
-        this.faceTowards(me, { x: 0, y: 0, z: attackZ });
-        break;
-      }
-
-      case 'Attack': {
-        // Carry the ball towards the goal, drifting around the opponent.
-        const avoid = opponent ? clamp(me.position.x - opponent.position.x, -1, 1) : 0;
-        const target = {
-          x: clamp(
-            ball.x + avoid * 2.2 + this.wander() * 1.6,
-            -GameConfig.field.width * 0.4,
-            GameConfig.field.width * 0.4,
-          ),
-          y: 0,
-          z: ball.z + Math.sign(attackZ) * 2.4,
-        };
-        this.moveTowards(me, target, me.stamina > 40);
-        this.faceTowards(me, { x: target.x, y: 0, z: attackZ });
-        break;
-      }
-
-      case 'Defend': {
-        // Stand on the line between the ball and the goal being defended.
-        const blend = 0.42 + this.wander() * 0.1;
-        const target = {
-          x: ball.x * (1 - blend) + this.wander() * 0.8,
-          y: 0,
-          z: ball.z + (defendZ - ball.z) * blend,
-        };
-        this.moveTowards(me, target, horizontalDistance(me.position, target) > 3.5);
-        this.faceTowards(me, ball);
-        this.maybeTackle(me, ball, opponent);
-        break;
-      }
-
-      case 'Aim': {
+        // Run onto the ball with the shot already loading, and aim at the goal
+        // rather than at the ball: the kick goes where the body faces, and the
+        // cone in front of the player is wide enough to do both at once.
         this.chargeTime += dt;
-        const target = { x: ball.x, y: 0, z: ball.z + Math.sign(attackZ) * 0.15 };
-        this.moveTowards(me, target, false);
-
+        this.moveTowards(me, ball, horizontalDistance(me.position, ball) > 3.5);
         const aimX = clamp(
           this.plan.aimOffsetX,
           -GameConfig.goal.width * 0.45,
@@ -264,9 +252,67 @@ export class AIController implements PlayerController {
       case 'Shoot': {
         this.command.shootHeld = false;
         this.command.shootReleased = this.stateTime <= dt * 1.5;
-        const aimX = this.plan.aimOffsetX;
-        this.faceTowards(me, { x: aimX, y: 0, z: attackZ }, this.profile.aimError);
-        if (this.stateTime > 0.3) this.transition('Recover');
+        this.faceTowards(me, { x: this.plan.aimOffsetX, y: 0, z: attackZ }, this.profile.aimError);
+        if (this.stateTime > 0.28) this.transition('Recover');
+        break;
+      }
+
+      case 'Juggle': {
+        // Stay under the ball and keep it up: the aerial chain is the only way
+        // one player is allowed to advance with it.
+        this.moveTowards(me, ball, false);
+        this.faceTowards(me, { x: ball.x, y: 0, z: attackZ });
+        this.chargeTime += dt * 0.5;
+        break;
+      }
+
+      case 'Support': {
+        // Give the team-mate on the ball somewhere to pass to: ahead of the
+        // ball, off to one side, out of the opponent's shadow.
+        const side = me.slotIndex === 0 ? 1 : -1;
+        const target = {
+          x: clamp(
+            ball.x + side * (3.4 + this.wander()),
+            -GameConfig.field.width * 0.42,
+            GameConfig.field.width * 0.42,
+          ),
+          y: 0,
+          z: clamp(
+            ball.z + Math.sign(attackZ) * (4 + this.wander() * 1.5),
+            -GameConfig.field.length * 0.45,
+            GameConfig.field.length * 0.45,
+          ),
+        };
+        this.moveTowards(me, target, horizontalDistance(me.position, target) > 4);
+        this.faceTowards(me, ball);
+        this.chargeTime = 0;
+        break;
+      }
+
+      case 'HoldOff': {
+        // Stand off the ball, between it and the goal being defended, waiting
+        // for somebody else to play it and give the turn back.
+        const away = {
+          x: ball.x * 0.7 + this.wander() * 1.2,
+          y: 0,
+          z: ball.z + Math.sign(defendZ - ball.z) * 3.2,
+        };
+        this.moveTowards(me, away, false);
+        this.faceTowards(me, ball);
+        break;
+      }
+
+      case 'Defend': {
+        // Stand on the line between the ball and the goal being defended.
+        const blend = 0.42 + this.wander() * 0.1;
+        const target = {
+          x: ball.x * (1 - blend) + this.wander() * 0.8,
+          y: 0,
+          z: ball.z + (defendZ - ball.z) * blend,
+        };
+        this.moveTowards(me, target, horizontalDistance(me.position, target) > 3.5);
+        this.faceTowards(me, ball);
+        this.maybeTackle(me, ball, opponent, state);
         break;
       }
 
@@ -306,9 +352,16 @@ export class AIController implements PlayerController {
     this.command.aimY = Math.cos(yaw);
   }
 
-  private maybeTackle(me: PlayerState, ball: Vec3, opponent: PlayerState | undefined): void {
+  private maybeTackle(
+    me: PlayerState,
+    ball: Vec3,
+    opponent: PlayerState | undefined,
+    state: MatchState,
+  ): void {
     if (!opponent) return;
     if (me.tackleCooldown > 0) return;
+    // A won tackle is a deliberate touch, so it obeys the same rule.
+    if (!canPlayerTouch(state.touch, me.id)) return;
     const opponentHasBall =
       horizontalDistance(opponent.position, ball) <= GameConfig.ball.controlRadius * 1.3;
     if (!opponentHasBall) return;

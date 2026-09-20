@@ -14,7 +14,7 @@ import type { TeamId } from '../game/MatchState';
  * would make an older client disagree with the server. Clients that send a
  * different value are rejected with a Hebrew "please refresh" message.
  */
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
 
 /** Colyseus room name for online 1×1. Stage 4 adds a second name for 2×2. */
 export const ROOM_ONE_VS_ONE = 'stanga_1v1';
@@ -154,10 +154,19 @@ export interface WelcomePayload {
 
 /** A gameplay event, already reduced to what a client needs to react to. */
 export interface NetEvent {
-  kind: 'kick' | 'tackle' | 'frameHit' | 'wallHit' | 'scored' | 'kickoff' | 'matchEnd';
+  kind:
+    | 'kick'
+    | 'tackle'
+    | 'frameHit'
+    | 'wallHit'
+    | 'scored'
+    | 'kickoff'
+    | 'matchEnd'
+    /** A double touch was called; the ball changes hands. */
+    | 'violation';
   playerId?: string;
   team?: TeamId | null;
-  /** Free-form detail: goal part, score kind, outcome. */
+  /** Free-form detail: goal part, score kind, outcome, violation kind. */
   detail?: string;
   points?: number;
   speed?: number;

@@ -243,6 +243,21 @@ export class OnlineMatch {
         this.match.events.emit('kickoff', { team: event.team ?? 'home' });
         return;
       }
+      case 'violation': {
+        // The client's mirrored engine never calls a violation; it is told.
+        const last = this.snapshot?.lastViolation;
+        this.pendingSnap = true;
+        this.afterTick();
+        this.match.events.emit('violation', {
+          kind: 'doubleTouch',
+          playerId: event.playerId ?? '',
+          offendingTeam: event.team ?? 'home',
+          restartPlayerId: last?.restartPlayerId ?? '',
+          restartTeam: (last?.restartTeam as TeamId | undefined) ?? 'away',
+          tick: last?.tick ?? 0,
+        });
+        return;
+      }
       case 'matchEnd': {
         this.pendingSnap = true;
         this.afterTick();

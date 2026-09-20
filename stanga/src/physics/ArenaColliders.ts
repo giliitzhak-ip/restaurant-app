@@ -53,7 +53,11 @@ export function buildArenaColliders(scene: Scene, world: PhysicsWorld): ArenaCol
     scene,
   );
   ground.position.y = -0.5;
-  staticAggregate(ground, PhysicsShapeType.BOX, scene, 0.72, 0.28);
+  const groundAggregate = staticAggregate(ground, PhysicsShapeType.BOX, scene, 0.72, 0.28);
+  // Tagged and reporting contacts: the touch rule needs to know the exact tick
+  // the ball meets the surface, because that is what ends a juggle.
+  groundAggregate.body.setCollisionCallbackEnabled(true);
+  world.tag(groundAggregate.body, { kind: 'ground' });
 
   // ── Perimeter ───────────────────────────────────────────────────────────────
   const walls: Mesh[] = [];

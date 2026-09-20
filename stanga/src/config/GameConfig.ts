@@ -65,6 +65,8 @@ export const GameConfig = {
     celebrationSeconds: 2.2,
     /** Countdown before the ball becomes live at kickoff. */
     kickoffSeconds: 1.4,
+    /** Freeze after a double-touch call, long enough to read the banner. */
+    violationFreezeSeconds: 1.3,
     /** Points per event kind. */
     points: {
       goal: 1,
@@ -112,6 +114,31 @@ export const GameConfig = {
     junctionLength: 0.42,
     /** How deep the net box reaches behind the line. */
     depth: 1.5,
+  },
+
+  /**
+   * The STANGA touch rule: one meaningful touch per turn, juggling excepted.
+   * See docs/touch-rule.md.
+   */
+  touch: {
+    /** Below this relative speed at contact, it is noise rather than a touch. */
+    minRelativeSpeed: 1.1,
+    /** One whistle per scramble, not one per frame. */
+    violationCooldownTicks: 30,
+    /**
+     * Ticks before the same player's capsule can register another contact.
+     * A kick is modelled as an impulse, so the foot usually keeps touching the
+     * ball for a few ticks afterwards; without this that would read as juggling.
+     */
+    contactDebounceTicks: 9,
+    /** Ball height above the surface below which a bounce counts as grounded. */
+    groundContactHeight: 0.02,
+    /** Speed a controlled first touch gives the ball, m/s. */
+    firstTouchSpeed: 4.2,
+    /** Small lift on a first touch, as a fraction of its speed. */
+    firstTouchLift: 0.18,
+    /** How far from the goal line a violation restart is placed, in metres. */
+    restartGoalMargin: 4,
   },
 
   ball: {

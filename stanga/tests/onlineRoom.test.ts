@@ -248,7 +248,7 @@ describe('online 1×1 room', () => {
     const attackZ = a.welcome.team === 'home' ? 1 : -1;
     let nA = 0;
     let nB = 0;
-    // The defender walks to the touchline so there is a lane to run into.
+    // The defender walks to the touchline so there is a lane to shoot down.
     const stepAside = setInterval(() => {
       nB += 1;
       b.room.send(ClientMessage.Input, {
@@ -261,31 +261,44 @@ describe('online 1×1 room', () => {
       });
     }, 16);
 
+    const sendA = (patch: Record<string, number>) => {
+      nA += 1;
+      a.room.send(ClientMessage.Input, { n: nA, mx: 0, my: 0, ax: 0, ay: attackZ, f: 0, ...patch });
+    };
+
     try {
-      for (let i = 0; i < 900; i += 1) {
+      // Charge the shot standing still, then walk up on the ball and release
+      // from kicking range. Under the one-touch rule this *is* the whole
+      // attack: running into the ball first would use the touch up.
+      for (let i = 0; i < 80; i += 1) {
+        sendA({ f: InputFlag.ShootHeld | (i === 0 ? InputFlag.ShootPressed : 0) });
+        await sleep(16);
+      }
+
+      let released = false;
+      for (let i = 0; i < 700; i += 1) {
         if (a.room.state.scoreHome + a.room.state.scoreAway > 0) break;
         const me = a.room.state.players.get(a.welcome.playerId);
         const ball = a.room.state.ball;
         if (!me) break;
-        // Stay behind the ball, and push it towards the goal.
-        const wantX = ball.x - me.x + (0 - ball.x) * 0.3;
-        const wantZ = ball.z - me.z + (17 * attackZ - ball.z) * 0.3;
-        const length = Math.hypot(wantX, wantZ) || 1;
-        nA += 1;
-        a.room.send(ClientMessage.Input, {
-          n: nA,
-          mx: wantX / length,
-          my: wantZ / length,
-          ax: 0,
-          ay: attackZ,
-          f: InputFlag.Sprint,
-        });
+        const dx = ball.x - me.x;
+        const dz = ball.z - me.z;
+        const distance = Math.hypot(dx, dz) || 1;
+
+        if (!released && distance < 1.45) {
+          sendA({ f: InputFlag.ShootReleased });
+          released = true;
+        } else if (released) {
+          sendA({});
+        } else {
+          sendA({ mx: dx / distance, my: dz / distance, f: InputFlag.ShootHeld });
+        }
         await sleep(16);
       }
     } finally {
       clearInterval(stepAside);
     }
-    await sleep(400);
+    await sleep(600);
 
     const scored = a.events.find((event) => event.kind === 'scored');
     expect(scored).toBeDefined();
@@ -298,6 +311,47 @@ describe('online 1×1 room', () => {
     expect(b.room.state.scoreAway).toBe(a.room.state.scoreAway);
     const mine = a.welcome.team === 'home' ? a.room.state.scoreHome : a.room.state.scoreAway;
     expect(mine).toBeGreaterThanOrEqual(1);
+  }, 90_000);
+
+  it('calls a double touch and hands the ball to the other team', async () => {
+    const [a, b] = await quickPair();
+    await kickOff(a, b);
+
+    const attackZ = a.welcome.team === 'home' ? 1 : -1;
+    let nA = 0;
+    const sendA = (patch: Record<string, number>) => {
+      nA += 1;
+      a.room.send(ClientMessage.Input, { n: nA, mx: 0, my: 0, ax: 0, ay: attackZ, f: 0, ...patch });
+    };
+
+    // Run onto the ball — that is the one touch — then keep chasing it and try
+    // to play it again once it has come back down.
+    let violation: NetEvent | undefined;
+    for (let i = 0; i < 500; i += 1) {
+      violation = a.events.find((event) => event.kind === 'violation');
+      if (violation) break;
+      const me = a.room.state.players.get(a.welcome.playerId);
+      const ball = a.room.state.ball;
+      if (!me) break;
+      const dx = ball.x - me.x;
+      const dz = ball.z - me.z;
+      const distance = Math.hypot(dx, dz) || 1;
+      sendA({ mx: dx / distance, my: dz / distance, f: InputFlag.Sprint });
+      await sleep(16);
+    }
+    await sleep(400);
+
+    expect(violation).toBeDefined();
+    expect(violation?.playerId).toBe(a.welcome.playerId);
+    expect(violation?.team).toBe(a.welcome.team);
+    // Both clients are told, and both agree who restarts.
+    expect(b.events.some((event) => event.kind === 'violation')).toBe(true);
+    expect(a.room.state.lastViolation.restartTeam).toBe(b.welcome.team);
+    expect(a.room.state.lastViolation.restartPlayerId).toBe(
+      b.room.state.lastViolation.restartPlayerId,
+    );
+    // Nothing was scored off the illegal touch.
+    expect(a.room.state.scoreHome + a.room.state.scoreAway).toBe(0);
   }, 90_000);
 
   it('ignores input from a client that has no seat in the room', async () => {

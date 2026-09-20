@@ -25,6 +25,7 @@ import {
 } from '../input/KeyBindings';
 import {
   AUDIO_CAPTIONS,
+  teamLabel,
   OUTCOME_DETAILS,
   OUTCOME_TITLES,
   SCORE_KIND_LABELS,
@@ -140,6 +141,9 @@ export class UIManager {
   private readonly eventPoints: HTMLElement;
   private readonly countdown: HTMLElement;
   private readonly caption: HTMLElement;
+  private readonly touchBadge: HTMLElement;
+  private readonly touchDot: HTMLElement;
+  private readonly touchText: HTMLElement;
   private readonly meters: {
     root: HTMLElement;
     name: HTMLElement;
@@ -173,6 +177,7 @@ export class UIManager {
   private currentScreen: ScreenName | null = null;
   private lastClockText = '';
   private lastEventTick = -1;
+  private lastViolationTick = -1;
   private captionTimer: number | null = null;
   private adviceTimer: number | null = null;
   /** Action currently waiting for a key press in the bindings editor. */
@@ -219,6 +224,9 @@ export class UIManager {
     this.eventPoints = requireElement('hud-event-points');
     this.countdown = requireElement('hud-countdown');
     this.caption = requireElement('hud-caption');
+    this.touchBadge = requireElement('hud-touch');
+    this.touchDot = requireElement('hud-touch-dot');
+    this.touchText = requireElement('hud-touch-text');
 
     this.meters = [
       {
@@ -408,8 +416,15 @@ export class UIManager {
         state.lastEvent.ownGoal,
       );
     }
-    if (state.phase !== 'celebration' && !this.eventBanner.hidden) {
+    if (state.lastViolation && state.lastViolation.tick !== this.lastViolationTick) {
+      this.lastViolationTick = state.lastViolation.tick;
+      const offender = state.players.find((player) => player.id === state.lastViolation?.playerId);
+      this.showViolation(offender?.name ?? null, teamLabel(state.lastViolation.restartTeam));
+    }
+    // The banner belongs to whatever stopped play; once play resumes it goes.
+    if (state.phase !== 'celebration' && state.phase !== 'violation' && !this.eventBanner.hidden) {
       this.eventBanner.hidden = true;
+      this.eventBanner.classList.remove('is-violation');
     }
   }
 
@@ -442,6 +457,38 @@ export class UIManager {
   }
 
   /** Written stand-in for an audio cue, for players who cannot rely on sound. */
+  /**
+   * Shows whose turn it is to touch the ball.
+   *
+   * `null` hides it entirely, which is what happens outside live play. The
+   * juggle counter is what tells a player their aerial chain is still alive.
+   */
+  setTouchState(view: { canTouch: boolean; juggles: number } | null): void {
+    if (view === null) {
+      this.touchBadge.hidden = true;
+      return;
+    }
+    this.touchBadge.hidden = false;
+    this.touchBadge.classList.toggle('is-spent', !view.canTouch);
+    this.touchBadge.classList.toggle('is-juggling', view.juggles > 1);
+    this.touchText.textContent = view.canTouch
+      ? view.juggles > 1
+        ? `הקפצות · ${view.juggles}`
+        : 'הנגיעה שלך'
+      : 'הנגיעה נוצלה';
+    void this.touchDot;
+  }
+
+  /** Announces a touch-rule call on the same banner a goal uses. */
+  showViolation(offenderName: string | null, restartTeamLabel: string): void {
+    this.eventScorer.textContent = offenderName ?? '';
+    this.eventScorer.style.color = '';
+    this.eventKind.textContent = 'נגיעה כפולה';
+    this.eventPoints.textContent = `הכדור ל${restartTeamLabel}`;
+    this.eventBanner.hidden = false;
+    this.eventBanner.classList.add('is-violation');
+  }
+
   showCaption(key: string): void {
     if (!this.settings.accessibility.audioCaptions) return;
     const text = AUDIO_CAPTIONS[key];
@@ -473,6 +520,9 @@ export class UIManager {
   }
 
   resetHud(): void {
+    this.touchBadge.hidden = true;
+    this.eventBanner.classList.remove('is-violation');
+    this.lastViolationTick = -1;
     this.lastClockText = '';
     this.lastEventTick = -1;
     this.eventBanner.hidden = true;

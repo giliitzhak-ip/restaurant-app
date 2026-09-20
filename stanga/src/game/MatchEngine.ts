@@ -5,7 +5,6 @@
  * contacts translated into scoring inputs -> rules -> serializable state out.
  * The renderer and the UI only ever read the resulting MatchState and events.
  */
-import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import type { Scene } from '@babylonjs/core/scene';
 import { GameConfig, kindForGoalPart, type GoalPart } from '../config/GameConfig';
 import { EventBus } from '../core/EventBus';
@@ -19,6 +18,7 @@ import type { PhysicsWorld, RawCollision } from '../physics/PhysicsWorld';
 import {
   advancePhases,
   applyScoreEvent,
+  applyTouchViolation,
   ballOutOfBounds,
   goalEntered,
   outcomeOf,
@@ -36,8 +36,10 @@ import {
   type ScoreEventRecord,
   type ShotRecord,
   type TeamId,
+  type ViolationRecord,
 } from './MatchState';
 import { ONE_VS_ONE_ROSTER, type MatchRoster } from './MatchRoster';
+import { TouchRuleEngine, type TouchOutcome } from './TouchRuleEngine';
 import { ScoringSystem } from './ScoringSystem';
 
 export interface MatchEventMap extends Record<string, unknown> {
@@ -55,6 +57,8 @@ export interface MatchEventMap extends Record<string, unknown> {
   matchEnd: { outcome: MatchOutcome };
   /** The line-up was replaced; every view built from it is now stale. */
   rosterChanged: { roster: MatchRoster };
+  /** The touch rule was broken; the ball goes the other way. */
+  violation: ViolationRecord;
 }
 
 interface ActiveShot {
@@ -97,11 +101,14 @@ export class MatchEngine {
   private ballSpeedBeforeStep = 0;
   private possessionPlayerId: string | null = null;
   private readonly pendingKicks: { playerId: string; power: number }[] = [];
-  /** Reused so a tick never allocates. */
-  private readonly ballVelocity = new Vector3();
   private readonly animationTriggers = new Map<string, { kick: boolean; tackle: boolean }>();
+  /** The STANGA touch rule. Authoritative here; the online client mirrors it. */
+  touchRule: TouchRuleEngine;
+  /** Last tick each player's capsule was accepted as a contact. */
+  private readonly lastContactTick = new Map<string, number>();
 
   private rulesAuthority: RulesAuthority;
+  private pendingViolation: { playerId: string; team: TeamId } | null = null;
   private roster: MatchRoster;
   private readonly scene: Scene;
 
@@ -115,8 +122,19 @@ export class MatchEngine {
     this.rng = new Rng(options.seed ?? 0x5741c6);
     this.roster = options.roster ?? ONE_VS_ONE_ROSTER;
     this.state = createMatchState(this.roster);
+    this.touchRule = this.makeTouchRule();
     this.ball = new BallBody(scene, world);
     this.buildPlayerBodies();
+  }
+
+  private makeTouchRule(): TouchRuleEngine {
+    return new TouchRuleEngine(
+      {
+        minRelativeSpeed: GameConfig.touch.minRelativeSpeed,
+        violationCooldownTicks: GameConfig.touch.violationCooldownTicks,
+      },
+      this.state.touch,
+    );
   }
 
   /**
@@ -130,6 +148,7 @@ export class MatchEngine {
     for (const body of this.players) body.dispose();
     this.players.length = 0;
     this.state = createMatchState(roster);
+    this.touchRule = this.makeTouchRule();
     this.commands.clear();
     this.animationTriggers.clear();
     this.possessionPlayerId = null;
@@ -211,9 +230,10 @@ export class MatchEngine {
       this.applyCommand(player, dt, live);
     }
 
+    this.touchRule.advance();
+
     if (live) {
       this.resolvePendingKicks(dt);
-      this.applyBallControl(dt);
     } else {
       // Outside live play the ball is parked: no drift during the countdown.
       this.ball.setVelocity(0, 0, 0);
@@ -230,6 +250,18 @@ export class MatchEngine {
         this.checkGoalLine();
         this.expireShot();
         this.recoverOutOfBounds();
+      }
+      if (this.pendingViolation) {
+        const offence = this.pendingViolation;
+        this.pendingViolation = null;
+        const record = applyTouchViolation(this.state, offence.playerId, offence.team);
+        this.invalidateShot();
+        this.scoring.reset();
+        this.touchRule.reset(tick);
+        this.lastContactTick.clear();
+        this.possessionPlayerId = null;
+        this.ball.reset(this.state.ball.position);
+        this.events.emit('violation', record);
       }
 
       for (const record of this.scoring.update(this.state.elapsed)) {
@@ -404,6 +436,16 @@ export class MatchEngine {
   }
 
   private strikeBall(player: PlayerState, power: number): void {
+    // A kick is a deliberate touch, so the rule decides before the foot lands.
+    // Refusing here rather than at wind-up time is what makes the call fair:
+    // somebody else may have played the ball while the leg was swinging.
+    const outcome = this.registerTouch(player, true, Number.POSITIVE_INFINITY);
+    if (outcome === 'violation' || outcome === 'ignored') {
+      this.trigger(player.id, 'kick');
+      return;
+    }
+    this.lastContactTick.set(player.id, this.state.tick);
+
     const facing = this.assistedShotYaw(player);
     const magnitude = GameConfig.kick.maxImpulse * power;
     const lift = player.lofted ? GameConfig.kick.loftRatio : GameConfig.kick.flatLift;
@@ -424,11 +466,6 @@ export class MatchEngine {
       },
       startedAt: this.state.elapsed,
     };
-    this.state.ball.lastTouchBy = player.id;
-    this.state.ball.lastTouchTeam = player.team;
-    this.state.ball.lastTouchTick = this.state.tick;
-    this.possessionPlayerId = null;
-
     this.trigger(player.id, 'kick');
     this.events.emit('kick', {
       playerId: player.id,
@@ -451,22 +488,26 @@ export class MatchEngine {
       : GameConfig.tackle.missCooldownSeconds;
 
     if (success) {
-      const dirX = Math.sin(player.facing);
-      const dirZ = Math.cos(player.facing);
-      this.ball.applyImpulse(
-        dirX * GameConfig.tackle.ballImpulse,
-        GameConfig.tackle.ballImpulse * 0.12,
-        dirZ * GameConfig.tackle.ballImpulse,
-      );
-      if (
-        opponent &&
-        horizontalDistance(opponent.position, ball) <= GameConfig.ball.controlRadius * 1.4
-      ) {
-        opponent.stunTimer = GameConfig.tackle.stunSeconds;
+      // Winning the ball is a deliberate touch too, and it resets whoever had
+      // the turn — which is exactly how a tackle should feel.
+      const outcome = this.registerTouch(player, true, Number.POSITIVE_INFINITY);
+      if (outcome !== 'violation' && outcome !== 'ignored') {
+        this.lastContactTick.set(player.id, this.state.tick);
+        const dirX = Math.sin(player.facing);
+        const dirZ = Math.cos(player.facing);
+        this.ball.applyImpulse(
+          dirX * GameConfig.tackle.ballImpulse,
+          GameConfig.tackle.ballImpulse * 0.12,
+          dirZ * GameConfig.tackle.ballImpulse,
+        );
+        if (
+          opponent &&
+          horizontalDistance(opponent.position, ball) <= GameConfig.ball.controlRadius * 1.4
+        ) {
+          opponent.stunTimer = GameConfig.tackle.stunSeconds;
+        }
+        this.invalidateShot();
       }
-      this.state.ball.lastTouchBy = player.id;
-      this.state.ball.lastTouchTeam = player.team;
-      this.invalidateShot();
     }
     this.trigger(player.id, 'tackle');
     this.events.emit('tackle', { playerId: player.id, team: player.team, success });
@@ -500,82 +541,94 @@ export class MatchEngine {
   // ── Ball ────────────────────────────────────────────────────────────────────
 
   /** Light steering while the ball is close: control without gluing it to the foot. */
-  private applyBallControl(dt: number): void {
-    const ball = this.state.ball;
-    let closest: PlayerState | null = null;
-    let closestDistance = Infinity;
+  /**
+   * The touch that a player takes when they simply run into the ball.
+   *
+   * There is no dribbling under the STANGA rule: keeping the ball at your feet
+   * would be a second touch the moment it came down. So a legal first touch
+   * pushes the ball forward at a controlled speed instead — a trap, not a
+   * carry — and the player then has to juggle it or play it to somebody.
+   */
+  private applyFirstTouch(player: PlayerState): void {
+    const { touch } = GameConfig;
+    const speed = Math.hypot(player.velocity.x, player.velocity.z);
+    const push = Math.max(touch.firstTouchSpeed * 0.55, Math.min(touch.firstTouchSpeed, speed));
+    this.ball.setVelocity(
+      Math.sin(player.facing) * push,
+      push * touch.firstTouchLift,
+      Math.cos(player.facing) * push,
+    );
+  }
 
-    for (const player of this.state.players) {
-      const distance = horizontalDistance(player.position, ball.position);
-      if (distance < closestDistance) {
-        closestDistance = distance;
-        closest = player;
-      }
+  /**
+   * Offers one contact to the touch rule and applies what it decides.
+   * Returns the outcome so the caller can skip whatever it was about to do.
+   */
+  private registerTouch(
+    player: PlayerState,
+    deliberate: boolean,
+    relativeSpeed: number,
+  ): TouchOutcome {
+    const outcome = this.touchRule.register({
+      playerId: player.id,
+      team: player.team,
+      tick: this.state.tick,
+      deliberate,
+      relativeSpeed,
+    });
+
+    if (outcome === 'ignored') return outcome;
+
+    if (outcome === 'violation') {
+      // Recorded here, acted on at the end of the tick: the physics step has
+      // already run, and a restart must not move bodies mid-step.
+      this.pendingViolation ??= { playerId: player.id, team: player.team };
+      return outcome;
     }
 
-    if (!closest || closestDistance > GameConfig.ball.controlRadius || closest.stunTimer > 0) {
-      if (this.possessionPlayerId !== null) {
-        this.possessionPlayerId = null;
-        this.events.emit('possession', { playerId: null, team: null });
-      }
-      return;
+    this.state.ball.lastTouchBy = player.id;
+    this.state.ball.lastTouchTeam = player.team;
+    this.state.ball.lastTouchTick = this.state.tick;
+    if (this.possessionPlayerId !== player.id) {
+      this.possessionPlayerId = player.id;
+      this.events.emit('possession', { playerId: player.id, team: player.team });
     }
-
-    if (this.possessionPlayerId !== closest.id) {
-      this.possessionPlayerId = closest.id;
-      this.events.emit('possession', { playerId: closest.id, team: closest.team });
-    }
-
-    if (ball.lastTouchBy !== closest.id) {
-      ball.lastTouchBy = closest.id;
-      ball.lastTouchTeam = closest.team;
-      ball.lastTouchTick = this.state.tick;
-      this.events.emit('touch', { playerId: closest.id, team: closest.team });
-    }
-    // A touch by any player ends the previous shot, so a rebound cannot re-score.
+    // Any touch ends the previous shot, so a rebound cannot re-score.
     if (this.activeShot && this.state.elapsed - this.activeShot.startedAt > 0.2) {
       this.invalidateShot();
     }
+    this.events.emit('touch', { playerId: player.id, team: player.team });
+    return outcome;
+  }
 
-    // Live velocity, not the state mirror: within this tick the mirror is a
-    // tick old, so a ball that was just struck still reads as stationary and
-    // the assist below would write the kick straight back out again.
-    const velocity = this.ball.readVelocity(this.ballVelocity);
-    const speed = Math.hypot(velocity.x, velocity.z);
-    if (speed > GameConfig.ball.dribbleMaxSpeed) return;
+  /**
+   * A player's capsule met the ball. Whether that is a touch at all is the
+   * rule's call; whether it is *this* player's turn is also the rule's call.
+   */
+  private handlePlayerContact(playerId: string): void {
+    if (this.contactDebounced(playerId)) return;
+    const player = this.state.players.find((entry) => entry.id === playerId);
+    if (!player || player.stunTimer > 0) return;
 
-    // Control assist: a weak pull back towards the controlling player once the
-    // ball drifts to the edge of the control radius. Weak on purpose — the ball
-    // must never look glued to the foot.
-    const falloffStart = GameConfig.ball.controlRadius * GameConfig.ball.assistFalloff;
-    if (closestDistance > falloffStart) {
-      const pull =
-        ((closestDistance - falloffStart) / (GameConfig.ball.controlRadius - falloffStart)) *
-        GameConfig.ball.assistStrength *
-        dt;
-      const toPlayerX = (closest.position.x - ball.position.x) / closestDistance;
-      const toPlayerZ = (closest.position.z - ball.position.z) / closestDistance;
-      this.ball.setVelocity(
-        velocity.x + toPlayerX * pull,
-        velocity.y,
-        velocity.z + toPlayerZ * pull,
-      );
-      this.ball.readVelocity(velocity);
-    }
-
-    const playerSpeed = Math.hypot(closest.velocity.x, closest.velocity.z);
-    if (playerSpeed < 0.35) return;
-
-    const targetSpeed = Math.min(playerSpeed * 1.18, GameConfig.ball.dribbleMaxSpeed);
-    const targetX = Math.sin(closest.facing) * targetSpeed;
-    const targetZ = Math.cos(closest.facing) * targetSpeed;
-    const step = GameConfig.ball.dribbleForce * dt;
-
-    this.ball.setVelocity(
-      approach(velocity.x, targetX, step),
-      velocity.y,
-      approach(velocity.z, targetZ, step),
+    const relativeSpeed = Math.hypot(
+      this.state.ball.velocity.x - player.velocity.x,
+      this.state.ball.velocity.z - player.velocity.z,
     );
+    const outcome = this.registerTouch(
+      player,
+      false,
+      Math.max(relativeSpeed, this.ballSpeedBeforeStep),
+    );
+    if (outcome === 'ignored') return;
+
+    this.lastContactTick.set(playerId, this.state.tick);
+    if (outcome === 'firstTouch') this.applyFirstTouch(player);
+  }
+
+  /** True when this player's capsule is allowed to report a contact again. */
+  private contactDebounced(playerId: string): boolean {
+    const last = this.lastContactTick.get(playerId);
+    return last !== undefined && this.state.tick - last < GameConfig.touch.contactDebounceTicks;
   }
 
   private processCollisions(collisions: readonly RawCollision[], live: boolean): void {
@@ -583,6 +636,18 @@ export class MatchEngine {
       const ballSide = collision.a.kind === 'ball' ? collision.b : collision.a;
       const isBall = collision.a.kind === 'ball' || collision.b.kind === 'ball';
       if (!isBall) continue;
+
+      if (ballSide.kind === 'ground') {
+        // The one contact that closes an aerial chain. A wall, a post or the
+        // bar deliberately does not.
+        this.touchRule.registerGroundContact(this.state.tick);
+        continue;
+      }
+
+      if (ballSide.kind === 'player') {
+        if (live) this.handlePlayerContact(ballSide.playerId);
+        continue;
+      }
 
       if (ballSide.kind === 'wall') {
         if (this.ballSpeedBeforeStep > 3) {
@@ -674,11 +739,18 @@ export class MatchEngine {
     if (!ballOutOfBounds(this.state.ball.position)) return;
     this.ball.reset({ x: 0, y: GameConfig.ball.radius + 0.2, z: 0 });
     this.invalidateShot();
+    // An out-of-bounds reset is an official restart: everyone may touch again.
+    this.touchRule.reset(this.state.tick);
+    this.lastContactTick.clear();
+    this.possessionPlayerId = null;
   }
 
   // ── State sync ──────────────────────────────────────────────────────────────
 
   private applyKickoffReset(): void {
+    this.touchRule.reset(this.state.tick);
+    this.lastContactTick.clear();
+    this.possessionPlayerId = null;
     resetForKickoff(this.state);
     this.ball.reset(this.state.ball.position);
     for (const player of this.state.players) {

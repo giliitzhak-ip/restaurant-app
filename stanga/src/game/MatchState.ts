@@ -5,6 +5,7 @@
  */
 import { GameConfig, type ScoreKind } from '../config/GameConfig';
 import { vec3, type Vec3 } from '../core/math';
+import { createTouchRuleState, type TouchRuleState } from './TouchRuleEngine';
 import {
   ONE_VS_ONE_ROSTER,
   defaultColorId,
@@ -15,7 +16,28 @@ import {
 } from './MatchRoster';
 
 export type TeamId = 'home' | 'away';
-export type MatchPhase = 'idle' | 'kickoff' | 'playing' | 'celebration' | 'finished';
+export type MatchPhase =
+  | 'idle'
+  | 'kickoff'
+  | 'playing'
+  /** Short freeze after a double-touch call, before the restart. */
+  | 'violation'
+  | 'celebration'
+  | 'finished';
+
+/** Why play stopped for a restart. Only one kind exists in 0.4.0. */
+export type ViolationKind = 'doubleTouch';
+
+export interface ViolationRecord {
+  kind: ViolationKind;
+  /** Who gave the ball away. */
+  playerId: string;
+  offendingTeam: TeamId;
+  /** Who restarts. Chosen by the rules, never by a client. */
+  restartPlayerId: string;
+  restartTeam: TeamId;
+  tick: number;
+}
 export type MatchOutcome = 'homeWin' | 'awayWin' | 'draw';
 
 export interface PlayerState {
@@ -106,6 +128,10 @@ export interface MatchState {
   players: PlayerState[];
   ball: BallState;
   lastEvent: ScoreEventRecord | null;
+  /** The most recent touch-rule call, for the banner and the statistics. */
+  lastViolation: ViolationRecord | null;
+  /** Whose turn it is to touch the ball. Owned by the touch rule. */
+  touch: TouchRuleState;
   /** Team that kicks off next; set after a scoring event. */
   kickoffTeam: TeamId;
 }
@@ -191,6 +217,8 @@ export function createMatchState(roster: MatchRoster = ONE_VS_ONE_ROSTER): Match
       lastTouchTick: 0,
     },
     lastEvent: null,
+    lastViolation: null,
+    touch: createTouchRuleState(),
     kickoffTeam: 'home',
   };
 }
