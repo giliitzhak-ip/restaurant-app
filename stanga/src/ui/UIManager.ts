@@ -661,8 +661,10 @@ export class UIManager {
     });
     this.onClick('btn-play-online', () => {
       this.callbacks.onInteraction();
-      this.callbacks.onOnlinePlayPressed();
+      // The screen first, then the callback: the game may want to put the
+      // controls primer on top of it.
       this.showScreen('online');
+      this.callbacks.onOnlinePlayPressed();
     });
     this.onClick('btn-settings', () => {
       this.callbacks.onInteraction();

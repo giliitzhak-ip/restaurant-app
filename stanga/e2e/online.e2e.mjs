@@ -68,7 +68,11 @@ try {
   const guest = await openPage('guest');
 
   console.log('private room');
+  // A fresh profile is shown the controls primer before it can ready up.
   await host.click('#btn-play-online');
+  await host.waitForSelector('#screen-primer:not(.is-hidden)', { timeout: 30_000 });
+  await host.click('#btn-primer-ok');
+  await host.waitForSelector('#screen-online:not(.is-hidden)', { timeout: 30_000 });
   await host.fill('#online-name', 'גיל');
   await host.click('#btn-online-create');
   await host.waitForSelector('#online-invite:not(.is-hidden)', { timeout: 60_000 });
@@ -76,6 +80,9 @@ try {
   check('the host is given an invite code', /^[A-Z0-9]{5}$/.test(code), code);
 
   await guest.click('#btn-play-online');
+  await guest.waitForSelector('#screen-primer:not(.is-hidden)', { timeout: 30_000 });
+  await guest.click('#btn-primer-ok');
+  await guest.waitForSelector('#screen-online:not(.is-hidden)', { timeout: 30_000 });
   await guest.fill('#online-name', 'דני');
   await guest.fill('#online-code', code);
   await guest.click('#btn-online-join');
@@ -90,6 +97,17 @@ try {
     /\d/.test((await host.textContent('#online-ping')) ?? ''),
     (await host.textContent('#online-ping')) ?? '',
   );
+
+  // A shared link should land on the join form with the code already in it.
+  const linked = await openPage('linked');
+  await linked.goto(`${PAGE_URL}?invite=${code}`, { waitUntil: 'load' });
+  await linked.waitForSelector('#screen-online:not(.is-hidden)', { timeout: 60_000 });
+  check(
+    'an invite link pre-fills the code',
+    (await linked.inputValue('#online-code')) === code,
+    await linked.inputValue('#online-code'),
+  );
+  await linked.close();
 
   console.log('kick-off');
   await host.click('#btn-online-ready');

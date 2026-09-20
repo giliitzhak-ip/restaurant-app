@@ -45,7 +45,12 @@ import { ContactShadows } from '../rendering/ContactShadows';
 import { Effects } from '../rendering/Effects';
 import { QualityManager } from '../rendering/QualityManager';
 import { SharedMatchCamera } from '../rendering/SharedMatchCamera';
-import { UIManager, type LobbySlotView, type OnlinePlayerView } from '../ui/UIManager';
+import {
+  UIManager,
+  type LobbySlotView,
+  type OnlinePlayerView,
+  type ScreenName,
+} from '../ui/UIManager';
 import { attackingGoalLabel, connectErrorLabel, LOADING_STEPS, roomStageLabel } from '../ui/labels';
 import { loadSettings, saveSettings, type GameSettings } from './Settings';
 import { SimulationLoop } from './SimulationLoop';
@@ -101,6 +106,8 @@ export class Game {
   private celebratingTeam: TeamId | null = null;
   private defeatedTeam: TeamId | null = null;
   private stopJoinListening: (() => void) | null = null;
+  /** Where to go back to once the controls primer is dismissed. */
+  private primerReturnTo: ScreenName | null = null;
   private pendingDisconnect: PlayerSlot | null = null;
   private readonly lobby: [LobbySlotAssignment, LobbySlotAssignment];
 
@@ -355,7 +362,9 @@ export class Game {
     this.audio.vibrate(GameConfig.audio.vibration.whistle);
     if (this.settings.musicVolume > 0) this.audio.startMusic();
 
-    if (!this.settings.seenControlsPrimer) this.showPrimer(mode);
+    // Online the primer would sit over a live match, because the server keeps
+    // playing whatever this device does; it is shown in the lobby instead.
+    if (!this.settings.seenControlsPrimer && mode !== 'online') this.showPrimer(mode);
   }
 
   // ── Online 1×1 ──────────────────────────────────────────────────────────────
@@ -368,6 +377,8 @@ export class Game {
     this.ui.setOnlineNotice(
       RoomClient.hasResumableSession() ? 'אפשר לחזור למשחק שנקטע — חפשו יריב כדי לנסות.' : null,
     );
+    // Learn the controls before readying up, not on top of a running match.
+    if (!this.settings.seenControlsPrimer) this.showPrimer('online', 'online');
   }
 
   /**
@@ -780,7 +791,8 @@ export class Game {
 
   // ── Primer ──────────────────────────────────────────────────────────────────
 
-  private showPrimer(mode: MatchMode): void {
+  private showPrimer(mode: MatchMode, returnTo: ScreenName | null = null): void {
+    this.primerReturnTo = returnTo;
     const sections =
       mode === 'localTwoPlayer'
         ? [
@@ -838,7 +850,8 @@ export class Game {
   private dismissPrimer(): void {
     this.settings = { ...this.settings, seenControlsPrimer: true };
     saveSettings(this.settings);
-    this.ui.showScreen(null);
+    this.ui.showScreen(this.primerReturnTo);
+    this.primerReturnTo = null;
     if (this.phase === 'paused') this.resume();
   }
 
