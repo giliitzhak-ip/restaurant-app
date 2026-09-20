@@ -15,7 +15,8 @@
     "test:watch": "vitest",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
-    "icons": "node scripts/generate-icons.mjs"
+    "icons": "node scripts/generate-icons.mjs",
+    "server": "tsx src/server/index.ts"
   },
   "dependencies": {
     "@babylonjs/core": "9.27.1",

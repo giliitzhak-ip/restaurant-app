@@ -29,6 +29,12 @@ export default tseslint.config(
     },
   },
   {
+    // The authoritative server is a Node process: its log lines are the only
+    // operational signal it has, so stdout is allowed there and nowhere else.
+    files: ['src/server/**/*.ts'],
+    rules: { 'no-console': 'off' },
+  },
+  {
     // Node build scripts and this config file are not part of the app's TS project.
     files: ['scripts/**/*.mjs', 'eslint.config.js'],
     extends: [tseslint.configs.disableTypeChecked],

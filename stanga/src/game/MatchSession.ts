@@ -6,7 +6,8 @@
  *
  *   vs computer : [ Slot(home, human), Slot(away, ai) ]
  *   two players : [ Slot(home, human), Slot(away, human) ]
- *   online (3)  : [ Slot(home, human), Slot(away, network) ]
+ *   online      : [ Slot(home, network), Slot(away, network) ]  (on the server)
+ *   online      : [ Slot(home, human),   Slot(away, network) ]  (on the client)
  *
  * There is deliberately no separate code path for local multiplayer.
  */
@@ -16,7 +17,7 @@ import type { ControlContext, PlayerController } from '../input/PlayerController
 import type { MatchEngine } from './MatchEngine';
 import type { MatchState, PlayerState, TeamId } from './MatchState';
 
-export type MatchMode = 'vsComputer' | 'localTwoPlayer';
+export type MatchMode = 'vsComputer' | 'localTwoPlayer' | 'online';
 
 export interface PlayerSlot {
   readonly playerId: string;
