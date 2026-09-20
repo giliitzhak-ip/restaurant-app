@@ -1696,3 +1696,118 @@ kbd {
   min-height: 40px;
   font-size: 0.88rem;
 }
+
+/* ── Online 1×1 ─────────────────────────────────────────────────────────────
+   The online screen reuses the lobby's field and notice styles; what is new
+   here is the invite block and the two-player roster. */
+
+.online__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.online__join {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.6rem;
+}
+
+.online__join .lobby__field {
+  flex: 1;
+}
+
+/* Codes are Latin characters inside an RTL page: keep them left-to-right and
+   spaced so they can be read aloud without mistakes. */
+.online__code-input {
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-weight: 700;
+}
+
+.online__room {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.85rem;
+}
+
+.online__status {
+  margin: 0;
+  font-weight: 700;
+}
+
+.online__invite {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  background: rgba(255, 165, 36, 0.09);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 0.55rem 0.75rem;
+}
+
+.online__invite-label {
+  font-size: 0.82rem;
+  opacity: 0.8;
+}
+
+.online__code {
+  font-size: 1.5rem;
+  letter-spacing: 0.3em;
+  color: var(--accent);
+}
+
+.online__players {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.online__player {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-weight: 600;
+}
+
+.online__player-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: var(--line);
+  flex: none;
+}
+
+.online__player.is-connected .online__player-dot {
+  background: var(--accent);
+}
+
+.online__player.is-ready .online__player-dot {
+  box-shadow: 0 0 0 3px rgba(255, 165, 36, 0.3);
+}
+
+.online__player-note {
+  margin-inline-start: auto;
+  font-size: 0.82rem;
+  opacity: 0.75;
+  font-weight: 500;
+}
+
+.online__ping {
+  margin: 0;
+  font-size: 0.82rem;
+  opacity: 0.75;
+}
+
+@media (max-width: 560px) {
+  .online__join {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

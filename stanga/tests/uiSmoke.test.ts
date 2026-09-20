@@ -49,6 +49,12 @@ function makeCallbacks(): MockedCallbacks {
     onLobbyTouchJoin: vi.fn<UICallbacks['onLobbyTouchJoin']>(),
     onLobbyName: vi.fn<UICallbacks['onLobbyName']>(),
     onLobbyColor: vi.fn<UICallbacks['onLobbyColor']>(),
+    onOnlinePlayPressed: vi.fn<UICallbacks['onOnlinePlayPressed']>(),
+    onOnlineQuickMatch: vi.fn<UICallbacks['onOnlineQuickMatch']>(),
+    onOnlineCreateRoom: vi.fn<UICallbacks['onOnlineCreateRoom']>(),
+    onOnlineJoinRoom: vi.fn<UICallbacks['onOnlineJoinRoom']>(),
+    onOnlineReady: vi.fn<UICallbacks['onOnlineReady']>(),
+    onOnlineLeave: vi.fn<UICallbacks['onOnlineLeave']>(),
     onPrimerDismissed: vi.fn<UICallbacks['onPrimerDismissed']>(),
     onReconnectResume: vi.fn<UICallbacks['onReconnectResume']>(),
     onReconnectUseAi: vi.fn<UICallbacks['onReconnectUseAi']>(),
@@ -106,15 +112,30 @@ describe('UI smoke', () => {
 
   it('still marks every unreleased mode as coming soon and disables it', () => {
     const locked = [...document.querySelectorAll<HTMLButtonElement>('.btn--locked')];
-    expect(locked.length).toBe(4);
+    expect(locked.length).toBe(3);
     for (const button of locked) {
       expect(button.disabled).toBe(true);
       expect(button.textContent).toContain('בקרוב');
     }
     const labels = locked.map((button) => button.textContent ?? '');
-    for (const mode of ['2 נגד 2', 'אונליין', 'קריירה', 'טורנירים']) {
+    for (const mode of ['2 נגד 2', 'קריירה', 'טורנירים']) {
       expect(labels.some((label) => label.includes(mode))).toBe(true);
     }
+    // Online shipped in 0.3.0, so it is a real button rather than a promise.
+    expect(labels.some((label) => label.includes('אונליין'))).toBe(false);
+  });
+
+  it('offers online play from the menu and opens the online screen', () => {
+    const callbacks = makeCallbacks();
+    const ui = new UIManager(callbacks, defaultSettings());
+    ui.showScreen('menu');
+
+    const button = document.getElementById('btn-play-online') as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+    button.click();
+
+    expect(callbacks.onOnlinePlayPressed).toHaveBeenCalled();
+    expect(document.getElementById('screen-online')?.classList.contains('is-hidden')).toBe(false);
   });
 
   it('constructs without throwing and shows the menu', () => {

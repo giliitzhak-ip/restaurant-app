@@ -41,6 +41,7 @@ export type ScreenName =
   | 'pause'
   | 'result'
   | 'lobby'
+  | 'online'
   | 'primer'
   | 'reconnect'
   | 'bindings';
@@ -57,6 +58,28 @@ export interface LobbySlotView {
    * key to press and no button to click, so without this there is no way in.
    */
   canJoinByTouch: boolean;
+}
+
+/** One row in the online room's roster. */
+export interface OnlinePlayerView {
+  name: string;
+  teamLabel: string;
+  connected: boolean;
+  ready: boolean;
+  isYou: boolean;
+}
+
+export interface OnlineRoomView {
+  /** Already-localized line describing what the room is waiting for. */
+  status: string;
+  /** Empty while not in a private room. */
+  inviteCode: string;
+  inviteLink: string;
+  players: readonly OnlinePlayerView[];
+  /** Round-trip time in milliseconds, or null before the first pong. */
+  roundTripMs: number | null;
+  canReady: boolean;
+  readyLabel: string;
 }
 
 export interface UICallbacks {
@@ -77,6 +100,12 @@ export interface UICallbacks {
   onLobbyTouchJoin: (index: 1 | 2) => void;
   onLobbyName: (index: 1 | 2, name: string) => void;
   onLobbyColor: (index: 1 | 2, colorId: number) => void;
+  onOnlinePlayPressed: () => void;
+  onOnlineQuickMatch: (displayName: string) => void;
+  onOnlineCreateRoom: (displayName: string) => void;
+  onOnlineJoinRoom: (displayName: string, code: string) => void;
+  onOnlineReady: () => void;
+  onOnlineLeave: () => void;
   onPrimerDismissed: () => void;
   onReconnectResume: () => void;
   onReconnectUseAi: () => void;
@@ -148,6 +177,7 @@ export class UIManager {
   private adviceTimer: number | null = null;
   /** Action currently waiting for a key press in the bindings editor. */
   private captureTarget: { profile: KeyboardProfileId; action: BindableAction } | null = null;
+  private inviteLink = '';
 
   constructor(
     private readonly callbacks: UICallbacks,
@@ -164,6 +194,7 @@ export class UIManager {
       pause: requireElement('screen-pause'),
       result: requireElement('screen-result'),
       lobby: requireElement('screen-lobby'),
+      online: requireElement('screen-online'),
       primer: requireElement('screen-primer'),
       reconnect: requireElement('screen-reconnect'),
       bindings: requireElement('screen-bindings'),
@@ -256,6 +287,7 @@ export class UIManager {
     this.bindPause();
     this.bindResult();
     this.bindLobby();
+    this.bindOnline();
     this.bindPrimer();
     this.bindReconnect();
     this.bindBindings();
@@ -617,6 +649,11 @@ export class UIManager {
       this.callbacks.onInteraction();
       this.callbacks.onLocalPlayPressed();
     });
+    this.onClick('btn-play-online', () => {
+      this.callbacks.onInteraction();
+      this.callbacks.onOnlinePlayPressed();
+      this.showScreen('online');
+    });
     this.onClick('btn-settings', () => {
       this.callbacks.onInteraction();
       this.settingsReturnTo = 'menu';
@@ -790,6 +827,119 @@ export class UIManager {
       input.addEventListener('input', () => {
         this.callbacks.onLobbyName(index, input.value);
       });
+    }
+  }
+
+  private bindOnline(): void {
+    this.onClick('btn-online-quick', () => {
+      this.callbacks.onInteraction();
+      this.callbacks.onOnlineQuickMatch(this.onlineName());
+    });
+    this.onClick('btn-online-create', () => {
+      this.callbacks.onInteraction();
+      this.callbacks.onOnlineCreateRoom(this.onlineName());
+    });
+    this.onClick('btn-online-join', () => {
+      this.callbacks.onInteraction();
+      const code = requireElement<HTMLInputElement>('online-code').value;
+      this.callbacks.onOnlineJoinRoom(this.onlineName(), code);
+    });
+    this.onClick('btn-online-ready', () => {
+      this.callbacks.onInteraction();
+      this.callbacks.onOnlineReady();
+    });
+    this.onClick('btn-online-back', () => {
+      this.callbacks.onInteraction();
+      this.callbacks.onOnlineLeave();
+      this.showScreen('menu');
+    });
+    this.onClick('btn-online-copy', () => {
+      this.callbacks.onInteraction();
+      void this.copyInviteLink();
+    });
+
+    // Codes are typed in Latin on a Hebrew keyboard layout; normalise as we go
+    // so the field always shows exactly what the server will be asked for.
+    const code = requireElement<HTMLInputElement>('online-code');
+    code.addEventListener('input', () => {
+      code.value = code.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    });
+  }
+
+  private onlineName(): string {
+    return requireElement<HTMLInputElement>('online-name').value;
+  }
+
+  /** Pre-fills the name field from the saved profile. */
+  setOnlineName(name: string): void {
+    const input = requireElement<HTMLInputElement>('online-name');
+    if (document.activeElement !== input) input.value = name;
+  }
+
+  /** Shows the entry form (search / create / join) and hides the room panel. */
+  showOnlineEntry(notice: string | null = null): void {
+    requireElement('online-entry').classList.remove('is-hidden');
+    requireElement('online-room').classList.add('is-hidden');
+    requireElement('btn-online-ready').classList.add('is-hidden');
+    this.setOnlineNotice(notice);
+  }
+
+  setOnlineNotice(notice: string | null): void {
+    const element = requireElement('online-notice');
+    element.textContent = notice ?? '';
+    element.classList.toggle('is-hidden', notice === null);
+  }
+
+  renderOnlineRoom(view: OnlineRoomView): void {
+    requireElement('online-entry').classList.add('is-hidden');
+    requireElement('online-room').classList.remove('is-hidden');
+    requireElement('online-status').textContent = view.status;
+
+    const invite = requireElement('online-invite');
+    invite.classList.toggle('is-hidden', view.inviteCode.length === 0);
+    requireElement('online-invite-code').textContent = view.inviteCode;
+    this.inviteLink = view.inviteLink;
+
+    const list = requireElement('online-players');
+    list.replaceChildren();
+    for (const player of view.players) {
+      const item = document.createElement('li');
+      item.className = 'online__player';
+      item.classList.toggle('is-connected', player.connected);
+      item.classList.toggle('is-ready', player.ready);
+
+      const dot = document.createElement('span');
+      dot.className = 'online__player-dot';
+      const name = document.createElement('span');
+      name.textContent = player.isYou ? `${player.name} (אתה)` : player.name;
+      const note = document.createElement('span');
+      note.className = 'online__player-note';
+      note.textContent = player.connected
+        ? player.ready
+          ? `מוכן · ${player.teamLabel}`
+          : player.teamLabel
+        : 'מנותק — ממתינים לחזרה';
+
+      item.append(dot, name, note);
+      list.append(item);
+    }
+
+    requireElement('online-ping').textContent =
+      view.roundTripMs === null ? '' : `השהיית רשת: ${Math.round(view.roundTripMs)} מילישניות`;
+
+    const ready = requireElement<HTMLButtonElement>('btn-online-ready');
+    ready.classList.toggle('is-hidden', !view.canReady);
+    ready.textContent = view.readyLabel;
+  }
+
+  private async copyInviteLink(): Promise<void> {
+    if (this.inviteLink.length === 0) return;
+    try {
+      await navigator.clipboard.writeText(this.inviteLink);
+      this.setOnlineNotice('הקישור הועתק');
+    } catch {
+      // Clipboard access can be refused; showing the link is the fallback.
+      this.setOnlineNotice(this.inviteLink);
     }
   }
 

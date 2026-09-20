@@ -30,7 +30,12 @@ import {
   type BindableAction,
   type KeyboardProfileId,
 } from '../input/KeyBindings';
+import { NetworkController } from '../input/controllers/NetworkController';
 import type { PlayerController } from '../input/PlayerController';
+import { OnlineMatch } from '../net/OnlineMatch';
+import { ConnectError, RoomClient } from '../net/RoomClient';
+import { normalizeInviteCode, type JoinIntent } from '../net/protocol';
+import type { RoomStage } from '../net/schema';
 import { loadHavok } from '../physics/loadHavokBrowser';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
 import { AimIndicator } from '../rendering/AimIndicator';
@@ -40,8 +45,8 @@ import { ContactShadows } from '../rendering/ContactShadows';
 import { Effects } from '../rendering/Effects';
 import { QualityManager } from '../rendering/QualityManager';
 import { SharedMatchCamera } from '../rendering/SharedMatchCamera';
-import { UIManager, type LobbySlotView } from '../ui/UIManager';
-import { attackingGoalLabel, LOADING_STEPS } from '../ui/labels';
+import { UIManager, type LobbySlotView, type OnlinePlayerView } from '../ui/UIManager';
+import { attackingGoalLabel, connectErrorLabel, LOADING_STEPS, roomStageLabel } from '../ui/labels';
 import { loadSettings, saveSettings, type GameSettings } from './Settings';
 import { SimulationLoop } from './SimulationLoop';
 
@@ -78,6 +83,9 @@ export class Game {
   private readonly loop: SimulationLoop;
 
   private session: MatchSession | null = null;
+  private online: OnlineMatch | null = null;
+  /** Whose player the camera follows and whose meters the HUD shows. */
+  private localPlayerId = 'home-1';
   private mode: MatchMode = 'vsComputer';
   private settings: GameSettings;
   private phase: AppPhase = 'loading';
@@ -136,6 +144,13 @@ export class Game {
         onLobbyTouchJoin: (index) => this.joinWithTouch(index),
         onLobbyName: (index, name) => this.setLobbyName(index, name),
         onLobbyColor: (index, colorId) => this.setLobbyColor(index, colorId),
+        onOnlinePlayPressed: () => this.openOnline(),
+        onOnlineQuickMatch: (name) => void this.connectOnline({ intent: 'quick', name }),
+        onOnlineCreateRoom: (name) => void this.connectOnline({ intent: 'create', name }),
+        onOnlineJoinRoom: (name, code) =>
+          void this.connectOnline({ intent: 'join', name, inviteCode: code }),
+        onOnlineReady: () => this.online?.sendReady(),
+        onOnlineLeave: () => void this.leaveOnline(),
         onPrimerDismissed: () => this.dismissPrimer(),
         onReconnectResume: () => this.resumeAfterReconnect(),
         onReconnectUseAi: () => this.replaceDisconnectedWithAi(),
@@ -211,6 +226,7 @@ export class Game {
     this.phase = 'menu';
     this.ui.showScreen('menu');
     this.ui.setHudVisible(false);
+    this.applyInviteLink();
   }
 
   // ── Match setup ─────────────────────────────────────────────────────────────
@@ -276,6 +292,16 @@ export class Game {
     this.disposeSession();
 
     this.mode = mode;
+    // Online, exactly one slot is driven from this device; that is the player
+    // the camera follows and the one whose meters the HUD shows.
+    this.localPlayerId =
+      slots.find((slot) => slot.controller.kind !== 'ai' && slot.controller.kind !== 'network')
+        ?.playerId ??
+      slots[0]?.playerId ??
+      'home-1';
+    // The client predicts online, but decides nothing: the score, the clock and
+    // every goal come from the server.
+    this.match.setRules(mode === 'online' ? 'mirrored' : 'authoritative');
     // The engine's players keep fixed ids and teams; the slot carries identity.
     for (const slot of slots) {
       const player = this.match.state.players.find((entry) => entry.id === slot.playerId);
@@ -315,9 +341,9 @@ export class Game {
       this.sharedCamera.snapTo(this.cameraFocus());
     } else {
       this.scene.activeCamera = this.soloCamera.camera;
-      const human = this.match.state.players.find((player) => player.isHuman);
-      if (human) {
-        this.soloCamera.snapTo(human.position, this.match.state.ball.position, human.team);
+      const local = this.localPlayer();
+      if (local) {
+        this.soloCamera.snapTo(local.position, this.match.state.ball.position, local.team);
       }
     }
     this.handleResize();
@@ -329,6 +355,211 @@ export class Game {
     if (this.settings.musicVolume > 0) this.audio.startMusic();
 
     if (!this.settings.seenControlsPrimer) this.showPrimer(mode);
+  }
+
+  // ── Online 1×1 ──────────────────────────────────────────────────────────────
+
+  /** Opens the online screen. Entry form only — nothing connects yet. */
+  private openOnline(): void {
+    this.audio.unlock();
+    this.ui.setOnlineName(this.settings.profiles.player1.name);
+    this.ui.showOnlineEntry(null);
+    this.ui.setOnlineNotice(
+      RoomClient.hasResumableSession() ? 'אפשר לחזור למשחק שנקטע — חפשו יריב כדי לנסות.' : null,
+    );
+  }
+
+  /**
+   * Fills the invite code in from a shared link and opens the online screen,
+   * so tapping a friend's link lands directly on "join".
+   */
+  private applyInviteLink(): void {
+    if (typeof window === 'undefined') return;
+    const code = normalizeInviteCode(new URL(window.location.href).searchParams.get('invite'));
+    if (code === null) return;
+    this.openOnline();
+    const input = document.getElementById('online-code');
+    if (input instanceof HTMLInputElement) input.value = code;
+    this.ui.showScreen('online');
+    this.ui.setOnlineNotice('הקוד מהקישור מוכן — לחצו "הצטרפות".');
+  }
+
+  private async connectOnline(request: {
+    intent: JoinIntent;
+    name: string;
+    inviteCode?: string;
+  }): Promise<void> {
+    if (this.online) await this.leaveOnline();
+
+    const name = request.name.trim().slice(0, 16);
+    if (name.length === 0) {
+      this.ui.setOnlineNotice(connectErrorLabel('invalidName'));
+      return;
+    }
+    if (request.intent === 'join' && normalizeInviteCode(request.inviteCode) === null) {
+      this.ui.setOnlineNotice(connectErrorLabel('roomNotFound'));
+      return;
+    }
+
+    this.settings = {
+      ...this.settings,
+      profiles: {
+        ...this.settings.profiles,
+        player1: { ...this.settings.profiles.player1, name },
+      },
+    };
+    saveSettings(this.settings);
+
+    const online = new OnlineMatch(this.match, {
+      onStage: (stage, secondsLeft) => this.handleOnlineStage(stage, secondsLeft),
+      onServerEvent: () => this.refreshOnlineRoom(),
+      onOpponentConnected: (connected) => this.handleOpponentConnection(connected),
+      onDisconnected: () => this.handleOnlineDisconnect(),
+      onPing: () => this.refreshOnlineRoom(),
+    });
+    this.online = online;
+    this.ui.setOnlineNotice(null);
+    this.ui.renderOnlineRoom({
+      status: 'מתחבר…',
+      inviteCode: '',
+      inviteLink: '',
+      players: [],
+      roundTripMs: null,
+      canReady: false,
+      readyLabel: 'מוכן',
+    });
+
+    try {
+      await online.connect({
+        intent: request.intent,
+        displayName: name,
+        colorId: this.settings.profiles.player1.colorId,
+        inviteCode: normalizeInviteCode(request.inviteCode) ?? undefined,
+      });
+      this.refreshOnlineRoom();
+    } catch (error) {
+      this.online = null;
+      const reason = error instanceof ConnectError ? error.reason : 'unreachable';
+      this.ui.showOnlineEntry(connectErrorLabel(reason));
+    }
+  }
+
+  private async leaveOnline(): Promise<void> {
+    const online = this.online;
+    this.online = null;
+    if (!online) return;
+    await online.leave();
+  }
+
+  private handleOnlineStage(stage: RoomStage, secondsLeft: number): void {
+    switch (stage) {
+      case 'countdown':
+        this.ui.showScreen('online');
+        this.ui.showResumeCountdown(Math.ceil(secondsLeft));
+        break;
+      case 'playing':
+        this.ui.showResumeCountdown(null);
+        if (this.mode !== 'online' || this.phase !== 'playing') this.startOnlineSession();
+        break;
+      case 'paused':
+        this.ui.showResumeCountdown(null);
+        break;
+      case 'closed':
+        void this.leaveOnline();
+        this.exitToMenu();
+        break;
+      default:
+        break;
+    }
+    this.refreshOnlineRoom();
+  }
+
+  /** The room said "go": build the session and hand over to the normal match. */
+  private startOnlineSession(): void {
+    const online = this.online;
+    if (!online) return;
+
+    const localId = online.localPlayerId;
+    const remoteId = online.remotePlayerId;
+    const snapshot = online.client.state;
+    const remoteName = snapshot?.players.get(remoteId)?.name ?? 'יריב';
+    const localColor = snapshot?.players.get(localId)?.colorId ?? 0;
+    const remoteColor = snapshot?.players.get(remoteId)?.colorId ?? pickContrastingKit(localColor);
+    const remoteController = new NetworkController(`net-${remoteId}`, remoteName);
+
+    // The client predicts; the server decides. Everything below this line is
+    // the ordinary local game.
+    const slots: PlayerSlot[] = [
+      {
+        playerId: localId,
+        team: online.localTeam,
+        name: this.settings.profiles.player1.name,
+        colorId: localColor,
+        controller: this.buildSoloController(),
+      },
+      {
+        playerId: remoteId,
+        team: online.localTeam === 'home' ? 'away' : 'home',
+        name: remoteName,
+        colorId: remoteColor,
+        controller: remoteController,
+      },
+    ];
+
+    this.beginSession('online', slots);
+    const session = this.session;
+    if (session) online.attach(session, remoteController);
+  }
+
+  private handleOpponentConnection(connected: boolean): void {
+    if (this.mode !== 'online') return;
+    this.ui.showCaption(connected ? 'whistle' : 'tackle');
+    this.ui.setOnlineNotice(connected ? null : roomStageLabel('paused'));
+    this.refreshOnlineRoom();
+  }
+
+  private handleOnlineDisconnect(): void {
+    this.online = null;
+    this.disposeSession();
+    this.match.setRules('authoritative');
+    this.phase = 'menu';
+    this.hideAllTouchPads();
+    this.ui.setHudVisible(false);
+    this.ui.showResumeCountdown(null);
+    this.ui.showScreen('online');
+    this.ui.showOnlineEntry('החיבור לשרת נפל. נסו שוב.');
+  }
+
+  private refreshOnlineRoom(): void {
+    const online = this.online;
+    if (!online) return;
+    const snapshot = online.client.state;
+    const stage = online.stage;
+
+    const players: OnlinePlayerView[] = [];
+    for (const id of ['home-1', 'away-1']) {
+      const player = snapshot?.players.get(id);
+      if (!player || player.name.length === 0) continue;
+      players.push({
+        name: player.name,
+        teamLabel: attackingGoalLabel(player.team as TeamId),
+        connected: player.connected,
+        ready: player.ready,
+        isYou: id === online.localPlayerId,
+      });
+    }
+
+    const code = online.inviteCode;
+    const you = snapshot?.players.get(online.localPlayerId);
+    this.ui.renderOnlineRoom({
+      status: roomStageLabel(stage),
+      inviteCode: code,
+      inviteLink: code.length > 0 ? inviteLinkFor(code) : '',
+      players,
+      roundTripMs: online.roundTripMs > 0 ? online.roundTripMs : null,
+      canReady: stage === 'lobby' && you?.ready !== true,
+      readyLabel: stage === 'finished' ? 'עוד משחק' : 'מוכן',
+    });
   }
 
   private buildSoloController(): PlayerController {
@@ -646,6 +877,8 @@ export class Game {
   }
 
   exitToMenu(): void {
+    void this.leaveOnline();
+    this.match.setRules('authoritative');
     this.phase = 'menu';
     this.loop.reset();
     this.closeLobby();
@@ -674,6 +907,8 @@ export class Game {
 
   private checkDisconnects(): void {
     if (this.phase !== 'playing' || !this.session) return;
+    // Online drops are the server's business, not a "plug your gamepad back in".
+    if (this.mode === 'online') return;
     const reports = this.session.findDisconnected();
     if (reports.length === 0) return;
     const first = reports[0];
@@ -750,6 +985,18 @@ export class Game {
     this.scene.render();
   }
 
+  /** The player this device drives. */
+  private localPlayer() {
+    return this.match.state.players.find((player) => player.id === this.localPlayerId);
+  }
+
+  /** True for players a person on *this* device controls. */
+  private isLocallyDriven(playerId: string): boolean {
+    if (this.mode === 'online') return playerId === this.localPlayerId;
+    const player = this.match.state.players.find((entry) => entry.id === playerId);
+    return player?.isHuman === true;
+  }
+
   private activeCamera(): { activate?: (scene: Scene) => void } {
     return this.mode === 'localTwoPlayer' ? this.sharedCamera : { activate: undefined };
   }
@@ -797,16 +1044,18 @@ export class Game {
     if (this.mode === 'localTwoPlayer') {
       this.sharedCamera.update(this.cameraFocus(), dt);
     } else {
-      const human = state.players.find((player) => player.isHuman);
-      if (human) this.soloCamera.update(human.position, state.ball.position, human.team, dt);
+      const local = this.localPlayer();
+      if (local) this.soloCamera.update(local.position, state.ball.position, local.team, dt);
     }
 
     // The aim indicator follows whichever human is charging; with two players
     // the one in control wins, so the pitch never fills up with arrows.
-    const charging = state.players.find((player) => player.isHuman && player.charging);
+    const charging = state.players.find(
+      (player) => this.isLocallyDriven(player.id) && player.charging,
+    );
     this.aimIndicator.update(charging, charging?.kickCharge ?? 0, charging?.lofted ?? false);
 
-    const humans = state.players.filter((player) => player.isHuman);
+    const humans = state.players.filter((player) => this.isLocallyDriven(player.id));
     for (let i = 0; i < humans.length; i += 1) {
       const player = humans[i];
       if (!player) continue;
@@ -833,8 +1082,11 @@ export class Game {
   private simulate(dt: number, tick: number): void {
     const session = this.session;
     if (!session) return;
+    this.online?.beforeTick();
     session.collectCommands(tick, this.cameraYaw, dt);
+    this.online?.sendLocalCommand();
     this.match.step(dt, tick);
+    this.online?.afterTick();
     // Key edges live for exactly one tick, after every controller has read them.
     this.keyboard.endFrame();
   }
@@ -1139,6 +1391,15 @@ function frameSoundFor(part: GoalPart): 'post' | 'crossbar' | 'junction' {
 }
 
 /** Kit that is guaranteed to differ from the one already chosen. */
+/** The link a host shares. Same page, plus the code as a query parameter. */
+function inviteLinkFor(code: string): string {
+  if (typeof window === 'undefined') return code;
+  const url = new URL(window.location.href);
+  url.search = `?invite=${code}`;
+  url.hash = '';
+  return url.toString();
+}
+
 function pickContrastingKit(colorId: number): number {
   return colorId === 1 ? 0 : 1;
 }

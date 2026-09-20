@@ -66,3 +66,33 @@ export function localOutcomeTitle(
   if (outcome === 'draw') return 'תיקו';
   return `${outcome === 'homeWin' ? homeName : awayName} מנצח`;
 }
+
+/** Why a connection attempt was refused, in the words the player reads. */
+export const CONNECT_ERROR_LABELS: Record<string, string> = {
+  protocolMismatch: 'הגרסה שלכם ישנה. רעננו את הדף כדי לשחק אונליין.',
+  roomNotFound: 'לא נמצא חדר עם הקוד הזה. בדקו את הקוד ונסו שוב.',
+  roomFull: 'החדר כבר מלא.',
+  matchInProgress: 'המשחק בחדר כבר התחיל.',
+  rateLimited: 'יותר מדי ניסיונות. המתינו רגע ונסו שוב.',
+  invalidName: 'צריך שם כדי לשחק אונליין.',
+  unreachable: 'אין חיבור לשרת. בדקו את האינטרנט ונסו שוב.',
+};
+
+export function connectErrorLabel(reason: string): string {
+  return CONNECT_ERROR_LABELS[reason] ?? CONNECT_ERROR_LABELS.unreachable ?? 'שגיאת חיבור.';
+}
+
+/** What the online room is waiting for right now. */
+export const ROOM_STAGE_LABELS: Record<string, string> = {
+  waiting: 'ממתינים ליריב…',
+  lobby: 'היריב הגיע. לחצו "מוכן" כדי להתחיל.',
+  countdown: 'מתחילים…',
+  playing: 'המשחק רץ.',
+  paused: 'היריב התנתק — ממתינים שיחזור.',
+  finished: 'המשחק הסתיים.',
+  closed: 'החדר נסגר.',
+};
+
+export function roomStageLabel(stage: string): string {
+  return ROOM_STAGE_LABELS[stage] ?? '';
+}

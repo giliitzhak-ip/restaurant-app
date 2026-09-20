@@ -29,8 +29,7 @@ export class HeadlessMatch {
     const scene = new Scene(engine);
     const world = PhysicsWorld.create(scene, havok);
     const arena = buildArenaColliders(scene, world);
-    const match =
-      seed === undefined ? new MatchEngine(scene, world) : new MatchEngine(scene, world, seed);
+    const match = new MatchEngine(scene, world, seed === undefined ? {} : { seed });
     return new HeadlessMatch(engine, scene, world, arena, match);
   }
 

@@ -60,6 +60,23 @@ interface ActiveShot {
 
 const BALL_ID = 'ball';
 
+/**
+ * Who decides the score and the clock.
+ *
+ * `authoritative` is the whole game: rules, scoring and phases all run here.
+ * `mirrored` is the online client: motion, kicks, tackles and possession still
+ * run locally so the game feels immediate, but the score, the goal line, the
+ * clock and the phases are taken from the server instead of being decided
+ * twice. It is the one place in the simulation that knows about the network,
+ * and it is a single switch rather than a check scattered through the tick.
+ */
+export type RulesAuthority = 'authoritative' | 'mirrored';
+
+export interface MatchEngineOptions {
+  seed?: number;
+  rules?: RulesAuthority;
+}
+
 export class MatchEngine {
   readonly state: MatchState = createMatchState();
   readonly events = new EventBus<MatchEventMap>();
@@ -76,16 +93,33 @@ export class MatchEngine {
   private readonly pendingKicks: { playerId: string; power: number }[] = [];
   private readonly animationTriggers = new Map<string, { kick: boolean; tackle: boolean }>();
 
+  private rulesAuthority: RulesAuthority;
+
   constructor(
     scene: Scene,
     private readonly world: PhysicsWorld,
-    seed = 0x5741c6,
+    options: MatchEngineOptions = {},
   ) {
-    this.rng = new Rng(seed);
+    this.rulesAuthority = options.rules ?? 'authoritative';
+    this.rng = new Rng(options.seed ?? 0x5741c6);
     this.ball = new BallBody(scene, world);
     for (const player of this.state.players) {
       this.players.push(new PlayerBody(scene, world, player.id, player.team, player.position));
     }
+  }
+
+  get rules(): RulesAuthority {
+    return this.rulesAuthority;
+  }
+
+  /**
+   * Switches who decides the score. The session sets this when a match starts,
+   * so one engine serves both the offline game and the online client.
+   */
+  setRules(rules: RulesAuthority): void {
+    this.rulesAuthority = rules;
+    this.scoring.reset();
+    this.activeShot = null;
   }
 
   get humanPlayerId(): string {
@@ -147,30 +181,33 @@ export class MatchEngine {
     this.ball.clampSpeed();
 
     this.processCollisions(collisions, live);
-    if (live) {
-      this.checkGoalLine();
-      this.expireShot();
-      this.recoverOutOfBounds();
-    }
 
-    for (const record of this.scoring.update(this.state.elapsed)) {
-      if (this.state.phase !== 'playing') continue;
-      applyScoreEvent(this.state, record);
-      this.activeShot = null;
-      this.events.emit('scored', record);
-    }
-    this.scoring.prune(this.state.elapsed);
+    if (this.rulesAuthority === 'authoritative') {
+      if (live) {
+        this.checkGoalLine();
+        this.expireShot();
+        this.recoverOutOfBounds();
+      }
 
-    const result = advancePhases(this.state, dt);
-    if (result.needsKickoffReset) {
-      this.applyKickoffReset();
-      this.events.emit('kickoff', { team: this.state.kickoffTeam });
-    }
-    if (result.ballBecameLive) {
-      this.events.emit('ballLive', { tick });
-    }
-    if (result.matchEnded) {
-      this.events.emit('matchEnd', { outcome: outcomeOf(this.state) });
+      for (const record of this.scoring.update(this.state.elapsed)) {
+        if (this.state.phase !== 'playing') continue;
+        applyScoreEvent(this.state, record);
+        this.activeShot = null;
+        this.events.emit('scored', record);
+      }
+      this.scoring.prune(this.state.elapsed);
+
+      const result = advancePhases(this.state, dt);
+      if (result.needsKickoffReset) {
+        this.applyKickoffReset();
+        this.events.emit('kickoff', { team: this.state.kickoffTeam });
+      }
+      if (result.ballBecameLive) {
+        this.events.emit('ballLive', { tick });
+      }
+      if (result.matchEnded) {
+        this.events.emit('matchEnd', { outcome: outcomeOf(this.state) });
+      }
     }
 
     this.writeBackState();
@@ -518,6 +555,7 @@ export class MatchEngine {
           speed: this.ballSpeedBeforeStep,
         });
 
+        if (this.rulesAuthority !== 'authoritative') continue;
         this.scoring.registerContact({
           shot: this.activeShot?.record ?? null,
           kind,

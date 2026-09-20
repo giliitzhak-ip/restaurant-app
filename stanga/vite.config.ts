@@ -8,10 +8,18 @@ import { VitePWA } from 'vite-plugin-pwa';
  */
 const withPwa = process.env.STANGA_NO_PWA !== '1';
 
+/**
+ * Where the authoritative server lives. Empty means "work it out at runtime":
+ * same origin in a build, and port 2567 on the dev host while developing.
+ * It is a URL, never a credential — there are no keys in this project.
+ */
+const serverUrl = process.env.STANGA_SERVER_URL ?? '';
+
 export default defineConfig({
   base: './',
   define: {
     'import.meta.env.STANGA_PWA': JSON.stringify(withPwa),
+    'import.meta.env.STANGA_SERVER_URL': JSON.stringify(serverUrl),
   },
   resolve: {
     // Without the plugin there is no `virtual:pwa-register` module to import.

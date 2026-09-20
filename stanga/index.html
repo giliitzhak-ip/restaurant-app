@@ -111,6 +111,9 @@
             <button type="button" class="btn btn--secondary btn--xl" id="btn-play-local">
               שני שחקנים — אותו מכשיר
             </button>
+            <button type="button" class="btn btn--secondary btn--xl" id="btn-play-online">
+              אונליין — 1 על 1
+            </button>
             <button type="button" class="btn btn--ghost" id="btn-settings">הגדרות</button>
           </div>
 
@@ -120,11 +123,6 @@
               <li>
                 <button type="button" class="btn btn--locked" disabled>
                   2 נגד 2<span class="badge">בקרוב</span>
-                </button>
-              </li>
-              <li>
-                <button type="button" class="btn btn--locked" disabled>
-                  אונליין<span class="badge">בקרוב</span>
                 </button>
               </li>
               <li>
@@ -316,6 +314,75 @@
             </button>
             <button type="button" class="btn btn--ghost" id="btn-lobby-swap">החלף צדדים</button>
             <button type="button" class="btn btn--ghost" id="btn-lobby-back">חזרה</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Online 1x1: matchmaking and private rooms -->
+      <section class="screen screen--dialog is-hidden" id="screen-online" aria-label="משחק אונליין">
+        <div class="panel panel--wide">
+          <h2 class="panel__title">אונליין — 1 על 1</h2>
+          <p class="panel__lead" id="online-lead">
+            שחקו מול חבר במכשיר אחר. חפשו יריב, או פתחו חדר פרטי ושלחו קישור.
+          </p>
+
+          <label class="lobby__field">
+            <span>שם</span>
+            <input
+              class="lobby__input"
+              id="online-name"
+              type="text"
+              maxlength="16"
+              autocomplete="off"
+              spellcheck="false"
+              value="שחקן"
+            />
+          </label>
+
+          <div class="online__actions" id="online-entry">
+            <button type="button" class="btn btn--primary btn--lg" id="btn-online-quick">
+              חיפוש יריב
+            </button>
+            <button type="button" class="btn btn--secondary" id="btn-online-create">
+              חדר פרטי חדש
+            </button>
+            <div class="online__join">
+              <label class="lobby__field">
+                <span>קוד הזמנה</span>
+                <input
+                  class="lobby__input online__code-input"
+                  id="online-code"
+                  type="text"
+                  maxlength="5"
+                  autocomplete="off"
+                  spellcheck="false"
+                  inputmode="latin"
+                  dir="ltr"
+                  placeholder="ABC12"
+                />
+              </label>
+              <button type="button" class="btn btn--secondary" id="btn-online-join">הצטרפות</button>
+            </div>
+          </div>
+
+          <div class="online__room is-hidden" id="online-room">
+            <p class="online__status" id="online-status">מתחבר…</p>
+            <div class="online__invite is-hidden" id="online-invite">
+              <span class="online__invite-label">קוד הזמנה</span>
+              <strong class="online__code" id="online-invite-code" dir="ltr"></strong>
+              <button type="button" class="btn btn--ghost" id="btn-online-copy">העתק קישור</button>
+            </div>
+            <ul class="online__players" id="online-players"></ul>
+            <p class="online__ping" id="online-ping"></p>
+          </div>
+
+          <p class="lobby__notice is-hidden" id="online-notice"></p>
+
+          <div class="panel__actions">
+            <button type="button" class="btn btn--primary btn--lg is-hidden" id="btn-online-ready">
+              מוכן
+            </button>
+            <button type="button" class="btn btn--ghost" id="btn-online-back">חזרה</button>
           </div>
         </div>
       </section>

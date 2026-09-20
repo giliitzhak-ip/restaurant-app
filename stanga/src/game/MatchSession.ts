@@ -13,6 +13,7 @@
  */
 import { GameConfig } from '../config/GameConfig';
 import { clamp } from '../core/math';
+import type { PlayerCommand } from '../input/PlayerCommand';
 import type { ControlContext, PlayerController } from '../input/PlayerController';
 import type { MatchEngine } from './MatchEngine';
 import type { MatchState, PlayerState, TeamId } from './MatchState';
@@ -45,6 +46,7 @@ export class MatchSession {
   readonly slots: PlayerSlot[];
   private aimAssist: number;
   private readonly context: ControlContext;
+  private readonly lastCommands = new Map<string, PlayerCommand>();
 
   constructor(
     private readonly engine: MatchEngine,
@@ -91,8 +93,20 @@ export class MatchSession {
     for (const slot of this.slots) {
       this.context.player = this.playerState(slot.playerId);
       const command = slot.controller.poll(slot.playerId, tickId, this.context);
+      this.lastCommands.set(slot.playerId, command);
       this.engine.submitCommand(command);
     }
+  }
+
+  /**
+   * The command a slot produced on the most recent tick.
+   *
+   * The controller owns the object and reuses it, so read it within the same
+   * tick — the online client does exactly that to put the local player's
+   * intent on the wire.
+   */
+  lastCommandFor(playerId: string): PlayerCommand | undefined {
+    return this.lastCommands.get(playerId);
   }
 
   /** Any slot whose device has gone away. Empty when everything is healthy. */
