@@ -5,13 +5,26 @@ export function AdminTable({
   head,
   children,
   className,
+  label,
 }: {
   head: React.ReactNode[];
   children: React.ReactNode;
   className?: string;
+  /** Names the scrollable region. Falls back to a generic description. */
+  label?: string;
 }) {
   return (
-    <div className={cn("overflow-x-auto card", className)}>
+    /*
+     * A horizontally scrolling box has to be focusable, or the only way to
+     * read the columns past the edge is to drag — which a keyboard cannot do.
+     * The label is what a screen reader announces on landing here.
+     */
+    <div
+      className={cn("card overflow-x-auto", className)}
+      tabIndex={0}
+      role="group"
+      aria-label={label ?? "טבלת נתונים — ניתן לגלול לצדדים"}
+    >
       <table className="w-full min-w-[42rem] text-sm">
         <thead>
           <tr className="border-b border-line text-start">
