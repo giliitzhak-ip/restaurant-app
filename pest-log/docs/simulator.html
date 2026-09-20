@@ -265,6 +265,47 @@
     display: block; width: 100%; text-align: start; background: none; border: 0; cursor: pointer;
     font-family: inherit; font-size: 13px; color: #b42318; padding: 5px 0; text-decoration: underline;
   }
+  .sheet-back {
+    position: absolute; inset: 0; background: rgba(10, 28, 18, 0.45);
+    z-index: 55; display: flex; align-items: flex-end;
+  }
+  .sheet {
+    background: var(--surface); width: 100%;
+    border-radius: 20px 20px 0 0; padding: 16px;
+    max-height: 78%; overflow: auto;
+  }
+  .sheet h3 { margin: 0 0 4px; font-size: 16px; }
+  .tpl-row {
+    display: flex; align-items: center; gap: 8px;
+    border-bottom: 1px solid var(--line); padding: 8px 0; font-size: 13.5px;
+  }
+  .tpl-row span { flex: 1; }
+  .tpl-pick {
+    width: 32px; height: 32px; border-radius: 50%; flex: none; cursor: pointer;
+    border: 1px solid var(--line); background: var(--surface); font-size: 15px; font-weight: 700;
+    color: var(--brand-dark);
+  }
+  .tpl-pick.on { background: var(--brand); border-color: var(--brand); color: #05301c; }
+
+  .st-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+  .st-row:last-child { border-bottom: 0; }
+  .st-no {
+    width: 32px; height: 32px; border-radius: 50%; flex: none;
+    display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 13px;
+  }
+  .st-main { flex: 1; min-width: 0; font-size: 13px; }
+  .st-row select { max-width: 42%; min-height: 38px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font-family: inherit; font-size: 13px; color: var(--text); }
+
+  .sms {
+    white-space: pre-wrap; font-family: inherit; font-size: 12.5px; line-height: 1.6;
+    background: var(--bg); border-radius: 12px; padding: 10px; margin: 8px 0 0;
+    color: var(--text-muted);
+  }
+  .diag-line { display: flex; gap: 8px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .diag-line:last-child { border-bottom: 0; }
+  .diag-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; flex: none; background: var(--brand); }
+  .diag-line.warn .diag-dot { background: var(--danger); }
+
   .toast {
     position: absolute; bottom: 18px; inset-inline: 22px; z-index: 50;
     background: #10251b; color: #eafff2; border-radius: 14px; padding: 11px 14px;
@@ -302,6 +343,8 @@
       <li>גלילה במסך הבית: ה־hero מתכווץ, הברכה נמוגה וכותרת קטנה נדבקת למעלה.</li>
       <li>מעברי מסך מותאמי RTL עם כיוון הפוך בחזרה, ושמירת מיקום גלילה לכל מסך.</li>
       <li>אשף בן שישה שלבים עם בדיקת שדות חובה, רשימת חוסרים בעברית וקפיצה לשדה.</li>
+      <li>ספריית ניסוחים („הוסף מתבנית”), פירוט נספח א׳, סיווג תמונות והדבקת נ״צ ממפות.</li>
+      <li>מאגר תחנות לאתר עם סימון מצב בביקור, טעינה מיומן קודם, אצוות אחרונות, אחריות וסיכום SMS.</li>
       <li>פאנל חתימה בקנבס, סיום יומן עם מספר סידורי, והודעת מרכז ההרעלות הקבועה.</li>
       <li>מצב סנכרון מתחלף (מסונכרן / ממתין / לא מקוון) בשבב שבראש המסך.</li>
     </ul>
@@ -377,6 +420,70 @@
       { id: "t2", title: "ביקורת חוזרת — לקוח הדגמה ב'", sub: "מועד יעד: 24.09.2026", state: "פתוח", cls: "" }
     ]
   };
+
+  /** ספריות הניסוח — מדגם מתוך הספריות שבאפליקציה. */
+  var LIBRARIES = {
+    findings: {
+      title: "ממצאי ניטור",
+      items: ["תיקנים חיים/פגרים/גללים.", "שיירות נמלים.", "גללים/כרסומים של חולדות/עכברים.",
+        "מחילות מכרסמים.", "פשפש מיטה / כתמי דם / ביצים / נימפה.", "קן צרעות."]
+    },
+    prevention: {
+      title: "פעולות מניעה והנסיבות",
+      items: ["איטום סדקים ופתחים בקירות ובצנרת.", "תיקון נזילות ומקורות רטיבות.",
+        "סילוק פסולת ושאריות מזון והקפדה על פינוי יומי.", "נמצאה פעילות מזיקים בביקורת – נדרש טיפול להפחתת הפעילות."]
+    },
+    warranty: {
+      title: "הערות לאחריות",
+      items: ["האחריות בתוקף בכפוף לביצוע פעולות המניעה שהומלצו.",
+        "האחריות אינה חלה על נגיעות חדשה ממקור חיצוני.",
+        "קריאת שירות במסגרת האחריות ללא תשלום."]
+    }
+  };
+
+  /** סוגי תחנות עם הצבעים מהגרסה הקודמת. */
+  var STATION_TYPES = [
+    ["bait_poison", "תחנת האכלה עם רעל", "#d9822b"],
+    ["bait_monitor", "תחנת האכלה ללא רעל (ניטור)", "#3f9d5a"],
+    ["glue_trap", "מלכודת הדבקה", "#7a5a44"],
+    ["insect_monitor", "מלכודת ניטור חרקים", "#2e9fbf"]
+  ];
+  var STATION_STATUSES = ["שלמה", "נאכלה", "ניזוקה", "חסרה", "הוחלפה", "חדשה"];
+
+  /** תכשירים ואצוות מיומנים קודמים (הדגמה). */
+  var RECENT = [
+    { name: "תכשיר לדוגמה 1", batch: "AB-2201", active: "חומר פעיל לדוגמה 9.7%", method: "ריסוס" },
+    { name: "תכשיר לדוגמה 2 (מוכן לשימוש)", batch: "CD-1180", active: "חומר פעיל לדוגמה 0.05%", method: "פיתיון" }
+  ];
+
+  var ANNEX = [
+    { re: /קרצי/, label: "סוג הקרציות", options: ["קשות", "רכות"] },
+    { re: /יתוש/, label: "שלב היתושים", options: ["בוגרים", "זחלים"] }
+  ];
+  function annexFor(name) {
+    for (var i = 0; i < ANNEX.length; i += 1) if (ANNEX[i].re.test(name || "")) return ANNEX[i];
+    return null;
+  }
+
+  /** קריאת נ״צ מטקסט או מקישור מפות — אותה לוגיקה שבאפליקציה. */
+  function parseCoords(text) {
+    var value = String(text || "").trim();
+    if (!value) return null;
+    var patterns = [
+      /[?&]q=(-?\d{1,3}\.\d+)[,\s]+(-?\d{1,3}\.\d+)/,
+      /[@/](-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/,
+      /ll=(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/,
+      /^\s*(-?\d{1,3}\.\d+)\s*[,\s]\s*(-?\d{1,3}\.\d+)\s*$/
+    ];
+    for (var i = 0; i < patterns.length; i += 1) {
+      var m = patterns[i].exec(value);
+      if (!m) continue;
+      var lat = Number(m[1]), lng = Number(m[2]);
+      if (Math.abs(lat) > 90 || Math.abs(lng) > 180) continue;
+      return { lat: lat, lng: lng };
+    }
+    return null;
+  }
 
   var SYNC_STATES = [
     { key: "synced", label: "מסונכרן" },
@@ -564,6 +671,25 @@
         '<article class="card"><h3>מדביר עוזר</h3><p>כשמשתתף עוזר, נדרשים שמו, חתימתו, אישור על קבלת הדרכה ועותק מהיומן.</p></article>' +
         '</div>' + poison();
     },
+    diagnostics: function () {
+      var lines = [
+        ["ok", "הגדרות סביבה", "כל משתני הסביבה הנדרשים מוגדרים."],
+        ["ok", "חיבור לרשת", navigator.onLine ? "המכשיר מחובר." : "אין חיבור — העבודה נשמרת מקומית."],
+        ["ok", "אחסון מקומי (IndexedDB)", "המסד המקומי פתוח וזמין."],
+        ["warn", "תור הסנכרון", "2 פעולות ממתינות (ערך הדגמה)."],
+        ["ok", "שעון מול השרת", "פער של פחות משנייה."],
+        ["ok", "שירות ההשלמה וה-PDF", "השירות עונה."],
+        [navigator.share ? "ok" : "warn", "שיתוף קבצים", navigator.share ? "תפריט השיתוף זמין." : "הדפדפן אינו תומך בשיתוף."],
+        ["serviceWorker" in navigator ? "ok" : "warn", "התקנה כאפליקציה (PWA)", "serviceWorker" in navigator ? "נתמך בדפדפן הזה." : "אינו נתמך."]
+      ];
+      return topBar("בדיקת מערכת") + '<div class="body">' +
+        '<article class="card"><h3>בדיקות שרצות עכשיו במכשיר</h3>' +
+        '<p class="hint">במערכת האמיתית כל שורה היא בדיקה חיה — לא הצהרה.</p>' +
+        lines.map(function (line) {
+          return '<div class="diag-line ' + (line[0] === "warn" ? "warn" : "") + '"><span class="diag-dot"></span>' +
+            '<span><strong>' + line[1] + '</strong><br><span class="hint">' + line[2] + '</span></span></div>';
+        }).join("") + '</article></div>' + poison();
+    },
     settings: function () {
       return topBar("הגדרות") + '<div class="body">' +
         '<article class="card"><div class="card-row"><h3>סנכרון</h3><span class="pill">' + SYNC_STATES[syncIndex].label + '</span></div>' +
@@ -573,6 +699,9 @@
         '<article class="card"><div class="card-row"><h3>תחנות האכלה</h3><span class="pill">' + DEMO.stations.filter(function (s) { return s.cls; }).length + ' דורשות טיפול</span></div>' +
         '<p>מצב תחנות ההאכלה באתרים. המסך נשאר במערכת, מחוץ למסך הבית.</p>' +
         '<button class="btn ghost" data-nav="stations">פתיחת תחנות האכלה</button></article>' +
+        '<article class="card"><div class="card-row"><h3>בדיקת מערכת</h3></div>' +
+        '<p>בדיקה חיה של אחסון, סנכרון, שעון, שירות ה-PDF ותמיכת הדפדפן.</p>' +
+        '<button class="btn ghost" data-nav="diagnostics">פתיחת בדיקת מערכת</button></article>' +
         '<article class="card"><h3>ייצוא</h3><p>ייצוא כל היומנים וקובצי ה־PDF מתוך המערכת.</p>' +
         '<button class="btn ghost" data-toast="ייצוא הודגם בלבד — אין כאן נתונים אמיתיים">ייצוא נתונים</button></article>' +
         '</div>' + poison();
@@ -600,11 +729,14 @@
       step: 0,
       ordererName: "", ordererPhone: "", ordererType: "private",
       place: "dwelling", address: "", apartment: "",
-      pest: "", findings: "",
+      pest: "", subtype: "", findings: "", photoKind: "general",
+      coordsText: "", coords: null,
       prevention: "", warningsApproved: false,
       product: "", batch: "", dosage: "", method: "",
+      warrantyPeriod: "", warrantyNotes: "",
       recipient: "", followUp: false,
-      completed: false, serial: ""
+      stations: [], stationStatus: {},
+      completed: false, serial: "", loadedFromPrevious: false
     };
     signed = false;
   }
@@ -621,10 +753,110 @@
       }).join("") + '</select></div>';
   }
 
+  /** כפתור „הוסף מתבנית” לשדה טקסט. */
+  function tplButton(kind, model) {
+    return '<div class="row" style="margin-top:6px">' +
+      '<button class="btn ghost" data-lib="' + kind + '" data-target="' + model + '">הוסף מתבנית</button>' +
+      '</div>';
+  }
+
+  function libSheet(kind, model) {
+    var lib = LIBRARIES[kind];
+    var view = screen.querySelector(".view");
+    if (!view || !lib) return;
+    var back = document.createElement("div");
+    back.className = "sheet-back";
+    back.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-label="' + lib.title + '">' +
+      '<h3>' + lib.title + '</h3>' +
+      '<p class="hint">הניסוחים הם הצעה בלבד. אזהרות ייחודיות לתכשיר וזמן כניסה מחדש נקבעים לפי התווית התקפה.</p>' +
+      lib.items.map(function (text, index) {
+        return '<div class="tpl-row"><button class="tpl-pick" data-tpl="' + index + '" aria-pressed="false" aria-label="בחירת ' + text + '">+</button><span>' + text + '</span></div>';
+      }).join("") +
+      '<div class="row" style="margin-top:12px"><button class="btn" data-lib-add>הוספת הנבחרים</button>' +
+      '<button class="btn ghost" data-lib-close>סגירה</button></div></div>';
+    view.appendChild(back);
+
+    var chosen = [];
+    back.addEventListener("click", function (event) {
+      if (event.target === back) { back.remove(); return; }
+      var pick = event.target.closest("[data-tpl]");
+      if (pick) {
+        var text = lib.items[Number(pick.dataset.tpl)];
+        var at = chosen.indexOf(text);
+        if (at === -1) { chosen.push(text); pick.classList.add("on"); pick.textContent = "✓"; pick.setAttribute("aria-pressed", "true"); }
+        else { chosen.splice(at, 1); pick.classList.remove("on"); pick.textContent = "+"; pick.setAttribute("aria-pressed", "false"); }
+        return;
+      }
+      if (event.target.closest("[data-lib-add]")) {
+        if (chosen.length === 0) { toast("לא נבחרו ניסוחים"); return; }
+        var current = String(wizard[model] || "").trim();
+        wizard[model] = [current].concat(chosen).filter(Boolean).join("\n");
+        back.remove();
+        renderWizard(screen.querySelector(".view"));
+        toast("נוספו " + chosen.length + " ניסוחים — יש לערוך ולאשר");
+        return;
+      }
+      if (event.target.closest("[data-lib-close]")) back.remove();
+    });
+  }
+
+  /** סיכום היומן להודעת טקסט — כמו באפליקציה. */
+  function smsSummary() {
+    var pests = wizard.pest ? wizard.pest + (wizard.subtype ? " (" + wizard.subtype + ")" : "") : "—";
+    return [
+      "שלום " + (wizard.ordererName || "לקוח") + ",",
+      "יומן ביצוע הדברה מס׳ " + wizard.serial + " – " + DEMO.org,
+      "תאריך: " + new Date().toLocaleDateString("he-IL"),
+      "מקום: " + (wizard.address || "—") + (wizard.apartment ? ", דירה " + wizard.apartment : ""),
+      "מזיקים: " + pests,
+      "תכשירים: תכשיר לדוגמה" + (wizard.batch ? " (אצווה " + wizard.batch + ")" : ""),
+      "מדביר: " + DEMO.user + ", " + DEMO.license,
+      "במקרה של חשד להרעלה ניתן לפנות למרכז הארצי להרעלות: 04-7771900"
+    ].join("\n");
+  }
+
+  function stationsMarkup() {
+    if (wizard.stations.length === 0) {
+      return '<article class="card"><div class="card-row"><h3>תחנות האכלה וניטור באתר</h3></div>' +
+        '<p>לאתר הזה עדיין לא הוגדרו תחנות. מגדירים פעם אחת — והן חוזרות בכל ביקור.</p>' +
+        '<button class="btn" data-add-stations>הוספת 3 תחנות לאתר</button></article>';
+    }
+    var done = wizard.stations.filter(function (st) { return wizard.stationStatus[st.id]; }).length;
+    return '<article class="card"><div class="card-row"><h3>תחנות האכלה וניטור באתר</h3>' +
+      '<span class="pill' + (done < wizard.stations.length ? " warn" : "") + '">' + done + "/" + wizard.stations.length + '</span></div>' +
+      '<p class="hint">התחנות מוגדרות פעם אחת לאתר; בכל ביקור נרשם רק מצבן.</p>' +
+      wizard.stations.map(function (st) {
+        return '<div class="st-row"><span class="st-no" style="background:' + st.color + '">' + st.no + '</span>' +
+          '<span class="st-main"><strong>' + st.location + '</strong><br><span class="hint">' + st.typeName + '</span></span>' +
+          '<select data-station="' + st.id + '" aria-label="מצב תחנה ' + st.no + '">' +
+          '<option value="">טרם נבדקה</option>' +
+          STATION_STATUSES.map(function (status) {
+            return '<option' + (wizard.stationStatus[st.id] === status ? " selected" : "") + '>' + status + '</option>';
+          }).join("") + '</select></div>';
+      }).join("") +
+      '<div class="row" style="margin-top:10px"><button class="btn ghost" data-mark-all>סימון הכל כשלמות</button>' +
+      '<button class="btn ghost" data-add-stations>הוספת תחנות</button></div></article>';
+  }
+
+  function recentMarkup() {
+    return '<article class="card"><div class="card-row"><h3>תכשירים מיומנים אחרונים</h3></div>' +
+      '<p class="hint">נטענים שם התכשיר, החומר הפעיל ושיטת היישום. מזיק ומינון נשארים ריקים, והאצווה טעונה אימות מול האריזה.</p>' +
+      RECENT.map(function (item, index) {
+        return '<button class="btn ghost" style="margin-top:6px;width:100%" data-recent="' + index + '">' +
+          item.name + ' · אצווה ' + item.batch + '</button>';
+      }).join("") + '</article>';
+  }
+
   function stepMarkup() {
     switch (wizard.step) {
       case 0:
         return '<article class="card"><h3>מדביר מבצע</h3><p>' + DEMO.user + ' · ' + DEMO.license + '</p></article>' +
+          (wizard.ordererName.trim().length > 1 && !wizard.loadedFromPrevious
+            ? '<article class="card"><div class="card-row"><h3>קיים יומן קודם ללקוח זה</h3><span class="pill">מס׳ 2026-0041</span></div>' +
+              '<p>אפשר לטעון ממנו כדי לא להקליד הכול מחדש. תאריך, שעה, חתימות, נ״צ, אצוות ומינונים לעולם אינם מועתקים.</p>' +
+              '<div class="row"><button class="btn" data-load-prev="all">טעינת הכול</button>' +
+              '<button class="btn ghost" data-load-prev="apps">תכשירים בלבד</button></div></article>'
+            : "") +
           select("ordererType", "סוג מזמין", wizard.ordererType, [["private", "אדם פרטי"], ["business", "עסק / מוסד"]], true) +
           field("ordererName", "שם המזמין", wizard.ordererName, true) +
           field("ordererPhone", "טלפון נייד של המזמין", wizard.ordererPhone, wizard.ordererType === "private", "tel") +
@@ -634,15 +866,32 @@
           field("address", "כתובת מלאה", wizard.address, true) +
           (wizard.place === "dwelling" ? field("apartment", "מספר דירה", wizard.apartment, true) : "") +
           (wizard.place === "fog" ? '<p class="hint">בערפול נדרשת אזהרה לציבור לפני הביצוע ותיעוד אופן הפרסום.</p>' : "") +
-          '<article class="card"><div class="card-row"><h3>מיקום GPS</h3><span class="pill">נלכד בהדגמה</span></div><p>31.0000, 34.0000 (WGS84, ערך הדגמה)</p></article>';
-      case 2:
-        return select("pest", "מזיק שאותר", wizard.pest, [["", "בחר מזיק"], ["roach", "ג'וקים"], ["rodent", "מכרסמים"], ["ant", "נמלים"]], true) +
-          '<div class="field"><label for="findings">תיאור ממצאי הניטור</label><textarea id="findings" data-model="findings" rows="3">' + wizard.findings + '</textarea></div>' +
-          '<p class="hint">הממצאים נרשמים לפי הפירוט הנדרש בתוספת לנוהל, וחייבים להתאים לתכשירים שייבחרו.</p>';
+          '<article class="card"><div class="card-row"><h3>מיקום הטיפול</h3>' +
+          (wizard.coords ? '<span class="pill">נ״צ נשמר</span>' : '<span class="pill warn">אין נ״צ</span>') + '</div>' +
+          (wizard.coords ? '<p>' + wizard.coords.lat + ', ' + wizard.coords.lng + ' (WGS84)</p>' : '<p>אפשר לקלוט מה-GPS, או להדביק נ״צ מהמפות כשה-GPS חסום.</p>') +
+          '<div class="field"><label for="coordsText">הדבקת נ״צ או קישור ממפות</label>' +
+          '<input id="coordsText" data-model="coordsText" type="text" value="' + wizard.coordsText + '" placeholder="31.750123, 35.091234 או קישור מ-Waze" /></div>' +
+          '<div class="row"><button class="btn ghost" data-paste-coords>הוספת הנ״צ שהודבק</button>' +
+          '<button class="btn ghost" data-gps>קליטה מה-GPS</button></div></article>';
+      case 2: {
+        var rule = annexFor(wizard.pest);
+        return select("pest", "מזיק שאותר", wizard.pest, [["", "בחר מזיק"], ["ג'וקים", "ג'וקים"], ["מכרסמים", "מכרסמים"], ["נמלים", "נמלים"], ["קרציות", "קרציות"], ["יתושים", "יתושים"]], true) +
+          (rule
+            ? select("subtype", rule.label + " (נספח א׳)", wizard.subtype,
+                [["", "בחר פירוט"]].concat(rule.options.map(function (o) { return [o, o]; })), true) +
+              '<p class="hint">לחלק מהמזיקים בנספח א׳ נדרש פירוט נוסף, וההשלמה חסומה בלעדיו.</p>'
+            : "") +
+          '<div class="field"><label for="findings">סימני נגיעות</label><textarea id="findings" data-model="findings" rows="3">' + wizard.findings + '</textarea></div>' +
+          tplButton("findings", "findings") +
+          select("photoKind", "סיווג התמונות הבאות", wizard.photoKind,
+            [["hazard", "מפגע"], ["prevention", "פעולת מניעה"], ["general", "תיעוד כללי"]], false) +
+          '<p class="hint">הסיווג נשמר לכל תמונה ומופיע גם ב-PDF.</p>';
+      }
       case 3:
         return '<div class="field"><label for="prevention">פעולות מניעה והנסיבות שהובילו לטיפול</label><textarea id="prevention" data-model="prevention" rows="3">' + wizard.prevention + '</textarea></div>' +
           '<label class="card" style="flex-direction:row;align-items:center;gap:10px"><input type="checkbox" data-model="warningsApproved"' + (wizard.warningsApproved ? " checked" : "") + ' style="width:22px;height:22px" />' +
           '<span style="font-size:13.5px;font-weight:600">אני מאשר שמסרתי את האזהרות שלפני הטיפול</span></label>' +
+          tplButton("prevention", "prevention") +
           '<p class="hint">תבנית אזהרה היא הצעה בלבד — נדרש אישור מפורש של המדביר, ואין מילוי אוטומטי של זמן חזרה שאינו מבוסס תווית.</p>';
       case 4:
         return select("product", "תכשיר", wizard.product, [["", "בחר תכשיר"], ["p1", "תכשיר לדוגמה 1"], ["p2", "תכשיר לדוגמה 2 (מוכן לשימוש)"], ["p3", "תכשיר לדוגמה 3 (לא אומת)"]], true) +
@@ -650,7 +899,15 @@
           field("dosage", "מינון לשטח / נפח", wizard.dosage, true) +
           select("method", "אופן היישום", wizard.method, [["", "בחר"], ["spray", "ריסוס"], ["bait", "פיתיון"], ["fog", "ערפול"], ["fum", "איוד"]], true) +
           (wizard.product === "p3" ? '<p class="problems"><strong>שים לב:</strong> התכשיר אינו מאומת מול מקור רשמי. יש לאמת מול התווית לפני שימוש.</p>' : "") +
-          (wizard.product === "p2" ? '<p class="hint">לתכשיר מוכן לשימוש נגזר הריכוז מהתווית ואין צורך לרשום דילול.</p>' : "");
+          (wizard.product === "p2" ? '<p class="hint">לתכשיר מוכן לשימוש נגזר הריכוז מהתווית ואין צורך לרשום דילול.</p>' : "") +
+          (wizard.product
+            ? '<div class="row" style="flex-wrap:wrap"><span class="hint" style="flex:1 0 100%">אצוות שנרשמו בעבר לתכשיר זה:</span>' +
+              RECENT.map(function (item, index) {
+                return '<button class="btn ghost" data-batch="' + index + '">' + item.batch + '</button>';
+              }).join("") + '</div>'
+            : "") +
+          recentMarkup() +
+          stationsMarkup();
       default:
         return field("recipient", "שם מקבל היומן", wizard.recipient, true) +
           '<label class="card" style="flex-direction:row;align-items:center;gap:10px"><input type="checkbox" data-model="followUp"' + (wizard.followUp ? " checked" : "") + ' style="width:22px;height:22px" />' +
@@ -659,7 +916,13 @@
           '<canvas id="sign" class="sign-pad" width="640" height="300" aria-label="לוח חתימה — ציירו באמצעות מגע או עכבר"></canvas></div>' +
           '<div class="row"><button class="btn ghost" data-clear-sign>ניקוי חתימה</button>' +
           '<button class="btn" data-confirm-sign>אישור החתימה</button></div>' +
-          '<p class="hint" id="signState">' + (signed ? "החתימה אושרה." : "החתימה טרם אושרה.") + '</p>';
+          '<p class="hint" id="signState">' + (signed ? "החתימה אושרה." : "החתימה טרם אושרה.") + '</p>' +
+          '<article class="card"><div class="card-row"><h3>אחריות על הטיפול</h3></div>' +
+          '<p class="hint">אינה חלק מהדרישות המחייבות ביומן, אך נשמרת ומודפסת ב-PDF.</p>' +
+          select("warrantyPeriod", "תקופת האחריות", wizard.warrantyPeriod,
+            [["", "ללא בחירה"], ["30 יום", "30 יום"], ["3 חודשים", "3 חודשים"], ["6 חודשים", "6 חודשים"], ["12 חודשים", "12 חודשים"]], false) +
+          '<div class="field"><label for="warrantyNotes">תנאי האחריות</label><textarea id="warrantyNotes" data-model="warrantyNotes" rows="2">' + wizard.warrantyNotes + '</textarea></div>' +
+          tplButton("warranty", "warrantyNotes") + '</article>';
     }
   }
 
@@ -676,7 +939,11 @@
       need(wizard.address.trim().length > 3, "address", "חסרה כתובת מקום הטיפול");
       if (wizard.place === "dwelling") need(wizard.apartment.trim() !== "", "apartment", "חסר מספר דירה למבנה מגורים");
     }
-    if (wizard.step === 2) need(wizard.pest !== "", "pest", "לא נבחר מזיק");
+    if (wizard.step === 2) {
+      need(wizard.pest !== "", "pest", "לא נבחר מזיק");
+      var annex = annexFor(wizard.pest);
+      if (annex) need(wizard.subtype !== "", "subtype", annex.label + " — נדרש פירוט לפי נספח א׳");
+    }
     if (wizard.step === 3) need(wizard.warningsApproved, "prevention", "לא אושרו האזהרות שלפני הטיפול");
     if (wizard.step === 4) {
       need(wizard.product !== "", "product", "לא נבחר תכשיר");
@@ -704,6 +971,15 @@
         '<p>הושלם ' + new Date().toLocaleString("he-IL") + '<br />מקבל היומן: ' + wizard.recipient + '<br />' +
         (wizard.followUp ? "נדרשת ביקורת חוזרת — נפתחה משימה." : "לא נדרשה ביקורת חוזרת.") + '</p></article>' +
         '<article class="card"><h3>מה קורה בשלב הזה במערכת האמיתית</h3><p>הסיום הוא פעולת שרת אחת: בדיקת כל שדות החובה, הקצאת מספר סידורי רציף, שמירת תצלום של התוכן, חישוב חתימת מסמך, כתיבת אירוע ביקורת והפקת PDF. לאחר מכן היומן אינו ניתן לעריכה או למחיקה.</p></article>' +
+        '<article class="card"><div class="card-row"><h3>סיכום ללקוח ב-SMS</h3></div>' +
+        '<p class="hint">הודעת טקסט אינה יכולה לשאת קובץ. נשלח סיכום, ואם הופק PDF מצורף אליו קישור חתום.</p>' +
+        '<pre class="sms">' + smsSummary() + '</pre>' +
+        '<button class="btn ghost" data-toast="בהדגמה לא נפתחת אפליקציית ההודעות">פתיחת הודעה ללקוח</button></article>' +
+        (wizard.warrantyPeriod || wizard.warrantyNotes
+          ? '<article class="card"><div class="card-row"><h3>אחריות</h3><span class="pill">' + (wizard.warrantyPeriod || "ללא תקופה") + '</span></div>' +
+            '<p>' + (wizard.warrantyNotes || "ללא תנאים נוספים") + '</p></article>'
+          : "") +
+        '<article class="card"><h3>ניסוחים שנשמרו</h3><p>כל ניסוח שכתבתם ביומן נשמר לספריית הניסוחים שלכם, ויוצע בפעם הבאה — בדיוק כמו בגרסה הקודמת.</p></article>' +
         '<div class="row"><button class="btn ghost" data-toast="בהדגמה אין קובץ להורדה">הורדת PDF</button>' +
         '<button class="btn ghost" data-toast="בהדגמה אין שליחה בפועל">שיתוף</button></div>' +
         '<button class="btn" data-new-log>יומן חדש</button>';
@@ -849,10 +1125,15 @@
       });
       view.addEventListener("change", function (event) {
         var target = event.target;
+        if (target.dataset && target.dataset.station) {
+          wizard.stationStatus[target.dataset.station] = target.value;
+          renderWizard(view);
+          return;
+        }
         var name = target.dataset ? target.dataset.model : null;
         if (!name) return;
         wizard[name] = target.type === "checkbox" ? target.checked : target.value;
-        if (name === "place" || name === "ordererType" || name === "product") renderWizard(view);
+        if (name === "place" || name === "ordererType" || name === "product" || name === "pest") renderWizard(view);
       });
       view.addEventListener("click", function (event) {
         var stepButton = event.target.closest("[data-step]");
@@ -875,6 +1156,84 @@
           renderWizard(view);
           return;
         }
+        var libBtn = event.target.closest("[data-lib]");
+        if (libBtn) { libSheet(libBtn.dataset.lib, libBtn.dataset.target); return; }
+
+        if (event.target.closest("[data-paste-coords]")) {
+          var parsed = parseCoords(wizard.coordsText);
+          if (!parsed) { toast("לא זוהתה נקודת ציון — הדביקו שתי מעלות או קישור ממפות"); return; }
+          wizard.coords = parsed;
+          wizard.coordsText = "";
+          renderWizard(view);
+          toast("נקלטה נקודת ציון: " + parsed.lat + ", " + parsed.lng);
+          return;
+        }
+        if (event.target.closest("[data-gps]")) {
+          wizard.coords = { lat: 31.771959, lng: 35.217018 };
+          renderWizard(view);
+          toast("נקלט מיקום (ערך הדגמה)");
+          return;
+        }
+
+        var loadPrev = event.target.closest("[data-load-prev]");
+        if (loadPrev) {
+          wizard.loadedFromPrevious = true;
+          wizard.product = "p1";
+          wizard.method = "spray";
+          if (loadPrev.dataset.loadPrev === "all") {
+            wizard.pest = "ג'וקים";
+            wizard.findings = "תיקנים חיים/פגרים/גללים.";
+            wizard.prevention = "איטום סדקים ופתחים בקירות ובצנרת.";
+          }
+          renderWizard(view);
+          toast("נטען מיומן קודם — תאריך, שעה, חתימות, נ״צ, אצוות ומינונים לא הועתקו");
+          return;
+        }
+
+        if (event.target.closest("[data-add-stations]")) {
+          var start = wizard.stations.length;
+          for (var i = 0; i < 3; i += 1) {
+            var type = STATION_TYPES[i % STATION_TYPES.length];
+            wizard.stations.push({
+              id: "st" + (start + i + 1),
+              no: start + i + 1,
+              typeName: type[1],
+              color: type[2],
+              location: "מוקד " + (start + i + 1)
+            });
+          }
+          renderWizard(view);
+          toast("3 תחנות נוספו למאגר האתר");
+          return;
+        }
+        if (event.target.closest("[data-mark-all]")) {
+          wizard.stations.forEach(function (st) {
+            if (!wizard.stationStatus[st.id]) wizard.stationStatus[st.id] = "שלמה";
+          });
+          renderWizard(view);
+          toast("כל התחנות סומנו כשלמות — יש לוודא שזה המצב בפועל");
+          return;
+        }
+
+        var recentBtn = event.target.closest("[data-recent]");
+        if (recentBtn) {
+          var item = RECENT[Number(recentBtn.dataset.recent)];
+          wizard.product = "p1";
+          wizard.method = "spray";
+          wizard.batch = "";
+          wizard.dosage = "";
+          renderWizard(view);
+          toast(item.name + " נוסף — יש להשלים מזיק, אצווה ומינון");
+          return;
+        }
+        var batchBtn = event.target.closest("[data-batch]");
+        if (batchBtn) {
+          wizard.batch = RECENT[Number(batchBtn.dataset.batch)].batch;
+          renderWizard(view);
+          toast("אצווה הוצעה — יש לאמת מול האריזה");
+          return;
+        }
+
         var jump = event.target.closest("[data-jump]");
         if (jump) {
           var node = view.querySelector("#" + jump.dataset.jump);
