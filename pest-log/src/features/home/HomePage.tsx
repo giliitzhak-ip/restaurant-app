@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Archive,
-  Box,
   FilePen,
   FilePlus2,
   ListChecks,
@@ -171,13 +170,6 @@ export function HomePage(): React.JSX.Element {
       to: '/clients',
       description: 'מזמיני הדברה ואתרים',
       icon: <Users size={ICON_SIZE} strokeWidth={ICON_STROKE} />,
-    },
-    {
-      key: 'bait-stations',
-      label: 'תחנות האכלה',
-      to: '/bait-stations',
-      description: 'מצב תחנות ההאכלה באתרים',
-      icon: <Box size={ICON_SIZE} strokeWidth={ICON_STROKE} />,
     },
     {
       key: 'products',

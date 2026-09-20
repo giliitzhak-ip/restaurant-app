@@ -17,7 +17,6 @@ const TILES: Array<{ testId: string; label: string; path: string }> = [
   { testId: 'tile-drafts', label: 'טיוטות', path: '/drafts' },
   { testId: 'tile-archive', label: 'ארכיון', path: '/archive' },
   { testId: 'tile-clients', label: 'לקוחות', path: '/clients' },
-  { testId: 'tile-bait-stations', label: 'תחנות האכלה', path: '/bait-stations' },
   { testId: 'tile-products', label: 'תכשירים', path: '/products' },
   { testId: 'tile-tasks', label: 'משימות', path: '/tasks' },
   { testId: 'tile-profile', label: 'פרופיל', path: '/profile' },
@@ -35,7 +34,7 @@ test.describe('מסך הבית', () => {
     await expect(page.getByRole('status').filter({ hasText: /מסונכרן|שומר…|ממתין לחיבור|שגיאת סנכרון/ }).first()).toBeVisible();
   });
 
-  test('כל תשעת הכפתורים מוצגים בסדר הנדרש', async ({ page }) => {
+  test('כל הכפתורים מוצגים בסדר הנדרש', async ({ page }) => {
     await login(page);
 
     const grid = page.getByRole('navigation', { name: 'פעולות ראשיות' });

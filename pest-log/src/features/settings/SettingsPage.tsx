@@ -121,6 +121,12 @@ export function SettingsPage(): React.JSX.Element {
             יש לטעון את נספח א׳ ממקור מאומת באמצעות <span className="mono">npm run import:pest-catalog</span>.
           </Alert>
         ) : null}
+
+        <div className="btn-row">
+          <Link className="btn btn-sm" to="/bait-stations">
+            תחנות האכלה
+          </Link>
+        </div>
       </section>
 
       <section className="card">

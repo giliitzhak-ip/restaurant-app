@@ -275,6 +275,7 @@
   <div class="legend">
     <h3>מה אפשר לבדוק כאן</h3>
     <ul>
+      <li>מסך הבית מציג שמונה פעולות; תחנות ההאכלה עברו למסך ההגדרות.</li>
       <li>לחיצה על עיגול: כיווץ 0.95, גל מהנקודה, הרמת האייקון ורטט קצר (במכשירים שתומכים).</li>
       <li>גלילה במסך הבית: ה־hero מתכווץ, הברכה נמוגה וכותרת קטנה נדבקת למעלה.</li>
       <li>מעברי מסך מותאמי RTL עם כיוון הפוך בחזרה, ושמירת מיקום גלילה לכל מסך.</li>
@@ -463,7 +464,6 @@
     { key: "drafts", label: "טיוטות", icon: "drafts", badge: function () { return DEMO.drafts.length; }, badgeLabel: "טיוטות פתוחות" },
     { key: "archive", label: "ארכיון", icon: "archive" },
     { key: "clients", label: "לקוחות", icon: "clients" },
-    { key: "stations", label: "תחנות האכלה", icon: "stations", badge: function () { return DEMO.stations.filter(function (s) { return s.cls; }).length; }, badgeLabel: "תחנות הדורשות טיפול" },
     { key: "products", label: "תכשירים", icon: "products" },
     { key: "tasks", label: "משימות", icon: "tasks", badge: function () { return DEMO.tasks.length; }, badgeLabel: "משימות פתוחות" },
     { key: "profile", label: "פרופיל", icon: "profile" },
@@ -515,6 +515,9 @@
         '<p>טיוטות נשמרות ב־IndexedDB ונשלחות בתור פעולות עם מפתח ייחודי, כדי למנוע כפילויות.</p>' +
         '<button class="btn ghost" data-sync>הרץ סנכרון עכשיו</button></article>' +
         '<article class="card"><h3>שמירת מסמכים</h3><p>יומן שהושלם נשמר לפחות שלוש שנים. מחיקה אפשרית רק אחר כך, על ידי מנהל, עם תיעוד.</p></article>' +
+        '<article class="card"><div class="card-row"><h3>תחנות האכלה</h3><span class="pill">' + DEMO.stations.filter(function (s) { return s.cls; }).length + ' דורשות טיפול</span></div>' +
+        '<p>מצב תחנות ההאכלה באתרים. המסך נשאר במערכת, מחוץ למסך הבית.</p>' +
+        '<button class="btn ghost" data-nav="stations">פתיחת תחנות האכלה</button></article>' +
         '<article class="card"><h3>ייצוא</h3><p>ייצוא כל היומנים וקובצי ה־PDF מתוך המערכת.</p>' +
         '<button class="btn ghost" data-toast="ייצוא הודגם בלבד — אין כאן נתונים אמיתיים">ייצוא נתונים</button></article>' +
         '</div>' + poison();
@@ -731,6 +734,9 @@
   function wire(view, key) {
     view.querySelectorAll("[data-back]").forEach(function (node) {
       node.addEventListener("click", back);
+    });
+    view.querySelectorAll("[data-nav]").forEach(function (node) {
+      node.addEventListener("click", function () { go(node.dataset.nav); });
     });
     view.querySelectorAll("[data-toast]").forEach(function (node) {
       node.addEventListener("click", function () { toast(node.dataset.toast); });
