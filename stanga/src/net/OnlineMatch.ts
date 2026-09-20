@@ -30,6 +30,13 @@ const SNAP_DISTANCE_REMOTE = 3;
 const SNAP_DISTANCE_BALL = 2;
 /** How hard a metre of ball drift pulls, in metres per second per metre. */
 const BALL_DRIFT_GAIN = 6;
+/**
+ * Fraction of the local player's error closed per tick. A client that cannot
+ * keep 60 frames per second runs fewer ticks than the server and falls steadily
+ * behind, so trusting the prediction alone is not enough — but a teleport for
+ * half a metre would be worse than the error.
+ */
+const LOCAL_CORRECTION = 0.15;
 
 export interface OnlineMatchHandlers {
   /** The room's lifecycle changed (waiting, lobby, countdown, playing…). */
@@ -256,6 +263,12 @@ export class OnlineMatch {
     const dz = net.z - body.position.z;
     if (this.pendingSnap || Math.hypot(dx, dz) > snapDistance) {
       body.reset({ x: net.x, y: net.y, z: net.z });
+      return;
+    }
+    // The opponent is steered back through their movement command, which reads
+    // more naturally; the local player is the one being predicted here.
+    if (playerId === this.localPlayerId) {
+      body.nudge(dx * LOCAL_CORRECTION, dz * LOCAL_CORRECTION);
     }
   }
 

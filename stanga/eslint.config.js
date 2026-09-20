@@ -36,7 +36,7 @@ export default tseslint.config(
   },
   {
     // Node build scripts and this config file are not part of the app's TS project.
-    files: ['scripts/**/*.mjs', 'eslint.config.js'],
+    files: ['scripts/**/*.mjs', 'e2e/**/*.mjs', 'eslint.config.js'],
     extends: [tseslint.configs.disableTypeChecked],
     languageOptions: {
       globals: {
@@ -44,6 +44,8 @@ export default tseslint.config(
         console: 'readonly',
         Buffer: 'readonly',
         __dirname: 'readonly',
+        document: 'readonly',
+        window: 'readonly',
       },
     },
     rules: { 'no-console': 'off' },

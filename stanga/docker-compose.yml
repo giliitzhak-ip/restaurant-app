@@ -1,0 +1,32 @@
+# One server process is all online 1×1 needs, and that is the default here.
+#
+# The `redis` profile is opt-in and exists so the step to several processes is a
+# configuration change rather than a rewrite: room state already lives in the
+# room, and invite codes already live in Colyseus Presence.
+#
+#   docker compose up                      # single process
+#   docker compose --profile redis up      # Redis presence and driver
+#
+# See docs/deployment.md for the WSS and sticky-session requirements.
+
+services:
+  stanga-server:
+    build: .
+    ports:
+      - '2567:2567'
+    environment:
+      PORT: 2567
+      HOST: 0.0.0.0
+      # Exact origins the browser build is served from. Empty allows any
+      # origin, which is fine locally and wrong in production.
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+      INVITE_LOOKUPS_PER_MINUTE: ${INVITE_LOOKUPS_PER_MINUTE:-30}
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    profiles: ['redis']
+    ports:
+      - '6379:6379'
+    command: ['redis-server', '--save', '', '--appendonly', 'no']
+    restart: unless-stopped

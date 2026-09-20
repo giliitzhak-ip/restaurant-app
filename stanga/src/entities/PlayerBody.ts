@@ -84,6 +84,20 @@ export class PlayerBody {
     this.body.applyImpulse(this.scratch, this.root.position);
   }
 
+  /**
+   * Shifts the body without touching its velocity.
+   *
+   * The online client closes the gap between its prediction and the server a
+   * little each tick this way: a slow frame rate makes the local player fall
+   * behind, and sliding them forward is invisible where a teleport would not
+   * be.
+   */
+  nudge(dx: number, dz: number): void {
+    this.root.position.x += dx;
+    this.root.position.z += dz;
+    this.world.teleport(this.body);
+  }
+
   /** Teleports the player and kills all motion. Used for kickoffs and resets. */
   reset(position: Vec3): void {
     this.scratch.set(position.x, GameConfig.player.height / 2, position.z);
