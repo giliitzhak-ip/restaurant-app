@@ -759,6 +759,28 @@ export async function executeOperation(operation: OutboxOperation): Promise<Oper
         return { ok: true };
       }
 
+      case 'upsert_text_template': {
+        const { error } = await supabase
+          .from('text_templates')
+          .upsert(operation.payload.row as Record<string, unknown>, { onConflict: 'id' });
+        if (error) return { ok: false, error: translateDbError(error), permanent: error.code === '42501' };
+        return { ok: true };
+      }
+
+      case 'delete_text_template': {
+        const { error } = await supabase.from('text_templates').delete().eq('id', operation.entityId);
+        if (error) return { ok: false, error: translateDbError(error), permanent: error.code === '42501' };
+        return { ok: true };
+      }
+
+      case 'upsert_site_station': {
+        const { error } = await supabase
+          .from('site_stations')
+          .upsert(operation.payload.row as Record<string, unknown>, { onConflict: 'id' });
+        if (error) return { ok: false, error: translateDbError(error), permanent: error.code === '42501' };
+        return { ok: true };
+      }
+
       // השלמה ותיקון עוברים דרך שירות השרת, שמריץ את ולידציית ה-Zod
       // ומפיק את ה-PDF. הלקוח לא יכול להשלים יומן בכוחות עצמו.
       case 'complete_log':

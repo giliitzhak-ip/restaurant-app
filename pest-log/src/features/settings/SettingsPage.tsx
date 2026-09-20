@@ -126,6 +126,9 @@ export function SettingsPage(): React.JSX.Element {
           <Link className="btn btn-sm" to="/bait-stations">
             תחנות האכלה
           </Link>
+          <Link className="btn btn-sm" to="/diagnostics">
+            בדיקת מערכת
+          </Link>
         </div>
       </section>
 

@@ -17,6 +17,7 @@ import { BaitStationsPage } from '@/features/baitStations/BaitStationsPage';
 import { TasksPage } from '@/features/tasks/TasksPage';
 import { ProfilePage } from '@/features/settings/ProfilePage';
 import { SettingsPage } from '@/features/settings/SettingsPage';
+import { DiagnosticsPage } from '@/features/settings/DiagnosticsPage';
 import { ImportPage } from '@/features/legacyImport/ImportPage';
 import { WizardPage } from '@/features/wizard/WizardPage';
 import { RoutesPage } from '@/features/routes/RoutesPage';
@@ -44,6 +45,7 @@ const PAGE_TITLES: Array<[RegExp, string]> = [
   [/^\/tasks$/, 'משימות ומעקבים'],
   [/^\/profile$/, 'פרופיל המדביר'],
   [/^\/settings$/, 'הגדרות'],
+  [/^\/diagnostics$/, 'בדיקת מערכת'],
   [/^\/import$/, 'ייבוא'],
   [/^\/privacy$/, 'פרטיות'],
   [/^\/verify/, 'אימות עותק'],
@@ -170,6 +172,7 @@ function Shell(): React.JSX.Element {
         <Route path="/tasks" element={<InnerLayout><TasksPage /></InnerLayout>} />
         <Route path="/profile" element={<InnerLayout><ProfilePage /></InnerLayout>} />
         <Route path="/settings" element={<InnerLayout><SettingsPage /></InnerLayout>} />
+        <Route path="/diagnostics" element={<InnerLayout><DiagnosticsPage /></InnerLayout>} />
         <Route path="/import" element={<InnerLayout><ImportPage /></InnerLayout>} />
         <Route path="/verify" element={<InnerLayout><VerifyPage /></InnerLayout>} />
         <Route path="/privacy" element={<InnerLayout><PrivacyPage /></InnerLayout>} />

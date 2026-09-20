@@ -118,3 +118,27 @@ export function recordDelivery(logId: string, method: string): Promise<{ ok: tru
 export function isApiError(value: unknown): value is ApiError {
   return typeof value === 'object' && value !== null && (value as ApiError).ok === false;
 }
+
+/**
+ * בדיקת זמינות של שירות ההשלמה וה-PDF — למסך „בדיקת מערכת”.
+ * זו בדיקה אמיתית מול השירות, ולא הצהרה על בסיס הגדרות בלבד.
+ */
+export async function pdfServiceHealth(): Promise<{ ok: boolean; detail: string }> {
+  if (!clientEnv.pdfServiceUrl) {
+    return { ok: false, detail: 'כתובת השירות אינה מוגדרת (VITE_PDF_SERVICE_URL).' };
+  }
+  if (!navigator.onLine) {
+    return { ok: false, detail: 'אין חיבור לרשת, ולכן לא ניתן לבדוק את השירות.' };
+  }
+  try {
+    const response = await fetch(`${clientEnv.pdfServiceUrl}/healthz`, { method: 'GET' });
+    return response.ok
+      ? { ok: true, detail: `השירות עונה (${clientEnv.pdfServiceUrl}).` }
+      : { ok: false, detail: `השירות החזיר שגיאה ${response.status}.` };
+  } catch (error) {
+    return {
+      ok: false,
+      detail: `לא ניתן להגיע לשירות: ${error instanceof Error ? error.message : 'שגיאה לא ידועה'}`,
+    };
+  }
+}

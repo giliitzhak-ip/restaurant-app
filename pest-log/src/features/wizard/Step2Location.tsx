@@ -10,6 +10,7 @@ import {
   type TreatmentKind,
 } from '@/schema/enums';
 import { getAtPath, getString } from '@/lib/paths';
+import { mapViewLink, parseCoordinatesText } from '@/lib/legacy/coordinates';
 import { serverNowIso, toDateInput, toTimeInput, serverNow, hasSignificantClockDrift } from '@/lib/time';
 import type { StepProps } from './stepProps';
 
@@ -17,6 +18,7 @@ import type { StepProps } from './stepProps';
 export function Step2Location({ draft, reference, errors }: StepProps): React.JSX.Element {
   const { content, setField, setFields, readOnly } = draft;
   const [gpsStatus, setGpsStatus] = useState<string | null>(null);
+  const [pastedPoint, setPastedPoint] = useState('');
 
   const placeKind = (getString(content, 'location.placeKind') || 'dwelling') as PlaceKind;
   const treatmentKinds = (getAtPath(content, 'treatmentKinds') as TreatmentKind[] | undefined) ?? [];
@@ -46,6 +48,29 @@ export function Step2Location({ draft, reference, errors }: StepProps): React.JS
       ? treatmentKinds.filter((k) => k !== kind)
       : [...treatmentKinds, kind];
     setField('treatmentKinds', next.length > 0 ? next : ['standard']);
+  };
+
+  /**
+   * הדבקת נ״צ מהמפות — הועבר מהגרסה הקודמת.
+   * נחוץ כאשר ה-GPS חסום או לא זמין: עדיף נ״צ שהודבק מהמפות על פני
+   * מקום שלא תועד כלל.
+   */
+  const applyPastedPoint = () => {
+    const parsed = parseCoordinatesText(pastedPoint);
+    if (!parsed) {
+      setGpsStatus(
+        'לא זוהתה נקודת ציון. הדביקו שתי מעלות מופרדות בפסיק (למשל 31.750123, 35.091234) או קישור מ-Google Maps או מ-Waze.',
+      );
+      return;
+    }
+    setFields([
+      { path: 'location.coordinates.system', value: 'wgs84' },
+      { path: 'location.coordinates.latitude', value: parsed.latitude },
+      { path: 'location.coordinates.longitude', value: parsed.longitude },
+      { path: 'location.coordinates.capturedAt', value: serverNowIso() },
+    ]);
+    setPastedPoint('');
+    setGpsStatus(`נקלטה נקודת ציון שהודבקה: ${parsed.latitude}, ${parsed.longitude}`);
   };
 
   const captureGps = () => {
@@ -364,6 +389,48 @@ export function Step2Location({ draft, reference, errors }: StepProps): React.JS
           <div className="btn-row">
             <button type="button" className="btn btn-sm" onClick={captureGps} disabled={readOnly}>
               קליטת מיקום מה-GPS
+            </button>
+            {(() => {
+              const latitude = Number(getString(content, 'location.coordinates.latitude'));
+              const longitude = Number(getString(content, 'location.coordinates.longitude'));
+              if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || (latitude === 0 && longitude === 0)) {
+                return null;
+              }
+              return (
+                <a
+                  className="btn btn-sm"
+                  href={mapViewLink({ latitude, longitude })}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  צפייה במפה
+                </a>
+              );
+            })()}
+          </div>
+
+          <div className="field">
+            <label htmlFor="paste-coordinates">הדבקת נ״צ או קישור ממפות</label>
+            <input
+              id="paste-coordinates"
+              type="text"
+              value={pastedPoint}
+              disabled={readOnly}
+              placeholder="31.750123, 35.091234 או קישור מ-Google Maps / Waze"
+              onChange={(event) => setPastedPoint(event.target.value)}
+            />
+            <p className="hint">
+              במפות: לחיצה ארוכה על הנקודה, העתקת הנ״צ או הקישור, והדבקה כאן. שימושי כשה-GPS חסום.
+            </p>
+          </div>
+          <div className="btn-row">
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={applyPastedPoint}
+              disabled={readOnly || pastedPoint.trim().length === 0}
+            >
+              הוספת הנ״צ שהודבק
             </button>
           </div>
           {gpsStatus ? (

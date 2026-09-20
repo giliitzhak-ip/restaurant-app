@@ -25,6 +25,7 @@ import {
   type SiteRow,
   type WarningTemplateRow,
 } from '@/lib/repo';
+import { listTextTemplates, type TextTemplateRow } from '@/lib/legacy/repo';
 import { fetchServerTime, getSession } from '@/lib/supabase';
 import { syncServerTime } from '@/lib/time';
 import { clientEnv } from '@/lib/env';
@@ -40,6 +41,8 @@ export interface ReferenceData {
   products: ProductRow[];
   templates: WarningTemplateRow[];
   pestCatalog: PestCatalogRow[];
+  /** ספריות הניסוח של העסק (בנוסף לספריות המובנות). */
+  textTemplates: TextTemplateRow[];
 }
 
 interface AppContextValue {
@@ -50,11 +53,20 @@ interface AppContextValue {
   syncStatus: SyncStatus;
   reference: ReferenceData;
   refreshReference: () => Promise<void>;
+  /** עדכון מקומי של ספריות הניסוח אחרי שמירה או מחיקה. */
+  setTextTemplates: (rows: TextTemplateRow[]) => void;
   refreshProfile: () => Promise<void>;
   configError: string | null;
 }
 
-const emptyReference: ReferenceData = { clients: [], sites: [], products: [], templates: [], pestCatalog: [] };
+const emptyReference: ReferenceData = {
+  clients: [],
+  sites: [],
+  products: [],
+  templates: [],
+  pestCatalog: [],
+  textTemplates: [],
+};
 
 const AppContext = createContext<AppContextValue | null>(null);
 
@@ -78,14 +90,19 @@ export function AppProvider({ children }: { children: ReactNode }): React.JSX.El
 
   const refreshReference = useCallback(async () => {
     if (!clientEnv.isConfigured) return;
-    const [clients, sites, products, templates, pestCatalog] = await Promise.all([
+    const [clients, sites, products, templates, pestCatalog, textTemplates] = await Promise.all([
       listClients().catch(() => [] as ClientRow[]),
       listSites().catch(() => [] as SiteRow[]),
       listProducts().catch(() => [] as ProductRow[]),
       listWarningTemplates().catch(() => [] as WarningTemplateRow[]),
       listPestCatalog().catch(() => [] as PestCatalogRow[]),
+      listTextTemplates().catch(() => [] as TextTemplateRow[]),
     ]);
-    setReference({ clients, sites, products, templates, pestCatalog });
+    setReference({ clients, sites, products, templates, pestCatalog, textTemplates });
+  }, []);
+
+  const setTextTemplates = useCallback((rows: TextTemplateRow[]) => {
+    setReference((current) => ({ ...current, textTemplates: rows }));
   }, []);
 
   const refreshProfile = useCallback(async () => {
@@ -170,10 +187,22 @@ export function AppProvider({ children }: { children: ReactNode }): React.JSX.El
       syncStatus,
       reference,
       refreshReference,
+      setTextTemplates,
       refreshProfile,
       configError,
     }),
-    [profile, loading, authenticated, syncEngine, syncStatus, reference, refreshReference, refreshProfile, configError],
+    [
+      profile,
+      loading,
+      authenticated,
+      syncEngine,
+      syncStatus,
+      reference,
+      refreshReference,
+      setTextTemplates,
+      refreshProfile,
+      configError,
+    ],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -52,7 +52,11 @@ export type OutboxOperationType =
   | 'upsert_focus_item'
   | 'delete_focus_item'
   | 'reorder_route'
-  | 'upsert_route_template';
+  | 'upsert_route_template'
+  // פונקציות שהועברו מהגרסה הקודמת: ספריות ניסוח ומאגר תחנות לאתר.
+  | 'upsert_text_template'
+  | 'delete_text_template'
+  | 'upsert_site_station';
 
 export interface OutboxOperation {
   /** מפתח האידמפוטנטיות הוא גם המפתח הראשי — אין כפילויות. */

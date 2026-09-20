@@ -16,9 +16,15 @@ export const MOCK = { orgId: ORG_ID, userId: USER_ID, email: 'exterminator-a@exa
 type Row = Record<string, unknown>;
 
 export interface ServerState {
-  logs: Map<string, { content: unknown; version: number; status: string; serialNumber: number | null }>;
+  logs: Map<
+    string,
+    { content: unknown; version: number; status: string; serialNumber: number | null; snapshot?: unknown }
+  >;
   /** מסלול העבודה: מסלולים, תחנות ודגשים. */
   routes: Map<string, Row>;
+  /** ספריות ניסוח ומאגר תחנות — הפונקציות שהועברו מהגרסה הקודמת. */
+  textTemplates: Map<string, Row>;
+  siteStations: Map<string, Row>;
   visits: Map<string, Row>;
   focus: Map<string, Row>;
   templates: Map<string, Row>;
@@ -64,6 +70,8 @@ export async function installSupabaseMock(page: Page): Promise<ServerState> {
   const state: ServerState = {
     logs: new Map(),
     routes: new Map(),
+    textTemplates: new Map(),
+    siteStations: new Map(),
     visits: new Map(),
     focus: new Map(),
     templates: new Map(),
@@ -511,13 +519,18 @@ export async function installSupabaseMock(page: Page): Promise<ServerState> {
     }
 
     const TABLE_STORES: Record<string, Map<string, Row>> = {
+      text_templates: state.textTemplates,
+      site_stations: state.siteStations,
       maintenance_routes: state.routes,
       route_visits: state.visits,
       visit_focus_items: state.focus,
       route_templates: state.templates,
     };
 
-    const tableMatch = /^\/rest\/v1\/(maintenance_routes|route_visits|visit_focus_items|route_templates)/.exec(path);
+    const tableMatch =
+      /^\/rest\/v1\/(maintenance_routes|route_visits|visit_focus_items|route_templates|text_templates|site_stations)/.exec(
+        path,
+      );
     if (tableMatch) {
       const store = TABLE_STORES[tableMatch[1] as string] as Map<string, Row>;
       const url = new URL(request.url());
@@ -565,7 +578,7 @@ export async function installSupabaseMock(page: Page): Promise<ServerState> {
         correction_reason: null,
         root_log_id: null,
         content: log.content,
-        snapshot: null,
+        snapshot: log.snapshot ?? null,
         version: log.version,
       }));
       return json(route, rows);
@@ -604,6 +617,8 @@ export async function installSupabaseMock(page: Page): Promise<ServerState> {
       if (existing) {
         existing.status = 'completed';
         existing.serialNumber = serial;
+        // הצילום של התוכן — כך גם "יומן קודם" וגם סיכום ה-SMS עובדים בבדיקות.
+        existing.snapshot = existing.content;
       }
       return json(route, {
         ok: true,

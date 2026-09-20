@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { deleteBlob, getBlob, putBlob } from '@/lib/db/idb';
+import { PHOTO_KIND_LABELS } from '@/schema/enums';
 import { compressImage, uploadFile, validateUpload, MAX_FILE_BYTES } from '@/lib/storage';
 import { sha256Blob } from '@/lib/hash';
 import { newUuid } from '@/lib/ids';
@@ -34,6 +35,8 @@ export function PhotoAttachments({ draft, logId, organizationId }: PhotoAttachme
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadingCount, setUploadingCount] = useState(0);
+  // סיווג התמונה, כפי שהיה בגרסה הקודמת: מפגע / פעולת מניעה / תיעוד כללי.
+  const [photoKind, setPhotoKind] = useState<'hazard' | 'prevention' | 'general'>('general');
   const inputRef = useRef<HTMLInputElement | null>(null);
   const createdUrls = useRef<string[]>([]);
 
@@ -140,6 +143,7 @@ export function PhotoAttachments({ draft, logId, organizationId }: PhotoAttachme
         });
 
         appendTo('attachments', {
+          photoKind,
           kind: 'photo',
           localBlobId,
           mimeType: compressed.type,
@@ -169,6 +173,23 @@ export function PhotoAttachments({ draft, logId, organizationId }: PhotoAttachme
       {uploadingCount > 0 ? <Alert kind="info">מעלה {uploadingCount} תמונות לאחסון…</Alert> : null}
 
       <div className="field">
+        <label htmlFor="photo-kind">סיווג התמונות הבאות</label>
+        <select
+          id="photo-kind"
+          value={photoKind}
+          disabled={readOnly || busy}
+          onChange={(event) => setPhotoKind(event.target.value as 'hazard' | 'prevention' | 'general')}
+        >
+          {Object.entries(PHOTO_KIND_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <div className="hint">הסיווג נשמר לכל תמונה ומופיע גם ב-PDF.</div>
+      </div>
+
+      <div className="field">
         <label htmlFor="photo-input">הוספת תמונות</label>
         <input
           id="photo-input"
@@ -194,6 +215,11 @@ export function PhotoAttachments({ draft, logId, organizationId }: PhotoAttachme
             <div className="repeat-item" key={localBlobId || index}>
               <div className="repeat-item-head">
                 <h4>תמונה {index + 1}</h4>
+                <span className="tag">
+                  {PHOTO_KIND_LABELS[
+                    (getString(attachment, 'photoKind') || 'general') as keyof typeof PHOTO_KIND_LABELS
+                  ] ?? 'תיעוד כללי'}
+                </span>
                 <span className={`tag ${storagePath ? 'tag-success' : 'tag-warning'}`}>
                   {storagePath ? 'נשמרה באחסון' : 'נשמרה במכשיר'}
                 </span>

@@ -59,8 +59,22 @@ test.describe('@screenshots', () => {
     await fillStep3(page);
     await shot('05-step3-monitoring');
 
+    // ספריית הניסוחים שהועברה מהגרסה הקודמת
+    await page.getByRole('button', { name: /^הוסף מתבנית$/ }).first().click();
+    await page.waitForTimeout(400);
+    await shot('05a-template-library');
+    await page.getByRole('dialog').getByRole('button', { name: 'סגירה' }).click();
+
     await fillStep4(page);
     await shot('06-step4-treatment');
+
+    // מאגר תחנות האכלה וניטור לאתר
+    const stations = page.getByRole('region', { name: 'תחנות האכלה וניטור באתר' });
+    if (await stations.isVisible().catch(() => false)) {
+      await stations.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(300);
+      await shot('06a-site-stations');
+    }
 
     await fillStep5(page);
     await shot('07-step5-warnings');
@@ -155,6 +169,11 @@ test.describe('@screenshots', () => {
     await page.goto('/routes/templates');
     await page.waitForTimeout(700);
     await shot('12n-route-templates');
+
+    // 12ס. הפונקציות שהועברו מהגרסה הקודמת
+    await page.goto('/diagnostics');
+    await page.waitForTimeout(900);
+    await shot('12o-diagnostics');
 
     // 13. ייבוא מהגרסה הקודמת — עם נתוני דוגמה ב-localStorage
     await page.evaluate(() => {

@@ -189,3 +189,13 @@ export const POISON_CENTER_NOTICE =
 
 /** תקופת שמירת יומן מינימלית בשנים (דרישה 17). */
 export const RETENTION_YEARS = 3;
+
+
+/** סיווג תמונות ביומן — הועבר מהגרסה הקודמת. */
+export const PHOTO_KIND_LABELS = {
+  hazard: 'מפגע',
+  prevention: 'פעולת מניעה',
+  general: 'תיעוד כללי',
+} as const;
+
+export type PhotoKind = keyof typeof PHOTO_KIND_LABELS;

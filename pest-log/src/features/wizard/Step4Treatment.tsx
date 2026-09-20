@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { CheckboxField, ComboField, SelectField, TextAreaField, TextField } from '@/components/Fields';
 import { Alert, EmptyState } from '@/components/Common';
 import {
@@ -18,6 +19,10 @@ import { productWarnings } from '@/schema/product';
 import { getArray, getAtPath, getBoolean, getString } from '@/lib/paths';
 import { serverNow, serverNowIso } from '@/lib/time';
 import { newUuid } from '@/lib/ids';
+import { TemplatePicker } from '@/components/TemplatePicker';
+import { RecentApplicationsPicker } from './RecentApplicationsPicker';
+import { SiteStationsSection } from './SiteStationsSection';
+import { batchesForProduct, listRecentApplications, type RecentApplication } from '@/lib/legacy/repo';
 import type { StepProps } from './stepProps';
 
 /**
@@ -31,6 +36,13 @@ export function Step4Treatment({ draft, reference, errors }: StepProps): React.J
   const applications = getArray(content, 'applications');
   const sealingActions = getArray(content, 'fumigation.sealingActions');
   const baitStations = getArray(content, 'baitStations');
+  // אצוות שנרשמו בעבר לאותו תכשיר — הצעה בלבד, לאימות מול האריזה.
+  const [recentApplications, setRecentApplications] = useState<RecentApplication[]>([]);
+  useEffect(() => {
+    void listRecentApplications()
+      .then(setRecentApplications)
+      .catch(() => setRecentApplications([]));
+  }, []);
   const monitoredPests = getArray(content, 'monitoring.findings')
     .map((f) => getString(f, 'pestName'))
     .filter(Boolean);
@@ -112,6 +124,19 @@ export function Step4Treatment({ draft, reference, errors }: StepProps): React.J
           );
         })}
 
+        {/* כל ניסוח שנבחר מהספרייה נוסף כפעולת מניעה נפרדת, כפי שהיה בגרסה הקודמת. */}
+        <TemplatePicker
+          kind="prevention"
+          label="פעולות מניעה"
+          disabled={readOnly}
+          value=""
+          onChange={(next) => {
+            for (const line of next.split('\n').map((item) => item.trim()).filter(Boolean)) {
+              appendTo('prevention.actions', { description: line, status: 'recommended' });
+            }
+          }}
+        />
+
         <button
           type="button"
           className="btn btn-block"
@@ -130,6 +155,12 @@ export function Step4Treatment({ draft, reference, errors }: StepProps): React.J
           value={getString(content, 'prevention.circumstancesForChoosingPestControl')}
           onChange={(value) => setField('prevention.circumstancesForChoosingPestControl', value)}
           error={errors.get('prevention.circumstancesForChoosingPestControl')}
+        />
+        <TemplatePicker
+          kind="circumstances"
+          disabled={readOnly}
+          value={getString(content, 'prevention.circumstancesForChoosingPestControl')}
+          onChange={(next) => setField('prevention.circumstancesForChoosingPestControl', next)}
         />
       </section>
 
@@ -404,6 +435,28 @@ export function Step4Treatment({ draft, reference, errors }: StepProps): React.J
                 }}
               />
 
+              {(() => {
+                const product = getString(content, `${base}.productTradeName`);
+                const batches = batchesForProduct(recentApplications, product);
+                if (batches.length === 0) return null;
+                return (
+                  <div className="btn-row btn-row-compact">
+                    <span className="small muted">אצוות שנרשמו בעבר לתכשיר זה:</span>
+                    {batches.map((batch) => (
+                      <button
+                        type="button"
+                        className="btn btn-sm"
+                        key={batch}
+                        disabled={readOnly}
+                        onClick={() => setField(`${base}.batchNumber`, batch)}
+                      >
+                        {batch}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
+
               <div className="field-row">
                 <TextField
                   path={`${base}.batchNumber`}
@@ -604,9 +657,13 @@ export function Step4Treatment({ draft, reference, errors }: StepProps): React.J
         >
           + הוספת תכשיר
         </button>
+
+        <RecentApplicationsPicker draft={draft} />
       </section>
 
-      {/* ── תחנות האכלה ── */}
+      <SiteStationsSection draft={draft} />
+
+      {/* ── תחנות האכלה שנרשמו ידנית ביומן זה ── */}
       <section className="card" aria-labelledby="step4-bait">
         <h2 id="step4-bait">תחנות האכלה</h2>
         <p className="card-sub">תיעוד מצב התחנות בביקור זה.</p>

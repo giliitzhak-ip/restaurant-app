@@ -3,6 +3,8 @@ import { EmptyState } from '@/components/Common';
 import { INFESTATION_LEVEL_LABELS, type InfestationLevel } from '@/schema/enums';
 import { getArray, getString } from '@/lib/paths';
 import { PhotoAttachments } from '@/features/photos/PhotoAttachments';
+import { TemplatePicker } from '@/components/TemplatePicker';
+import { annexRuleFor } from '@/schema/textLibraries';
 import type { StepProps } from './stepProps';
 
 /** שלב 3 — ממצאי ניטור (דרישה 6) ותמונות תיעוד. */
@@ -84,6 +86,36 @@ export function Step3Monitoring({ draft, reference, errors, logId, organizationI
               hint="ניתן לבחור מהקטלוג או להזין שם חופשי."
             />
 
+            {/* נספח א׳: מזיקים מסוימים מחייבים פירוט נוסף. */}
+            {(() => {
+              const rule = annexRuleFor(getString(content, `${base}.pestName`));
+              if (!rule) return null;
+              return rule.options ? (
+                <SelectField
+                  path={`${base}.pestSubtype`}
+                  label={rule.label}
+                  required
+                  disabled={readOnly}
+                  value={getString(content, `${base}.pestSubtype`)}
+                  onChange={(value) => setField(`${base}.pestSubtype`, value)}
+                  error={errors.get(`${base}.pestSubtype`)}
+                  options={rule.options.map((option) => ({ value: option, label: option }))}
+                  placeholder="בחירת פירוט"
+                />
+              ) : (
+                <TextField
+                  path={`${base}.pestSubtype`}
+                  label={rule.label}
+                  required
+                  disabled={readOnly}
+                  value={getString(content, `${base}.pestSubtype`)}
+                  onChange={(value) => setField(`${base}.pestSubtype`, value)}
+                  error={errors.get(`${base}.pestSubtype`)}
+                  placeholder={rule.hint ?? ''}
+                />
+              );
+            })()}
+
             <TextAreaField
               path={`${base}.identificationActions`}
               label="פעולות הזיהוי"
@@ -130,6 +162,12 @@ export function Step3Monitoring({ draft, reference, errors, logId, organizationI
               onChange={(value) => setField(`${base}.infestationSigns`, value)}
               error={errors.get(`${base}.infestationSigns`)}
               placeholder="הפרשות, שרידי נשל, נזק פיזי, ריח…"
+            />
+            <TemplatePicker
+              kind="finding_signs"
+              disabled={readOnly}
+              value={getString(content, `${base}.infestationSigns`)}
+              onChange={(next) => setField(`${base}.infestationSigns`, next)}
             />
 
             <TextField

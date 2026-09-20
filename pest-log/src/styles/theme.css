@@ -915,3 +915,88 @@ legend { font-size: 0.86rem; font-weight: 500; padding: 0 0.4rem; color: var(--t
   .route-stop.is-current .route-stop-body { animation: none; }
   .route-stop.is-done .route-stop-index { animation: none; }
 }
+
+/* ─── ספריות ניסוח (הועבר מהגרסה הקודמת) ─────────────────────────────────── */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 28, 18, 0.45);
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.sheet {
+  background: var(--surface);
+  width: 100%;
+  max-width: 620px;
+  border-radius: 22px 22px 0 0;
+  padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
+  max-height: 86vh;
+  overflow: auto;
+}
+.sheet h3 { margin: 0 0 0.25rem; }
+.template-list { max-height: 46vh; overflow: auto; margin: 0.6rem 0; }
+.template-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--border);
+  padding: 0.45rem 0;
+  font-size: 0.9rem;
+}
+.template-row span { flex: 1; }
+
+/* ─── מאגר תחנות האתר ────────────────────────────────────────────────────── */
+.station-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.station-row:last-child { border-bottom: 0; }
+.station-number {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 700;
+  flex: none;
+}
+.station-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.station-row select, .station-row input { max-width: 190px; }
+
+/* ─── טעינה מיומנים אחרונים ──────────────────────────────────────────────── */
+.recent-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  text-align: start;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 14px);
+  background: var(--surface);
+  padding: 0.7rem;
+  margin-top: 0.5rem;
+  cursor: pointer;
+  font: inherit;
+  color: var(--text);
+}
+.recent-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.1rem; }
+.recent-plus {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--brand); color: #05301c;
+  display: grid; place-items: center; flex: none;
+}
+
+/* ─── בדיקת מערכת ────────────────────────────────────────────────────────── */
+.diag-row { display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
+.diag-row:last-child { border-bottom: 0; }
+.diag-main { display: flex; flex-direction: column; gap: 0.1rem; }
+.diag-icon { flex: none; margin-top: 2px; }
+.diag-row.tone-ok .diag-icon { color: var(--brand-dark); }
+.diag-row.tone-warn .diag-icon { color: var(--danger); }
+.diag-row.tone-unknown .diag-icon { color: var(--text-muted); }

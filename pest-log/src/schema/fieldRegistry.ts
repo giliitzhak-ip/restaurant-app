@@ -202,6 +202,10 @@ const PATTERNS: Array<[string, FieldMeta]> = [
   // ── כללי ──
   ['treatmentKinds', { label: 'סוג ההדברה', step: 2, requirement: 4 }],
   ['baitStations', { label: 'תחנות האכלה', step: 4, requirement: 12 }],
+  ['monitoring.findings.*.pestSubtype', { label: 'פירוט המזיק (נספח א׳)', step: 3, requirement: 6 }],
+  ['postWarnings.treatmentPerformedDescription', { label: 'טיב ההדברה שבוצעה בפועל', step: 5, requirement: 13 }],
+  ['warranty.period', { label: 'תקופת האחריות', step: 5, requirement: 14 }],
+  ['warranty.notes', { label: 'תנאי האחריות', step: 5, requirement: 14 }],
   ['attachments', { label: 'קבצים מצורפים', step: 4, requirement: 6 }],
 ];
 

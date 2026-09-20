@@ -1,11 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { BAIT_STATION_STATUS_LABELS } from '../src/schema/sections';
+import { BAIT_STATION_STATUS_LABELS, SITE_STATION_TYPE_LABELS } from '../src/schema/sections';
 import {
   HANDOVER_METHOD_LABELS,
   INFESTATION_LEVEL_LABELS,
   MIXTURE_KIND_LABELS,
   POISON_CENTER_NOTICE,
+  PHOTO_KIND_LABELS,
   PREVENTION_STATUS_LABELS,
   QUANTITY_BASIS_LABELS,
   TREATMENT_KIND_LABELS,
@@ -140,6 +141,8 @@ export function buildPdfHtml(input: PdfRenderInput): string {
   const preWarnings = (snapshot.preWarnings ?? {}) as Row;
   const postWarnings = (snapshot.postWarnings ?? {}) as Row;
   const handover = (snapshot.handover ?? {}) as Row;
+  const warranty = (snapshot.warranty ?? {}) as Row;
+  const attachments = Array.isArray(snapshot.attachments) ? (snapshot.attachments as Row[]) : [];
   const fumigation = snapshot.fumigation as Row | undefined;
   const fogging = snapshot.fogging as Row | undefined;
   const { regular, bold } = fonts();
@@ -265,6 +268,18 @@ export function buildPdfHtml(input: PdfRenderInput): string {
   .verify .verify-text { font-size: 8pt; }
   .verify code { font-family: 'DejaVu Sans Mono', monospace; font-size: 7.5pt; word-break: break-all; direction: ltr; display: inline-block; }
 
+  .brand { display: flex; gap: 8pt; align-items: flex-start; }
+  /* סמל העסק — הועבר מהעיצוב של הגרסה הקודמת (ירוק עמוק + זהב). */
+  .mark { width: 34pt; height: 34pt; border-radius: 9pt; background: #b39c6a; color: #1f5236;
+          display: flex; align-items: center; justify-content: center; font-weight: 700;
+          font-size: 19pt; flex: none; }
+  .photo-group { font-size: 9.5pt; margin: 6pt 0 2pt; color: #1f5236; }
+  ul.plain { margin: 0; padding-inline-start: 12pt; font-size: 9pt; }
+  .photo-grid { display: flex; flex-wrap: wrap; gap: 6pt; }
+  .photo-item { width: 31%; break-inside: avoid; }
+  .photo-item img { width: 100%; height: 72pt; object-fit: cover; border: 0.5pt solid #ccc; }
+  .photo-caption { font-size: 7.5pt; color: #444; }
+
   .note { font-size: 8pt; color: #555; margin-top: 3pt; }
   .derived { color: #7a5a17; font-size: 7.5pt; }
 </style>
@@ -272,12 +287,15 @@ export function buildPdfHtml(input: PdfRenderInput): string {
 <body>
 
 <div class="header">
-  <div>
+  <div class="brand">
+    <div class="mark" aria-hidden="true">י</div>
+    <div>
     <div class="org">${text(meta.organizationName)}</div>
     <h1>יומן ביצוע הדברה</h1>
     <div class="meta-line">גרסת מסמך ${text(meta.documentVersion, '1')}${
       meta.correctsLogId ? ` · גרסת תיקון ליומן קודם` : ''
     }</div>
+    </div>
   </div>
   <div style="text-align:left">
     <div class="serial">מספר סידורי: ${text(meta.serialNumber)}</div>
@@ -359,7 +377,7 @@ ${section(
   table(
     ['המזיק', 'פעולות הזיהוי', 'דרגת התפתחות', 'סימני נגיעות', 'מיקום', 'רמת נגיעות'],
     findings.map((f) => [
-      text(f.pestName),
+      text([f.pestName, f.pestSubtype].filter(Boolean).join(' — ')),
       text(f.identificationActions),
       text(f.developmentStage),
       text(f.infestationSigns),
@@ -501,9 +519,13 @@ ${
         'תחנות האכלה',
         12,
         table(
-          ['מספר תחנה', 'מיקום', 'מצב', 'רמת אכילה', 'תכשיר', 'הערות'],
+          ['מספר תחנה', 'סוג התחנה', 'מיקום', 'מצב', 'רמת אכילה', 'תכשיר', 'הערות'],
           baitStations.map((b) => [
             text(b.stationNumber),
+            text(
+              SITE_STATION_TYPE_LABELS[b.stationType as keyof typeof SITE_STATION_TYPE_LABELS] ??
+                b.stationType,
+            ),
             text(b.locationDescription),
             text(BAIT_STATION_STATUS_LABELS[b.status as keyof typeof BAIT_STATION_STATUS_LABELS] ?? b.status),
             text(b.consumptionLevel),
@@ -521,6 +543,7 @@ ${section(
   `<div class="grid one">
      ${field('במהלך ההדברה', postWarnings.duringTreatmentInfo)}
      ${field('בסיום ההדברה', postWarnings.afterTreatmentInfo)}
+     ${field('טיב ההדברה שבוצעה בפועל', postWarnings.treatmentPerformedDescription)}
      ${field('נדרש טיפול משלים', yesNo(postWarnings.followUpRequired))}
      ${field('תיאור הטיפול המשלים', postWarnings.followUpDescription)}
      ${field('מועד מתוכנן לטיפול משלים', postWarnings.followUpTargetDate)}
@@ -547,6 +570,43 @@ ${section(
        : ''
    }`,
 )}
+
+${
+  warranty.period || warranty.notes
+    ? `<div class="section"><h2>אחריות על הטיפול</h2>
+       <div class="grid one">
+         ${field('תקופת האחריות', warranty.period)}
+         ${field('תנאים והערות', warranty.notes)}
+       </div>
+       <p class="note">האחריות היא התחייבות מסחרית של העסק ואינה חלק מהדרישות המחייבות ביומן.</p></div>`
+    : ''
+}
+
+${
+  attachments.length > 0
+    ? `<div class="section"><h2>תמונות מצורפות</h2>
+       ${['hazard', 'prevention', 'general']
+         .map((kind) => {
+           const group = attachments.filter(
+             (attachment) => (attachment.photoKind ?? 'general') === kind,
+           );
+           if (group.length === 0) return '';
+           return `<h3 class="photo-group">${escapeHtml(
+             PHOTO_KIND_LABELS[kind as keyof typeof PHOTO_KIND_LABELS],
+           )}</h3>
+             <ul class="plain">${group
+               .map(
+                 (attachment) =>
+                   `<li>${escapeHtml(attachment.caption ?? 'ללא כותרת')}${
+                     attachment.capturedAt ? ` · ${formatDateTime(attachment.capturedAt)}` : ''
+                   }</li>`,
+               )
+               .join('')}</ul>`;
+         })
+         .join('')}
+       <p class="note">הקבצים עצמם שמורים באחסון הפרטי ונגישים מהמערכת; ב-PDF מופיעה רשימת התמונות והכותרות.</p></div>`
+    : ''
+}
 
 ${section(
   'חתימות',

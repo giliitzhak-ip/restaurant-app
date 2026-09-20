@@ -3,6 +3,8 @@ import { CheckboxField, SelectField, TextAreaField, TextField } from '@/componen
 import { Alert } from '@/components/Common';
 import { getArray, getAtPath, getBoolean, getString } from '@/lib/paths';
 import { serverNowIso } from '@/lib/time';
+import { TemplatePicker } from '@/components/TemplatePicker';
+import { WARRANTY_PERIODS } from '@/schema/textLibraries';
 import type { StepProps } from './stepProps';
 
 /**
@@ -87,6 +89,12 @@ export function Step5Warnings({ draft, reference, errors }: StepProps): React.JS
           value={getString(content, 'preWarnings.treatmentNatureDescription')}
           onChange={(value) => setField('preWarnings.treatmentNatureDescription', value)}
           error={errors.get('preWarnings.treatmentNatureDescription')}
+        />
+        <TemplatePicker
+          kind="nature_before"
+          disabled={readOnly}
+          value={getString(content, 'preWarnings.treatmentNatureDescription')}
+          onChange={(next) => setField('preWarnings.treatmentNatureDescription', next)}
         />
 
         <TextAreaField
@@ -228,6 +236,30 @@ export function Step5Warnings({ draft, reference, errors }: StepProps): React.JS
           onChange={(value) => setField('postWarnings.afterTreatmentInfo', value)}
           error={errors.get('postWarnings.afterTreatmentInfo')}
         />
+        <TemplatePicker
+          kind="warnings"
+          disabled={readOnly}
+          value={getString(content, 'postWarnings.afterTreatmentInfo')}
+          onChange={(next) => setField('postWarnings.afterTreatmentInfo', next)}
+        />
+
+        {/* טיב ההדברה שבוצעה בפועל — שדה שהיה בגרסה הקודמת. אינו שדה חובה. */}
+        <TextAreaField
+          path="postWarnings.treatmentPerformedDescription"
+          label="טיב ההדברה שבוצעה בפועל"
+          rows={3}
+          disabled={readOnly}
+          value={getString(content, 'postWarnings.treatmentPerformedDescription')}
+          onChange={(value) => setField('postWarnings.treatmentPerformedDescription', value)}
+          error={errors.get('postWarnings.treatmentPerformedDescription')}
+          hint="מה בוצע בפועל, להבדיל מהתכנון שנמסר לפני הטיפול."
+        />
+        <TemplatePicker
+          kind="nature_after"
+          disabled={readOnly}
+          value={getString(content, 'postWarnings.treatmentPerformedDescription')}
+          onChange={(next) => setField('postWarnings.treatmentPerformedDescription', next)}
+        />
 
         <CheckboxField
           path="postWarnings.followUpRequired"
@@ -273,6 +305,41 @@ export function Step5Warnings({ draft, reference, errors }: StepProps): React.JS
             ])
           }
           error={errors.get('postWarnings.acknowledgedByExterminator')}
+        />
+      </section>
+
+      {/* ── אחריות (פונקציה שנשמרה מהגרסה הקודמת) ── */}
+      <section className="card" aria-labelledby="step5-warranty">
+        <h2 id="step5-warranty">אחריות על הטיפול</h2>
+        <p className="card-sub">
+          אינה חלק מהדרישות המחייבות ביומן, אך היא נשמרת ומודפסת ב-PDF כפי שהיה בגרסה הקודמת.
+        </p>
+
+        <SelectField
+          path="warranty.period"
+          label="תקופת האחריות"
+          disabled={readOnly}
+          value={getString(content, 'warranty.period')}
+          onChange={(value) => setField('warranty.period', value)}
+          error={errors.get('warranty.period')}
+          options={WARRANTY_PERIODS.map((period) => ({ value: period, label: period }))}
+          placeholder="בחירת תקופה"
+        />
+
+        <TextAreaField
+          path="warranty.notes"
+          label="תנאי האחריות והערות"
+          rows={3}
+          disabled={readOnly}
+          value={getString(content, 'warranty.notes')}
+          onChange={(value) => setField('warranty.notes', value)}
+          error={errors.get('warranty.notes')}
+        />
+        <TemplatePicker
+          kind="warranty"
+          disabled={readOnly}
+          value={getString(content, 'warranty.notes')}
+          onChange={(next) => setField('warranty.notes', next)}
         />
       </section>
     </>

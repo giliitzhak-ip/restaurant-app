@@ -273,3 +273,37 @@ describe('קווי אחזקה', () => {
     expect(orgB.rowCount).toBe(0);
   });
 });
+
+describe('ספריות ניסוח ומאגר תחנות (הועבר מהגרסה הקודמת)', () => {
+  it('עובד יכול לשמור ולמחוק ניסוחים של הארגון שלו בלבד', async () => {
+    const mine = await worker.query(
+      `insert into public.text_templates (organization_id, kind, body) values ($1, 'warnings', 'לאוורר שעתיים לפני כניסה') returning id`,
+      [SEED.orgA],
+    );
+    expect(mine.rowCount).toBe(1);
+
+    await expect(
+      worker.query(
+        `insert into public.text_templates (organization_id, kind, body) values ($1, 'warnings', 'ניסוח לארגון אחר')`,
+        [SEED.orgB],
+      ),
+    ).rejects.toThrow(/row-level security/);
+
+    const deleted = await worker.query('delete from public.text_templates where id = $1', [mine.rows[0].id]);
+    expect(deleted.rowCount).toBe(1);
+  });
+
+  it('תחנות אתר מבודדות בין ארגונים', async () => {
+    await admin.query(
+      `insert into public.site_stations (organization_id, client_site_id, station_number, station_type)
+       values ($1, $2, 1, 'bait_poison')`,
+      [SEED.orgA, SITE_VAAD],
+    );
+
+    const seenByWorker = await worker.query('select id from public.site_stations');
+    expect(seenByWorker.rowCount).toBe(1);
+
+    const seenByOrgB = await orgBUser.query('select id from public.site_stations');
+    expect(seenByOrgB.rowCount).toBe(0);
+  });
+});

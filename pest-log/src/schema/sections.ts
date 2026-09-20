@@ -154,6 +154,11 @@ export const pestFindingSchema = z.object({
   pestName: requiredText('שם המזיק', 200),
   /** קוד המזיק בקטלוג, אם נבחר מתוך הקטלוג. */
   pestCatalogCode: optionalText('קוד המזיק בקטלוג', 60),
+  /**
+   * פירוט נוסף שנדרש לחלק מהמזיקים בנספח א׳ — למשל קרציות קשות מול
+   * רכות, יתושים בוגרים מול זחלים, טרמיטי קרקע מול טרמיטי עץ.
+   */
+  pestSubtype: optionalText('פירוט המזיק', 200),
   /** פעולות הזיהוי שבוצעו. */
   identificationActions: requiredLongText('פעולות הזיהוי', 2000),
   /** דרגת התפתחות (למשל: ביצים, נימפה, בוגר). */
@@ -238,6 +243,8 @@ export type PreTreatmentWarnings = z.infer<typeof preTreatmentWarningsSchema>;
 export const postTreatmentWarningsSchema = z
   .object({
     duringTreatmentInfo: requiredLongText('אזהרות ומידע במהלך ההדברה', 4000),
+    /** טיב ההדברה שבוצעה בפועל (היה בגרסה הקודמת; אינו שדה חובה). */
+    treatmentPerformedDescription: optionalText('טיב ההדברה שבוצעה בפועל', 4000),
     afterTreatmentInfo: requiredLongText('אזהרות ומידע בסיום ההדברה', 4000),
     /** האם נדרש טיפול משלים. */
     followUpRequired: z.boolean(),
@@ -495,6 +502,12 @@ export type Signatures = z.infer<typeof signaturesSchema>;
 export const baitStationSchema = z.object({
   id: uuid.optional(),
   stationNumber: requiredText('מספר תחנה', 40),
+  /** סוג התחנה — תחנת האכלה עם/בלי רעל, מלכודת הדבקה, ניטור וכד׳. */
+  stationType: z
+    .enum(['bait_poison', 'bait_monitor', 'glue_trap', 'insect_monitor', 'moth_trap', 'fly_trap', 'other'])
+    .optional(),
+  /** מזהה התחנה במאגר התחנות של האתר, כשהיא נבדקה מתוך המאגר. */
+  siteStationId: uuid.optional(),
   locationDescription: requiredText('מיקום התחנה', 300),
   status: z.enum(['intact', 'consumed', 'damaged', 'missing', 'replaced', 'new']),
   consumptionLevel: z.enum(['none', 'partial', 'full']).optional(),
@@ -524,6 +537,8 @@ export const attachmentSchema = z.object({
   mimeType: z.string().min(1),
   sizeBytes: z.number().int().nonnegative(),
   caption: optionalText('כותרת לתמונה', 300),
+  /** סיווג התמונה: מפגע, פעולת מניעה או תיעוד כללי. */
+  photoKind: z.enum(['hazard', 'prevention', 'general']).optional(),
   capturedAt: isoTimestamp('מועד צילום').optional(),
   coordinates: coordinatesSchema.optional(),
   /** מזהה מקומי ב-IndexedDB לפני העלאה. */
@@ -531,5 +546,41 @@ export const attachmentSchema = z.object({
   sha256: z.string().regex(/^[0-9a-f]{64}$/, 'טביעת אצבע של הקובץ לא תקינה').optional(),
 });
 export type Attachment = z.infer<typeof attachmentSchema>;
+
+/* ───────── אחריות (פונקציה קיימת שנשמרת מהגרסה הקודמת) ───────── */
+
+export const SITE_STATION_TYPE_LABELS = {
+  bait_poison: 'תחנת האכלה עם רעל',
+  bait_monitor: 'תחנת האכלה ללא רעל (ניטור)',
+  glue_trap: 'מלכודת הדבקה',
+  insect_monitor: 'מלכודת ניטור חרקים',
+  moth_trap: 'מלכודת עש',
+  fly_trap: 'מלכודת זבובים',
+  other: 'אחר',
+} as const;
+
+export type SiteStationType = keyof typeof SITE_STATION_TYPE_LABELS;
+
+/** צבע לכל סוג תחנה. הצבע מלווה תמיד בשם הסוג ובמספר התחנה. */
+export const SITE_STATION_TYPE_COLORS: Record<SiteStationType, string> = {
+  bait_poison: '#d9822b',
+  bait_monitor: '#3f9d5a',
+  glue_trap: '#7a5a44',
+  insect_monitor: '#2e9fbf',
+  moth_trap: '#8a8f98',
+  fly_trap: '#6b54c9',
+  other: '#5d6f63',
+};
+
+/**
+ * אחריות על הטיפול.
+ * אינה חלק מהדרישות המחייבות ביומן, ולכן היא אופציונלית — אך כשהיא
+ * מולאה היא נשמרת ומודפסת ב-PDF, בדיוק כפי שהיה בגרסה הקודמת.
+ */
+export const warrantySchema = z.object({
+  period: optionalText('תקופת האחריות', 60),
+  notes: optionalText('תנאי האחריות והערות', 3000),
+});
+export type Warranty = z.infer<typeof warrantySchema>;
 
 export { treatmentKindSchema, placeKindSchema };

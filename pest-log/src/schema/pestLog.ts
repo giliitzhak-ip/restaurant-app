@@ -1,8 +1,10 @@
+import { annexRuleFor } from './textLibraries';
 import { z } from 'zod';
 import {
   assistantExterminatorSchema,
   attachmentSchema,
   baitStationSchema,
+  warrantySchema,
   executionTimeSchema,
   exterminatorSchema,
   foggingSchema,
@@ -57,6 +59,7 @@ const basePestLogContent = z.object({
   signatures: signaturesSchema, // דרישה 15
 
   /** פונקציות קיימות שנשמרות. */
+  warranty: warrantySchema.optional(),
   baitStations: z.array(baitStationSchema).default([]),
   attachments: z.array(attachmentSchema).default([]),
   generalNotes: optionalText('הערות כלליות ליומן', 4000),
@@ -170,6 +173,28 @@ export function makePestLogContentSchema(context: CompletionContext) {
         message: `אזהרות לפני ההדברה — האזהרות אינן מתייחסות לכל התכשירים (חסרים: ${names}). יש להתייחס לכולם או לסמן שהוחלה ההנחיה המחמירה ביותר.`,
       });
     }
+
+    /* ── נספח א׳: מזיקים שנדרש עבורם פירוט נוסף ── */
+    value.monitoring.findings.forEach((finding, index) => {
+      const rule = annexRuleFor(finding.pestName);
+      if (!rule) return;
+      const subtype = (finding.pestSubtype ?? '').trim();
+      if (subtype.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['monitoring', 'findings', index, 'pestSubtype'],
+          message: `${rule.label} — נדרש פירוט נוסף עבור ${finding.pestName}.`,
+        });
+        return;
+      }
+      if (rule.options && !rule.options.includes(subtype)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['monitoring', 'findings', index, 'pestSubtype'],
+          message: `${rule.label} — יש לבחור מתוך: ${rule.options.join(', ')}.`,
+        });
+      }
+    });
 
     /* ── דרישה 12: מזיק שנגדו מיושם תכשיר צריך להופיע גם בממצאי הניטור ── */
     const monitoredPests = new Set(value.monitoring.findings.map((f) => f.pestName));

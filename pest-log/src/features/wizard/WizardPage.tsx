@@ -10,6 +10,7 @@ import { idempotencyKey } from '@/lib/ids';
 import { completeLog, isApiError } from '@/lib/api';
 import { cachedRouteBundle, loadRouteBundle } from '@/lib/routes/repo';
 import { buildLogPrefill } from '@/lib/routes/prefill';
+import { PreviousLogLoader } from './PreviousLogLoader';
 import { Step1Parties } from './Step1Parties';
 import { Step2Location } from './Step2Location';
 import { Step3Monitoring } from './Step3Monitoring';
@@ -213,6 +214,9 @@ export function WizardPage(): React.JSX.Element {
           </div>
         </Alert>
       ) : null}
+
+      {/* טעינה מיומן קודם של אותו לקוח — הועבר מהגרסה הקודמת. */}
+      {step === 1 ? <PreviousLogLoader draft={draft} /> : null}
 
       <ProblemList problems={problems} onNavigate={goToProblem} />
 
