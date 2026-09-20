@@ -75,6 +75,9 @@ export default defineConfig({
     stderr: "pipe",
     env: {
       APP_ENV: "test",
+      // Reaches the browser bundle, which is where the export-compositing
+      // test hook lives. A production build never defines it.
+      NEXT_PUBLIC_APP_ENV: "test",
       AUTH_SECRET: "playwright-suite-secret-not-used-in-production-0001",
       NEXT_PUBLIC_SITE_URL: baseURL,
     },

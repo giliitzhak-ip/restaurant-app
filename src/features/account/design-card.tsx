@@ -4,7 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Copy, ImageOff, Pencil, ShoppingBag, Trash2 } from "lucide-react";
+import { Copy, History, ImageOff, Pencil, RotateCcw, ShoppingBag, Trash2 } from "lucide-react";
 import { routes } from "@/config/site";
 import { t } from "@/i18n";
 import { formatArea, formatDate, formatPrice } from "@/lib/format";
@@ -18,12 +18,25 @@ import {
   addDesignToCartAction,
   deleteDesignAction,
   deleteDesignImageAction,
+  deleteDesignVersionAction,
   duplicateDesignAction,
+  listDesignVersionsAction,
   renameDesignAction,
+  restoreDesignVersionAction,
+  saveDesignVersionAction,
 } from "@/server/actions/designs";
+import type { DesignVersionRecord } from "@/server/repositories/types";
 import type { RoomDesignSummary } from "@/types/design";
 
-type Action = "rename" | "cart" | "duplicate" | "image" | "delete";
+type Action =
+  | "rename"
+  | "cart"
+  | "duplicate"
+  | "image"
+  | "delete"
+  | "versions"
+  | "keep"
+  | "restore";
 
 export function DesignCard({
   design,
@@ -45,6 +58,20 @@ export function DesignCard({
 
   const image = design.renderedImageUrl || design.originalImageUrl;
   const busy = running !== null;
+
+  /*
+   * Versions are loaded on demand rather than with the card. Most designs
+   * have none, and a listing page showing a dozen cards should not fetch a
+   * dozen empty lists to prove it.
+   */
+  const [versions, setVersions] = React.useState<DesignVersionRecord[] | null>(null);
+
+  const loadVersions = async () => {
+    setRunning("versions");
+    const result = await listDesignVersionsAction(design.id);
+    setVersions(result.ok ? result.versions : []);
+    setRunning(null);
+  };
 
   const run = async (action: Action, work: () => Promise<unknown>) => {
     setRunning(action);
@@ -184,6 +211,36 @@ export function DesignCard({
               {t.designer.deleteImage}
             </Button>
           ) : null}
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={busy}
+            loading={running === "keep"}
+            onClick={() =>
+              run("keep", async () => {
+                const result = await saveDesignVersionAction(design.id);
+                toast(
+                  result.ok
+                    ? { title: "הגרסה נשמרה" }
+                    : { tone: "error", title: t.states.errorTitle },
+                );
+                if (result.ok && versions) await loadVersions();
+              })
+            }
+          >
+            <History />
+            שמירת גרסה
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={busy}
+            loading={running === "versions"}
+            aria-expanded={versions !== null}
+            onClick={() => (versions === null ? void loadVersions() : setVersions(null))}
+          >
+            גרסאות
+          </Button>
           <IconButton
             size="iconSm"
             label={t.common.delete}
@@ -198,6 +255,63 @@ export function DesignCard({
             <Trash2 />
           </IconButton>
         </div>
+        {versions !== null ? (
+          <div className="enter-soft mt-3 border-t border-line pt-3">
+            {versions.length === 0 ? (
+              <p className="text-xs text-muted">
+                אין גרסאות שמורות. ״שמירת גרסה״ שומרת את המצב הנוכחי כדי לחזור אליו.
+              </p>
+            ) : (
+              <ul className="space-y-1.5">
+                {versions.map((version) => (
+                  <li
+                    key={version.id}
+                    className="flex items-center justify-between gap-2"
+                  >
+                    <span className="num truncate text-xs text-muted">
+                      {version.label || formatDate(version.createdAt)}
+                    </span>
+                    <span className="flex shrink-0 gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busy}
+                        loading={running === "restore"}
+                        onClick={() =>
+                          run("restore", async () => {
+                            const result = await restoreDesignVersionAction(version.id);
+                            toast(
+                              result.ok
+                                ? { title: "הגרסה שוחזרה" }
+                                : { tone: "error", title: t.states.errorTitle },
+                            );
+                          })
+                        }
+                      >
+                        <RotateCcw />
+                        שחזור
+                      </Button>
+                      <IconButton
+                        size="iconSm"
+                        label="מחיקת הגרסה"
+                        className="text-danger"
+                        disabled={busy}
+                        onClick={() =>
+                          run("restore", async () => {
+                            await deleteDesignVersionAction(version.id);
+                            await loadVersions();
+                          })
+                        }
+                      >
+                        <Trash2 />
+                      </IconButton>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ) : null}
       </div>
     </Card>
   );

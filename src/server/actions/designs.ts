@@ -341,6 +341,111 @@ export async function deleteDesignImageAction(designId: string) {
   return { ok: true as const };
 }
 
+/* ------------------------------------------------------------------ *
+ * Versions
+ * ------------------------------------------------------------------ */
+
+/**
+ * Keeps a snapshot the customer can come back to.
+ *
+ * Undo is for the last few minutes; this is for "I liked it better before I
+ * moved everything an hour ago". It stores the surfaces and the scene as they
+ * are, and the preview that was already uploaded — a version is a bookmark,
+ * not a second copy of the photograph.
+ */
+export async function saveDesignVersionAction(designId: string, label?: string) {
+  const limited = await rateLimit("designWrite");
+  if (!limited.ok) return { ok: false as const, error: "RATE_LIMITED" };
+
+  const owned = await requireDesignOwnership(designId);
+  if (!owned.ok) return { ok: false as const, error: owned.error };
+
+  const design = owned.design;
+  const version = await getRepository().saveDesignVersion({
+    designId,
+    label: label?.trim().slice(0, 60) || null,
+    previewUrl: design.renderedImageUrl,
+    snapshot: {
+      surfaces: design.surfaces,
+      scene: design.scene,
+      estimatedAreaSqm: design.estimatedAreaSqm,
+      estimatedPrice: design.estimatedPrice,
+    },
+  });
+
+  revalidatePath(routes.account.designs);
+  return { ok: true as const, version };
+}
+
+export async function listDesignVersionsAction(designId: string) {
+  const owned = await requireDesignOwnership(designId);
+  if (!owned.ok) return { ok: false as const, error: owned.error };
+  return { ok: true as const, versions: await getRepository().listDesignVersions(designId) };
+}
+
+/**
+ * Puts a kept version back.
+ *
+ * Ownership is checked on the *design*, resolved from the version — a version
+ * id on its own is a claim, and checking the version's own row would let
+ * anyone who guessed an id restore into someone else's design.
+ */
+export async function restoreDesignVersionAction(versionId: string) {
+  const limited = await rateLimit("designWrite");
+  if (!limited.ok) return { ok: false as const, error: "RATE_LIMITED" };
+
+  const repository = getRepository();
+  const version = await repository.getDesignVersion(versionId);
+  if (!version) return { ok: false as const, error: "NOT_FOUND" };
+
+  const owned = await requireDesignOwnership(version.designId);
+  if (!owned.ok) return { ok: false as const, error: owned.error };
+
+  const snapshot = version.snapshot as {
+    surfaces?: unknown;
+    scene?: unknown;
+    estimatedAreaSqm?: number;
+    estimatedPrice?: number;
+  } | null;
+  const parsed = saveSchema
+    .pick({ surfaces: true })
+    .safeParse({ surfaces: snapshot?.surfaces ?? [] });
+  if (!parsed.success) return { ok: false as const, error: "INVALID_SNAPSHOT" };
+
+  const design = owned.design;
+  await repository.saveDesign({
+    id: design.id,
+    userId: design.userId,
+    guestToken: null,
+    name: design.name,
+    originalImageUrl: design.originalImageUrl,
+    renderedImageUrl: version.previewUrl,
+    estimatedAreaSqm: snapshot?.estimatedAreaSqm ?? design.estimatedAreaSqm,
+    estimatedPrice: snapshot?.estimatedPrice ?? design.estimatedPrice,
+    analysis: design.analysis,
+    surfaces: parsed.data.surfaces,
+    // Re-validated on the way back in, exactly as a fresh save would be: a
+    // row written by an older build must not reintroduce a claim that is no
+    // longer true.
+    scene: normaliseScene(snapshot?.scene, await sellableProductIds(snapshot?.scene)),
+    expiresAt: design.expiresAt,
+  });
+
+  revalidatePath(routes.account.designs);
+  return { ok: true as const };
+}
+
+export async function deleteDesignVersionAction(versionId: string) {
+  const repository = getRepository();
+  const version = await repository.getDesignVersion(versionId);
+  if (!version) return { ok: false as const, error: "NOT_FOUND" };
+  const owned = await requireDesignOwnership(version.designId);
+  if (!owned.ok) return { ok: false as const, error: owned.error };
+  await repository.deleteDesignVersion(versionId);
+  revalidatePath(routes.account.designs);
+  return { ok: true as const };
+}
+
 export async function duplicateDesignAction(designId: string) {
   const repository = getRepository();
   const owned = await requireDesignOwnership(designId);

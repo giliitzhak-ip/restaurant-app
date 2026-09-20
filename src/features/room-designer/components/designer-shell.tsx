@@ -48,6 +48,7 @@ import type { RoomDesignRecord, SurfaceKind } from "@/types/design";
 import { useDesigner } from "../hooks/use-designer";
 import type { DesignObjectAsset, LedPathShape, LightingFixtureType } from "@/types/scene";
 import { canvasToFile } from "../utils/image";
+import { composeScene } from "../engine/compose";
 import { useScene } from "../scene/use-scene";
 import {
   createCustomObject,
@@ -134,6 +135,22 @@ export function DesignerShell({
     (surface) => surface.mask.kind === "WALL",
   );
   const hasSelection = controller.selectedProducts.length > 0;
+
+  /**
+   * The picture that leaves the editor.
+   *
+   * The cladding canvas on its own is a photograph of an empty room — the
+   * furniture and the lighting live in DOM and SVG above it, which is what
+   * keeps dragging fast. So anything that exports an image composites the
+   * whole stack first, at full resolution. This is the only expensive render
+   * in the feature and it runs at most once per save.
+   */
+  const renderToFile = async (filename: string) => {
+    const canvas = controller.canvasRef.current;
+    if (!canvas) return null;
+    const composited = await composeScene(canvas, scene.scene);
+    return canvasToFile(composited, filename);
+  };
 
   /*
    * The frame every scene measurement is taken against: the photo's pixel
@@ -245,7 +262,8 @@ export function DesignerShell({
       }
 
       let renderedImageUrl: string | null = null;
-      const renderFile = await canvasToFile(canvas, "design.jpg");
+      const renderFile = await renderToFile("design.jpg");
+      if (!renderFile) return;
       const renderForm = new FormData();
       renderForm.set("render", renderFile);
       const storedRender = await saveRenderAction(renderForm);
@@ -451,8 +469,8 @@ export function DesignerShell({
     const pageUrl = typeof window === "undefined" ? "" : window.location.href;
 
     try {
-      const file = await canvasToFile(canvas, "terra-nova-design.jpg");
-      if (navigator.canShare?.({ files: [file] })) {
+      const file = await renderToFile("terra-nova-design.jpg");
+      if (file && navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], text, title: t.designer.title });
         return;
       }
@@ -468,9 +486,8 @@ export function DesignerShell({
   };
 
   const downloadRender = async () => {
-    const canvas = controller.canvasRef.current;
-    if (!canvas) return;
-    const file = await canvasToFile(canvas, "terra-nova-design.jpg");
+    const file = await renderToFile("terra-nova-design.jpg");
+    if (!file) return;
     const url = URL.createObjectURL(file);
     const link = document.createElement("a");
     link.href = url;
@@ -478,6 +495,24 @@ export function DesignerShell({
     link.click();
     URL.revokeObjectURL(url);
   };
+
+  /*
+   * A hook for the end-to-end test that checks an exported image actually
+   * contains the furniture. Test builds only — `APP_ENV=test` is what the
+   * Playwright server runs with, and a production build never defines it.
+   */
+  React.useEffect(() => {
+    if (process.env.NEXT_PUBLIC_APP_ENV !== "test") return;
+    const canvas = controller.canvasRef.current;
+    if (!canvas) return;
+    const target = window as unknown as {
+      __composeForTest?: (source: HTMLCanvasElement) => Promise<HTMLCanvasElement>;
+    };
+    target.__composeForTest = (source) => composeScene(source, scene.scene);
+    return () => {
+      delete target.__composeForTest;
+    };
+  }, [controller.canvasRef, scene.scene]);
 
   /* -------------------------------- render ------------------------------- */
 

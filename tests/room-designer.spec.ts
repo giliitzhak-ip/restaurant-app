@@ -431,6 +431,52 @@ test.describe("saving and sharing", () => {
   });
 });
 
+test.describe("the exported image", () => {
+  test("contains the furniture and the lighting, not just the cladding", async ({
+    page,
+  }) => {
+    await openDemoRoom(page);
+    await addObject(page, "TV", 4);
+    await addFixture(page, "LED_BEHIND_TV");
+    await showStage(page);
+
+    /*
+     * The cladding canvas on its own is a photograph of an empty room — the
+     * objects live in DOM above it. Exporting that canvas directly is the
+     * obvious mistake, it produces a file that looks fine until you notice
+     * the television is missing, and nothing short of comparing the two
+     * catches it.
+     */
+    const result = await page.evaluate(async () => {
+      const canvas = document.querySelector("canvas") as HTMLCanvasElement;
+      const sample = (target: HTMLCanvasElement) => {
+        const context = target.getContext("2d")!;
+        const { data } = context.getImageData(0, 0, target.width, target.height);
+        let dark = 0;
+        for (let i = 0; i < data.length; i += 4 * 64) {
+          if (data[i]! < 70 && data[i + 1]! < 70 && data[i + 2]! < 70) dark += 1;
+        }
+        return dark;
+      };
+
+      const composed = await (
+        window as unknown as {
+          __composeForTest?: (c: HTMLCanvasElement) => Promise<HTMLCanvasElement>;
+        }
+      ).__composeForTest?.(canvas);
+      return composed
+        ? { bare: sample(canvas), composed: sample(composed) }
+        : null;
+    });
+
+    expect(result, "the compositor should be reachable from the page").not.toBeNull();
+    expect(
+      result!.composed,
+      "a 75-inch black screen should darken the exported image",
+    ).toBeGreaterThan(result!.bare + 20);
+  });
+});
+
 test.describe("accessibility", () => {
   test("the designer is right-to-left and reachable by keyboard", async ({ page }) => {
     await openDemoRoom(page);
