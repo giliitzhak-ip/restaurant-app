@@ -97,6 +97,7 @@ export class Game {
   private disposed = false;
 
   private readonly shadowHandles = new Map<string, number>();
+  private readonly playerShadowPool: number[] = [];
   private ballShadowHandle = -1;
   private readonly touchPads = new Map<string, HumanTouchController>();
   private readonly cleanups: (() => void)[] = [];
@@ -207,14 +208,17 @@ export class Game {
     this.aimIndicator = new AimIndicator(this.scene);
     this.effects = new Effects(this.scene);
 
-    for (const mesh of this.views.shadowCasters) this.quality.addCaster(mesh);
     this.quality.apply(this.settings.quality);
 
     this.contactShadows = new ContactShadows(this.scene, this.arena.sun.direction);
-    for (const player of this.match.players) {
-      this.shadowHandles.set(player.id, this.contactShadows.create(player.id, 0.62));
+    // One blob per possible player, allocated once: the roster changes between
+    // matches, and growing the pool every time would leak meshes.
+    for (let i = 0; i < MAX_PLAYERS; i += 1) {
+      this.playerShadowPool.push(this.contactShadows.create(`player-${i}`, 0.62));
     }
     this.ballShadowHandle = this.contactShadows.create('ball', GameConfig.ball.radius * 2.1, 0.9);
+    this.views.onRebuilt = () => this.refreshRosterVisuals();
+    this.refreshRosterVisuals();
 
     this.keyboard.attach();
     this.keyboard.own(ownedKeyCodes(this.settings));
@@ -1011,6 +1015,23 @@ export class Game {
     this.scene.render();
   }
 
+  /**
+   * Re-points the shadow blobs and the shadow-map casters at the current
+   * line-up. Called once at boot and again whenever the roster changes.
+   */
+  private refreshRosterVisuals(): void {
+    this.quality.setDynamicCasters(this.views.shadowCasters);
+    this.shadowHandles.clear();
+    const ids = this.views.playerIds;
+    for (let i = 0; i < this.playerShadowPool.length; i += 1) {
+      const handle = this.playerShadowPool[i];
+      if (handle === undefined) continue;
+      const id = ids[i];
+      this.contactShadows.setBlobEnabled(handle, id !== undefined);
+      if (id !== undefined) this.shadowHandles.set(id, handle);
+    }
+  }
+
   /** The player this device drives. */
   private localPlayer() {
     return this.match.state.players.find((player) => player.id === this.localPlayerId);
@@ -1448,6 +1469,9 @@ function frameSoundFor(part: GoalPart): 'post' | 'crossbar' | 'junction' {
 }
 
 /** Kit that is guaranteed to differ from the one already chosen. */
+/** Most players any mode fields. 2×2 is the largest; the pools size to it. */
+const MAX_PLAYERS = 4;
+
 /** The link a host shares. Same page, plus the code as a query parameter. */
 function inviteLinkFor(code: string): string {
   if (typeof window === 'undefined') return code;

@@ -6,6 +6,7 @@
 import { describe, expect, it, beforeAll, afterEach } from 'vitest';
 import { GameConfig } from '../src/config/GameConfig';
 import { createPlayerCommand, type PlayerCommand } from '../src/input/PlayerCommand';
+import { TWO_VS_TWO_ROSTER } from '../src/game/MatchRoster';
 import { HeadlessMatch } from '../src/server/HeadlessMatch';
 import { loadHavok } from '../src/server/loadHavokNode';
 import type { HavokModule } from '../src/physics/PhysicsWorld';
@@ -17,7 +18,7 @@ let havok: HavokModule;
 const created: HeadlessMatch[] = [];
 
 function makeMatch(seed?: number): HeadlessMatch {
-  const match = HeadlessMatch.create(havok, seed);
+  const match = HeadlessMatch.create(havok, seed === undefined ? {} : { seed });
   created.push(match);
   return match;
 }
@@ -150,6 +151,29 @@ describe('headless simulation', () => {
     // The ball reached the net rather than being dragged back by ball control.
     expect(headless.match.state.score.home).toBe(GameConfig.match.points.goal);
     expect(headless.match.state.phase).toBe('celebration');
+  });
+
+  it('runs a four-player roster with no special casing', () => {
+    const headless = makeMatch();
+    headless.match.setRoster(TWO_VS_TWO_ROSTER);
+    headless.match.start();
+
+    run(headless, 240);
+
+    expect(headless.match.players).toHaveLength(4);
+    expect(headless.match.state.players).toHaveLength(4);
+    expect(headless.match.state.phase).toBe('playing');
+    // Four capsules, four distinct places to stand.
+    const spots = headless.match.state.players.map((player) => player.position);
+    for (let i = 0; i < spots.length; i += 1) {
+      for (let j = i + 1; j < spots.length; j += 1) {
+        const a = spots[i];
+        const b = spots[j];
+        if (!a || !b) continue;
+        expect(Math.hypot(a.x - b.x, a.z - b.z)).toBeGreaterThan(0.5);
+      }
+    }
+    expect(headless.match.state.ball.position.y).toBeGreaterThan(GameConfig.ball.radius * 0.7);
   });
 
   it('is deterministic: the same seed and the same ticks give the same state', () => {

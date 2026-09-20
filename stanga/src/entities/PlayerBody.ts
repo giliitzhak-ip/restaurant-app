@@ -108,6 +108,13 @@ export class PlayerBody {
     this.world.teleport(this.body);
   }
 
+  /** Releases the capsule and its physics body. Used when the roster changes. */
+  dispose(): void {
+    this.world.untag(this.body);
+    this.body.dispose();
+    this.root.dispose();
+  }
+
   /** Mirrors the physics result into the serializable match state. */
   writeToState(state: PlayerState): void {
     state.position.x = this.root.position.x;

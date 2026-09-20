@@ -72,6 +72,11 @@ export class ContactShadows {
     return this.blobs.length - 1;
   }
 
+  /** Hides one blob, for a shadow whose player is not on the pitch. */
+  setBlobEnabled(handle: number, enabled: boolean): void {
+    this.blobs[handle]?.mesh.setEnabled(enabled);
+  }
+
   /** Places a shadow under an object, given its height above the ground. */
   update(handle: number, position: Vec3, heightAboveGround: number): void {
     const blob = this.blobs[handle];

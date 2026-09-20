@@ -5,6 +5,7 @@
 import { GameConfig } from '../config/GameConfig';
 import { setVec } from '../core/math';
 import type { Vec3 } from '../core/math';
+import { kickoffFacing, kickoffPosition, rosterFor } from './MatchRoster';
 import {
   type MatchOutcome,
   type MatchState,
@@ -139,19 +140,22 @@ export function goalEntered(ballPosition: Vec3): TeamId | null {
 
 /** Places ball and players at their kickoff spots. Mutates the state in place. */
 export function resetForKickoff(state: MatchState): void {
-  const halfLength = GameConfig.field.length / 2;
   setVec(state.ball.position, 0, GameConfig.ball.radius, 0);
   setVec(state.ball.velocity, 0, 0, 0);
   state.ball.lastTouchBy = null;
   state.ball.lastTouchTeam = null;
 
+  const roster = rosterFor(state.playersPerTeam);
   for (const player of state.players) {
-    const defendingSign = player.team === 'home' ? -1 : 1;
-    const kicksOff = player.team === state.kickoffTeam;
-    const distance = kicksOff ? halfLength * 0.13 : halfLength * 0.42;
-    setVec(player.position, 0, 0, defendingSign * distance);
+    const entry = roster.entries.find((candidate) => candidate.playerId === player.id) ?? {
+      playerId: player.id,
+      team: player.team,
+      slotIndex: player.slotIndex,
+    };
+    const spot = kickoffPosition(entry, roster, player.team === state.kickoffTeam);
+    setVec(player.position, spot.x, 0, spot.z);
     setVec(player.velocity, 0, 0, 0);
-    player.facing = defendingSign < 0 ? 0 : Math.PI;
+    player.facing = kickoffFacing(entry);
     player.kickCharge = 0;
     player.charging = false;
     player.kickCooldown = 0;

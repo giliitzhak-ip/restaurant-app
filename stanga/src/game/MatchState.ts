@@ -5,6 +5,14 @@
  */
 import { GameConfig, type ScoreKind } from '../config/GameConfig';
 import { vec3, type Vec3 } from '../core/math';
+import {
+  ONE_VS_ONE_ROSTER,
+  defaultColorId,
+  defaultName,
+  kickoffFacing,
+  kickoffPosition,
+  type MatchRoster,
+} from './MatchRoster';
 
 export type TeamId = 'home' | 'away';
 export type MatchPhase = 'idle' | 'kickoff' | 'playing' | 'celebration' | 'finished';
@@ -12,7 +20,9 @@ export type MatchOutcome = 'homeWin' | 'awayWin' | 'draw';
 
 export interface PlayerState {
   readonly id: string;
-  readonly team: TeamId;
+  team: TeamId;
+  /** Position within the team. The server owns it; a client never sets it. */
+  slotIndex: number;
   /**
    * Whether a person is driving this player right now. The session owns this:
    * the same slot can be a human in one match and the AI in the next.
@@ -83,6 +93,8 @@ export interface ScoreEventRecord {
 }
 
 export interface MatchState {
+  /** How many players each team fields. 1 for 1×1, 2 for 2×2. */
+  playersPerTeam: number;
   tick: number;
   /** Seconds of simulated time since the match started. */
   elapsed: number;
@@ -106,10 +118,12 @@ export function createPlayerState(
   facing: number,
   name = id,
   colorId = team === 'home' ? 0 : 1,
+  slotIndex = 0,
 ): PlayerState {
   return {
     id,
     team,
+    slotIndex,
     isHuman,
     name,
     colorId,
@@ -148,19 +162,27 @@ export function goalOwnerAtZ(z: number): TeamId {
   return z < 0 ? 'home' : 'away';
 }
 
-export function createMatchState(): MatchState {
-  const halfLength = GameConfig.field.length / 2;
+export function createMatchState(roster: MatchRoster = ONE_VS_ONE_ROSTER): MatchState {
   return {
+    playersPerTeam: roster.playersPerTeam,
     tick: 0,
     elapsed: 0,
     phase: 'idle',
     phaseTimer: 0,
     timeRemaining: GameConfig.match.durationSeconds,
     score: { home: 0, away: 0 },
-    players: [
-      createPlayerState('home-1', 'home', true, vec3(0, 0, -halfLength * 0.42), 0, 'שחקן 1', 0),
-      createPlayerState('away-1', 'away', false, vec3(0, 0, halfLength * 0.42), Math.PI, 'מחשב', 1),
-    ],
+    players: roster.entries.map((entry) =>
+      createPlayerState(
+        entry.playerId,
+        entry.team,
+        entry.team === 'home',
+        kickoffPosition(entry, roster, entry.team === 'home'),
+        kickoffFacing(entry),
+        defaultName(entry, roster),
+        defaultColorId(entry),
+        entry.slotIndex,
+      ),
+    ),
     ball: {
       position: vec3(0, GameConfig.ball.radius, 0),
       velocity: vec3(),

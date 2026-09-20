@@ -5,8 +5,9 @@
  * `if (mode === ...)` branches so stage 4 can add 2×2 by adding a config and a
  * room subclass, not a second system.
  */
-import type { OnlineMode } from '../net/protocol';
+import { ONE_VS_ONE_ROSTER, type MatchRoster } from '../game/MatchRoster';
 import type { TeamId } from '../game/MatchState';
+import type { OnlineMode } from '../net/protocol';
 
 export interface Seat {
   /** Simulation identity. Fixed per mode; clients never choose it. */
@@ -20,6 +21,8 @@ export interface MatchConfig {
   readonly playersPerTeam: number;
   /** Seats in join order. Length must equal `maxPlayers`. */
   readonly seats: readonly Seat[];
+  /** The line-up the simulation runs. Must line up with `seats`. */
+  readonly roster: MatchRoster;
 
   /** Seconds between both players being ready and kick-off. */
   readonly lobbyCountdownSeconds: number;
@@ -46,6 +49,7 @@ export const ONE_VS_ONE_CONFIG: MatchConfig = {
     { playerId: 'home-1', team: 'home' },
     { playerId: 'away-1', team: 'away' },
   ],
+  roster: ONE_VS_ONE_ROSTER,
   lobbyCountdownSeconds: 3,
   reconnectGraceSeconds: 30,
   emptyRoomTimeoutSeconds: 20,

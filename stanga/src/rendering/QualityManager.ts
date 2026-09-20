@@ -14,6 +14,7 @@ export class QualityManager {
   private generator: ShadowGenerator | null = null;
   private level: QualityLevel = 'medium';
   private readonly casters = new Set<AbstractMesh>();
+  private readonly dynamicCasters: AbstractMesh[] = [];
 
   constructor(
     private readonly engine: AbstractEngine,
@@ -34,6 +35,25 @@ export class QualityManager {
   addCaster(mesh: AbstractMesh): void {
     this.casters.add(mesh);
     this.generator?.addShadowCaster(mesh, true);
+  }
+
+  /**
+   * Replaces the casters that come and go with the line-up.
+   *
+   * The arena's own meshes are added once and stay; player meshes are
+   * destroyed and rebuilt whenever the roster changes, so holding on to them
+   * would keep disposed meshes in the shadow map.
+   */
+  setDynamicCasters(meshes: readonly AbstractMesh[]): void {
+    for (const mesh of this.dynamicCasters) {
+      this.casters.delete(mesh);
+      this.generator?.removeShadowCaster(mesh, true);
+    }
+    this.dynamicCasters.length = 0;
+    for (const mesh of meshes) {
+      this.dynamicCasters.push(mesh);
+      this.addCaster(mesh);
+    }
   }
 
   apply(level: QualityLevel): void {
@@ -89,6 +109,7 @@ export class QualityManager {
   dispose(): void {
     this.disposeGenerator();
     this.casters.clear();
+    this.dynamicCasters.length = 0;
   }
 
   private disposeGenerator(): void {

@@ -201,6 +201,12 @@ export class PlayerView {
     this.marker.scaling.setAll(inControl ? 1.14 : 1);
   }
 
+  /** Releases every mesh and material this view owns. */
+  dispose(): void {
+    this.torsoMaterial.diffuseTexture?.dispose();
+    this.visual.dispose(false, true);
+  }
+
   /** Snaps the character back to a neutral pose facing a given direction. */
   reset(facing: number): void {
     this.visual.rotation.set(0, facing, 0);

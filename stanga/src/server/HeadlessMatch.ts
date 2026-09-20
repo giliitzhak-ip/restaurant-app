@@ -11,9 +11,11 @@
  */
 import { NullEngine } from '@babylonjs/core/Engines/nullEngine';
 import { Scene } from '@babylonjs/core/scene';
-import { MatchEngine } from '../game/MatchEngine';
+import { MatchEngine, type MatchEngineOptions } from '../game/MatchEngine';
 import { buildArenaColliders, type ArenaColliders } from '../physics/ArenaColliders';
 import { PhysicsWorld, type HavokModule } from '../physics/PhysicsWorld';
+
+export type HeadlessMatchOptions = MatchEngineOptions;
 
 export class HeadlessMatch {
   private constructor(
@@ -24,12 +26,12 @@ export class HeadlessMatch {
     readonly match: MatchEngine,
   ) {}
 
-  static create(havok: HavokModule, seed?: number): HeadlessMatch {
+  static create(havok: HavokModule, options: HeadlessMatchOptions = {}): HeadlessMatch {
     const engine = new NullEngine();
     const scene = new Scene(engine);
     const world = PhysicsWorld.create(scene, havok);
     const arena = buildArenaColliders(scene, world);
-    const match = new MatchEngine(scene, world, seed === undefined ? {} : { seed });
+    const match = new MatchEngine(scene, world, options);
     return new HeadlessMatch(engine, scene, world, arena, match);
   }
 

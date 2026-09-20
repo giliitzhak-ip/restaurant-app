@@ -19,13 +19,11 @@ export class MatchViews {
   private readonly players = new Map<string, PlayerView>();
 
   constructor(
-    scene: Scene,
+    private readonly scene: Scene,
     private readonly match: MatchEngine,
   ) {
     this.ball = new BallView(scene, match.ball);
-    for (const body of match.players) {
-      this.players.set(body.id, new PlayerView(scene, body, false));
-    }
+    this.rebuild();
     // A kickoff teleports the bodies, so the characters must snap too rather
     // than interpolate across the pitch.
     match.events.on('kickoff', () => {
@@ -33,6 +31,22 @@ export class MatchViews {
         this.players.get(player.id)?.reset(player.facing);
       }
     });
+    // A new line-up replaces every physics body, so every view is stale.
+    match.events.on('rosterChanged', () => {
+      this.rebuild();
+      this.onRebuilt?.();
+    });
+  }
+
+  /** Called after the views were rebuilt, so shadows and casters can follow. */
+  onRebuilt: (() => void) | null = null;
+
+  private rebuild(): void {
+    for (const view of this.players.values()) view.dispose();
+    this.players.clear();
+    for (const body of this.match.players) {
+      this.players.set(body.id, new PlayerView(this.scene, body, false));
+    }
   }
 
   viewFor(playerId: string): PlayerView | undefined {
@@ -44,6 +58,11 @@ export class MatchViews {
     const meshes: Mesh[] = [this.match.ball.mesh];
     for (const view of this.players.values()) meshes.push(...view.meshes);
     return meshes;
+  }
+
+  /** Player ids currently rendered, in roster order. */
+  get playerIds(): string[] {
+    return [...this.players.keys()];
   }
 
   /** Render-rate update. Never touches physics or rules. */

@@ -37,6 +37,7 @@ import {
   type ShotRecord,
   type TeamId,
 } from './MatchState';
+import { ONE_VS_ONE_ROSTER, type MatchRoster } from './MatchRoster';
 import { ScoringSystem } from './ScoringSystem';
 
 export interface MatchEventMap extends Record<string, unknown> {
@@ -52,6 +53,8 @@ export interface MatchEventMap extends Record<string, unknown> {
   kickoff: { team: TeamId };
   ballLive: { tick: number };
   matchEnd: { outcome: MatchOutcome };
+  /** The line-up was replaced; every view built from it is now stale. */
+  rosterChanged: { roster: MatchRoster };
 }
 
 interface ActiveShot {
@@ -76,10 +79,12 @@ export type RulesAuthority = 'authoritative' | 'mirrored';
 export interface MatchEngineOptions {
   seed?: number;
   rules?: RulesAuthority;
+  /** Who is on the pitch. Defaults to 1×1; `setRoster` changes it later. */
+  roster?: MatchRoster;
 }
 
 export class MatchEngine {
-  readonly state: MatchState = createMatchState();
+  state: MatchState;
   readonly events = new EventBus<MatchEventMap>();
   readonly ball: BallBody;
   readonly players: PlayerBody[] = [];
@@ -97,17 +102,52 @@ export class MatchEngine {
   private readonly animationTriggers = new Map<string, { kick: boolean; tackle: boolean }>();
 
   private rulesAuthority: RulesAuthority;
+  private roster: MatchRoster;
+  private readonly scene: Scene;
 
   constructor(
     scene: Scene,
     private readonly world: PhysicsWorld,
     options: MatchEngineOptions = {},
   ) {
+    this.scene = scene;
     this.rulesAuthority = options.rules ?? 'authoritative';
     this.rng = new Rng(options.seed ?? 0x5741c6);
+    this.roster = options.roster ?? ONE_VS_ONE_ROSTER;
+    this.state = createMatchState(this.roster);
     this.ball = new BallBody(scene, world);
+    this.buildPlayerBodies();
+  }
+
+  /**
+   * Swaps the whole line-up: a new state, new bodies, and a `rosterChanged`
+   * event so the renderer can rebuild its views. Called between matches, never
+   * during one — the physics bodies are replaced outright.
+   */
+  setRoster(roster: MatchRoster): void {
+    if (roster === this.roster) return;
+    this.roster = roster;
+    for (const body of this.players) body.dispose();
+    this.players.length = 0;
+    this.state = createMatchState(roster);
+    this.commands.clear();
+    this.animationTriggers.clear();
+    this.possessionPlayerId = null;
+    this.activeShot = null;
+    this.scoring.reset();
+    this.buildPlayerBodies();
+    this.events.emit('rosterChanged', { roster });
+  }
+
+  get currentRoster(): MatchRoster {
+    return this.roster;
+  }
+
+  private buildPlayerBodies(): void {
     for (const player of this.state.players) {
-      this.players.push(new PlayerBody(scene, world, player.id, player.team, player.position));
+      this.players.push(
+        new PlayerBody(this.scene, this.world, player.id, player.team, player.position),
+      );
     }
   }
 

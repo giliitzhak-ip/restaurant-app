@@ -92,7 +92,7 @@ export abstract class BaseOnlineMatchRoom extends Room<MatchRoomState> {
       await this.setPrivate(true);
     }
 
-    this.headless = HeadlessMatch.create(await loadHavok());
+    this.headless = HeadlessMatch.create(await loadHavok(), { roster: config.roster });
     this.session = new MatchSession(this.headless.match, {
       mode: 'online',
       slots: this.buildSlots(),
