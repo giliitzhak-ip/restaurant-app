@@ -19,6 +19,12 @@ const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${PORT}`;
 
 export default defineConfig({
   testDir: "./tests",
+  /*
+   * `tests/unit` is run by Node's own test runner (`npm run test:unit`) —
+   * pure model tests with no browser. Playwright would try to load them as
+   * specs and fail on the first `node:test` import.
+   */
+  testIgnore: "**/unit/**",
   timeout: 45_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,

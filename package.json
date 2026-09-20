@@ -21,14 +21,15 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
-    "qa": "npm run lint && npm run typecheck && npm run build",
+    "qa": "npm run lint && npm run typecheck && npm run test:unit && npm run build",
     "predev": "tsx scripts/generate-media.ts && tsx scripts/generate-objects.ts",
     "prebuild": "prisma generate",
     "postinstall": "prisma generate",
     "qa:responsive": "node scripts/qa-responsive.mjs",
     "qa:flows": "node scripts/qa-flows.mjs",
     "objects:generate": "tsx scripts/generate-objects.ts --force",
-    "objects:ensure": "tsx scripts/generate-objects.ts"
+    "objects:ensure": "tsx scripts/generate-objects.ts",
+    "test:unit": "node --import tsx --test \"tests/unit/*.test.ts\""
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
