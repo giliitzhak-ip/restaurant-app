@@ -10,6 +10,8 @@ import { t } from "@/i18n";
 import { formatArea, formatDate, formatPrice } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -21,24 +23,38 @@ import {
 } from "@/server/actions/designs";
 import type { RoomDesignSummary } from "@/types/design";
 
-export function DesignCard({ design }: { design: RoomDesignSummary }) {
+type Action = "rename" | "cart" | "duplicate" | "image" | "delete";
+
+export function DesignCard({
+  design,
+  index,
+}: {
+  design: RoomDesignSummary;
+  index?: number;
+}) {
   const [editing, setEditing] = React.useState(false);
   const [name, setName] = React.useState(design.name);
-  const [pending, setPending] = React.useState(false);
+  /*
+   * Which action is in flight, not merely that one is. The card has five
+   * buttons sharing one handler; a single boolean put a spinner on all five
+   * and left no way to tell which one had been pressed.
+   */
+  const [running, setRunning] = React.useState<Action | null>(null);
   const { toast } = useToast();
   const router = useRouter();
 
   const image = design.renderedImageUrl || design.originalImageUrl;
+  const busy = running !== null;
 
-  const run = async (work: () => Promise<unknown>) => {
-    setPending(true);
+  const run = async (action: Action, work: () => Promise<unknown>) => {
+    setRunning(action);
     await work();
-    setPending(false);
+    setRunning(null);
     router.refresh();
   };
 
   return (
-    <article className="overflow-hidden rounded-lg border border-line bg-surface">
+    <Card as="article" enter index={index} className="overflow-hidden">
       <div className="relative aspect-3/2 bg-surface-2">
         {image ? (
           <Image
@@ -63,7 +79,7 @@ export function DesignCard({ design }: { design: RoomDesignSummary }) {
             className="flex gap-2"
             onSubmit={async (event) => {
               event.preventDefault();
-              await run(() => renameDesignAction(design.id, name));
+              await run("rename", () => renameDesignAction(design.id, name));
               setEditing(false);
             }}
           >
@@ -74,21 +90,21 @@ export function DesignCard({ design }: { design: RoomDesignSummary }) {
               className="h-9"
               autoFocus
             />
-            <Button type="submit" size="sm" disabled={pending}>
+            <Button type="submit" size="sm" loading={running === "rename"}>
               {t.common.save}
             </Button>
           </form>
         ) : (
           <div className="flex items-start justify-between gap-2">
             <h3 className="text-[0.9375rem] font-medium text-ink">{design.name}</h3>
-            <button
-              type="button"
+            <IconButton
+              size="iconSm"
+              label={`${t.common.edit} — ${design.name}`}
+              className="-me-1 shrink-0 text-muted"
               onClick={() => setEditing(true)}
-              aria-label={t.common.edit}
-              className="rounded-xs p-1 text-muted hover:bg-surface-2 hover:text-ink"
             >
-              <Pencil className="size-3.5" />
-            </button>
+              <Pencil />
+            </IconButton>
           </div>
         )}
 
@@ -123,9 +139,10 @@ export function DesignCard({ design }: { design: RoomDesignSummary }) {
         <div className="mt-4 flex flex-wrap gap-2">
           <Button
             size="sm"
-            disabled={pending}
+            disabled={busy}
+            loading={running === "cart"}
             onClick={() =>
-              run(async () => {
+              run("cart", async () => {
                 const result = await addDesignToCartAction(design.id);
                 toast(
                   result.ok
@@ -141,22 +158,23 @@ export function DesignCard({ design }: { design: RoomDesignSummary }) {
           <Button asChild size="sm" variant="outline">
             <Link href={`${routes.designer}?design=${design.id}`}>{t.common.edit}</Link>
           </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={pending}
-            onClick={() => run(() => duplicateDesignAction(design.id))}
-            aria-label={t.common.duplicate}
+          <IconButton
+            size="iconSm"
+            label={t.common.duplicate}
+            disabled={busy}
+            loading={running === "duplicate"}
+            onClick={() => run("duplicate", () => duplicateDesignAction(design.id))}
           >
             <Copy />
-          </Button>
+          </IconButton>
           {image ? (
             <Button
               size="sm"
               variant="ghost"
-              disabled={pending}
+              disabled={busy}
+              loading={running === "image"}
               onClick={() =>
-                run(async () => {
+                run("image", async () => {
                   await deleteDesignImageAction(design.id);
                   toast({ title: t.designer.deleteImage, tone: "info" });
                 })
@@ -166,21 +184,21 @@ export function DesignCard({ design }: { design: RoomDesignSummary }) {
               {t.designer.deleteImage}
             </Button>
           ) : null}
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={pending}
+          <IconButton
+            size="iconSm"
+            label={t.common.delete}
+            disabled={busy}
+            loading={running === "delete"}
+            className="text-danger"
             onClick={() => {
               if (!window.confirm(t.admin.confirmDelete)) return;
-              void run(() => deleteDesignAction(design.id));
+              void run("delete", () => deleteDesignAction(design.id));
             }}
-            aria-label={t.common.delete}
-            className="text-danger"
           >
             <Trash2 />
-          </Button>
+          </IconButton>
         </div>
       </div>
-    </article>
+    </Card>
   );
 }

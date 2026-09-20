@@ -204,8 +204,8 @@ function CategoryForm({ category }: { category: Category | null }) {
           />
         </Field>
       </div>
-      <Button type="submit" disabled={pending}>
-        {pending ? t.common.saving : t.common.save}
+      <Button type="submit" loading={pending} loadingLabel={t.common.saving}>
+        {t.common.save}
       </Button>
     </form>
   );
@@ -322,8 +322,8 @@ function CollectionForm({ collection }: { collection: Collection | null }) {
           </label>
         </div>
       </div>
-      <Button type="submit" disabled={pending}>
-        {pending ? t.common.saving : t.common.save}
+      <Button type="submit" loading={pending} loadingLabel={t.common.saving}>
+        {t.common.save}
       </Button>
     </form>
   );

@@ -119,7 +119,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         </p>
       ) : null}
 
-      <Button type="submit" block size="lg" disabled={pending}>
+      <Button type="submit" block size="lg" loading={pending}>
         {mode === "login" ? t.nav.login : t.nav.register}
       </Button>
 

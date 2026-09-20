@@ -8,6 +8,7 @@ import { routes } from "@/config/site";
 import { t } from "@/i18n";
 import { formatArea, formatDate, formatPrice } from "@/lib/format";
 import { Button } from "@/components/ui/button";
+import { Steps, type Step } from "@/components/ui/steps";
 import { getSessionUser } from "@/server/auth/session";
 import { clearCartIfMatches } from "@/server/cart/cart-service";
 import { clearsCart } from "@/server/commerce/order-flow";
@@ -67,17 +68,67 @@ const STATUS_VIEW = {
   COMPLETED: { icon: Check, tone: "bg-success text-white", title: "ההזמנה הושלמה", body: t.checkout.successBody },
   PAYMENT_FAILED: {
     icon: TriangleAlert,
-    tone: "bg-critical text-white",
+    tone: "bg-danger text-white",
     title: "התשלום לא הושלם",
     body: "לא בוצע חיוב. אפשר לנסות שוב מהסל, או לדבר איתנו ונשלים את ההזמנה יחד.",
   },
   CANCELLED: {
     icon: TriangleAlert,
-    tone: "bg-critical text-white",
+    tone: "bg-danger text-white",
     title: "ההזמנה בוטלה",
     body: "לא בוצע חיוב והמלאי שוחרר. הסל שלכם נשאר כפי שהיה.",
   },
 } as const;
+
+/**
+ * The four stages an order passes through, resolved from the status the
+ * database holds and nothing else. No estimated dates, no "arriving soon",
+ * and no step marked in progress because time has passed — if the gateway has
+ * not called back, the timeline says the payment is the current step and
+ * leaves it there.
+ */
+function orderSteps(order: Order): Step[] {
+  const reached = (statuses: readonly Order["status"][]) =>
+    statuses.includes(order.status);
+
+  const cancelled = order.status === "CANCELLED";
+  const paymentFailed = order.status === "PAYMENT_FAILED";
+  const paid = reached(["PAID", "PROCESSING", "SHIPPED", "COMPLETED"]);
+  const processing = reached(["PROCESSING", "SHIPPED", "COMPLETED"]);
+
+  const after = (done: boolean, current: boolean): Step["state"] =>
+    done ? "done" : current ? "current" : "upcoming";
+
+  return [
+    {
+      id: "placed",
+      label: "ההזמנה נקלטה",
+      detail: formatDate(order.createdAt),
+      state: cancelled ? "failed" : "done",
+    },
+    {
+      id: "payment",
+      label: cancelled ? "ההזמנה בוטלה" : paymentFailed ? "התשלום נכשל" : "תשלום",
+      detail: order.paidAt ? formatDate(order.paidAt) : undefined,
+      state:
+        cancelled || paymentFailed
+          ? "failed"
+          : after(paid, !paid),
+    },
+    {
+      id: "processing",
+      label: "בהכנה",
+      state: cancelled ? "upcoming" : after(processing, paid && !processing),
+    },
+    {
+      id: "shipped",
+      label: order.fulfilment === "PICKUP" ? "מוכנה לאיסוף" : "נשלחה",
+      state: cancelled
+        ? "upcoming"
+        : after(order.status === "COMPLETED", order.status === "SHIPPED"),
+    },
+  ];
+}
 
 export default async function OrderPage({
   params,
@@ -108,7 +159,9 @@ export default async function OrderPage({
       <h1 className="mt-6 text-display-sm">{view.title}</h1>
       <p className="mt-3 text-[0.9375rem] leading-relaxed text-muted">{view.body}</p>
 
-      <dl className="mt-8 grid gap-4 rounded-lg border border-line bg-surface p-5 sm:grid-cols-3">
+      <Steps steps={orderSteps(order)} className="mt-9" />
+
+      <dl className="mt-8 grid gap-4 card p-5 sm:grid-cols-3">
         <div>
           <dt className="text-xs text-muted">{t.checkout.orderNumber}</dt>
           <dd className="num mt-1 font-display text-lg text-ink">{order.number}</dd>

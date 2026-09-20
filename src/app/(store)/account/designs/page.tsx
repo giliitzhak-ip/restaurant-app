@@ -52,9 +52,9 @@ export default async function AccountDesignsPage() {
         />
       ) : (
         <ul className="mt-6 grid gap-6 sm:grid-cols-2">
-          {designs.map((design) => (
+          {designs.map((design, index) => (
             <li key={design.id}>
-              <DesignCard design={design} />
+              <DesignCard design={design} index={index} />
             </li>
           ))}
         </ul>

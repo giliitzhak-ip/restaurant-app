@@ -861,8 +861,8 @@ export function ProductForm({
       <Separator />
 
       <div className="flex flex-wrap gap-3">
-        <Button type="submit" size="lg" disabled={pending}>
-          {pending ? t.common.saving : t.common.save}
+        <Button type="submit" size="lg" loading={pending} loadingLabel={t.common.saving}>
+          {t.common.save}
         </Button>
         <Button
           type="button"

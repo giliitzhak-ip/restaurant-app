@@ -14,9 +14,10 @@ import { track } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Field } from "@/components/ui/label";
+import { Field, FormMessage } from "@/components/ui/label";
 import { Input, Textarea } from "@/components/ui/input";
 import { RadioCard, RadioGroup } from "@/components/ui/radio-group";
+import { Steps, type Step } from "@/components/ui/steps";
 import { useToast } from "@/components/ui/toast";
 import { CartSummary } from "@/features/cart/cart-summary";
 import { israeliCities } from "@/data/israeli-cities";
@@ -61,6 +62,40 @@ export function CheckoutForm({
    */
   const fulfilment = useWatch({ control: form.control, name: "fulfilment" });
   const termsAccepted = useWatch({ control: form.control, name: "terms" });
+  const contact = useWatch({
+    control: form.control,
+    name: ["fullName", "email", "phone"],
+  });
+  const address = useWatch({ control: form.control, name: ["street", "city"] });
+
+  /*
+   * Which sections are filled in. Read straight off the form's own values —
+   * there is no separate notion of progress being kept in sync with the
+   * fields, so the indicator cannot drift away from what is on screen, and it
+   * never claims a step is done because time has passed.
+   */
+  const contactDone = contact.every((value) => Boolean(value?.trim()));
+  const deliveryDone =
+    fulfilment === "PICKUP" || address.every((value) => Boolean(value?.trim()));
+
+  const steps: Step[] = [
+    {
+      id: "contact",
+      label: t.checkout.contact,
+      state: contactDone ? "done" : "current",
+    },
+    {
+      id: "delivery",
+      label: t.checkout.delivery,
+      state: deliveryDone ? "done" : contactDone ? "current" : "upcoming",
+    },
+    {
+      id: "payment",
+      label: t.checkout.payment,
+      state:
+        contactDone && deliveryDone && termsAccepted === true ? "current" : "upcoming",
+    },
+  ];
 
   React.useEffect(() => {
     if (fulfilment !== cart.fulfilment) void setFulfilment(fulfilment);
@@ -80,6 +115,20 @@ export function CheckoutForm({
       />
     );
   }
+
+  /*
+   * Errors move the page only after someone has pressed the button. Scrolling
+   * while a form is still being filled in — on blur, on change — moves the
+   * field out from under the cursor of the person typing in it.
+   */
+  const focusFirstError = () => {
+    const invalid = document.querySelector<HTMLElement>(
+      "form [aria-invalid='true']",
+    );
+    if (!invalid) return;
+    invalid.scrollIntoView({ block: "center", behavior: "smooth" });
+    invalid.focus({ preventScroll: true });
+  };
 
   const onSubmit = form.handleSubmit(async (values) => {
     /*
@@ -125,6 +174,7 @@ export function CheckoutForm({
       };
       toast({ tone: "error", ...copy });
       if (result.error === "OUT_OF_STOCK") router.push(routes.cart);
+      else if (result.fieldErrors) focusFirstError();
       return;
     }
 
@@ -142,11 +192,13 @@ export function CheckoutForm({
     }
     // The token is what authorises the confirmation page for a guest.
     router.push(`${routes.order(result.orderNumber)}?token=${encodeURIComponent(result.token)}`);
-  });
+  }, focusFirstError);
 
   return (
     <form onSubmit={onSubmit} className="grid gap-10 lg:grid-cols-[1.4fr_1fr] lg:gap-14">
       <div className="space-y-10">
+        <Steps steps={steps} compact className="-mt-2" />
+
         <fieldset>
           <legend className="text-lg">{t.checkout.contact}</legend>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -159,7 +211,6 @@ export function CheckoutForm({
               <Input
                 id="fullName"
                 autoComplete="name"
-                aria-invalid={Boolean(form.formState.errors.fullName)}
                 {...form.register("fullName")}
               />
             </Field>
@@ -176,7 +227,6 @@ export function CheckoutForm({
                 autoComplete="tel"
                 placeholder="050-0000000"
                 className="num"
-                aria-invalid={Boolean(form.formState.errors.phone)}
                 {...form.register("phone")}
               />
             </Field>
@@ -191,7 +241,6 @@ export function CheckoutForm({
                 id="email"
                 type="email"
                 autoComplete="email"
-                aria-invalid={Boolean(form.formState.errors.email)}
                 {...form.register("email")}
               />
             </Field>
@@ -219,8 +268,14 @@ export function CheckoutForm({
             />
           </RadioGroup>
 
+          {/*
+            * Shown and hidden rather than collapsed. Animating the height of
+            * a block of four fields is the one transition here that would
+            * reflow the page on every frame, and it would do it while the
+            * radio it belongs to is under the thumb. It fades instead.
+            */}
           {fulfilment === "SHIPPING" ? (
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <div className="enter-soft mt-5 grid gap-4 sm:grid-cols-2">
               <Field
                 label={t.checkout.street}
                 htmlFor="street"
@@ -231,7 +286,6 @@ export function CheckoutForm({
                 <Input
                   id="street"
                   autoComplete="street-address"
-                  aria-invalid={Boolean(form.formState.errors.street)}
                   {...form.register("street")}
                 />
               </Field>
@@ -357,21 +411,24 @@ export function CheckoutForm({
                 </Link>
               </span>
             </label>
-            {form.formState.errors.terms ? (
-              <p role="alert" className="text-xs text-danger">
-                {form.formState.errors.terms.message}
-              </p>
-            ) : null}
+            <FormMessage tone="error">
+              {form.formState.errors.terms?.message}
+            </FormMessage>
 
+            {/*
+              * `loading` rather than a label swap: "מעבד…" is narrower than
+              * "השלמת ההזמנה", and a submit button that shrinks the moment it
+              * is pressed is the last thing anyone should see at checkout. The
+              * label stays where it is and the spinner sits over it.
+              */}
             <Button
               type="submit"
               block
               size="lg"
-              disabled={form.formState.isSubmitting}
+              loading={form.formState.isSubmitting}
+              loadingLabel={t.checkout.processing}
             >
-              {form.formState.isSubmitting
-                ? t.checkout.processing
-                : t.checkout.placeOrder}
+              {t.checkout.placeOrder}
             </Button>
           </div>
         </CartSummary>

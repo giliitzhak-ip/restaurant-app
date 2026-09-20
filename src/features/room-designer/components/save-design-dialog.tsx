@@ -66,8 +66,8 @@ export function SaveDesignDialog({
             />
           </Field>
           <DialogFooter>
-            <Button type="submit" disabled={pending}>
-              {pending ? t.common.saving : t.common.save}
+            <Button type="submit" loading={pending} loadingLabel={t.common.saving}>
+              {t.common.save}
             </Button>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               {t.common.cancel}

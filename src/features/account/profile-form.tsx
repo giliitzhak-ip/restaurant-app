@@ -58,8 +58,8 @@ export function ProfileForm({
       <Field label={t.checkout.email} htmlFor="p-email" hint="לא ניתן לשנות אימייל">
         <Input id="p-email" value={email} disabled />
       </Field>
-      <Button type="submit" disabled={pending}>
-        {pending ? t.common.saving : t.common.save}
+      <Button type="submit" loading={pending} loadingLabel={t.common.saving}>
+        {t.common.save}
       </Button>
     </form>
   );

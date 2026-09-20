@@ -171,8 +171,8 @@ export function CouponEditor({ coupons }: { coupons: Coupon[] }) {
           </label>
         </div>
         <div className="flex gap-2">
-          <Button type="submit" disabled={pending}>
-            {pending ? t.common.saving : t.common.save}
+          <Button type="submit" loading={pending} loadingLabel={t.common.saving}>
+            {t.common.save}
           </Button>
           {form.id ? (
             <Button type="button" variant="ghost" onClick={() => setEditing(null)}>

@@ -48,7 +48,7 @@ export function NewsletterForm({ source = "footer" }: { source?: string }) {
         aria-invalid={state === "error"}
         className="bg-transparent"
       />
-      <Button type="submit" variant="outline" disabled={state === "sending"}>
+      <Button type="submit" variant="outline" loading={state === "sending"}>
         {t.footer.newsletterCta}
         <ArrowLeft />
       </Button>

@@ -213,7 +213,7 @@ export function QuoteForm({
         </p>
       ) : null}
 
-      <Button type="submit" size="lg" disabled={state === "sending"}>
+      <Button type="submit" size="lg" loading={state === "sending"}>
         {state === "sending" ? t.quote.submitting : t.quote.submit}
       </Button>
       <p className="text-xs text-muted">

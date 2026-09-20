@@ -210,7 +210,7 @@ export function CartView() {
                 aria-label={t.cart.coupon}
                 className="h-11"
               />
-              <Button type="submit" variant="outline" disabled={pending}>
+              <Button type="submit" variant="outline" loading={pending}>
                 {t.cart.couponApply}
               </Button>
             </form>

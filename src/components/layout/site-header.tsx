@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { blurDataUrl } from "@/lib/media";
 import { track } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
 import {
   Sheet,
@@ -88,14 +89,13 @@ export function SiteHeader({
         )}
       >
         <div className="container-page flex h-16 items-center gap-3 md:h-20 md:gap-6">
-          <button
-            type="button"
+          <IconButton
+            label={t.common.menu}
             onClick={() => setMenuOpen(true)}
-            className="-ms-2 rounded-sm p-2 text-ink transition-colors hover:bg-surface-2 lg:hidden"
-            aria-label={t.common.menu}
+            className="-ms-2 lg:hidden"
           >
-            <Menu className="size-5" />
-          </button>
+            <Menu />
+          </IconButton>
 
           <BrandMark className="shrink-0 text-ink" />
 
@@ -121,51 +121,54 @@ export function SiteHeader({
           </nav>
 
           <div className="ms-auto flex items-center gap-0.5 lg:ms-0">
-            <button
-              type="button"
-              onClick={() => setSearchOpen(true)}
-              className="rounded-sm p-2.5 text-ink transition-colors hover:bg-surface-2"
-              aria-label={t.common.search}
-            >
-              <Search className="size-[18px]" />
-            </button>
+            <IconButton label={t.common.search} onClick={() => setSearchOpen(true)}>
+              <Search />
+            </IconButton>
 
-            <Link
-              href={user ? routes.account.favorites : routes.catalog}
-              className="relative hidden rounded-sm p-2.5 text-ink transition-colors hover:bg-surface-2 sm:block"
-              aria-label={t.nav.favorites}
+            <Button
+              asChild
+              variant="ghost"
+              size="icon"
+              className="relative hidden sm:inline-flex"
             >
-              <Heart className="size-[18px]" />
+              <Link
+                href={user ? routes.account.favorites : routes.catalog}
+                aria-label={t.nav.favorites}
+              >
+                <Heart />
               {favorites.size > 0 ? (
-                <span className="num absolute -end-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-brass text-[0.625rem] text-white">
+                <span className="num absolute end-1 top-1 flex size-4 items-center justify-center rounded-full bg-brass text-[0.625rem] text-white">
                   {favorites.size}
                 </span>
-              ) : null}
-            </Link>
+                ) : null}
+              </Link>
+            </Button>
 
-            <Link
-              href={user ? routes.account.root : routes.login}
-              className="hidden rounded-sm p-2.5 text-ink transition-colors hover:bg-surface-2 sm:block"
-              aria-label={user ? t.nav.account : t.nav.login}
-            >
-              <User className="size-[18px]" />
-            </Link>
+            <Button asChild variant="ghost" size="icon" className="hidden sm:inline-flex">
+              <Link
+                href={user ? routes.account.root : routes.login}
+                aria-label={user ? t.nav.account : t.nav.login}
+              >
+                <User />
+              </Link>
+            </Button>
 
-            <Link
-              href={routes.cart}
-              className="relative rounded-sm p-2.5 text-ink transition-colors hover:bg-surface-2"
-              aria-label={`${t.nav.cart}${itemCount ? ` — ${itemCount}` : ""}`}
-            >
-              <ShoppingBag className="size-[18px]" />
+            <Button asChild variant="ghost" size="icon" className="relative">
+              <Link
+                href={routes.cart}
+                aria-label={`${t.nav.cart}${itemCount ? ` — ${itemCount}` : ""}`}
+              >
+                <ShoppingBag />
               {itemCount > 0 ? (
                 <span
                   data-testid="cart-count"
-                  className="num absolute -end-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-ink text-[0.625rem] text-canvas"
+                  className="num absolute end-1 top-1 flex size-4 items-center justify-center rounded-full bg-ink text-[0.625rem] text-canvas"
                 >
                   {itemCount}
                 </span>
-              ) : null}
-            </Link>
+                ) : null}
+              </Link>
+            </Button>
 
             <Button
               asChild
@@ -192,14 +195,14 @@ export function SiteHeader({
                 <BrandMark href={null} size="sm" className="text-ink" />
               </span>
             </SheetTitle>
-            <button
-              type="button"
+            <IconButton
+              size="iconSm"
+              label={t.common.close}
+              className="text-muted"
               onClick={() => setMenuOpen(false)}
-              className="rounded-sm p-2 text-muted hover:bg-surface-2 hover:text-ink"
-              aria-label={t.common.close}
             >
-              <X className="size-4" />
-            </button>
+              <X />
+            </IconButton>
           </SheetHeader>
           {/* Any navigation inside the sheet closes it — no effect needed. */}
           <SheetBody className="px-0 py-0" onClick={() => setMenuOpen(false)}>
@@ -353,17 +356,18 @@ function SearchDialog({
           <div className="flex flex-wrap gap-2">
             {["אלון נטורל", "SPC עמיד במים", "פאנל Slat", "טרוורטין", "בטון"].map(
               (term) => (
-                <button
+                <Button
                   key={term}
-                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xs px-3 text-xs text-ink-soft"
                   onClick={() => {
                     onOpenChange(false);
                     router.push(`${routes.catalog}?q=${encodeURIComponent(term)}`);
                   }}
-                  className="rounded-xs border border-line px-3 py-1.5 text-xs text-ink-soft transition-colors hover:border-ink hover:text-ink"
                 >
                   {term}
-                </button>
+                </Button>
               ),
             )}
           </div>

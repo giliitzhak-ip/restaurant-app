@@ -7,6 +7,7 @@ import { t } from "@/i18n";
 import { formatArea, formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import { useCart } from "@/features/cart/cart-provider";
 import type { Product } from "@/types/catalog";
 
@@ -48,13 +49,33 @@ export function StickyBuyBar({
     return () => observer.disconnect();
   }, [anchorId]);
 
+  /*
+   * While the bar is up it reserves its own height at the bottom of the
+   * viewport, and the toast stack reads that as `--toast-offset`. Without it
+   * a confirmation ("added to your basket") lands exactly on top of the
+   * button that produced it, on the one screen size where there is no room
+   * for both.
+   */
+  React.useEffect(() => {
+    const root = document.documentElement;
+    if (!showing) {
+      root.style.removeProperty("--toast-offset");
+      return;
+    }
+    root.style.setProperty("--toast-offset", "4.25rem");
+    return () => {
+      root.style.removeProperty("--toast-offset");
+    };
+  }, [showing]);
+
   const soldOut = product.availability === "OUT_OF_STOCK";
   const perSqm = product.pricePerSqm;
 
   return (
     <div
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 backdrop-blur-md transition-transform duration-300 md:hidden",
+        "fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 backdrop-blur-md md:hidden",
+        "transition-transform duration-[var(--dur-enter)] ease-[var(--ease-out-soft)]",
         "pb-[env(safe-area-inset-bottom,0px)]",
         showing ? "translate-y-0" : "translate-y-full",
       )}
@@ -82,11 +103,11 @@ export function StickyBuyBar({
         </div>
 
         {product.sampleAvailable && !soldOut ? (
-          <Button
+          <IconButton
             variant="outline"
-            size="sm"
+            size="icon"
             className="shrink-0"
-            aria-label={`${t.product.orderSample} · ${formatPrice(commerce.samplePrice)}`}
+            label={`${t.product.orderSample} · ${formatPrice(commerce.samplePrice)}`}
             onClick={() =>
               add({
                 productId: product.id,
@@ -98,14 +119,15 @@ export function StickyBuyBar({
             }
           >
             <Package />
-          </Button>
+          </IconButton>
         ) : null}
 
         <Button
-          size="sm"
+          size="md"
           className="shrink-0 px-5"
           data-testid="sticky-add-to-cart"
-          disabled={soldOut || pending}
+          disabled={soldOut}
+          loading={pending}
           onClick={() =>
             add({
               productId: product.id,
