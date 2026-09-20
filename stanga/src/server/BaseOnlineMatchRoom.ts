@@ -417,7 +417,10 @@ export abstract class BaseOnlineMatchRoom extends Room<MatchRoomState> {
       case 'waiting':
       case 'lobby':
         this.state.stageTimer = 0;
-        void this.unlock();
+        // Only re-open a room that actually has a seat. Colyseus locks a full
+        // room by itself, and an unconditional unlock would override that and
+        // send matchmaking a room with nowhere to sit.
+        if (this.freeSeat() !== null) void this.unlock();
         break;
       default:
         this.state.stageTimer = 0;
