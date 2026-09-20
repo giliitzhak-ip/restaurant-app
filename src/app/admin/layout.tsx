@@ -16,6 +16,7 @@ const nav = [
   { href: routes.admin.quotes, label: t.admin.quotes },
   { href: routes.admin.designs, label: t.admin.designs },
   { href: routes.admin.categories, label: t.admin.categories },
+  { href: routes.admin.objects, label: "ספריית פריטים" },
   { href: routes.admin.collections, label: t.admin.collections },
   { href: routes.admin.coupons, label: t.admin.coupons },
   { href: routes.admin.reviews, label: t.admin.reviews },

@@ -53,6 +53,8 @@ export const routes = {
     coupons: "/admin/coupons",
     reviews: "/admin/reviews",
     inventory: "/admin/inventory",
+    /** The room designer's object library and lighting presets. */
+    objects: "/admin/objects",
   },
 } as const;
 

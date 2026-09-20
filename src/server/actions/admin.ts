@@ -11,6 +11,7 @@ import { sanitiseImageUpload } from "@/server/security/images";
 import { getStorage } from "@/server/storage";
 import type { ProductInput } from "@/server/repositories/types";
 import type { OrderStatus, SessionUser } from "@/types/commerce";
+import type { LightingPreset } from "@/types/scene";
 
 /**
  * Admin mutations. Every export starts by asserting the session is an admin —
@@ -321,6 +322,216 @@ export async function saveCollectionAction(
   if (!parsed.success) return { ok: false, error: "INVALID_INPUT" };
   await getRepository().upsertCollection({ id: input.id, ...parsed.data });
   revalidatePath(routes.admin.collections);
+  return { ok: true };
+}
+
+/* ------------------------------------------------------------------ *
+ * The room designer's object library
+ * ------------------------------------------------------------------ */
+
+const objectCategorySchema = z.object({
+  key: z
+    .string()
+    .trim()
+    .min(2)
+    .max(48)
+    // Uppercase with underscores, because the key is what a scene object
+    // stores and what behaviour keys off — a category renamed in Hebrew must
+    // not orphan every design that used it.
+    .regex(/^[A-Z][A-Z0-9_]*$/, "KEY_FORMAT"),
+  name: z.string().trim().min(1).max(60),
+  sortOrder: z.coerce.number().int().min(0).max(9999),
+  enabled: z.boolean(),
+});
+
+const objectAssetSchema = z.object({
+  categoryId: z.string().trim().min(1),
+  name: z.string().trim().min(1).max(80),
+  /*
+   * A site-relative path only — the same rule the scene validator enforces,
+   * for the same reason: this url is rendered into an <img> in every
+   * customer's designer, so an external one would make the library a
+   * tracking vector and a data: one worse than that.
+   */
+  assetUrl: z
+    .string()
+    .trim()
+    .min(1)
+    .max(2048)
+    .refine((value) => value.startsWith("/") && !value.startsWith("//"), "ASSET_PATH"),
+  realWidthCm: z.coerce.number().min(1).max(2000),
+  realHeightCm: z.coerce.number().min(1).max(2000),
+  snap: z.enum(["WALL", "FLOOR", "NICHE", "FREE"]),
+  soldOnSite: z.boolean(),
+  productId: z.string().trim().min(1).nullable(),
+  sortOrder: z.coerce.number().int().min(0).max(9999),
+  enabled: z.boolean(),
+});
+
+export async function saveDesignObjectCategoryAction(
+  input: z.input<typeof objectCategorySchema> & { id?: string },
+): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  const parsed = objectCategorySchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "INVALID_INPUT" };
+  const saved = await getRepository().saveDesignObjectCategory({
+    id: input.id,
+    ...parsed.data,
+  });
+  await recordAdminAction(admin, {
+    action: input.id ? "design_object_category.update" : "design_object_category.create",
+    entity: "DesignObjectCategory",
+    entityId: saved.id,
+    detail: { key: saved.key },
+  });
+  revalidatePath(routes.admin.objects);
+  revalidatePath(routes.designer);
+  return { ok: true };
+}
+
+export async function deleteDesignObjectCategoryAction(
+  id: string,
+): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  await getRepository().deleteDesignObjectCategory(id);
+  await recordAdminAction(admin, {
+    action: "design_object_category.delete",
+    entity: "DesignObjectCategory",
+    entityId: id,
+  });
+  revalidatePath(routes.admin.objects);
+  revalidatePath(routes.designer);
+  return { ok: true };
+}
+
+/**
+ * Saves a library item.
+ *
+ * `soldOnSite` is only honoured with a product id that resolves to a live
+ * catalogue row. An asset marked for sale with nothing behind it would put a
+ * basket button on an illustration, and the price would come from nowhere —
+ * so the claim is dropped here rather than being trusted, and the form is
+ * told why.
+ */
+export async function saveDesignObjectAssetAction(
+  input: z.input<typeof objectAssetSchema> & { id?: string },
+): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  const parsed = objectAssetSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "INVALID_INPUT" };
+
+  let { productId, soldOnSite } = parsed.data;
+  if (productId) {
+    const [product] = await getRepository().getProductsByIds([productId]);
+    if (!product || !product.active) {
+      productId = null;
+      soldOnSite = false;
+    }
+  }
+  if (!productId) soldOnSite = false;
+
+  const saved = await getRepository().saveDesignObjectAsset({
+    id: input.id,
+    ...parsed.data,
+    productId,
+    soldOnSite,
+  });
+  await recordAdminAction(admin, {
+    action: input.id ? "design_object_asset.update" : "design_object_asset.create",
+    entity: "DesignObjectAsset",
+    entityId: saved.id,
+    detail: { name: saved.name, soldOnSite, productId },
+  });
+  revalidatePath(routes.admin.objects);
+  revalidatePath(routes.designer);
+  return soldOnSite === parsed.data.soldOnSite
+    ? { ok: true }
+    : { ok: false, error: "PRODUCT_NOT_SELLABLE" };
+}
+
+export async function deleteDesignObjectAssetAction(id: string): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  await getRepository().deleteDesignObjectAsset(id);
+  await recordAdminAction(admin, {
+    action: "design_object_asset.delete",
+    entity: "DesignObjectAsset",
+    entityId: id,
+  });
+  revalidatePath(routes.admin.objects);
+  revalidatePath(routes.designer);
+  return { ok: true };
+}
+
+/**
+ * Uploads library artwork.
+ *
+ * PNG and SVG both arrive here, and they need different handling. A PNG goes
+ * through the same decode-and-re-encode every upload gets, with alpha quality
+ * held at 100 so a cut-out edge does not halo. An SVG is a document, not a
+ * bitmap: sharp would rasterise it and throw away the reason to use one, and
+ * passing it through untouched would let a `<script>` inside it run on every
+ * customer's designer. So SVG is refused here, and the honest way to add
+ * vector artwork is the generator in `scripts/generate-objects.ts`, which is
+ * code and gets reviewed.
+ */
+export async function uploadDesignObjectAssetAction(
+  formData: FormData,
+): Promise<AdminUploadResult> {
+  await requireAdmin();
+  const file = formData.get("image");
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, error: "UPLOAD_FAILED" };
+  }
+  if (file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg")) {
+    return { ok: false, error: "SVG_NOT_ACCEPTED" };
+  }
+  try {
+    const safe = await sanitiseImageUpload(file, { maxEdge: 1200, alphaQuality: 100 });
+    const stored = await getStorage().save({
+      data: safe.data,
+      contentType: safe.contentType,
+      keyHint: "library",
+    });
+    return { ok: true, url: stored.url };
+  } catch {
+    return { ok: false, error: "UPLOAD_FAILED" };
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Lighting presets
+ * ------------------------------------------------------------------ */
+
+export async function saveLightingPresetAction(
+  input: LightingPreset,
+): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  if (!input.name?.trim()) return { ok: false, error: "INVALID_INPUT" };
+  const saved = await getRepository().saveLightingPreset({
+    ...input,
+    name: input.name.trim().slice(0, 60),
+  });
+  await recordAdminAction(admin, {
+    action: "lighting_preset.save",
+    entity: "LightingPreset",
+    entityId: saved.id,
+    detail: { name: saved.name },
+  });
+  revalidatePath(routes.admin.objects);
+  revalidatePath(routes.designer);
+  return { ok: true };
+}
+
+export async function deleteLightingPresetAction(id: string): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  await getRepository().deleteLightingPreset(id);
+  await recordAdminAction(admin, {
+    action: "lighting_preset.delete",
+    entity: "LightingPreset",
+    entityId: id,
+  });
+  revalidatePath(routes.admin.objects);
+  revalidatePath(routes.designer);
   return { ok: true };
 }
 
