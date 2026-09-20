@@ -384,6 +384,9 @@ export const he = {
     lightingDisclaimer:
       "ההדמיה נועדה להמחשה. גוון החומר והתאורה בפועל עשויים להשתנות בהתאם למסך, למוצר ולתנאי החלל.",
     illustrationOnly: "להמחשה בלבד",
+    uploadTooLarge: "הקובץ גדול מדי. נסו תמונה קטנה יותר.",
+    uploadWrongType: "אפשר להעלות JPG, PNG או WebP בלבד.",
+    uploadFailed: "ההעלאה לא הצליחה. נסו שוב.",
     startOver: "התחלה מחדש",
     replacePhoto: "החלפת תמונה",
     selectedFloor: "רצפה נבחרת",

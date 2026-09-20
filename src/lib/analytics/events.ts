@@ -17,6 +17,10 @@ export interface AnalyticsEvents {
   };
   select_surface: { surface: "FLOOR" | "WALL"; source: "AUTO" | "MANUAL" };
   apply_product: { slug: string; surface: "FLOOR" | "WALL" };
+  /** Scene edits. `sold` separates a catalogue product from an illustration. */
+  designer_add_object: { category: string; sold: boolean };
+  designer_add_light: { type: string };
+  designer_upload_object: Record<string, never>;
   save_design: { designId: string; products: number; areaSqm: number };
   /** A render left the site — the strongest signal of intent the designer has. */
   share_design: { products: number };

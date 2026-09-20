@@ -10,8 +10,9 @@ import {
   Heart,
   Image as ImageIcon,
   RefreshCw,
+  Redo2,
   ShoppingBag,
-  Sliders,
+  Undo2,
   X,
 } from "lucide-react";
 import { routes } from "@/config/site";
@@ -33,12 +34,27 @@ import {
 } from "@/server/actions/designs";
 import type { ProductSwatch } from "@/types/catalog";
 import type { RoomDesignRecord, SurfaceKind } from "@/types/design";
-import { canvasToFile } from "../utils/image";
 import { useDesigner } from "../hooks/use-designer";
+import type { DesignObjectAsset, LedPathShape, LightingFixtureType } from "@/types/scene";
+import { canvasToFile } from "../utils/image";
+import { useScene } from "../scene/use-scene";
+import {
+  createCustomObject,
+  createFixture,
+  createFixtureBehind,
+  createObjectFromAsset,
+  type PhotoFrame,
+} from "../scene/factory";
+import { BillOfMaterials } from "./bill-of-materials";
 import { CanvasStage } from "./canvas-stage";
 import { ControlsPanel } from "./controls-panel";
+import { CustomObjectDialog } from "./custom-object-dialog";
+import { LayersPanel } from "./layers-panel";
+import { LightingDrawer } from "./lighting-drawer";
+import { ObjectLibraryDrawer } from "./object-library-drawer";
 import { ProductDrawer } from "./product-drawer";
 import { SaveDesignDialog } from "./save-design-dialog";
+import { SceneOverlay } from "./scene-overlay";
 import { UploadPanel } from "./upload-panel";
 
 const warningCopy: Record<string, { title: string; body: string }> = {
@@ -57,11 +73,14 @@ const warningCopy: Record<string, { title: string; body: string }> = {
 
 export function DesignerShell({
   swatches,
+  objectAssets,
   initialProductSlug,
   initialSurface,
   savedDesign,
 }: {
   swatches: ProductSwatch[];
+  /** The object library, read on the server so the drawer opens populated. */
+  objectAssets: DesignObjectAsset[];
   initialProductSlug?: string;
   initialSurface?: SurfaceKind;
   savedDesign?: RoomDesignRecord | null;
@@ -75,7 +94,17 @@ export function DesignerShell({
   const [compare, setCompare] = React.useState(false);
   const [saveOpen, setSaveOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
-  const [mobileTab, setMobileTab] = React.useState<"products" | "controls">("products");
+  /*
+   * Five panels, one at a time on a phone and side by side on a desktop.
+   * "Cladding" is the original texture picker; the other four are the scene.
+   */
+  const [panel, setPanel] = React.useState<
+    "cladding" | "objects" | "lighting" | "layers" | "controls"
+  >("cladding");
+  const [customOpen, setCustomOpen] = React.useState(false);
+  const [drawingShape, setDrawingShape] = React.useState<LedPathShape | null>(null);
+
+  const scene = useScene(savedDesign?.scene ?? null);
   const { add } = useCart();
   const { toast } = useToast();
   const user = useSessionUser();
@@ -85,6 +114,98 @@ export function DesignerShell({
     (surface) => surface.mask.kind === "WALL",
   );
   const hasSelection = controller.selectedProducts.length > 0;
+
+  /*
+   * The frame every scene measurement is taken against: the photo's pixel
+   * size and how wide the customer says the room is. Without it a 145cm
+   * television is just a number.
+   */
+  const frame: PhotoFrame = {
+    width: controller.image?.width ?? 1,
+    height: controller.image?.height ?? 1,
+    roomWidthM: controller.roomWidthM,
+  };
+
+  const activeSurfaceMask = controller.activeSurface?.mask ?? null;
+  const floorMask =
+    controller.surfaces.find((surface) => surface.mask.kind === "FLOOR")?.mask ?? null;
+
+  /* ------------------------------ scene edits ----------------------------- */
+
+  const addObject = (asset: DesignObjectAsset) => {
+    scene.dispatch({
+      type: "ADD_OBJECT",
+      object: createObjectFromAsset({
+        asset,
+        scene: scene.scene,
+        frame,
+        // Wall pieces belong to the wall even when the floor is the active
+        // surface, so a cladding change on either one leaves them alone.
+        surfaceId:
+          asset.snap === "FLOOR"
+            ? (floorMask?.id ?? activeSurfaceMask?.id ?? null)
+            : (controller.surfaces.find((surface) => surface.mask.kind === "WALL")?.mask
+                .id ??
+              activeSurfaceMask?.id ??
+              null),
+      }),
+    });
+    track("designer_add_object", { category: asset.category, sold: asset.soldOnSite });
+    setPanel("objects");
+  };
+
+  const addFixture = (type: LightingFixtureType) => {
+    /*
+     * A strip "behind the television" is placed behind the television. If a
+     * screen is selected, or there is exactly one in the room, the light
+     * attaches to it and follows it from then on — which is what the name of
+     * the fixture already promised.
+     */
+    const screens = scene.scene.objects.filter(
+      (object) => object.type === "TV" || object.type === "TV_WALL",
+    );
+    const target =
+      scene.selectedObject && screens.includes(scene.selectedObject)
+        ? scene.selectedObject
+        : screens.length === 1
+          ? screens[0]
+          : null;
+
+    scene.dispatch({
+      type: "ADD_FIXTURE",
+      fixture:
+        type === "LED_BEHIND_TV" && target
+          ? createFixtureBehind(target, scene.scene, type)
+          : createFixture({
+              type,
+              scene: scene.scene,
+              surfaceId: activeSurfaceMask?.id ?? null,
+            }),
+    });
+    track("designer_add_light", { type });
+  };
+
+  /**
+   * A cut-out the customer made from their own photo.
+   *
+   * It carries no product id and never will: it is their sofa, not a
+   * catalogue row, so it is drawn in the room and left out of the basket.
+   */
+  const addCustomObject = (result: { url: string; label: string; aspect: number }) => {
+    scene.dispatch({
+      type: "ADD_OBJECT",
+      object: createCustomObject({
+        url: result.url,
+        label: result.label,
+        aspect: result.aspect,
+        scene: scene.scene,
+        frame,
+        surfaceId: activeSurfaceMask?.id ?? null,
+      }),
+    });
+    track("designer_upload_object", {});
+    setPanel("objects");
+  };
 
   /* --------------------------------- save -------------------------------- */
 
@@ -127,6 +248,9 @@ export function DesignerShell({
           settings: surface.settings,
           areaSqm: surface.areaSqm,
         })),
+        // Objects, lighting and LED runs. The server re-checks every product
+        // claim on the way in; what it stores is what may be sold.
+        scene: scene.scene,
       });
 
       if (!result.ok) {
@@ -179,9 +303,37 @@ export function DesignerShell({
     ]),
   );
 
+  /*
+   * The scene's own fingerprint, kept coarse on purpose: positions are
+   * rounded to a thousandth so a two-pixel nudge does not count as a change
+   * and re-upload the room photo.
+   */
+  const sceneFingerprint = JSON.stringify([
+    scene.scene.objects.map((object) => [
+      object.id,
+      object.assetUrl,
+      Math.round(object.position.x * 1000),
+      Math.round(object.position.y * 1000),
+      Math.round(object.width * 1000),
+      Math.round(object.height * 1000),
+      Math.round(object.rotation),
+      object.flipX,
+      object.layerIndex,
+      object.locked,
+      object.visible,
+      Boolean(object.perspectivePoints),
+    ]),
+    scene.scene.lightingFixtures.length,
+    scene.scene.ledPaths.length,
+    scene.scene.layers.hidden,
+  ]);
+
   React.useEffect(() => {
     if (!controller.designId || !controller.designName) return;
     if (typeof window === "undefined") return;
+    // Never mid-drag: saving uploads a render, and a render taken halfway
+    // through a gesture is a picture of a half-finished move.
+    if (scene.gesturing) return;
 
     const handle = window.setTimeout(() => {
       void saveDesign(controller.designName, { silent: true });
@@ -189,9 +341,33 @@ export function DesignerShell({
     return () => window.clearTimeout(handle);
     // saveDesign closes over the current controller state by design.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [surfaceFingerprint, controller.designId, controller.designName]);
+  }, [
+    surfaceFingerprint,
+    sceneFingerprint,
+    scene.gesturing,
+    controller.designId,
+    controller.designName,
+  ]);
 
   /* ------------------------------ add to cart ---------------------------- */
+
+  /**
+   * What is actually in this design, and what of it can be bought.
+   *
+   * Two lists, deliberately not merged. The claddings are priced by area from
+   * the surfaces the customer chose. The objects are priced only when they
+   * carry a product id that the library vouched for — and the rest are
+   * illustrations, listed so the design reads as a whole but marked so nobody
+   * expects them in the parcel.
+   */
+  const sellableItems = React.useMemo(
+    () => scene.scene.objects.filter((object) => Boolean(object.productId)),
+    [scene.scene.objects],
+  );
+  const illustrationItems = React.useMemo(
+    () => scene.scene.objects.filter((object) => !object.productId),
+    [scene.scene.objects],
+  );
 
   const addSelectionToCart = async () => {
     for (const { surface, swatch } of controller.selectedProducts) {
@@ -205,11 +381,34 @@ export function DesignerShell({
         silent: true,
       });
     }
+
+    /*
+     * Objects go in by the unit, and only the ones with a product behind
+     * them. The cart action resolves the id against the catalogue again;
+     * this check is so the button does not offer what the server will
+     * refuse, not a substitute for it.
+     */
+    for (const object of sellableItems) {
+      if (!object.productId) continue;
+      await add({
+        productId: object.productId,
+        slug: object.productId,
+        name: object.label,
+        units: 1,
+        designId: controller.designId,
+        designLabel: controller.designName || t.designer.shortTitle,
+        silent: true,
+      });
+    }
+
+    const count = controller.selectedProducts.length + sellableItems.length;
     toast({
       title: t.product.added,
-      description: `${controller.selectedProducts.length} מוצרים · ${formatArea(
-        controller.estimate.areaSqm,
-      )}`,
+      description: `${count} מוצרים · ${formatArea(controller.estimate.areaSqm)}${
+        illustrationItems.length
+          ? ` · ${illustrationItems.length} פריטים להמחשה לא נוספו`
+          : ""
+      }`,
       action: { label: t.cart.checkout, href: routes.cart },
     });
   };
@@ -324,6 +523,40 @@ export function DesignerShell({
               controller={controller}
               compare={compare}
               onCompareChange={setCompare}
+              overlay={
+                <SceneOverlay
+                  controller={scene}
+                  surface={activeSurfaceMask}
+                  floor={floorMask}
+                  frame={frame}
+                  drawingShape={drawingShape}
+                  onFinishDrawing={() => setDrawingShape(null)}
+                />
+              }
+              actions={
+                <>
+                  <Button
+                    size="sm"
+                    variant="studioOutline"
+                    data-testid="scene-undo"
+                    disabled={!scene.canUndo}
+                    onClick={() => scene.dispatch({ type: "UNDO" })}
+                  >
+                    <Undo2 />
+                    {t.designer.maskUndo}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="studioOutline"
+                    data-testid="scene-redo"
+                    disabled={!scene.canRedo}
+                    onClick={() => scene.dispatch({ type: "REDO" })}
+                    aria-label="ביצוע מחדש"
+                  >
+                    <Redo2 />
+                  </Button>
+                </>
+              }
             />
 
             {controller.error === "PROVIDER_FAILED" ? (
@@ -414,45 +647,42 @@ export function DesignerShell({
               </div>
             ) : null}
 
-            {/* mobile tabs */}
-            <div className="mt-4 flex gap-1.5 lg:hidden">
-              <Button
-                size="sm"
-                variant="studioOutline"
-                aria-pressed={mobileTab === "products"}
-                onClick={() => setMobileTab("products")}
-                className={cn(
-                  "flex-1 text-xs",
-                  mobileTab === "products"
-                    ? "border-studio-ink text-studio-ink"
-                    : "text-studio-ink/60",
-                )}
-              >
-                {t.designer.productDrawer}
-              </Button>
-              <Button
-                size="sm"
-                variant="studioOutline"
-                aria-pressed={mobileTab === "controls"}
-                onClick={() => setMobileTab("controls")}
-                className={cn(
-                  "flex-1 text-xs",
-                  mobileTab === "controls"
-                    ? "border-studio-ink text-studio-ink"
-                    : "text-studio-ink/60",
-                )}
-              >
-                <Sliders />
-                {t.designer.controls}
-              </Button>
+            {/* panel switch */}
+            <div
+              className="scrollbar-none -mx-1 mt-4 flex gap-1.5 overflow-x-auto px-1"
+              role="tablist"
+              aria-label="כלי העיצוב"
+            >
+              {(
+                [
+                  { key: "cladding", label: t.designer.productDrawer },
+                  { key: "objects", label: "הוספת פריטים" },
+                  { key: "lighting", label: "תאורה" },
+                  { key: "layers", label: "שכבות" },
+                  { key: "controls", label: t.designer.controls },
+                ] as const
+              ).map((entry) => (
+                <Button
+                  key={entry.key}
+                  size="sm"
+                  role="tab"
+                  variant="studioOutline"
+                  aria-selected={panel === entry.key}
+                  data-testid={`panel-${entry.key}`}
+                  onClick={() => setPanel(entry.key)}
+                  className={cn(
+                    "shrink-0 text-xs",
+                    panel === entry.key
+                      ? "border-studio-ink text-studio-ink"
+                      : "text-studio-ink/60",
+                  )}
+                >
+                  {entry.label}
+                </Button>
+              ))}
             </div>
 
-            <div
-              className={cn(
-                "mt-4",
-                mobileTab === "products" ? "block" : "hidden lg:block",
-              )}
-            >
+            <div className={cn("mt-4", panel === "cladding" ? "block" : "hidden")}>
               <ProductDrawer
                 swatches={swatches}
                 surfaceKind={controller.activeKind}
@@ -461,14 +691,51 @@ export function DesignerShell({
               />
             </div>
 
+            <div className={cn("mt-4 min-h-0 flex-1", panel === "objects" ? "block" : "hidden")}>
+              <ObjectLibraryDrawer
+                assets={objectAssets}
+                onAdd={addObject}
+                onUploadOwn={() => setCustomOpen(true)}
+              />
+            </div>
+
+            <div className={cn("mt-4 min-h-0 flex-1", panel === "lighting" ? "block" : "hidden")}>
+              <LightingDrawer
+                controller={scene}
+                drawingShape={drawingShape}
+                onStartDrawing={setDrawingShape}
+                onStopDrawing={() => setDrawingShape(null)}
+                onAddFixture={addFixture}
+              />
+            </div>
+
+            <div className={cn("mt-4 min-h-0 flex-1", panel === "layers" ? "block" : "hidden")}>
+              <LayersPanel controller={scene} />
+              <div className="mt-5 border-t border-studio-line pt-4">
+                <h3 className="mb-2 text-[0.6875rem] tracking-[0.18em] text-studio-ink/50">
+                  רשימת העיצוב
+                </h3>
+                <BillOfMaterials
+                  claddings={controller.selectedProducts.map(({ surface, swatch }) => ({
+                    swatch,
+                    areaSqm: surface.areaSqm,
+                  }))}
+                  objects={scene.scene.objects}
+                  totalAreaSqm={controller.estimate.areaSqm}
+                  totalPrice={controller.estimate.price}
+                />
+              </div>
+            </div>
+
             <div
               className={cn(
-                "mt-6 border-t border-studio-line pt-5",
-                mobileTab === "controls" ? "block" : "hidden lg:block",
+                "mt-4 border-t border-studio-line pt-5",
+                panel === "controls" ? "block" : "hidden",
               )}
             >
               <ControlsPanel controller={controller} />
             </div>
+
           </aside>
 
           {/* ---------------------------- summary bar --------------------------- */}
@@ -565,6 +832,12 @@ export function DesignerShell({
           </div>
         </div>
       ) : null}
+
+      <CustomObjectDialog
+        open={customOpen}
+        onOpenChange={setCustomOpen}
+        onReady={addCustomObject}
+      />
 
       <SaveDesignDialog
         open={saveOpen}

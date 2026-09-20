@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { t } from "@/i18n";
 import { Spinner } from "@/components/ui/spinner";
 import type { ProductSwatch } from "@/types/catalog";
+import type { DesignObjectAsset } from "@/types/scene";
 import type { RoomDesignRecord, SurfaceKind } from "@/types/design";
 
 /**
@@ -37,6 +38,7 @@ const DesignerShell = dynamic(
 
 export function DesignerEntry(props: {
   swatches: ProductSwatch[];
+  objectAssets: DesignObjectAsset[];
   initialProductSlug?: string;
   initialSurface?: SurfaceKind;
   savedDesign: RoomDesignRecord | null;

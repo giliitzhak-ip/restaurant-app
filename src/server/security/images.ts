@@ -73,6 +73,8 @@ export interface SanitiseOptions {
   /** Output container. WebP keeps room photos small without visible loss. */
   format?: "webp" | "jpeg";
   quality?: number;
+  /** 0-100. Kept at 100 for cut-outs, whose edges are the whole point. */
+  alphaQuality?: number;
   maxBytes?: number;
 }
 
@@ -106,6 +108,12 @@ export async function sanitiseImageUpload(
   const maxEdge = options.maxEdge ?? designerConfig.maxRenderEdge;
   const format = options.format ?? "webp";
   const quality = options.quality ?? 82;
+  /*
+   * Alpha quality matters for a cut-out. The default lossy channel smears
+   * the edge of a hand-drawn cutout into a grey halo against dark cladding,
+   * which is exactly where these are used.
+   */
+  const alphaQuality = options.alphaQuality ?? 100;
 
   try {
     const pipeline = sharp(raw, { failOn: "error", limitInputPixels: 50_000_000 })
@@ -116,7 +124,9 @@ export async function sanitiseImageUpload(
     const encoded =
       format === "jpeg"
         ? await pipeline.jpeg({ quality, mozjpeg: true }).toBuffer({ resolveWithObject: true })
-        : await pipeline.webp({ quality }).toBuffer({ resolveWithObject: true });
+        : await pipeline
+            .webp({ quality, alphaQuality })
+            .toBuffer({ resolveWithObject: true });
 
     return {
       data: new Uint8Array(encoded.data),

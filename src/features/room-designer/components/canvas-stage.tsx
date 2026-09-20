@@ -20,10 +20,20 @@ export function CanvasStage({
   controller,
   compare,
   onCompareChange,
+  overlay,
+  actions,
 }: {
   controller: DesignerController;
   compare: boolean;
   onCompareChange: (value: boolean) => void;
+  /**
+   * The scene — objects, lighting and handles — drawn over the cladding.
+   * Passed in rather than imported so this file stays about the canvas, and
+   * so "before" can show the photo with none of it.
+   */
+  overlay?: React.ReactNode;
+  /** Extra buttons for the row under the stage. */
+  actions?: React.ReactNode;
 }) {
   const { image, canvasRef, activeKind, rendering } = controller;
   const [mode, setMode] = React.useState<MaskMode>("off");
@@ -91,7 +101,15 @@ export function CanvasStage({
             after={<CanvasLayer canvasRef={canvasRef} />}
           />
         ) : (
-          <CanvasLayer canvasRef={canvasRef} />
+          <>
+            <CanvasLayer canvasRef={canvasRef} />
+            {/*
+              The scene sits above the cladding and below the mask editor:
+              while someone is tracing a wall they need to see the photo, not
+              the furniture they will put on it.
+            */}
+            {mode === "off" ? overlay : null}
+          </>
         )}
 
         {/* mask drafting overlay */}
@@ -137,10 +155,13 @@ export function CanvasStage({
             <Button
               size="sm"
               variant={compare ? "studio" : "studioOutline"}
+              aria-pressed={compare}
+              data-testid="before-after"
               onClick={() => onCompareChange(!compare)}
             >
               {t.designer.beforeAfter}
             </Button>
+            {actions}
             <Button
               size="sm"
               variant="studioOutline"

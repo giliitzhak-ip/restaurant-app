@@ -177,6 +177,57 @@ export async function uploadRoomImageAction(formData: FormData): Promise<UploadR
   }
 }
 
+/**
+ * Stores a product photo a customer cut out themselves.
+ *
+ * The brief asks for automatic background removal "if a suitable provider
+ * exists". None is configured here, and inventing one would mean shipping a
+ * feature that silently does nothing — so the editor offers a manual cutout
+ * instead and says which it is doing. When a provider is added, it belongs
+ * behind the same adapter pattern the vision provider already uses; this
+ * action does not change.
+ *
+ * What arrives is a PNG the browser produced by clipping the customer's photo
+ * to a shape they drew. It gets exactly the treatment a room photo gets:
+ * size-checked, identified by magic bytes, fully decoded and re-encoded by
+ * us, so no polyglot survives and the EXIF — including where the photo was
+ * taken — does not. Alpha quality is held at 100, because a lossy alpha
+ * channel puts a grey halo around a cutout on dark cladding.
+ *
+ * It is stored against this customer's design and nowhere else. Nothing here
+ * writes to the shared object library: one customer's sofa is not a catalogue
+ * entry, and publishing it would be publishing their photograph.
+ */
+export async function uploadDesignObjectAction(
+  formData: FormData,
+): Promise<UploadResult> {
+  const limited = await rateLimit("upload");
+  if (!limited.ok) return { ok: false, error: "RATE_LIMITED" };
+
+  const file = formData.get("image");
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, error: "UPLOAD_FAILED" };
+  }
+
+  try {
+    const safe = await sanitiseImageUpload(file, {
+      // A cut-out object never needs to be as large as a room photo.
+      maxEdge: 1200,
+      alphaQuality: 100,
+    });
+    const stored = await getStorage().save({
+      data: safe.data,
+      contentType: safe.contentType,
+      keyHint: "object",
+    });
+    return { ok: true, url: stored.url };
+  } catch (error) {
+    if (error instanceof ImageRejected) return { ok: false, error: error.reason };
+    log.error("designs.object_upload_failed", { error });
+    return { ok: false, error: "UPLOAD_FAILED" };
+  }
+}
+
 export type SaveDesignResult =
   | { ok: true; design: RoomDesignRecord }
   | { ok: false; error: string };

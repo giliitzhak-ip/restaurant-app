@@ -29,6 +29,13 @@ export default async function DesignerPage({
   const swatches = items.map(toSwatch).filter(isTruthy);
 
   /*
+   * The object library, read here rather than fetched from the client, so the
+   * "add items" drawer is populated the moment it opens. It is small — forty
+   * rows of metadata — and it is the same for every visitor.
+   */
+  const objectAssets = await repository.listDesignObjectAssets();
+
+  /*
    * Reopening a saved design. The id in the query string is a claim, not a
    * credential — the same helper the write actions use decides whether this
    * visitor owns the row, including the guest-cookie case that a plain
@@ -46,6 +53,7 @@ export default async function DesignerPage({
   return (
     <DesignerEntry
       swatches={swatches}
+      objectAssets={objectAssets}
       initialProductSlug={product}
       initialSurface={initialSurface}
       savedDesign={savedDesign}
