@@ -18,6 +18,7 @@ import {
   type MatchState,
   type ShotRecord,
   type TeamId,
+  type ShotType,
 } from '../src/game/MatchState';
 import { ScoringSystem } from '../src/game/ScoringSystem';
 
@@ -39,7 +40,7 @@ class Pipeline {
     expect(this.state.phase).toBe('playing');
   }
 
-  kick(team: TeamId, shotType: 'flat' | 'lob' = 'flat', power = 0.8): ShotRecord {
+  kick(team: TeamId, shotType: ShotType = 'ground', power = 0.8): ShotRecord {
     this.shotCounter += 1;
     this.shot = {
       shotId: `shot-${this.shotCounter}`,

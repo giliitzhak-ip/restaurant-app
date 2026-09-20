@@ -176,6 +176,42 @@ describe('headless simulation', () => {
     expect(headless.match.state.ball.position.y).toBeGreaterThan(GameConfig.ball.radius * 0.7);
   });
 
+  it('can pick out the crossbar and the junction without passing through them', () => {
+    // The five-point junction is what STANGA is about, so the frame has to be
+    // reachable: a ball that tunnels through it at speed would make the
+    // highest-scoring shot in the game impossible to hit on purpose.
+    const { field, goal, ball } = GameConfig;
+    const hits = new Map<string, number>();
+
+    const fire = (offsetX: number, up: number, along: number) => {
+      const headless = makeMatch();
+      headless.match.events.on('frameHit', (event) => {
+        hits.set(event.part, (hits.get(event.part) ?? 0) + 1);
+      });
+      headless.match.start();
+      run(headless, 200);
+
+      headless.match.ball.reset({ x: offsetX, y: ball.radius, z: field.length / 2 - 9 });
+      run(headless, 6, 200);
+      headless.match.ball.setVelocity(0, up, along);
+      run(headless, 45, 210);
+
+      headless.dispose();
+      created.pop();
+    };
+
+    // Sweep the launch angle rather than solving the ballistics: air drag and
+    // the bounce make a closed form fragile, and what matters is that the bar
+    // and the corner are hittable at all.
+    for (let up = 7.5; up <= 11.5; up += 0.5) {
+      fire(0, up, 22);
+      fire(-(goal.width / 2 + goal.postRadius), up, 22);
+    }
+
+    expect(hits.get('crossbar') ?? 0).toBeGreaterThan(0);
+    expect(hits.get('leftJunction') ?? 0).toBeGreaterThan(0);
+  }, 60_000);
+
   it('is deterministic: the same seed and the same ticks give the same state', () => {
     const a = makeMatch(1234);
     const b = makeMatch(1234);

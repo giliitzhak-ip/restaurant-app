@@ -26,7 +26,17 @@ describe('protocol version', () => {
 });
 
 describe('sanitizeInput', () => {
-  const valid = { n: 4, mx: 0.5, my: -0.5, ax: 0, ay: 1, f: InputFlag.Sprint };
+  const valid = {
+    n: 4,
+    mx: 0.5,
+    my: -0.5,
+    ax: 0,
+    ay: 1,
+    va: 0.25,
+    sn: -0.5,
+    pt: 1,
+    f: InputFlag.Sprint,
+  };
 
   it('accepts a well-formed input unchanged', () => {
     expect(sanitizeInput(valid)).toEqual(valid);
@@ -39,7 +49,17 @@ describe('sanitizeInput', () => {
   });
 
   it('never lets a NaN or an Infinity reach the simulation', () => {
-    const result = sanitizeInput({ n: 1, mx: NaN, my: Infinity, ax: -Infinity, ay: NaN, f: NaN });
+    const result = sanitizeInput({
+      n: 1,
+      mx: NaN,
+      my: Infinity,
+      ax: -Infinity,
+      ay: NaN,
+      va: NaN,
+      sn: Infinity,
+      pt: NaN,
+      f: NaN,
+    });
     expect(result).not.toBeNull();
     for (const value of Object.values(result ?? {})) {
       expect(Number.isFinite(value)).toBe(true);
@@ -54,14 +74,23 @@ describe('sanitizeInput', () => {
 
   it('drops flag bits that are not part of the protocol', () => {
     const result = sanitizeInput({ n: 1, mx: 0, my: 0, ax: 0, ay: 0, f: 0xffff });
-    expect(result?.f).toBe(
-      InputFlag.Sprint |
-        InputFlag.ShootPressed |
-        InputFlag.ShootHeld |
-        InputFlag.ShootReleased |
-        InputFlag.TacklePressed |
-        InputFlag.LobToggle,
-    );
+    const known = Object.values(InputFlag).reduce((all, flag) => all | flag, 0);
+    expect(result?.f).toBe(known);
+    // And the unknown bits really were dropped rather than passed through.
+    expect(result?.f).toBeLessThan(0xffff);
+  });
+
+  it('clamps the aim height and the spin, and refuses a nonsense pass target', () => {
+    const result = sanitizeInput({ n: 1, mx: 0, my: 0, ax: 0, ay: 0, va: 9, sn: -9, pt: 99, f: 0 });
+    expect(result?.va).toBe(1);
+    expect(result?.sn).toBe(-1);
+    expect(result?.pt).toBe(-1);
+
+    const fractional = sanitizeInput({ n: 1, mx: 0, my: 0, ax: 0, ay: 0, pt: 1.5, f: 0 });
+    expect(fractional?.pt).toBe(-1);
+
+    const legal = sanitizeInput({ n: 1, mx: 0, my: 0, ax: 0, ay: 0, pt: 1, f: 0 });
+    expect(legal?.pt).toBe(1);
   });
 });
 

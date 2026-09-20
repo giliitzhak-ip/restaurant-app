@@ -4,6 +4,7 @@
  * an authoritative server has to be able to own this exact structure.
  */
 import { GameConfig, type ScoreKind } from '../config/GameConfig';
+import type { ShotProfile } from '../input/PlayerCommand';
 import { vec3, type Vec3 } from '../core/math';
 import { createTouchRuleState, type TouchRuleState } from './TouchRuleEngine';
 import {
@@ -63,6 +64,18 @@ export interface PlayerState {
   kickCharge: number;
   charging: boolean;
   lofted: boolean;
+  /** Where this player is currently aiming the next strike, -1..1. */
+  verticalAim: number;
+  /** Requested side spin for the next strike, -1..1. */
+  spin: number;
+  /** True while the player is asking for a chip rather than a full strike. */
+  chipRequested: boolean;
+  /** Counts down the pass cooldown, so a pass is not a machine gun. */
+  passCooldown: number;
+  /** Counts down the juggle cooldown. */
+  juggleCooldown: number;
+  /** Seconds the pass control has been held, which lengthens the ball. */
+  passHold: number;
   sprinting: boolean;
   kickCooldown: number;
   tackleCooldown: number;
@@ -97,7 +110,12 @@ export interface ShotRecord {
   power: number;
 }
 
-export type ShotType = 'flat' | 'lob';
+/**
+ * Kept as the record of what a strike was. `ShotProfile` on the command is the
+ * same idea from the input side; this is what the server decided it turned
+ * out to be.
+ */
+export type ShotType = ShotProfile | 'pass';
 
 export interface ScoreEventRecord {
   shotId: string;
@@ -160,6 +178,12 @@ export function createPlayerState(
     kickCharge: 0,
     charging: false,
     lofted: false,
+    verticalAim: 0,
+    spin: 0,
+    chipRequested: false,
+    passCooldown: 0,
+    juggleCooldown: 0,
+    passHold: 0,
     sprinting: false,
     kickCooldown: 0,
     tackleCooldown: 0,

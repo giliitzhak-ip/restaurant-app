@@ -11,7 +11,24 @@ import { clamp } from '../core/math';
 export type KeyboardProfileId = 'keyboard-left' | 'keyboard-right';
 
 export type BindableAction =
-  'up' | 'down' | 'left' | 'right' | 'sprint' | 'shoot' | 'tackle' | 'lob';
+  | 'up'
+  | 'down'
+  | 'left'
+  | 'right'
+  | 'sprint'
+  | 'shoot'
+  | 'tackle'
+  | 'lob'
+  | 'pass'
+  | 'juggle'
+  /** Held: raises and lowers where the next strike is aimed. */
+  | 'aimUp'
+  | 'aimDown'
+  /** Held while striking: a short chip instead of a full shot. */
+  | 'chip'
+  /** Held while striking: bends the ball left or right. */
+  | 'curlLeft'
+  | 'curlRight';
 
 export type KeyMap = Record<BindableAction, string[]>;
 
@@ -28,7 +45,14 @@ export const BINDABLE_ACTIONS: readonly BindableAction[] = [
   'right',
   'sprint',
   'shoot',
+  'pass',
+  'juggle',
   'tackle',
+  'aimUp',
+  'aimDown',
+  'chip',
+  'curlLeft',
+  'curlRight',
   'lob',
 ];
 
@@ -41,6 +65,13 @@ export const ACTION_LABELS: Record<BindableAction, string> = {
   shoot: 'בעיטה',
   tackle: 'חטיפה',
   lob: 'שטוחה / מוגבהת',
+  pass: 'מסירה',
+  juggle: 'הקפצה',
+  aimUp: 'כוון גבוה',
+  aimDown: 'כוון נמוך',
+  chip: 'הרמה קצרה',
+  curlLeft: 'סיבוב שמאלה',
+  curlRight: 'סיבוב ימינה',
 };
 
 /** Player 1: the WASD cluster plus the keys around it. */
@@ -54,6 +85,13 @@ export function defaultLeftKeyMap(): KeyMap {
     shoot: ['KeyF'],
     tackle: ['KeyG'],
     lob: ['KeyR'],
+    pass: ['KeyC'],
+    juggle: ['KeyV'],
+    aimUp: ['KeyT'],
+    aimDown: ['KeyB'],
+    chip: ['KeyX'],
+    curlLeft: ['KeyZ'],
+    curlRight: ['KeyH'],
   };
 }
 
@@ -68,6 +106,13 @@ export function defaultRightKeyMap(): KeyMap {
     shoot: ['KeyK'],
     tackle: ['KeyL'],
     lob: ['KeyO'],
+    pass: ['KeyJ'],
+    juggle: ['KeyU'],
+    aimUp: ['KeyI'],
+    aimDown: ['KeyM'],
+    chip: ['KeyP'],
+    curlLeft: ['KeyN'],
+    curlRight: ['Semicolon'],
   };
 }
 
@@ -85,6 +130,13 @@ export function soloKeyMap(): KeyMap {
     shoot: ['Space'],
     tackle: ['KeyE'],
     lob: ['KeyQ'],
+    pass: ['KeyC'],
+    juggle: ['KeyV'],
+    aimUp: ['KeyR'],
+    aimDown: ['KeyF'],
+    chip: ['KeyX'],
+    curlLeft: ['KeyZ'],
+    curlRight: ['KeyG'],
   };
 }
 

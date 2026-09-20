@@ -22,6 +22,9 @@ export class HumanKeyboardController implements PlayerController {
   private readonly command: PlayerCommand;
   private readonly sequence = new SequenceCounter();
   private shootWasHeld = false;
+  private passWasHeld = false;
+  /** Where the next strike is aimed, kept between ticks like a trim wheel. */
+  private verticalAim = 0;
   private sensitivity = 1;
 
   constructor(
@@ -48,7 +51,14 @@ export class HumanKeyboardController implements PlayerController {
 
   reset(): void {
     this.shootWasHeld = false;
+    this.passWasHeld = false;
+    this.verticalAim = 0;
     this.sequence.reset();
+  }
+
+  /** Where this player is aiming, so the HUD can show it before the kick. */
+  get aimHeight(): number {
+    return this.verticalAim;
   }
 
   poll(playerId: string, tickId: number, context: ControlContext): PlayerCommand {
@@ -87,8 +97,29 @@ export class HumanKeyboardController implements PlayerController {
     command.shootReleased = !shootHeld && this.shootWasHeld;
     this.shootWasHeld = shootHeld;
 
+    const passHeld = heldAny(this.keys.pass);
+    command.passHeld = passHeld;
+    command.passPressed = passHeld && !this.passWasHeld;
+    command.passReleased = !passHeld && this.passWasHeld;
+    this.passWasHeld = passHeld;
+
+    command.jugglePressed = pressedAny(this.keys.juggle);
     command.tacklePressed = pressedAny(this.keys.tackle);
     command.lobToggle = pressedAny(this.keys.lob);
+    command.chipRequested = heldAny(this.keys.chip);
+
+    // A keyboard has no analogue stick, so the aim height is a value the two
+    // keys walk up and down and that stays where it is left.
+    const dt = context.dt;
+    if (heldAny(this.keys.aimUp)) this.verticalAim += AIM_RATE * dt;
+    if (heldAny(this.keys.aimDown)) this.verticalAim -= AIM_RATE * dt;
+    this.verticalAim = Math.max(-1, Math.min(1, this.verticalAim));
+    command.verticalAim = this.verticalAim;
+
+    let spin = 0;
+    if (heldAny(this.keys.curlRight)) spin += 1;
+    if (heldAny(this.keys.curlLeft)) spin -= 1;
+    command.spin = spin;
 
     return command;
   }
@@ -100,3 +131,6 @@ export class HumanKeyboardController implements PlayerController {
 }
 
 export const KEYBOARD_DEAD_ZONE = GameConfig.input.deadZone;
+
+/** How fast the aim keys sweep the full range, in units per second. */
+const AIM_RATE = 1.6;

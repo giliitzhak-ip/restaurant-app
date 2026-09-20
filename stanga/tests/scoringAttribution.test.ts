@@ -19,6 +19,7 @@ import {
   type MatchState,
   type ShotRecord,
   type TeamId,
+  type ShotType,
 } from '../src/game/MatchState';
 import { ScoringSystem } from '../src/game/ScoringSystem';
 
@@ -47,7 +48,7 @@ class TwoPlayerMatch {
     return team === 'home' ? 'home-1' : 'away-1';
   }
 
-  kick(team: TeamId, shotType: 'flat' | 'lob' = 'flat', power = 0.8): ShotRecord {
+  kick(team: TeamId, shotType: ShotType = 'ground', power = 0.8): ShotRecord {
     this.counter += 1;
     this.shot = {
       shotId: `shot-${this.counter}`,
@@ -147,11 +148,11 @@ describe('points land on the right player', () => {
 
   it('carries the shot type and power through to the award', () => {
     const match = new TwoPlayerMatch();
-    match.kick('home', 'lob', 0.42);
+    match.kick('home', 'lofted', 0.42);
     match.crossLine('away');
     match.run(SETTLE);
 
-    expect(match.last?.shotType).toBe('lob');
+    expect(match.last?.shotType).toBe('lofted');
     expect(match.last?.power).toBeCloseTo(0.42);
   });
 

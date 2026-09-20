@@ -95,6 +95,11 @@ export const InputFlag = {
   ShootReleased: 1 << 3,
   TacklePressed: 1 << 4,
   LobToggle: 1 << 5,
+  PassPressed: 1 << 6,
+  PassHeld: 1 << 7,
+  PassReleased: 1 << 8,
+  JugglePressed: 1 << 9,
+  ChipRequested: 1 << 10,
 } as const;
 
 const ALL_FLAGS =
@@ -103,7 +108,15 @@ const ALL_FLAGS =
   InputFlag.ShootHeld |
   InputFlag.ShootReleased |
   InputFlag.TacklePressed |
-  InputFlag.LobToggle;
+  InputFlag.LobToggle |
+  InputFlag.PassPressed |
+  InputFlag.PassHeld |
+  InputFlag.PassReleased |
+  InputFlag.JugglePressed |
+  InputFlag.ChipRequested;
+
+/** Highest team slot a client may name as a pass target. */
+const MAX_PASS_SLOT = 3;
 
 /**
  * One tick of intent on the wire. Short keys because this is the only message
@@ -118,6 +131,12 @@ export interface NetInput {
   /** Facing request, world space. Zero length means "keep facing". */
   ax: number;
   ay: number;
+  /** How high the next strike is aimed, -1..1. */
+  va: number;
+  /** Requested side spin, -1..1. */
+  sn: number;
+  /** Preferred pass target by team slot, or -1 for "you choose". */
+  pt: number;
   /** Packed InputFlag bits. */
   f: number;
 }
@@ -201,8 +220,26 @@ export function sanitizeInput(raw: unknown): NetInput | null {
   const move = clampToUnitDisc(finite(value.mx), finite(value.my));
   const aim = clampToUnitDisc(finite(value.ax), finite(value.ay));
   const flags = finite(value.f) & ALL_FLAGS;
+  const verticalAim = Math.max(-1, Math.min(1, finite(value.va)));
+  const spin = Math.max(-1, Math.min(1, finite(value.sn)));
 
-  return { n: sequence, mx: move.x, my: move.y, ax: aim.x, ay: aim.y, f: flags };
+  // A pass target is a slot number, not a player id: there is nothing to
+  // spoof, and the server checks it names a real team-mate anyway.
+  const rawSlot = finite(value.pt, -1);
+  const passTarget =
+    Number.isInteger(rawSlot) && rawSlot >= 0 && rawSlot <= MAX_PASS_SLOT ? rawSlot : -1;
+
+  return {
+    n: sequence,
+    mx: move.x,
+    my: move.y,
+    ax: aim.x,
+    ay: aim.y,
+    va: verticalAim,
+    sn: spin,
+    pt: passTarget,
+    f: flags,
+  };
 }
 
 /** Expands a validated NetInput into the command the simulation consumes. */
@@ -219,6 +256,14 @@ export function toPlayerCommand(
   target.moveY = input.my;
   target.aimX = input.ax;
   target.aimY = input.ay;
+  target.verticalAim = input.va;
+  target.spin = input.sn;
+  target.preferredPassSlot = input.pt;
+  target.chipRequested = (input.f & InputFlag.ChipRequested) !== 0;
+  target.passPressed = (input.f & InputFlag.PassPressed) !== 0;
+  target.passHeld = (input.f & InputFlag.PassHeld) !== 0;
+  target.passReleased = (input.f & InputFlag.PassReleased) !== 0;
+  target.jugglePressed = (input.f & InputFlag.JugglePressed) !== 0;
   target.sprintPressed = (input.f & InputFlag.Sprint) !== 0;
   target.shootPressed = (input.f & InputFlag.ShootPressed) !== 0;
   target.shootHeld = (input.f & InputFlag.ShootHeld) !== 0;
@@ -237,12 +282,20 @@ export function toNetInput(command: PlayerCommand): NetInput {
   if (command.shootReleased) flags |= InputFlag.ShootReleased;
   if (command.tacklePressed) flags |= InputFlag.TacklePressed;
   if (command.lobToggle) flags |= InputFlag.LobToggle;
+  if (command.passPressed) flags |= InputFlag.PassPressed;
+  if (command.passHeld) flags |= InputFlag.PassHeld;
+  if (command.passReleased) flags |= InputFlag.PassReleased;
+  if (command.jugglePressed) flags |= InputFlag.JugglePressed;
+  if (command.chipRequested) flags |= InputFlag.ChipRequested;
   return {
     n: command.sequenceNumber,
     mx: command.moveX,
     my: command.moveY,
     ax: command.aimX,
     ay: command.aimY,
+    va: command.verticalAim,
+    sn: command.spin,
+    pt: command.preferredPassSlot,
     f: flags,
   };
 }

@@ -94,6 +94,22 @@ export class BallBody {
     this.world.teleport(this.body);
   }
 
+  /**
+   * Sets side spin about the vertical axis, which is what bends a curled shot.
+   * Roll and top spin are left alone: they are what the bounce already does.
+   */
+  setSpin(rateY: number): void {
+    this.body.getAngularVelocityToRef(this.scratch);
+    this.scratch.y = rateY;
+    this.body.setAngularVelocity(this.scratch);
+  }
+
+  /** Side spin currently on the ball, radians per second. */
+  get spin(): number {
+    this.body.getAngularVelocityToRef(this.scratch);
+    return this.scratch.y;
+  }
+
   /** Hard cap on speed so the ball can never outrun the collision substeps. */
   clampSpeed(): void {
     this.body.getLinearVelocityToRef(this.scratch);

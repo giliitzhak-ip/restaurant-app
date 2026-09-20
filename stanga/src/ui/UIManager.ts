@@ -24,6 +24,7 @@ import {
   type KeyMap,
 } from '../input/KeyBindings';
 import {
+  aimedShotType,
   AUDIO_CAPTIONS,
   teamLabel,
   OUTCOME_DETAILS,
@@ -439,7 +440,8 @@ export class UIManager {
     meter.stamina.style.width = `${Math.round(
       (player.stamina / GameConfig.player.staminaMax) * 100,
     )}%`;
-    meter.shotType.textContent = SHOT_TYPE_LABELS[player.lofted ? 'lob' : 'flat'];
+    // What this player's next strike would be, given where they are aiming.
+    meter.shotType.textContent = SHOT_TYPE_LABELS[aimedShotType(player)];
   }
 
   showEvent(

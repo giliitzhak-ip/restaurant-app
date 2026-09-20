@@ -79,6 +79,11 @@ export class RemoteInputController implements PlayerController {
       this.command.aimY = held.ay;
       this.command.sprintPressed = (held.f & InputFlag.Sprint) !== 0;
       this.command.shootHeld = (held.f & InputFlag.ShootHeld) !== 0;
+      this.command.passHeld = (held.f & InputFlag.PassHeld) !== 0;
+      this.command.chipRequested = (held.f & InputFlag.ChipRequested) !== 0;
+      this.command.verticalAim = held.va;
+      this.command.spin = held.sn;
+      this.command.preferredPassSlot = held.pt;
     }
     return this.command;
   }

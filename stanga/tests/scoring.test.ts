@@ -4,7 +4,7 @@ import { GameConfig } from '../src/config/GameConfig';
 import type { ShotRecord, TeamId } from '../src/game/MatchState';
 
 function shot(shotId = 'shot-1', playerId = 'home-1', teamId: TeamId = 'home'): ShotRecord {
-  return { shotId, playerId, teamId, originatingTick: 50, shotType: 'flat', power: 0.8 };
+  return { shotId, playerId, teamId, originatingTick: 50, shotType: 'ground', power: 0.8 };
 }
 
 function contact(overrides: Partial<ContactInput> = {}): ContactInput {

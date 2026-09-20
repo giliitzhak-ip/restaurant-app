@@ -67,6 +67,12 @@ export function describeGamepad(pad: Gamepad, fallbackIndex: number): string {
   return cleaned.length > 0 ? cleaned.slice(0, 32) : `בקר ${fallbackIndex + 1}`;
 }
 
+/** Keeps a raw axis inside -1..1, where a worn stick can overshoot. */
+function clampUnit(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(-1, Math.min(1, value));
+}
+
 export class HumanGamepadController implements PlayerController {
   readonly kind = 'gamepad' as const;
   private readonly command: PlayerCommand;
@@ -74,6 +80,8 @@ export class HumanGamepadController implements PlayerController {
   private shootWasHeld = false;
   private lobWasHeld = false;
   private tackleWasHeld = false;
+  private passWasHeld = false;
+  private juggleWasHeld = false;
   private startWasHeld = false;
   private deadZone: number = GameConfig.input.deadZone;
   private connected = true;
@@ -152,6 +160,12 @@ export class HumanGamepadController implements PlayerController {
     command.moveY = worldMove.z;
 
     const aim = applyDeadZone(axis(2), -axis(3), this.deadZone);
+    // The right stick does double duty: where it points is where the player
+    // faces, and how far up or sideways it is pushed is how high and how bent
+    // the next strike will be. That is what makes the crossbar reachable on a
+    // pad without a second stick.
+    command.verticalAim = clampUnit(-axis(3));
+    command.spin = clampUnit(axis(2)) * 0.85;
     if (aim.magnitude > 0) {
       const worldAim = rotateByYaw(aim.x, aim.y, context.cameraYaw);
       command.aimX = worldAim.x;
@@ -176,7 +190,22 @@ export class HumanGamepadController implements PlayerController {
     command.tacklePressed = tackleHeld && !this.tackleWasHeld;
     this.tackleWasHeld = tackleHeld;
 
-    const lobHeld = pressed(GamepadButton.Y);
+    // B/Circle passes, Y/Triangle flicks the ball up, the left trigger turns
+    // the next strike into a chip. A/Cross stays the shot, as it always was.
+    const passHeld = pressed(GamepadButton.B);
+    command.passHeld = passHeld;
+    command.passPressed = passHeld && !this.passWasHeld;
+    command.passReleased = !passHeld && this.passWasHeld;
+    this.passWasHeld = passHeld;
+
+    const juggleHeld = pressed(GamepadButton.Y);
+    command.jugglePressed = juggleHeld && !this.juggleWasHeld;
+    this.juggleWasHeld = juggleHeld;
+
+    command.chipRequested =
+      value(GamepadButton.LeftTrigger) > 0.35 || pressed(GamepadButton.LeftBumper);
+
+    const lobHeld = pressed(GamepadButton.DpadUp) && pressed(GamepadButton.LeftBumper);
     command.lobToggle = lobHeld && !this.lobWasHeld;
     this.lobWasHeld = lobHeld;
 

@@ -32,6 +32,15 @@ interface StickPointer {
   y: number;
 }
 
+/** How far a finger travels on the kick button for a full aim or curl. */
+const AIM_SWIPE_PIXELS = 90;
+const SPIN_SWIPE_PIXELS = 110;
+
+function clampUnit(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(-1, Math.min(1, value));
+}
+
 export class HumanTouchController implements PlayerController {
   readonly kind = 'touch' as const;
   readonly root: HTMLDivElement;
@@ -43,6 +52,15 @@ export class HumanTouchController implements PlayerController {
   private readonly sprintButton: HTMLButtonElement;
   private readonly tackleButton: HTMLButtonElement;
   private readonly lobButton: HTMLButtonElement;
+  private readonly passButton: HTMLButtonElement;
+  private readonly juggleButton: HTMLButtonElement;
+  /** Where the kick finger went down, so a drag on it can steer the strike. */
+  private shootOrigin: { x: number; y: number } | null = null;
+  private verticalAim = 0;
+  private spin = 0;
+  private passPointer: number | null = null;
+  private passWasHeld = false;
+  private jugglePending = false;
   private readonly nameTag: HTMLSpanElement;
 
   private readonly command: PlayerCommand;
@@ -91,7 +109,16 @@ export class HumanTouchController implements PlayerController {
     this.sprintButton = makeButton('touch-button touch-button--sprint', 'ספרינט');
     this.tackleButton = makeButton('touch-button touch-button--tackle', 'חטיפה');
     this.lobButton = makeButton('touch-button touch-button--loft', 'שטוחה');
-    actions.append(this.lobButton, this.tackleButton, this.sprintButton, this.shootButton);
+    this.passButton = makeButton('touch-button touch-button--pass', 'מסירה');
+    this.juggleButton = makeButton('touch-button touch-button--juggle', 'הקפצה');
+    actions.append(
+      this.lobButton,
+      this.juggleButton,
+      this.tackleButton,
+      this.passButton,
+      this.sprintButton,
+      this.shootButton,
+    );
 
     this.root.append(this.nameTag, this.stickZone, actions);
 
@@ -104,6 +131,29 @@ export class HumanTouchController implements PlayerController {
     this.bindTap(this.lobButton, () => {
       this.lobPending = true;
     });
+    this.bindHold(this.passButton, 'pass');
+    this.bindTap(this.juggleButton, () => {
+      this.jugglePending = true;
+    });
+    this.bindKickAiming();
+  }
+
+  /**
+   * Dragging on the kick button while it is held aims the strike: up for a
+   * lofted ball, sideways for curl. It is the phone's stand-in for a right
+   * stick, and it only listens while the shot is actually charging.
+   */
+  private bindKickAiming(): void {
+    const onMove = (event: PointerEvent) => {
+      if (this.shootPointer !== event.pointerId || !this.shootOrigin) return;
+      event.preventDefault();
+      const dx = event.clientX - this.shootOrigin.x;
+      const dy = this.shootOrigin.y - event.clientY;
+      this.verticalAim = clampUnit(dy / AIM_SWIPE_PIXELS);
+      this.spin = clampUnit(dx / SPIN_SWIPE_PIXELS);
+    };
+    this.shootButton.addEventListener('pointermove', onMove, { passive: false });
+    this.cleanups.push(() => this.shootButton.removeEventListener('pointermove', onMove));
   }
 
   mount(parent: HTMLElement): void {
@@ -147,9 +197,15 @@ export class HumanTouchController implements PlayerController {
       this.shootPointer = null;
     }
     this.sprintPointer = null;
+    this.passPointer = null;
     this.stick = null;
     this.tacklePending = false;
     this.lobPending = false;
+    this.jugglePending = false;
+    this.passWasHeld = false;
+    this.shootOrigin = null;
+    this.verticalAim = 0;
+    this.spin = 0;
     this.shootWasHeld = false;
     this.sequence.reset();
     this.stickBase.classList.remove('is-active');
@@ -183,10 +239,21 @@ export class HumanTouchController implements PlayerController {
     command.shootReleased = !shootHeld && this.shootWasHeld;
     this.shootWasHeld = shootHeld;
 
+    const passHeld = this.passPointer !== null;
+    command.passHeld = passHeld;
+    command.passPressed = passHeld && !this.passWasHeld;
+    command.passReleased = !passHeld && this.passWasHeld;
+    this.passWasHeld = passHeld;
+
     command.tacklePressed = this.tacklePending;
     this.tacklePending = false;
+    command.jugglePressed = this.jugglePending;
+    this.jugglePending = false;
     command.lobToggle = this.lobPending;
     this.lobPending = false;
+
+    command.verticalAim = this.verticalAim;
+    command.spin = this.spin;
 
     return command;
   }
@@ -262,10 +329,20 @@ export class HumanTouchController implements PlayerController {
     });
   }
 
-  private bindHold(button: HTMLElement, kind: 'shoot' | 'sprint'): void {
+  private bindHold(button: HTMLElement, kind: 'shoot' | 'sprint' | 'pass'): void {
+    const get = () =>
+      kind === 'shoot'
+        ? this.shootPointer
+        : kind === 'pass'
+          ? this.passPointer
+          : this.sprintPointer;
+    const set = (pointerId: number | null) => {
+      if (kind === 'shoot') this.shootPointer = pointerId;
+      else if (kind === 'pass') this.passPointer = pointerId;
+      else this.sprintPointer = pointerId;
+    };
     const onDown = (event: PointerEvent) => {
-      const current = kind === 'shoot' ? this.shootPointer : this.sprintPointer;
-      if (current !== null) return;
+      if (get() !== null) return;
       event.preventDefault();
       try {
         button.setPointerCapture(event.pointerId);
@@ -273,14 +350,19 @@ export class HumanTouchController implements PlayerController {
         // Best-effort; ownership is tracked by pointerId regardless.
       }
       button.classList.add('is-pressed');
-      if (kind === 'shoot') this.shootPointer = event.pointerId;
-      else this.sprintPointer = event.pointerId;
+      set(event.pointerId);
+      if (kind === 'shoot') {
+        // A fresh charge starts from a neutral aim, so the last swipe does
+        // not silently decide the next shot.
+        this.shootOrigin = { x: event.clientX, y: event.clientY };
+        this.verticalAim = 0;
+        this.spin = 0;
+      }
     };
     const onUp = (event: PointerEvent) => {
-      const current = kind === 'shoot' ? this.shootPointer : this.sprintPointer;
-      if (current !== event.pointerId) return;
-      if (kind === 'shoot') this.shootPointer = null;
-      else this.sprintPointer = null;
+      if (get() !== event.pointerId) return;
+      set(null);
+      if (kind === 'shoot') this.shootOrigin = null;
       button.classList.remove('is-pressed');
     };
     button.addEventListener('pointerdown', onDown);

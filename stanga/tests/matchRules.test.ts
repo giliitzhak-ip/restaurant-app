@@ -41,7 +41,7 @@ function scoreEvent(overrides: Partial<ScoreEventRecord> = {}): ScoreEventRecord
     points: 1,
     tick: 1,
     ownGoal: false,
-    shotType: 'flat',
+    shotType: 'ground',
     power: 0.8,
     ...overrides,
   };

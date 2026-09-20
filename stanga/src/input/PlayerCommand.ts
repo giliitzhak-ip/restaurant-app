@@ -10,6 +10,16 @@
  * the current state of the control.
  */
 
+/**
+ * The five shapes a strike can take.
+ *
+ * The player never picks one directly: they aim, load and optionally ask for a
+ * chip or a curl, and the *server* works out which of these it was. Reporting
+ * it back is what lets the animation, the sound and the statistics agree with
+ * the physics.
+ */
+export type ShotProfile = 'ground' | 'driven' | 'lofted' | 'chip' | 'curled';
+
 export interface PlayerCommand {
   /** Simulation tick this command applies to. */
   tickId: number;
@@ -33,6 +43,16 @@ export interface PlayerCommand {
   aimX: number;
   aimY: number;
 
+  /**
+   * How high the strike is aimed, -1 along the ground to +1 straight up.
+   * Continuous on purpose: a flat/lofted toggle cannot pick out a crossbar.
+   */
+  verticalAim: number;
+  /** Requested side spin, -1 to +1. A request: the server decides how much. */
+  spin: number;
+  /** Asks for a chip — a short, steep lift over somebody. */
+  chipRequested: boolean;
+
   sprintPressed: boolean;
   /** True on the single tick the shoot control went down. */
   shootPressed: boolean;
@@ -44,6 +64,22 @@ export interface PlayerCommand {
   tacklePressed: boolean;
   /** True on the single tick the player asked to swap flat/lofted. */
   lobToggle: boolean;
+
+  /** True on the single tick the pass control went down. */
+  passPressed: boolean;
+  /** True while the pass control is held, which asks for a longer ball. */
+  passHeld: boolean;
+  /** True on the single tick the pass control was released. */
+  passReleased: boolean;
+  /**
+   * Which team-mate the player would like to pass to, by slot index, or -1 for
+   * "you choose". A request only: the server picks a legal target and may well
+   * pick a different one.
+   */
+  preferredPassSlot: number;
+
+  /** True on the single tick the player asked to flick the ball up. */
+  jugglePressed: boolean;
 }
 
 export function createPlayerCommand(playerId: string, tickId = 0): PlayerCommand {
@@ -55,12 +91,20 @@ export function createPlayerCommand(playerId: string, tickId = 0): PlayerCommand
     moveY: 0,
     aimX: 0,
     aimY: 0,
+    verticalAim: 0,
+    spin: 0,
+    chipRequested: false,
     sprintPressed: false,
     shootPressed: false,
     shootHeld: false,
     shootReleased: false,
     tacklePressed: false,
     lobToggle: false,
+    passPressed: false,
+    passHeld: false,
+    passReleased: false,
+    preferredPassSlot: -1,
+    jugglePressed: false,
   };
 }
 
@@ -76,12 +120,20 @@ export function resetPlayerCommand(
   command.moveY = 0;
   command.aimX = 0;
   command.aimY = 0;
+  command.verticalAim = 0;
+  command.spin = 0;
+  command.chipRequested = false;
   command.sprintPressed = false;
   command.shootPressed = false;
   command.shootHeld = false;
   command.shootReleased = false;
   command.tacklePressed = false;
   command.lobToggle = false;
+  command.passPressed = false;
+  command.passHeld = false;
+  command.passReleased = false;
+  command.preferredPassSlot = -1;
+  command.jugglePressed = false;
   return command;
 }
 

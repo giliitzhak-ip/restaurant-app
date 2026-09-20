@@ -303,7 +303,7 @@ describe('local two-player flow', () => {
     state.players[1]!.isHuman = true;
     state.players[0]!.name = 'דנה';
     state.players[1]!.name = 'יואב';
-    state.players[1]!.lofted = true;
+    state.players[1]!.verticalAim = 0.9;
 
     ui.setTwoPlayerHud(true);
     ui.updateHud(state, [0.25, 0.75]);

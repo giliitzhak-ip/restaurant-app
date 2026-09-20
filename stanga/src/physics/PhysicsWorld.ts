@@ -110,9 +110,9 @@ export class PhysicsWorld {
    * Advances the world by exactly `dt` seconds, split into fixed substeps.
    * Returns the collisions observed during this step; the array is reused.
    */
-  step(dt: number): readonly RawCollision[] {
+  step(dt: number, substepOverride?: number): readonly RawCollision[] {
     this.collisionBuffer.length = 0;
-    const substeps = Math.max(1, GameConfig.physics.substeps);
+    const substeps = Math.max(1, substepOverride ?? GameConfig.physics.substeps);
     const subDelta = dt / substeps;
     for (let i = 0; i < substeps; i += 1) {
       this.engine._step(subDelta);

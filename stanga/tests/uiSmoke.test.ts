@@ -273,7 +273,8 @@ describe('UI smoke', () => {
     state.timeRemaining = 61;
     state.players[0]!.stamina = GameConfig.player.staminaMax / 2;
 
-    state.players[0]!.lofted = true;
+    // The HUD reads where the shot is aimed, not a flat/lofted flag.
+    state.players[0]!.verticalAim = 0.9;
     ui.updateHud(state, [0.5]);
 
     expect(document.getElementById('hud-score-home')?.textContent).toBe('5');

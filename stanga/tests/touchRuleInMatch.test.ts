@@ -132,6 +132,43 @@ describe('the touch rule in a running match', () => {
     expect(headless.match.state.touch.lastMeaningfulTouchPlayerId).toBeNull();
   }, 30_000);
 
+  it('passes only to a legal team-mate, whoever the client asks for', () => {
+    const headless = makeMatch();
+    headless.match.setRoster(TWO_VS_TWO_ROSTER);
+    const passes: { playerId: string; targetId: string }[] = [];
+    headless.match.events.on('pass', (event) => passes.push(event));
+    headless.match.start();
+
+    const drive = driver(headless, 'home-1');
+    for (let i = 0; i < 200; i += 1) drive.step();
+
+    // Stand the passer on the ball with a team-mate in front and an opponent
+    // in exactly the same place, then ask for every slot there is — including
+    // the opponent's and ones that do not exist.
+    const passer = headless.match.state.players.find((player) => player.id === 'home-1');
+    const mate = headless.match.state.players.find((player) => player.id === 'home-2');
+    const rival = headless.match.state.players.find((player) => player.id === 'away-1');
+    expect(passer && mate && rival).toBeTruthy();
+
+    for (const preferredPassSlot of [-1, 0, 1, 2, 7, -99]) {
+      headless.match.bodyFor('home-1')?.reset({ x: 0, y: 0, z: 0 });
+      headless.match.bodyFor('home-2')?.reset({ x: 0, y: 0, z: 6 });
+      headless.match.bodyFor('away-1')?.reset({ x: 0.9, y: 0, z: 6 });
+      headless.match.ball.reset({ x: 0, y: GameConfig.ball.radius, z: 0.8 });
+      for (let i = 0; i < 20; i += 1) drive.step();
+
+      drive.step({ passPressed: true, preferredPassSlot, aimX: 0, aimY: 1 });
+      for (let i = 0; i < 20; i += 1) drive.step();
+    }
+
+    expect(passes.length).toBeGreaterThan(0);
+    for (const pass of passes) {
+      expect(pass.playerId).toBe('home-1');
+      // Never the opponent, never a slot that does not exist, never itself.
+      expect(pass.targetId).toBe('home-2');
+    }
+  }, 30_000);
+
   it('lets two computer players play a full match without deadlocking', () => {
     const headless = makeMatch();
     let touches = 0;

@@ -192,6 +192,34 @@ export const GameConfig = {
     loftRatio: 0.62,
     /** Small permanent lift so flat shots still leave the ground slightly. */
     flatLift: 0.08,
+    /**
+     * Lift at the two ends of the vertical aim, as a fraction of the impulse.
+     * The low end still leaves the ground a little, because a ball pressed
+     * into the asphalt just stops; the high end clears a player but is not a
+     * straight-up punt.
+     */
+    minLift: 0.03,
+    maxLift: 0.95,
+    /** Exponent on the vertical aim. >1 puts the fine control near the ground. */
+    liftCurve: 2.2,
+    /** A chip trades reach for height: less forward impulse, much more lift. */
+    chipForwardScale: 0.52,
+    chipLift: 1.25,
+    /** Ceiling on chip power, so it stays a touch rather than a clearance. */
+    chipMaxPower: 0.55,
+    /** Side spin, in radians per second at full request. */
+    maxSpinRate: 26,
+    /** Above this spin rate a strike is reported as curled. */
+    curlThreshold: 9,
+    /** Above this lift fraction a strike is reported as lofted. */
+    loftedThreshold: 0.45,
+    /** Above this power a low strike is driven rather than rolled. */
+    drivenPowerThreshold: 0.55,
+    /**
+     * Magnus force coefficient. Small: side spin should bend a long ball by a
+     * metre or so, not steer it round a corner.
+     */
+    magnusCoefficient: 0.00042,
     /** The ball must be this close to be kickable. */
     range: 1.6,
     /** Movement speed multiplier while a shot is being charged. */
@@ -204,6 +232,43 @@ export const GameConfig = {
     /** Half-angle (radians) of the cone in front of the player that can be kicked. */
     coneHalfAngle: 1.15,
     cooldownSeconds: 0.35,
+  },
+
+  /** A pass is a kick with the server choosing where it goes. */
+  pass: {
+    /** Impulse magnitude at a full-length pass. */
+    maxImpulse: 6.4,
+    /** Shortest pass the server will play, in metres. */
+    minRange: 1.5,
+    /** A ground pass reaches at most this far. */
+    maxRange: 16,
+    /** Held pass: a ball into space ahead of the receiver. */
+    throughMaxRange: 24,
+    /** Seconds of holding to reach a full-length through ball. */
+    holdSeconds: 0.55,
+    /** How far in front of a moving receiver the ball is aimed, in seconds. */
+    leadSeconds: 0.35,
+    /** Lift fraction of a ground pass and of a through ball. */
+    groundLift: 0.06,
+    throughLift: 0.34,
+    /** Half-angle of the cone a preferred target must fall inside. */
+    coneHalfAngle: 1.4,
+    cooldownSeconds: 0.3,
+    /** Seconds after a pass in which a score still counts as assisted. */
+    assistWindowSeconds: 6,
+  },
+
+  /** Flicking the ball up to keep an aerial chain alive. */
+  juggle: {
+    /** Upward impulse of a flick. */
+    lift: 2.15,
+    /** Forward impulse, so a chain can carry the ball up the pitch. */
+    forward: 1.35,
+    /** The ball must be within this distance to be flicked. */
+    range: 1.35,
+    /** And below this height: you cannot head a ball that is over the bar. */
+    maxHeight: 2.2,
+    cooldownSeconds: 0.22,
   },
 
   tackle: {

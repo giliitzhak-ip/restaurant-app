@@ -243,12 +243,41 @@ export function ballOutOfBounds(ballPosition: Vec3): boolean {
   const halfLength = GameConfig.field.length / 2;
   const halfWidth = GameConfig.field.width / 2;
   const margin = 2.5;
-  return (
+  if (
     Math.abs(ballPosition.x) > halfWidth + margin ||
     Math.abs(ballPosition.z) > halfLength + GameConfig.goal.depth + margin ||
     ballPosition.y < -4 ||
     ballPosition.y > 30
-  );
+  ) {
+    return true;
+  }
+
+  // Behind a goal line but not between the posts: the ball has gone dead, and
+  // without this it can sit against the back wall for the rest of the match
+  // with nobody able to reach it.
+  const behindLine = Math.abs(ballPosition.z) > halfLength + GameConfig.ball.radius;
+  const outsideFrame =
+    Math.abs(ballPosition.x) > GameConfig.goal.width / 2 + GameConfig.goal.postRadius * 2;
+  const overTheBar = ballPosition.y > GameConfig.goal.height + GameConfig.goal.postRadius * 2;
+  return behindLine && (outsideFrame || overTheBar);
+}
+
+/**
+ * Where a dead ball comes back into play: in front of the goal it went dead
+ * behind, off to the side it went out on, so the restart is never a tap-in.
+ */
+export function deadBallRestart(ballPosition: Vec3): Vec3 {
+  const halfLength = GameConfig.field.length / 2;
+  const halfWidth = GameConfig.field.width / 2;
+  if (Math.abs(ballPosition.z) <= halfLength) {
+    return { x: 0, y: GameConfig.ball.radius + 0.2, z: 0 };
+  }
+  const side = ballPosition.x >= 0 ? 1 : -1;
+  return {
+    x: side * halfWidth * 0.45,
+    y: GameConfig.ball.radius + 0.2,
+    z: Math.sign(ballPosition.z) * halfLength * 0.66,
+  };
 }
 
 export function outcomeOf(state: MatchState): MatchOutcome {

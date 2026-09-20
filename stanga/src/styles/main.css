@@ -1025,11 +1025,27 @@ kbd {
 
 .touch-button--loft {
   grid-column: 2;
+  grid-row: 4;
+  width: 108px;
+  height: 38px;
+  border-radius: var(--radius);
+  font-size: 0.76rem;
+}
+
+/* Pass sits under the kick button, where a thumb already is; juggle sits with
+   the other one-shot actions on the inner column. */
+.touch-button--pass {
+  grid-column: 2;
   grid-row: 3;
   width: 108px;
-  height: 42px;
+  height: 50px;
   border-radius: var(--radius);
-  font-size: 0.78rem;
+  font-size: 0.86rem;
+}
+
+.touch-button--juggle {
+  grid-column: 1;
+  grid-row: 3;
 }
 
 .touch-button--loft.is-active {
@@ -1224,6 +1240,10 @@ kbd {
   .touch-button--kick {
     width: 96px;
     height: 96px;
+  }
+  .touch-button--pass {
+    width: 92px;
+    height: 42px;
   }
   .touch-button--loft {
     width: 96px;

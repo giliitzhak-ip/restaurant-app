@@ -10,7 +10,7 @@ import { InputFlag, type NetInput } from '../src/net/protocol';
 import { RemoteInputController } from '../src/server/RemoteInputController';
 
 function input(n: number, patch: Partial<NetInput> = {}): NetInput {
-  return { n, mx: 0, my: 1, ax: 0, ay: 1, f: 0, ...patch };
+  return { n, mx: 0, my: 1, ax: 0, ay: 1, va: 0, sn: 0, pt: -1, f: 0, ...patch };
 }
 
 describe('RemoteInputController', () => {
@@ -63,6 +63,18 @@ describe('RemoteInputController', () => {
     expect(repeated.shootReleased).toBe(false);
     expect(repeated.shootPressed).toBe(false);
     expect(repeated.tacklePressed).toBe(false);
+  });
+
+  it('carries the aim and the chip request across a dropped packet too', () => {
+    const controller = new RemoteInputController('net:home-1', 'home-1', 6);
+    controller.enqueue(input(1, { va: 0.7, sn: -0.4, pt: 1, f: InputFlag.ChipRequested }));
+    controller.poll('home-1', 1);
+
+    const repeated = controller.poll('home-1', 2);
+    expect(repeated.verticalAim).toBeCloseTo(0.7);
+    expect(repeated.spin).toBeCloseTo(-0.4);
+    expect(repeated.preferredPassSlot).toBe(1);
+    expect(repeated.chipRequested).toBe(true);
   });
 
   it('keeps a wind-up alive across a dropped packet', () => {

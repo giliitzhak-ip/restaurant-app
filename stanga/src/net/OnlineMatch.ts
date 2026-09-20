@@ -232,7 +232,7 @@ export class OnlineMatch {
           points: event.points ?? 1,
           tick,
           ownGoal: last?.ownGoal ?? false,
-          shotType: 'flat',
+          shotType: 'ground',
           power: 0,
         };
         this.match.events.emit('scored', record);

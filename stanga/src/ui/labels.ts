@@ -1,5 +1,5 @@
 /** Hebrew UI strings. Code stays English; everything the player reads lives here. */
-import type { ScoreKind } from '../config/GameConfig';
+import { GameConfig, type ScoreKind } from '../config/GameConfig';
 import type { MatchOutcome, ShotType, TeamId } from '../game/MatchState';
 
 export const SCORE_KIND_LABELS: Record<ScoreKind, string> = {
@@ -22,8 +22,12 @@ export const OUTCOME_DETAILS: Record<MatchOutcome, string> = {
 };
 
 export const SHOT_TYPE_LABELS: Record<ShotType, string> = {
-  flat: 'בעיטה שטוחה',
-  lob: 'בעיטה מוגבהת',
+  ground: 'בעיטה שטוחה',
+  driven: 'בעיטה חזקה',
+  lofted: 'בעיטה מוגבהת',
+  chip: 'הרמה קצרה',
+  curled: 'בעיטה מסובבת',
+  pass: 'מסירה',
 };
 
 /** Which goal a team attacks, in words, for the lobby. */
@@ -39,6 +43,26 @@ export const TEAM_LABELS: Record<TeamId, string> = {
 
 export function teamLabel(team: TeamId): string {
   return TEAM_LABELS[team];
+}
+
+/**
+ * What a player's next strike would be, judged from where they are aiming.
+ * The real answer comes from the server after the fact; this is the HUD's
+ * preview, and it uses the same thresholds.
+ */
+export function aimedShotType(player: {
+  verticalAim: number;
+  chipRequested: boolean;
+  spin: number;
+  kickCharge: number;
+}): ShotType {
+  const { kick } = GameConfig;
+  if (player.chipRequested) return 'chip';
+  if (Math.abs(player.spin * kick.maxSpinRate) >= kick.curlThreshold) return 'curled';
+  const aimShare = Math.pow((player.verticalAim + 1) / 2, kick.liftCurve);
+  const lift = kick.minLift + aimShare * (kick.maxLift - kick.minLift);
+  if (lift >= kick.loftedThreshold) return 'lofted';
+  return player.kickCharge >= kick.drivenPowerThreshold ? 'driven' : 'ground';
 }
 
 export function attackingGoalLabel(team: TeamId): string {
