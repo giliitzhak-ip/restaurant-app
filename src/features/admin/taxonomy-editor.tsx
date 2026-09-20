@@ -310,7 +310,7 @@ function CollectionForm({ collection }: { collection: Collection | null }) {
               }
             />
           </Field>
-          <label className="flex items-center gap-2 text-sm text-ink-soft">
+          <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-ink-soft">
             <Checkbox
               checked={form.featured}
               onCheckedChange={(checked) =>

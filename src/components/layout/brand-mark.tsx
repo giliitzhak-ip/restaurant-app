@@ -42,7 +42,16 @@ export function BrandMark({
   if (!href) return content;
 
   return (
-    <Link href={href} aria-label={`${brand.nameLatin} — ${brand.tagline}`}>
+    /*
+     * `min-h-11` because the wordmark is two lines of small type — 34px in
+     * the header, 21px in the footer — and it is the one link on the page
+     * every visitor eventually aims for.
+     */
+    <Link
+      href={href}
+      aria-label={`${brand.nameLatin} — ${brand.tagline}`}
+      className="inline-flex min-h-11 items-center rounded-xs"
+    >
       {content}
     </Link>
   );

@@ -162,7 +162,7 @@ export function CouponEditor({ coupons }: { coupons: Coupon[] }) {
               }
             />
           </Field>
-          <label className="flex items-end gap-2 pb-3 text-sm text-ink-soft">
+          <label className="flex min-h-11 cursor-pointer items-end gap-2 pb-3 text-sm text-ink-soft">
             <Checkbox
               checked={form.active}
               onCheckedChange={(checked) => update({ active: checked === true })}

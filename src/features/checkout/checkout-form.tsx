@@ -389,7 +389,7 @@ export function CheckoutForm({
               ))}
             </ul>
 
-            <label className="flex cursor-pointer items-start gap-2.5 text-xs leading-relaxed text-ink-soft">
+            <label className="flex min-h-11 cursor-pointer items-start gap-2.5 py-1 text-xs leading-relaxed text-ink-soft">
               <Checkbox
                 checked={termsAccepted === true}
                 onCheckedChange={(checked) =>

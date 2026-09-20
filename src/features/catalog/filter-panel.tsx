@@ -141,7 +141,7 @@ function CheckboxRow({
   return (
     <label
       htmlFor={id}
-      className="flex cursor-pointer items-center gap-2.5 py-1.5 text-sm text-ink-soft transition-colors hover:text-ink"
+      className="interactive flex min-h-11 cursor-pointer items-center gap-2.5 py-1.5 text-sm text-ink-soft hover:text-ink"
     >
       <Checkbox id={id} checked={checked} onCheckedChange={onChange} />
       {swatch ? (

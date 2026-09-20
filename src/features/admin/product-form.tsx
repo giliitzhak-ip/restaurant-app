@@ -564,7 +564,7 @@ export function ProductForm({
               onChange={(event) => setSpec("acousticRating", event.target.value)}
             />
           </Field>
-          <label className="flex items-end gap-2 pb-2.5 text-sm text-ink-soft">
+          <label className="flex min-h-11 cursor-pointer items-end gap-2 pb-2.5 text-sm text-ink-soft">
             <Checkbox
               checked={Boolean(form.specs.underfloorHeating)}
               onCheckedChange={(checked) =>

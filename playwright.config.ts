@@ -46,17 +46,17 @@ export default defineConfig({
     {
       name: "tablet-768",
       use: { ...devices["Desktop Chrome"], viewport: { width: 768, height: 1024 } },
-      testMatch: /(shop|a11y)/,
+      testMatch: /(shop|a11y|design-system)/,
     },
     {
       name: "mobile-375",
       use: { ...devices["Desktop Chrome"], viewport: { width: 375, height: 812 }, isMobile: false },
-      testMatch: /(shop|a11y)/,
+      testMatch: /(shop|a11y|design-system)/,
     },
     {
       name: "mobile-430",
       use: { ...devices["Desktop Chrome"], viewport: { width: 430, height: 932 }, isMobile: false },
-      testMatch: /(shop|a11y)/,
+      testMatch: /(shop|a11y|design-system)/,
     },
   ],
 
