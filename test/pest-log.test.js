@@ -175,7 +175,9 @@ await withPage(FULL,async p=>{
   await p.click('[data-a="pickSections"]');
   ok('נפתחה חלונית בחירה',!!(await p.$('[data-sec]')));
   const def=await p.evaluate(()=>[...A._clSel]);
-  ok('ברירת מחדל: אצווה ומינון לא מסומנים',!def.includes('batch')&&!def.includes('dose'));
+  ok('מספר אצווה אינו ניתן להעתקה כלל',
+     !(await p.evaluate(()=>ALL_SECTIONS())).includes('batch'));
+  ok('ברירת מחדל: מינון לא מסומן',!def.includes('dose'));
   ok('ברירת מחדל: ממצאים קודמים לא מסומנים',!def.includes('findings'));
   ok('ברירת מחדל: לקוח, כתובת, תחנות, תכשיר ואחריות מסומנים',
      ['client','address','stations','product','warPeriod','spots'].every(k=>def.includes(k)));
@@ -184,13 +186,14 @@ await withPage(FULL,async p=>{
   await p.click('[data-a="secNone"]');
   eq('נקה בחירה',await p.evaluate(()=>A._clSel.size),0);
   await p.click('[data-a="secDef"]');
-  await p.evaluate(()=>{A._clSel=new Set(['product','batch']);sectionSheet()});
+  await p.evaluate(()=>{A._clSel=new Set(['product','dose']);sectionSheet()});
   await p.click('[data-a="secLoad"]');
-  const r=await p.evaluate(()=>({b:cur.apps[0].batch,d:cur.apps[0].dose,
+  const r=await p.evaluate(()=>({b:cur.apps[0].batch,p:cur.apps[0].product,
     keys:Object.keys(cur.verify),sections:cur.copied_sections}));
-  ok('נטענו רק השדות שנבחרו',r.b==='BX-2291'&&r.d==='');
-  ok('אצווה סומנה לאימות',r.keys.some(k=>k.startsWith('batch:')));
-  ok('נשמרו קבוצות המידע שהועתקו',r.sections.includes('batch'));
+  ok('נטענו רק השדות שנבחרו',r.p==='סופר ג\'ל');
+  ok('מספר האצווה לא הועתק גם כשנבחר מינון',r.b==='');
+  ok('אין דרישת אימות לאצווה כי היא לא הועתקה',!r.keys.some(k=>k.startsWith('batch:')));
+  ok('נשמרו קבוצות המידע שהועתקו',r.sections.includes('dose'));
 });
 await withPage(FULL,async p=>{
   await startJournal(p,PLACE_A);
@@ -208,18 +211,19 @@ await withPage(FULL,async p=>{
   await p.click('[data-a="secLoad"]');
   await p.evaluate(()=>{cur.step=3;render()});
   const id=await p.evaluate(()=>cur.apps[0].id);
-  ok('שדה האצווה מסומן בצבע אזהרה',!!(await p.$('.vfield.vpend')));
+  const ex=await p.evaluate(()=>({b:cur.apps[0].batch,e:cur.apps[0].pkgExpiry,
+    u:cur.apps[0].amountUsed,w:cur.apps[0].waterAmount,a:cur.apps[0].areas}));
+  eq('נתוני הביצוע נוקו בשכפול',[ex.b,ex.e,ex.u,ex.w,ex.a],['','','','','']);
   ok('מוצג "נדרש אימות"',(await p.textContent('#app')).includes('נדרש אימות'));
-  ok('קיים כפתור "האצווה עדיין בשימוש"',(await p.textContent('#app')).includes('האצווה עדיין בשימוש'));
-  await p.click(`[data-a="vOk"][data-key="batch:${id}"]`);
-  const v=await p.evaluate(i=>cur.verify['batch:'+i],id);
-  ok('אישור האצווה נשמר עם מי ומתי',v.state==='ok'&&v.at>0&&v.by.includes('יצחק כהן'),JSON.stringify(v));
-  /* שינוי מינון מאמת אותו אוטומטית */
-  await p.evaluate(i=>{const idx=cur.apps.findIndex(a=>a.id===i);
-    const el=document.querySelector(`[data-f="apps.${idx}.dose"]`);
-    el.value='5';el.dispatchEvent(new Event('input',{bubbles:true}))},id);
-  const dv=await p.evaluate(i=>cur.verify['dose:'+i],id);
-  ok('שינוי המינון נרשם כאימות',dv.state==='ok'&&dv.how==='changed',JSON.stringify(dv));
+  /* ביומן ישן ללא תכשיר מהמאגר, המינון שבוצע הוא נתון ביצוע ולכן נוקה ולא הועתק */
+  const dkey=await p.evaluate(i=>cur.verify['dose:'+i],id);
+  ok('המינון שבוצע לא הועתק ולכן אין לו דרישת אימות',dkey===undefined,JSON.stringify(dkey));
+  eq('שדה המינון נוקה',await p.evaluate(()=>cur.apps[0].dose),'');
+  const pv=await p.evaluate(i=>(cur.verify['product:'+i]||{}).state,id);
+  eq('התכשיר דורש אימות מחדש',pv,'pending');
+  await p.click(`[data-a="vOk"][data-key="product:${id}"]`);
+  const v=await p.evaluate(i=>cur.verify['product:'+i],id);
+  ok('אישור התכשיר נשמר עם מי ומתי',v.state==='ok'&&v.at>0&&v.by.includes('יצחק כהן'),JSON.stringify(v));
   /* אזהרות דורשות אישור מפורש – עריכה לבדה לא מספיקה */
   await p.evaluate(()=>{cur.step=4;render()});
   await p.evaluate(()=>{const el=document.querySelector('[data-f="warnBefore.riskHuman"]');
@@ -240,13 +244,17 @@ await withPage(FULL,async p=>{
     const pend=Object.keys(cur.verify).filter(k=>cur.verify[k].state==='pending');
     return {bulk:pend.filter(k=>vBulkOk(k)),strict:pend.filter(k=>!vBulkOk(k))};
   });
-  ok('אצווה, מינון, ממצאים ואזהרות אינם ניתנים לאישור מרוכז',
-     r.strict.some(k=>k.startsWith('batch:'))&&r.strict.some(k=>k.startsWith('dose:'))&&
-     r.strict.some(k=>k.startsWith('finding:'))&&r.strict.includes('warnBefore')&&r.strict.includes('reentry'),
+  ok('ממצאים ואזהרות אינם ניתנים לאישור מרוכז',
+     r.strict.some(k=>k.startsWith('finding:'))&&r.strict.includes('warnBefore')&&
+     r.strict.includes('reentry')&&r.strict.includes('warnAfter'),
      JSON.stringify(r));
+  ok('אצווה לעולם אינה ברשימה כי אינה מועתקת',
+     !r.bulk.concat(r.strict).some(k=>k.startsWith('batch:')),JSON.stringify(r));
   await p.click('[data-a="vOkBulk"]');
   const after=await p.evaluate(()=>Object.keys(cur.verify).filter(k=>cur.verify[k].state==='pending'));
-  ok('האישור המרוכז לא נגע בשדות הרגישים',after.some(k=>k.startsWith('batch:'))&&after.includes('reentry'));
+  ok('האישור המרוכז לא נגע בשדות הרגישים',
+     after.includes('reentry')&&after.includes('warnBefore')&&after.some(k=>k.startsWith('finding:')),
+     JSON.stringify(after));
   ok('פס ההתקדמות מוצג',!!(await p.$('.vbar i')));
 });
 
@@ -306,10 +314,13 @@ await withPage(FULL,async p=>{
   await p.click('[data-a="prevPick"][data-p="j0"]');
   await p.evaluate(()=>{A._clSel=new Set(ALL_SECTIONS());sectionSheet()});
   await p.click('[data-a="secLoad"]');
-  const r=await p.evaluate(()=>({no:cur.cloned_from_no,pest:cur.findings[0].pest,b:cur.apps[0].batch}));
-  eq('נטען מיומן ישן שנבחר ידנית',[r.no,r.pest,r.b],[999,'נמלים','OLD-111']);
+  const r=await p.evaluate(()=>({no:cur.cloned_from_no,pest:cur.findings[0].pest,
+    b:cur.apps[0].batch,prod:cur.apps[0].product}));
+  eq('נטען מיומן ישן שנבחר ידנית',[r.no,r.pest,r.prod],[999,'נמלים',"פרו-ג'ל"]);
+  eq('האצווה מהיומן הישן לא הועתקה',r.b,'');
   /* השוואה */
   await p.evaluate(()=>{cur.apps[0].batch='NEW-999';cur.findings[0].level='גבוהה';touch()});
+  /* האצווה החדשה הוזנה ידנית בטיפול הזה, ולכן ההשוואה מראה שינוי מול הישנה */
   await p.click('[data-a="compare"]');
   const c=await p.textContent('#sheet');
   ok('ההשוואה מציגה ערך קודם וערך נוכחי',c.includes('OLD-111')&&c.includes('NEW-999'));

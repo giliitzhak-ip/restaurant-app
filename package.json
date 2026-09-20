@@ -4,7 +4,11 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node test/pest-log.test.js"
+    "build": "node tools/build-data.js",
+    "lint": "node tools/lint.js",
+    "test": "node tools/lint.js && node test/pest-log.test.js && node test/pesticides.test.js",
+    "test:journal": "node test/pest-log.test.js",
+    "test:pesticides": "node test/pesticides.test.js"
   },
   "engines": {
     "node": ">=22.0.0"

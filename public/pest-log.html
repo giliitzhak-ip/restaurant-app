@@ -155,6 +155,82 @@ textarea{min-height:96px;resize:vertical}
 .cmp tr.changed td,.cmp tr.new td,.cmp tr.removed td{background:var(--gold-soft)}
 .cmp tr.hot td{box-shadow:inset 2px 0 0 var(--danger)}
 
+/* מאגר תכשירים ותבניות */
+.pgrid{display:grid;gap:10px;margin-top:12px}
+.pcard{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:right;border:1px solid var(--line);
+  background:var(--surface);border-radius:var(--r-lg);padding:14px;cursor:pointer;transition:transform .12s,box-shadow .12s}
+.pcard:active{transform:scale(.985)}
+.pcard.ok{border-color:var(--leaf)}
+.pcard.choice{border-color:var(--gold)}
+.pcard.blocked{background:var(--bg);border-color:var(--line);opacity:.72;cursor:not-allowed}
+.picon{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--mint);color:var(--forest-2)}
+.pcard.choice .picon{background:var(--gold-soft);color:#7a6634}
+.pcard.blocked .picon{background:var(--line);color:var(--muted)}
+.pmain{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.pmain b{font-size:16px}
+.pmain small{font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+.pok{color:var(--forest-2)}
+:root[data-theme="dark"] .pok{color:var(--leaf)}
+.pblock{color:var(--danger)}
+.lmeta{background:var(--mint-2);border-radius:var(--r-md);padding:10px 12px;margin-top:10px;font-size:13px}
+.lmeta.bad{background:var(--danger-soft)}
+.lmeta .lrow{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.lmeta p{margin:2px 0}
+.lmeta p.bad{color:var(--danger);font-weight:600}
+.wbox{border:1px solid var(--line);border-radius:var(--r-md);padding:8px 12px;margin-top:8px;font-size:14px}
+.wbox.danger{border-color:var(--danger);background:var(--danger-soft)}
+.wbox b{display:block;margin-bottom:4px;font-size:13px;color:var(--muted)}
+.wbox.danger b{color:var(--danger)}
+.wbox ul{margin:0 18px 0 0;padding:0}
+.wbox li{padding:2px 0}
+.pgroup{border:1px solid var(--line);border-radius:var(--r-md);padding:0 12px 12px;margin-top:12px}
+.pgroup .pgh{margin:0 -12px 8px;padding:8px 12px;background:var(--forest-2);color:#fff;font-weight:700;border-radius:var(--r-md) var(--r-md) 0 0}
+.pgroup.pro .pgh{background:var(--gold);color:var(--forest)}
+.reentry{background:var(--mint);border-radius:var(--r-md);padding:10px 12px;margin-top:10px;font-size:14px}
+.reentry.alt{background:var(--gold-soft);color:#7a6634}
+.reentry.warn{background:var(--danger-soft);color:var(--danger)}
+.reentry b{display:block}
+.reentry small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.reentry ul{margin:6px 18px 0 0;padding:0}
+.dosset{display:grid;gap:8px;margin-top:6px}
+.dos{border:1px solid var(--line);background:var(--surface);border-radius:var(--r-md);padding:12px;text-align:right;cursor:pointer}
+.dos.on{border-color:var(--forest-2);background:var(--mint);box-shadow:inset 0 0 0 1px var(--forest-2)}
+.dos b{display:block;font-size:14px}
+.dos small{display:block;color:var(--muted);font-size:12px}
+.qbox{background:var(--gold-soft);border:1px solid var(--gold);border-radius:var(--r-md);padding:10px 12px;margin-top:10px;color:#7a6634}
+.qbox b{display:block;margin-bottom:6px}
+.qbox.done{background:var(--mint-2);border-color:var(--line);color:var(--ink)}
+.qbox p.bad{color:var(--danger);font-weight:600;margin:6px 0 0}
+.stexec{border-top:1px solid var(--line);padding:10px 0 4px}
+.tgrid{display:grid;gap:12px}
+.tcard{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:right;border:2px solid var(--leaf);
+  background:var(--surface);border-radius:var(--r-lg);padding:16px;cursor:pointer;transition:transform .12s,box-shadow .12s}
+.tcard:active{transform:scale(.98)}
+.tcard.choice{border-color:var(--gold)}
+.tcard.blocked{border-color:var(--line);background:var(--bg);opacity:.72;cursor:not-allowed}
+.tcard.client{flex-wrap:wrap;border-color:var(--gold);cursor:default}
+.ticon{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--mint);color:var(--forest-2)}
+.tcard.choice .ticon{background:var(--gold-soft);color:#7a6634}
+.tcard.blocked .ticon{background:var(--line);color:var(--muted)}
+.tmain{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.tmain b{font-size:17px}
+.tmain small{font-size:12.5px;color:var(--muted)}
+.tstate{font-weight:600}
+.tcard.ok .tstate{color:var(--forest-2)}
+.tcard.choice .tstate{color:#7a6634}
+.tcard.blocked .tstate{color:var(--danger)}
+.tacts{display:flex;gap:8px;flex-wrap:wrap;width:100%;margin-top:10px}
+.tpick{background:var(--surface);border:1px solid var(--gold);border-radius:var(--r-lg);padding:12px;margin-bottom:14px}
+.tph{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.trow{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.trow::-webkit-scrollbar{display:none}
+.tmini{flex:none;display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--bg);
+  border-radius:999px;padding:8px 14px;font-size:13.5px;cursor:pointer;color:var(--forest-2);min-height:42px}
+:root[data-theme="dark"] .tmini{color:var(--leaf)}
+.tmini.choice{border-color:var(--gold)}
+.ttag{display:inline-block;font-size:11.5px;background:var(--mint);color:var(--forest-2);border-radius:6px;padding:2px 8px;margin-right:6px}
+.chip.off{opacity:.45;cursor:not-allowed}
+
 .audit{list-style:none;margin:0;padding:0}
 .audit>li{border-bottom:1px solid var(--line);padding:10px 0}
 .audit>li:last-child{border-bottom:0}
@@ -340,7 +416,12 @@ const I={
  pin:'<path d="M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/>',
  check:'<path d="M5 12l5 5L20 7"/>',cam:'<path d="M3 8a2 2 0 0 1 2-2h2l2-2h6l2 2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="4"/>',sms:'<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1.2-4.4A8 8 0 1 1 21 12z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/>',eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',hist:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>',trash:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',copy:'<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M4 16V6a2 2 0 0 1 2-2h10"/>',
  phone:'<path d="M21.5 16.9v2.8a2 2 0 0 1-2.2 2 19.6 19.6 0 0 1-8.5-3 19.3 19.3 0 0 1-6-6 19.6 19.6 0 0 1-3-8.6 2 2 0 0 1 2-2.2h2.8a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.7a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/>',
- nav:'<path d="M3 11l18-8-8 18-2-8z"/>'
+ nav:'<path d="M3 11l18-8-8 18-2-8z"/>',
+ lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+ warn:'<path d="M12 3l9 16H3z"/><path d="M12 9v5M12 17h.01"/>',
+ bug:'<rect x="8" y="7" width="8" height="12" rx="4"/><path d="M8 11H4M8 15H4M16 11h4M16 15h4M10 7l-2-3M14 7l2-3"/>',
+ mouse:'<circle cx="9" cy="12" r="5"/><circle cx="16" cy="8" r="3"/><path d="M14 14c3 0 6 1 7 3"/>',
+ flask:'<path d="M10 3v6L4 19a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3l-6-10V3"/><path d="M9 3h6"/>'
 };
 const ic=(n,s=22)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]}</svg>`;
 
@@ -350,7 +431,10 @@ const ic=(n,s=22)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="no
 const PROFILE_DEFAULT={company:'יצחק אחזקות והדברות',vat:'558436135',companyPhone:'02-6420555',companyEmail:'Itzhakprojects@gmail.com',
   name:'',license:'',phone:'',email:'',address:'',licenseType:''};
 const newFinding=()=>({id:uid(),pest:'',subtype:'',identification:'',stage:'',signs:'',location:'',level:''});
-const newApp=()=>({id:uid(),pest:'',product:'',active:'',conc:'',batch:'',dose:'',unit:'',unitOther:'',rtu:false,useConc:'',method:'',methodOther:'',fromDb:false});
+const newApp=()=>({id:uid(),pest:'',product:'',active:'',conc:'',batch:'',dose:'',unit:'',unitOther:'',rtu:false,useConc:'',method:'',methodOther:'',fromDb:false,
+  /* תכשיר מהמאגר המאומת + נתוני ביצוע שמוזנים ידנית בכל טיפול */
+  pid:'',registrationNumber:'',labelSnapshot:null,surface:'',dosageId:'',
+  pkgExpiry:'',amountUsed:'',waterAmount:'',areas:'',stations:[],nextCheck:''});
 const newAssistant=()=>({id:uid(),name:'',license:'',licenseType:'',phone:'',email:'',sig:null});
 function blankJournal(no,profile){
   return {id:uid(),no,status:'draft',createdAt:Date.now(),updatedAt:Date.now(),completedAt:null,step:0,
@@ -367,7 +451,7 @@ function blankJournal(no,profile){
     apps:[newApp()],sealing:'',publicNotice:'',
     warnAfter:'',supplementary:'',needSupplementary:false,natureAfter:'',warranty:{period:'',note:''},
     hasAssistants:false,assistants:[],assistGuidance:false,assistCopy:false,
-    spots:[],siteNotes:'',access:'',warnSrcProducts:[],warnSnapshot:null,
+    spots:[],siteNotes:'',access:'',warnSrcProducts:[],warnSnapshot:null,tplId:'',tplName:'',tplMethod:'',clientTplId:'',
     /* טעינה מיומן קודם – מקור, מה הועתק ומה עדיין דורש אימות */
     verify:{},audit_events:[],source_pest_log_id:null,cloned_from_no:null,cloned_from_date:null,
     cloned_at:null,cloned_by:'',copied_sections:[],clone_stale:false,
@@ -435,19 +519,54 @@ function validate(j){
   req(4,'prevention','פעולות מניעה ו/או טיפול שבוצעו או הומלצו');
   req(4,'circumstances','הנסיבות שבהן הוחלט לנקוט בהדברה');
   // 5 warn before
-  [['nature','טיב ההדברה'],['product','שם התכשיר'],['active','החומר הפעיל'],['riskHuman','סיכונים לאדם'],['riskAnimals','סיכונים לבעלי חיים'],['reentry','זמן כניסה לאחר ההדברה']].forEach(([k,m])=>req(5,'warnBefore.'+k,'לפני ההדברה: '+m));
+  const labelWarn=j.apps.length&&j.apps.every(a=>!!labelOf(a));
+  (labelWarn?[['nature','טיב ההדברה']]
+   :[['nature','טיב ההדברה'],['product','שם התכשיר'],['active','החומר הפעיל'],['riskHuman','סיכונים לאדם'],['riskAnimals','סיכונים לבעלי חיים'],['reentry','זמן כניסה לאחר ההדברה']])
+   .forEach(([k,m])=>req(5,'warnBefore.'+k,'לפני ההדברה: '+m));
   // 6 applications + special conditions
   if(!j.apps.length)add(6,'apps','יש להוסיף לפחות תכשיר אחד');
   j.apps.forEach((a,i)=>{const n=`תכשיר ${i+1}: `;
-    [['pest','שם המזיק'],['product','השם המסחרי'],['active','שם החומר הפעיל'],['conc','ריכוז החומר הפעיל בתכשיר'],['batch','מספר אצווה'],['dose','מינון'],['unit','יחידת מידה']].forEach(([k,m])=>req(6,`apps.${i}.${k}`,n+m));
-    if(a.unit==='אחר')req(6,`apps.${i}.unitOther`,n+'פירוט יחידת המידה');
-    if(!a.rtu)req(6,`apps.${i}.useConc`,n+'ריכוז בתכשיר המוכן לשימוש');
-    req(6,`apps.${i}.method`,n+'שיטת היישום');
-    if(a.method==='אחר')req(6,`apps.${i}.methodOther`,n+'פירוט שיטת היישום');});
+    const lp=labelOf(a);
+    if(lp){
+      /* תכשיר מהמאגר המאומת: התווית מספקת את הנתונים הרשמיים,
+         והמדביר מזין רק את נתוני הביצוע של הטיפול הזה */
+      const live=a.pid&&prodById(a.pid);
+      if(j.status!=='done'&&live&&prodBlocked(live))
+        add(6,`apps.${i}.pid`,n+`${live.nameHe} — ${prodBlockReason(live)}. לא ניתן לשמור יומן חדש עם תכשיר זה`);
+      req(6,`apps.${i}.pest`,n+'המזיק שטופל');
+      if(a.pest&&!(lp.targetPests||[]).includes(a.pest))
+        add(6,`apps.${i}.pest`,n+`המזיק ${a.pest} אינו מופיע בתווית של ${lp.nameHe}`);
+      if(needsSurface(lp))req(6,`apps.${i}.surface`,n+'סוג המשטח');
+      req(6,`apps.${i}.dosageId`,n+'מינון מהתווית');
+      if(a.dosageId&&!allowedDosages(lp,a.pest,a.surface).some(d=>d.id===a.dosageId))
+        add(6,`apps.${i}.dosageId`,n+'המינון שנבחר אינו מתאים למזיק או למשטח שנבחרו');
+      pendingConditionals(lp,a).forEach(c=>
+        add(6,`apps.${i}.${c.questionKey}`,n+c.question,3));
+      [['batch','מספר אצווה שעל האריזה'],['pkgExpiry','תאריך תפוגה שעל האריזה'],
+       ['amountUsed','כמות החומר שבה השתמשת'],['areas','אזורי הטיפול']]
+        .forEach(([k,m])=>req(6,`apps.${i}.${k}`,n+m));
+      const st=lp.stationTracking||(lp.dosages||[]).some(d=>d.method==='bait_station');
+      if(st){
+        if(!(a.stations||[]).length)add(6,`apps.${i}.stations`,n+'יש לתעד לפחות תיבת האכלה אחת');
+        (a.stations||[]).forEach((x,k)=>{
+          if(blankStr(x.serial))add(6,`apps.${i}.stations`,n+`תיבה ${k+1}: מספר סידורי`);
+          if(blankStr(x.amount))add(6,`apps.${i}.stations`,n+`תיבה ${k+1}: כמות פיתיון`);
+          if(blankStr(x.loc))add(6,`apps.${i}.stations`,n+`תיבה ${k+1}: מיקום`);
+        });
+        req(6,`apps.${i}.nextCheck`,n+'מועד ביקורת הבא');
+      }else req(6,`apps.${i}.waterAmount`,n+'כמות המים');
+    }else{
+      [['pest','שם המזיק'],['product','השם המסחרי'],['active','שם החומר הפעיל'],['conc','ריכוז החומר הפעיל בתכשיר'],['batch','מספר אצווה'],['dose','מינון'],['unit','יחידת מידה']].forEach(([k,m])=>req(6,`apps.${i}.${k}`,n+m));
+      if(a.unit==='אחר')req(6,`apps.${i}.unitOther`,n+'פירוט יחידת המידה');
+      if(!a.rtu)req(6,`apps.${i}.useConc`,n+'ריכוז בתכשיר המוכן לשימוש');
+      req(6,`apps.${i}.method`,n+'שיטת היישום');
+      if(a.method==='אחר')req(6,`apps.${i}.methodOther`,n+'פירוט שיטת היישום');
+    }});
+  const fromLabel=j.apps.length&&j.apps.every(a=>!!labelOf(a));
   if(j.opKind==='איוד')req(6,'sealing','פעולות איטום שנעשו לפני ההדברה');
   if(j.opKind==='ערפול')req(6,'publicNotice','האם בוצעה התראה מראש לציבור');
   // 7 warn after
-  req(7,'warnAfter','אזהרות ומידע ללקוח במהלך ההדברה ובסיומה');
+  if(!fromLabel)req(7,'warnAfter','אזהרות ומידע ללקוח במהלך ההדברה ובסיומה');
   // 8 handover & signatures
   if(!j.handover.delivered)add(8,'handover.delivered','אישור שהיומן הושאר/נמסר אצל המזמין');
   req(8,'handover.receiverName','שם מקבל היומן');req(8,'handover.receiverSig','חתימת מקבל היומן');req(8,'techSig','חתימת המדביר');
@@ -599,6 +718,7 @@ function vHome(){
    <button class="tile primary" data-a="newJ">${ic('plus',28)}<b>יומן חדש</b><small>מתחילים הדברה</small></button>
    <button class="tile" data-a="go" data-v="archive">${ic('book',28)}<b>יומני הדברה</b><small>${all.filter(j=>j.status==='done').length} הושלמו</small></button>
    <button class="tile" data-a="go" data-v="archive" data-p="draft">${ic('edit',28)}<b>טיוטות</b><small>ממשיכים מאיפה שעצרתם</small>${drafts.length?`<i class="badge">${drafts.length}</i>`:''}</button>
+   <button class="tile" data-a="go" data-v="templates">${ic('flask',28)}<b>תבניות טיפול</b><small>${TREATMENTS.filter(t=>tplState(t)!=='blocked').length} מוכנות לשימוש</small></button>
    <button class="tile" data-a="go" data-v="clients">${ic('users',28)}<b>לקוחות</b><small>${Object.keys(S.clients).length} שמורים</small></button>
    <button class="tile" data-a="go" data-v="profile">${ic('user',28)}<b>פרופיל מדביר</b><small>${profileComplete()?'מלא':'יש להשלים'}</small>${profileComplete()?'':'<i class="badge">!</i>'}</button>
   </nav>
@@ -640,6 +760,7 @@ function vWizard(){
   const pct=Math.round((s+1)/STEPS.length*100);
   const sub=`<div class="sub">שלב ${s+1} מתוך ${STEPS.length} · ${STEPS[s]} · <span id="sync">${syncLabel()}</span></div><div class="progress" aria-hidden="true"><i style="width:${pct}%"></i></div>`;
   return `${topbar('יומן הדברה #'+cur.no,'home',sub,`<button class="iconbtn" data-a="preview" aria-label="תצוגה מקדימה">${ic('eye',22)}</button>`)}
+  ${tplBanner()}
   ${cloneBanner()}
   <nav class="stepper" aria-label="שלבי היומן">${STEPS.map((n,i)=>`<button class="st ${i===s?'on':''} ${badSteps.has(i)?'bad':''}" data-a="step" data-i="${i}" ${i===s?'aria-current="step"':''}><b>${i+1}</b>${n}</button>`).join('')}</nav>
   <main class="page">${[w0,w1,w2,w3,w4,w5][s]()}</main>
@@ -652,6 +773,7 @@ function w0(){
   const match=S.clients[findClientId(cur.client.name,cur.client.phone)];
   const p=cur.place;
   return `
+  ${tplPickerBox()}
   <div class="sec"><div class="sech"><h3>מועד וסוג הפעולה</h3></div><div class="secb">
     <div class="two">${fInput('תאריך ביצוע','date',{type:'date'})}${fInput('שעת ביצוע','time',{type:'time'})}</div>
     ${fSeg('סוג הפעולה','opKind',OP_KINDS)}
@@ -734,7 +856,9 @@ function w3(){
   return `<datalist id="prodlist">${[...prodIdx.values()].map(p=>`<option value="${esc(p.n)}">${esc(p.a||'')}</option>`).join('')}</datalist>
   ${(()=>{const L=lastForClient(cur.client.name,cur.client.phone,cur.id);return L?`<button class="btn gold w" style="margin-bottom:10px" data-a="loadLastApps" data-p="${L.id}">${ic('hist',18)} טעינת תכשירים ואצוות מיומן #${L.no} של ${esc(L.client.name)}</button>`:''})()}
   ${recentApps().length?`<button class="btn ghost w" style="margin-bottom:14px" data-a="loadRecent">${ic('hist',18)} טעינת תכשירים ואצוות מיומנים אחרונים</button>`:''}
-  ${cur.apps.map((a,i)=>`<div class="sec"><div class="sech"><h3>תכשיר ${i+1}${a.product?': '+esc(a.product):''}</h3>${cur.apps.length>1?`<button class="del" data-a="rm" data-k="apps" data-i="${i}">הסר</button>`:''}</div><div class="secb">
+  ${cur.apps.map((a,i)=>labelOf(a)||!a.product?`<div class="appblock">${cur.apps.length>1?`<div class="sech" style="border-radius:var(--r-lg) var(--r-lg) 0 0"><h3>תכשיר ${i+1}</h3><button class="del" data-a="rm" data-k="apps" data-i="${i}">הסר</button></div>`:''}
+    ${catalogBox(a,i)}${labelOf(a)?executionBox(a,i):''}</div>`
+   :`<div class="sec"><div class="sech"><h3>תכשיר ${i+1}${a.product?': '+esc(a.product):''}</h3>${cur.apps.length>1?`<button class="del" data-a="rm" data-k="apps" data-i="${i}">הסר</button>`:''}</div><div class="secb">
     ${fInput('שם המזיק',`apps.${i}.pest`)}
     ${pests.length?`<div class="chips" style="margin-top:8px">${pests.map(p=>`<button type="button" class="chip ${a.pest===p?'on':''}" data-a="setv" data-f="apps.${i}.pest" data-val="${esc(p)}">${esc(p)}</button>`).join('')}</div>`:''}
     ${fInput('השם המסחרי של התכשיר',`apps.${i}.product`,{list:'prodlist',ph:'הקלידו שם תכשיר'})}
@@ -760,6 +884,8 @@ function w3(){
     ${a.method==='אחר'?fInput('פירוט שיטת היישום',`apps.${i}.methodOther`):''}
   </div></div>`).join('')}
   <button class="btn ghost w" data-a="addApp">${ic('plus',18)} הוספת תכשיר / יישום</button>
+  ${customerView(cur)}
+  ${professionalView(cur)}
   ${stationsBox()}
   ${cur.opKind==='איוד'?`<div class="sec" style="margin-top:14px"><div class="sech"><h3>איוד</h3></div><div class="secb">${fText('פעולות איטום שנעשו לפני ביצוע ההדברה','sealing')}</div></div>`:''}
   ${cur.opKind==='ערפול'?`<div class="sec" style="margin-top:14px"><div class="sech"><h3>ערפול</h3></div><div class="secb">${fSeg('האם בוצעה התראה מראש לציבור?','publicNotice',['כן','לא'])}</div></div>`:''}`;
@@ -773,7 +899,7 @@ function lastForClient(name,phone,exceptId){
 function loadFromJournal(src,mode){
   const j=cur;
   j.apps=clone(src.apps).map(a=>Object.assign(a,{id:uid(),fromRecent:true,fromDb:false}));
-  j.apps.forEach(a=>{vMark(j,'product:'+a.id);if(a.batch)vMark(j,'batch:'+a.id);if(a.dose)vMark(j,'dose:'+a.id)});
+  j.apps.forEach(a=>{clearExecution(a);vMark(j,'product:'+a.id);if(a.dosageId||a.dose)vMark(j,'dose:'+a.id)});
   if(mode==='all'){
     j.opKind=src.opKind;
     j.findings=clone(src.findings).map(f=>Object.assign(f,{id:uid()}));
@@ -890,7 +1016,8 @@ function recentApps(){
 function batchesFor(product){if(!product)return [];return [...new Set(recentApps().filter(r=>norm(r.a.product)===norm(product)&&r.a.batch).map(r=>r.a.batch))].slice(0,8)}
 const appIsEmpty=a=>['pest','product','active','conc','batch','dose','unit','useConc','method'].every(k=>blankStr(a[k]));
 function addFromRecent(src){
-  const n=Object.assign(newApp(),{product:src.product,active:src.active,conc:src.conc,batch:src.batch,unit:src.unit,unitOther:src.unitOther,rtu:!!src.rtu,useConc:src.rtu?'':src.useConc,method:src.method,methodOther:src.methodOther,dose:'',pest:'',fromDb:false,fromRecent:true});
+  const n=Object.assign(newApp(),{product:src.product,active:src.active,conc:src.conc,unit:src.unit,unitOther:src.unitOther,rtu:!!src.rtu,useConc:src.rtu?'':src.useConc,method:src.method,methodOther:src.methodOther,dose:'',pest:'',fromDb:false,fromRecent:true,
+    pid:src.pid||'',registrationNumber:src.registrationNumber||'',labelSnapshot:src.labelSnapshot?clone(src.labelSnapshot):null,surface:src.surface||'',dosageId:src.dosageId||''});
   const empty=cur.apps.findIndex(appIsEmpty);if(empty>-1)cur.apps[empty]=n;else cur.apps.push(n);
   vMark(cur,'product:'+n.id);if(n.batch)vMark(cur,'batch:'+n.id);
   vSync(cur);
@@ -991,6 +1118,7 @@ function docHTML(j){
   <div class="dh"><div><div class="co">${esc(c.name)}</div><div class="meta">ע.מ ${esc(c.vat)} | טל׳ ${esc(c.phone)} | ${esc(c.email)}</div></div><div class="mk2">י</div></div>
   <div class="dtitle"><h2>יומן ביצוע הדברה</h2><span>מס׳ ${j.no}${j.status==='draft'?' (טיוטה)':''}</span></div>
   <div class="kv">${row('תאריך ביצוע',fmtD(j.date))}${row('שעת ביצוע',j.time)}${row('סוג הפעולה',j.opKind)}${row('סטטוס',j.status==='done'?'הושלם':'טיוטה')}</div>
+  ${j.tplName?`<div class="kv" style="margin-top:2px">${row('נפתח מתבנית',j.tplName)}${row('שיטת הטיפול',j.tplMethod)}</div>`:''}
   ${j.source_pest_log_id?`<div class="kv" style="margin-top:2px">${row('הוכן על בסיס יומן',`#${j.cloned_from_no||''}${j.cloned_from_date?' מתאריך '+fmtD(j.cloned_from_date):''}`)}${row('אימות הפרטים שהועתקו',j.verification_status==='verified'?`אומתו${j.verified_at?' ב-'+new Date(j.verified_at).toLocaleString('he-IL'):''}${j.verified_by?' · '+j.verified_by:''}`:'לא הושלם')}</div>`:''}
 
   <div class="avoid"><h3>פרטי המדביר</h3><div class="kv">${row('שם מלא',j.tech.name)}${row('מספר רישיון',j.tech.license)}${row('טלפון נייד',j.tech.phone)}${row('דוא"ל',j.tech.email)}${row('כתובת',j.tech.address)}${row('סוג רישיון',j.tech.licenseType)}</div></div>
@@ -1015,10 +1143,36 @@ function docHTML(j){
 
   <h3>יישום ההדברה</h3>
   <div class="tblwrap"><table class="tbl"><tr><th>מזיק</th><th>שם מסחרי</th><th>חומר פעיל</th><th>ריכוז בתכשיר</th><th>אצווה</th><th>מינון</th><th>יחידה</th><th>ריכוז במוכן לשימוש</th><th>שיטת יישום</th></tr>
-  ${j.apps.map(a=>`<tr><td>${esc(a.pest)}</td><td>${esc(a.product)}</td><td>${esc(a.active)}</td><td>${esc(a.conc)}</td><td>${esc(a.batch)}</td><td>${esc(a.dose)}</td><td>${esc(a.unit==='אחר'?a.unitOther:a.unit)}</td><td>${a.rtu?'תכשיר מוכן לשימוש':esc(a.useConc)}</td><td>${esc(a.method==='אחר'?a.methodOther:a.method)}</td></tr>`).join('')}</table></div>
+  ${j.apps.map(a=>{const p=labelOf(a);
+    return `<tr><td>${esc(a.pest)}</td><td>${esc(a.product)}${p&&p.registrationNumber?`<br><small>רישום ${esc(p.registrationNumber)}</small>`:''}</td><td>${esc(a.active)}</td><td>${esc(a.conc)}</td><td>${esc(a.batch)}${a.pkgExpiry?`<br><small>תפוגה ${fmtD(a.pkgExpiry)}</small>`:''}</td><td>${esc(a.dose)}${a.amountUsed?`<br><small>בוצע: ${esc(a.amountUsed)}${a.waterAmount?' / '+esc(a.waterAmount)+' מים':''}</small>`:''}</td><td>${esc(a.unit==='אחר'?a.unitOther:a.unit)}</td><td>${a.rtu?'תכשיר מוכן לשימוש':esc(a.useConc)}</td><td>${esc(a.method==='אחר'?a.methodOther:a.method)}${a.surface?'<br><small>'+esc(a.surface)+'</small>':''}</td></tr>`}).join('')}</table></div>
+  ${j.apps.some(a=>a.areas)?`<p class="pre" style="margin-top:4px"><b>אזורי הטיפול:</b> ${j.apps.map(a=>a.areas).filter(Boolean).map(esc).join(' | ')}</p>`:''}
+  ${(()=>{const rows=j.apps.flatMap(a=>(a.stations||[]).map(x=>({p:a.product,...x,next:a.nextCheck})));
+    if(!rows.length)return '';
+    return `<h3>תיבות האכלה שהוצבו</h3><div class="tblwrap"><table class="tbl"><tr><th>מס׳ סידורי</th><th>תכשיר</th><th>מיקום</th><th>כמות פיתיון</th><th>קובעה</th><th>ביקורת הבאה</th></tr>
+    ${rows.map(x=>`<tr><td>${esc(x.serial)}</td><td>${esc(x.p)}</td><td>${esc(x.loc)}</td><td>${esc(x.amount)}</td><td>${x.fixed?'כן':'לא'}</td><td>${x.next?fmtD(x.next):'—'}</td></tr>`).join('')}</table></div>
+    <p style="margin:2px 0"><b>כמות כוללת:</b> ${rows.reduce((s,x)=>s+(parseFloat(x.amount)||0),0)}</p>`})()}
   ${j.opKind==='איוד'?`<p class="pre" style="margin-top:6px"><b>פעולות איטום שנעשו לפני ביצוע ההדברה:</b> ${esc(j.sealing)||'—'}</p>`:''}
   ${j.opKind==='ערפול'?`<p style="margin-top:6px"><b>האם בוצעה התראה מראש לציבור:</b> ${esc(j.publicNotice)||'—'}</p>`:''}
 
+  ${(()=>{const g=warningGroups(j);if(!g.length)return '';const re=reentryFor(j);
+    return `<div class="avoid"><h3>הנחיות ללקוח – לפי התווית של כל תכשיר</h3>
+    ${re.minutes?`<p><b>זמן כניסה מחדש:</b> ${esc(minutesText(re.minutes))}${re.numeric.length>1?' (הזמן המחמיר מבין התכשירים)':''}</p>`:''}
+    ${re.special.map(x=>`<p><b>${esc(x.product)}:</b> ${esc(x.text)}</p>`).join('')}
+    ${re.conditional.length?`<p><b>הוראות מיוחדות:</b> ${re.conditional.map(x=>esc(x.product)+' – '+esc(x.text)).join(' | ')}</p>`:''}
+    ${g.map(x=>{const p=x.label;const L=(t,arr)=>(arr||[]).length?`<p style="margin:2px 0"><b>${t}:</b> ${arr.map(esc).join(' ')}</p>`:'';
+      return `<div class="avoid" style="margin-top:6px"><p style="margin:4px 0 2px"><b>${esc(p.nameHe)}</b> · רישום ${esc(p.registrationNumber)} · תוקף ${esc(p.registrationExpiry)} · ${esc(p.statusLabel||'')}${p.lastVerifiedAt?' · אומת '+fmtD(p.lastVerifiedAt):''}</p>
+      ${L('לפני הטיפול',p.customerInstructionsBefore)}${L('בסיום הטיפול',p.customerInstructionsAfter)}
+      ${L('אזהרות לאדם',p.warningsHuman)}${L('אזהרות לבעלי חיים',p.warningsAnimals)}${L('אזהרות לסביבה',p.warningsEnvironment)}
+      ${x.conditionals.length?L('הוראה מיוחדת לטיפול הזה',x.conditionals.map(c=>c.text)):''}
+      ${p.officialLabelUrl?`<p style="margin:2px 0;font-size:10px;color:#666">תווית: ${esc(p.officialLabelUrl)}</p>`:''}</div>`}).join('')}
+    </div>
+    <div class="avoid"><h3>מידע מקצועי למדביר</h3>
+    ${g.map(x=>{const p=x.label;const L=(t,arr)=>(arr||[]).length?`<p style="margin:2px 0"><b>${t}:</b> ${arr.map(esc).join(' ')}</p>`:'';
+      return `<p style="margin:4px 0 2px"><b>${esc(p.nameHe)}</b></p>
+      ${L('מגבלות שימוש',p.applicationRestrictions)}
+      ${(p.professionalPpe||[]).length?L('ציוד מגן אישי',p.professionalPpe):'<p style="margin:2px 0;color:#666">ציוד מגן אישי: לא הוזנו נתונים מהתווית.</p>'}
+      ${(p.firstAid||[]).length?L('עזרה ראשונה',p.firstAid):'<p style="margin:2px 0;color:#666">עזרה ראשונה: לא הוזנו נתונים מהתווית.</p>'}`}).join('')}
+    <p style="margin:6px 0 0;font-size:10px;color:#666">המידע מבוסס על התוויות שנבדקו ונרשמו במערכת. חובה לפעול לפי התווית העדכנית ולפי תנאי רישיון המדביר.</p></div>`})()}
   <div class="avoid"><h3>אזהרות ומידע ללקוח במהלך ההדברה ובסיומה</h3>
   ${j.natureAfter?`<p class="pre"><b>טיב ההדברה שבוצעה:</b> ${esc(j.natureAfter)}</p>`:''}
   <p class="pre">${esc(j.warnAfter)||'—'}</p>
@@ -1151,6 +1305,7 @@ function vClient(){
     </div>
    </div></div>
    ${regularBox(c)}
+   ${clientTplBox(c)}
    ${(c.places&&c.places.length)?`<div class="sec"><div class="sech"><h3>אתרים ותחנות</h3></div><div class="secb">
     ${c.places.map(p=>{const key=norm(c.name)+'|'+norm(placeText(p));const st=stationsOf(key);
       return `<div class="strow"><div class="mid"><b>${esc(placeText(p))}</b><small>${st.length?st.length+' תחנות ממוספרות':'לא הוגדרו תחנות'}</small></div>
@@ -1183,7 +1338,7 @@ function vProfile(){
    8. RENDER
    ========================================================= */
 function render(){
-  const map={home:vHome,preview:vPreview,clients:vClients,client:vClient,wizard:vWizard,journal:vJournal,archive:vArchive,profile:vProfile};
+  const map={home:vHome,preview:vPreview,clients:vClients,client:vClient,wizard:vWizard,journal:vJournal,archive:vArchive,profile:vProfile,templates:vTemplates};
   $('#app').innerHTML=(map[view]||vHome)();
   if(view==='wizard')initSigs();
   const on=document.querySelector('.st.on');on&&on.scrollIntoView({inline:'center',block:'nearest'});
@@ -1667,7 +1822,6 @@ const COPY_SECTIONS=[
  {g:'תכשירים',items:[
    {k:'product'   ,n:'שם התכשיר'             ,def:1,v:'דורש אימות מול התווית'},
    {k:'active'    ,n:'חומר פעיל וריכוז'      ,def:1},
-   {k:'batch'     ,n:'מספר אצווה'            ,def:0,v:'דורש אימות נפרד'},
    {k:'dose'      ,n:'מינון ויחידה'          ,def:0,v:'דורש אימות נפרד'},
    {k:'useConc'   ,n:'ריכוז במוכן לשימוש'    ,def:1},
    {k:'method'    ,n:'שיטת יישום'            ,def:1}]},
@@ -1734,15 +1888,20 @@ function applyClone(j,src,keys){
         n.product=a.product;
         if(K.has('pests'))n.pest=a.pest||'';
         if(K.has('active')){n.active=a.active||'';n.conc=a.conc||''}
-        if(K.has('batch'))n.batch=a.batch||'';
-        if(K.has('dose')){n.dose=a.dose||'';n.unit=a.unit||'';n.unitOther=a.unitOther||''}
+        /* התכשיר והמינון שבתווית עוברים כהצעה; האצווה והכמויות לא */
+        n.pid=a.pid||'';n.registrationNumber=a.registrationNumber||'';
+        n.labelSnapshot=a.labelSnapshot?clone(a.labelSnapshot):null;
+        n.surface=a.surface||'';
+        if(K.has('dose')){n.dosageId=a.dosageId||'';n.dose=a.dose||'';n.unit=a.unit||'';n.unitOther=a.unitOther||''}
         if(K.has('useConc')){n.rtu=!!a.rtu;n.useConc=a.rtu?'':(a.useConc||'')}
         if(K.has('method')){n.method=a.method||'';n.methodOther=a.methodOther||''}
         return n});
+      /* נתוני ביצוע לעולם אינם מועתקים: אצווה, תפוגה, כמויות, אזורים ותיבות */
       j.apps.forEach(a=>{
+        clearExecution(a);
+        syncDose(a);/* מחזיר את נוסח המינון מהתווית, לא את הכמות שבוצעה */
         vMark(j,'product:'+a.id);
-        if(a.batch)vMark(j,'batch:'+a.id);
-        if(a.dose)vMark(j,'dose:'+a.id);
+        if(a.dosageId)vMark(j,'dose:'+a.id);
       });
     }
   }
@@ -2126,9 +2285,549 @@ A.newJ=async()=>{
   try{await _newJ()}finally{A._creating=false}
 };
 
+
+/* =========================================================
+   11. מאגר תכשירים מאומת מתוויות + תבניות טיפול
+   כל נתון כאן מגיע מתווית המוצר הספציפי. אין להשלים, להסיק או
+   להעתיק נתון מתכשיר אחר, גם אם החומר הפעיל דומה.
+   ========================================================= */
+/*PESTICIDES_START*/
+const PEST_CATALOG={"schemaVersion":1,"generatedAt":"2026-09-20","disclaimer":"המידע מבוסס על התוויות שנבדקו ונרשמו כאן. אין בו אישור גורף לעמידה בחוק. חובה לפעול לפי התווית העדכנית של המוצר ולפי תנאי רישיון המדביר.","products":[{"id":"dragon","nameHe":"דרגון","category":"crawling_insects","formulation":"","registrationNumber":"640","registrationExpiry":"2030","activeIngredients":[{"name":"Bifenthrin","percent":"9.6%"}],"targetPests":["תיקנים","פשפש המיטה","חרקים זוחלים אחרים"],"warningsHuman":["רעיל בבליעה.","עלול להיות קטלני בבליעה ובחדירה לנתיבי האוויר.","עלול לגרום לתגובה אלרגית בעור.","עלול לגרום נזק לאיברים בחשיפה ממושכת או חוזרת."],"warningsAnimals":["רעיל לדבורים; אין לרסס בזמן פעילות דבורים, סמוך לכוורות או על צמחים פורחים המייצרים צוף או אבקה."],"warningsEnvironment":["רעיל מאוד לדגים וליצורים החיים במים ועלול לגרום נזק ארוך טווח לסביבה המימית.","אין לרוקן למערכות ביוב."],"customerInstructionsBefore":[],"customerInstructionsAfter":["כניסה מחדש רק לאחר התייבשות החומר ואוורור המקום, ולא פחות משעה לאחר הריסוס."],"professionalPpe":[],"firstAid":[],"applicationRestrictions":["אין לרסס מזרנים, מצעים וכלי מיטה."],"dosages":[{"id":"dragon-crawling","conditionType":"pest","forPests":["תיקנים","חרקים זוחלים אחרים"],"method":"spray","text":"100 סמ\"ק ל-10 ליטר מים; ליטר תרסיס לכ-25 מ\"ר.","concentrate":"100 סמ\"ק","water":"10 ליטר","coverage":"ליטר תרסיס לכ-25 מ\"ר"},{"id":"dragon-bedbug","conditionType":"pest","forPests":["פשפש המיטה"],"method":"spray","text":"100 סמ\"ק ל-10 ליטר מים; ליטר תרסיס לכ-10 מ\"ר.","concentrate":"100 סמ\"ק","water":"10 ליטר","coverage":"ליטר תרסיס לכ-10 מ\"ר"}],"reentry":{"type":"numeric","minutes":60,"text":"כניסה מחדש רק לאחר התייבשות החומר ואוורור המקום, ולא פחות משעה לאחר הריסוס."},"officialLabelUrl":"https://documents.sviva.gov.il/PesticideLabel_781.pdf","sourceType":"official_ministry","verificationStatus":"verified","isSelectable":true,"lastVerifiedAt":"2026-09-20","labelSha256":"","statusLabel":"אומת מתווית רשמית","verificationMethod":"label_transcribed_by_licensee","verificationNote":"הנתונים הועתקו מתווית המוצר על ידי בעל הרישיון. קובץ התווית לא הורד ולא אומת אוטומטית על ידי המערכת (labelSha256 ריק). חובה לפעול לפי התווית העדכנית ולפי תנאי רישיון המדביר.","conditionalInstructions":[{"id":"dragon-bedframe-24h","audience":"customer","forPests":["פשפש המיטה"],"question":"האם רוסס גוף או בסיס המיטה?","questionKey":"bedFrameSprayed","text":"אם רוסס גוף או מסגרת המיטה, אין לישון עליהם במשך 24 שעות."}],"preparationSteps":[],"stationTracking":false},{"id":"draker-10-2","nameHe":"דרקר 10.2","category":"crawling_insects","formulation":"","registrationNumber":"569","registrationExpiry":"2028","activeIngredients":[{"name":"Cypermethrin","percent":"10%"},{"name":"Tetramethrin","percent":"2%"},{"name":"Piperonyl Butoxide","percent":"10%"}],"targetPests":["תיקנים","נמלים","חרקים זוחלים אחרים","זבובים","יתושים","חרקים מעופפים אחרים"],"warningsHuman":["רעיל בבליעה.","גורם לגירוי בעור.","גורם לגירוי חמור בעיניים.","גורם לגירוי במערכת הנשימה.","חשוד כגורם לסרטן במקרה של שאיפה.","עלול לגרום לתחושת נימול."],"warningsAnimals":["רעיל לדבורים ולמאביקים; אין לרסס בזמן פעילות דבורים, בקרבת כוורות או על צמחים פורחים.","אין לרסס על בעלי חיים."],"warningsEnvironment":["רעיל ליצורים החיים במים ועלול לגרום השפעות ארוכות טווח לסביבה המימית.","אין לזהם בריכות דגים או מאגרי מי שתייה."],"customerInstructionsBefore":[],"customerInstructionsAfter":["כניסה מחדש לאחר התייבשות החומר, אוורור המקום ולפחות שעה לאחר הריסוס."],"professionalPpe":[],"firstAid":[],"applicationRestrictions":["אין לרסס על בעלי חיים, מזון, מזון לבעלי חיים, מספוא, כלי אוכל או משטחי הכנת מזון.","אין לרסס באוויר לצורך הדברת חרקים מעופפים; יש לרסס רק משטחים בהתאם לתווית."],"dosages":[{"id":"draker-nonabsorbent","conditionType":"surface","conditionLabel":"סוג המשטח","conditionValue":"משטח שאינו סופג","forPests":["תיקנים","נמלים","חרקים זוחלים אחרים","זבובים","יתושים","חרקים מעופפים אחרים"],"method":"spray","text":"5-10 מ\"ל לליטר מים; ליטר תמיסה מוכן לכ-25 מ\"ר.","concentrate":"5-10 מ\"ל","water":"ליטר","coverage":"ליטר תמיסה מוכן לכ-25 מ\"ר"},{"id":"draker-absorbent","conditionType":"surface","conditionLabel":"סוג המשטח","conditionValue":"משטח סופג","forPests":["תיקנים","נמלים","חרקים זוחלים אחרים","זבובים","יתושים","חרקים מעופפים אחרים"],"method":"spray","text":"10-20 מ\"ל לליטר מים; ליטר תמיסה מוכן לכ-25 מ\"ר.","concentrate":"10-20 מ\"ל","water":"ליטר","coverage":"ליטר תמיסה מוכן לכ-25 מ\"ר"}],"reentry":{"type":"numeric","minutes":60,"text":"כניסה מחדש לאחר התייבשות החומר, אוורור המקום ולפחות שעה לאחר הריסוס."},"officialLabelUrl":"https://rpc.co.il/docs/draker-tavit.pdf","sourceType":"manufacturer_label","verificationStatus":"verified","isSelectable":true,"lastVerifiedAt":"2026-09-20","labelSha256":"","statusLabel":"אומת מתווית היצרן","verificationMethod":"label_transcribed_by_licensee","verificationNote":"הנתונים הועתקו מתווית המוצר על ידי בעל הרישיון. קובץ התווית לא הורד ולא אומת אוטומטית על ידי המערכת (labelSha256 ריק). חובה לפעול לפי התווית העדכנית ולפי תנאי רישיון המדביר.","conditionalInstructions":[],"preparationSteps":[],"stationTracking":false},{"id":"pastion-plus-pasta","nameHe":"פסטיון פלוס פסטה","category":"rodents","formulation":"","registrationNumber":"584","registrationExpiry":"2030","activeIngredients":[{"name":"Brodifacoum","percent":"0.005%"},{"name":"Denatonium Benzoate","percent":"0.001%","role":"חומר מר"}],"targetPests":["עכברים","חולדות"],"warningsHuman":["רעיל במגע עם העור ובבליעה.","עלול לגרום נזק למערכת הדם בחשיפה ממושכת או חוזרת.","עלול לפגוע בפוריות או בעובר."],"warningsAnimals":["רעיל לבעלי חיים, לרבות ציפורים וחיות מחמד."],"warningsEnvironment":["רעיל לדגים וליצורים החיים במים.","אין להשתמש בקרבת מקווה מים."],"customerInstructionsBefore":[],"customerInstructionsAfter":["אין לגעת בשקיות הפיתיון בידיים חשופות.","אין להזיז את תיבות ההאכלה."],"professionalPpe":[],"firstAid":[],"applicationRestrictions":["יש להשתמש בפיתיונות בתוך תיבות האכלה בלבד, למעט החריגים המפורשים בתווית לגבי עומק מחילות ובורות ביוב.","יש לקבע את הפיתיון בתוך תיבת ההאכלה ולקבע את התיבה כך שלא יהיה ניתן להזיזה.","יש לבדוק את התיבות לפי הצורך.","בסיום העבודה יש לאסוף את תיבות ההאכלה ואת פגרי המכרסמים הנראים בשטח.","אין לגעת בשקיות הפיתיון בידיים חשופות."],"dosages":[{"id":"pastion-rats","conditionType":"pest","forPests":["חולדות"],"method":"bait_station","text":"כ-100-300 גרם לתיבת האכלה; מרחק של 5-15 מטר בין התיבות, בהתאם לנגיעות ולתוואי.","amountPerStation":"100-300 גרם לתיבת האכלה","stationSpacing":"5-15 מטר בין התיבות, בהתאם לנגיעות ולתוואי"},{"id":"pastion-mice","conditionType":"pest","forPests":["עכברים"],"method":"bait_station","text":"כ-10-60 גרם לתיבת האכלה; מרחק של 2-5 מטר בין התיבות, בהתאם לנגיעות ולתוואי.","amountPerStation":"10-60 גרם לתיבת האכלה","stationSpacing":"2-5 מטר בין התיבות, בהתאם לנגיעות ולתוואי"}],"reentry":{"type":"not_applicable_by_label","minutes":null,"text":"פיתיון בתיבות האכלה; יש לפעול לפי מגבלות התווית ומיקום התיבות"},"officialLabelUrl":"https://documents.sviva.gov.il/PesticideLabel_701.pdf","sourceType":"official_ministry","verificationStatus":"verified","isSelectable":true,"lastVerifiedAt":"2026-09-20","labelSha256":"","statusLabel":"אומת מתווית רשמית","verificationMethod":"label_transcribed_by_licensee","verificationNote":"הנתונים הועתקו מתווית המוצר על ידי בעל הרישיון. קובץ התווית לא הורד ולא אומת אוטומטית על ידי המערכת (labelSha256 ריק). חובה לפעול לפי התווית העדכנית ולפי תנאי רישיון המדביר.","conditionalInstructions":[],"preparationSteps":[],"stationTracking":true},{"id":"blokion-plus","nameHe":"בלוקיון פלוס","category":"rodents","formulation":"","registrationNumber":"","registrationExpiry":"","activeIngredients":[],"targetPests":[],"warningsHuman":[],"warningsAnimals":[],"warningsEnvironment":[],"customerInstructionsBefore":[],"customerInstructionsAfter":[],"professionalPpe":[],"firstAid":[],"applicationRestrictions":[],"dosages":[],"reentry":{"type":"","minutes":null,"text":""},"officialLabelUrl":"","sourceType":"","verificationStatus":"blocked","isSelectable":false,"lastVerifiedAt":"","labelSha256":"","statusLabel":"ממתין לאימות תווית ורישום בתוקף","verificationMethod":"","verificationNote":"לא אותרה תווית רשמית בתוקף עבור מוצר זה. גישת הרשת לאתרי המשרד להגנת הסביבה חסומה בסביבת הפיתוח, ולכן לא בוצע חיפוש במאגר הרשמי. אין להשתמש במוצר ביומן טיפול עד לאיתור תווית רשמית ועדכנית ואימות כל הנתונים מולה. אין להעתיק לכאן נתונים מפסטיון פלוס או מכל תכשיר אחר.","conditionalInstructions":[],"preparationSteps":[],"stationTracking":true}]};
+/*PESTICIDES_END*/
+const PRODUCTS=()=>(PEST_CATALOG.products||[]);
+const prodById=id=>PRODUCTS().find(p=>p.id===id)||null;
+const curYear=()=>new Date().getFullYear();
+function regExpired(p){
+  if(!p||!p.registrationExpiry)return false;
+  const y=parseInt(String(p.registrationExpiry).match(/\d{4}/)||[],10);
+  return y?y<curYear():false;
+}
+function prodBlockReason(p){
+  if(!p)return 'התכשיר אינו קיים במאגר';
+  if(p.verificationStatus==='blocked')return p.statusLabel||'ממתין לאימות תווית ורישום בתוקף';
+  if(p.isSelectable===false)return p.statusLabel||'התכשיר אינו זמין לבחירה';
+  if(regExpired(p))return `תוקף הרישום (${p.registrationExpiry}) חלף`;
+  return '';
+}
+const prodBlocked=p=>!!prodBlockReason(p);
+/* ירוק = מאומת וזמין, כתום = נדרשת בחירה נוספת מהתווית (למשל סוג משטח), אפור = חסום */
+const prodState=p=>prodBlocked(p)?'blocked':(needsSurface(p)?'choice':'ok');
+const ingText=p=>(p.activeIngredients||[]).map(x=>[x.name,x.percent].filter(Boolean).join(' ')).join(', ');
+const ingNames=p=>(p.activeIngredients||[]).map(x=>x.name).join(', ');
+const ingPct=p=>(p.activeIngredients||[]).map(x=>x.percent).filter(Boolean).join(', ');
+
+/* המינונים המותרים לפי המזיק שנבחר, ולפי סוג המשטח כאשר התווית דורשת זאת */
+function allowedDosages(p,pest,surface){
+  if(!p)return [];
+  return (p.dosages||[]).filter(d=>{
+    if(d.conditionType==='pest')return !pest||(d.forPests||[]).includes(pest);
+    if(d.conditionType==='surface'){
+      if(pest&&(d.forPests||[]).length&&!(d.forPests||[]).includes(pest))return false;
+      return !!surface&&d.conditionValue===surface;
+    }
+    return true;
+  });
+}
+const surfaceOptions=p=>[...new Set((p&&p.dosages||[]).filter(d=>d.conditionType==='surface').map(d=>d.conditionValue))];
+const needsSurface=p=>surfaceOptions(p).length>0;
+/* הוראות מותנות שהופעלו בפועל (למשל איסור שינה על מיטה שרוססה) */
+function activeConditionals(p,a){
+  if(!p||!a)return [];
+  return (p.conditionalInstructions||[]).filter(c=>{
+    if((c.forPests||[]).length&&!(c.forPests||[]).includes(a.pest))return false;
+    if(c.questionKey)return a[c.questionKey]===true;
+    return true;
+  });
+}
+function pendingConditionals(p,a){
+  if(!p||!a)return [];
+  return (p.conditionalInstructions||[]).filter(c=>
+    c.questionKey&&(!(c.forPests||[]).length||(c.forPests||[]).includes(a.pest))&&a[c.questionKey]==null);
+}
+
+/* צילום נתוני התווית לתוך היומן, כדי שיומן היסטורי יישאר קריא
+   גם אחרי שהמוצר ישתנה או ייחסם במאגר */
+function labelSnapshot(p){
+  if(!p)return null;
+  return {id:p.id,nameHe:p.nameHe,category:p.category,
+    registrationNumber:p.registrationNumber,registrationExpiry:p.registrationExpiry,
+    activeIngredients:clone(p.activeIngredients||[]),targetPests:clone(p.targetPests||[]),
+    warningsHuman:clone(p.warningsHuman||[]),warningsAnimals:clone(p.warningsAnimals||[]),
+    warningsEnvironment:clone(p.warningsEnvironment||[]),
+    customerInstructionsBefore:clone(p.customerInstructionsBefore||[]),
+    customerInstructionsAfter:clone(p.customerInstructionsAfter||[]),
+    professionalPpe:clone(p.professionalPpe||[]),firstAid:clone(p.firstAid||[]),
+    applicationRestrictions:clone(p.applicationRestrictions||[]),
+    dosages:clone(p.dosages||[]),reentry:clone(p.reentry||{}),
+    conditionalInstructions:clone(p.conditionalInstructions||[]),
+    officialLabelUrl:p.officialLabelUrl,sourceType:p.sourceType,
+    verificationStatus:p.verificationStatus,statusLabel:p.statusLabel,
+    lastVerifiedAt:p.lastVerifiedAt,labelSha256:p.labelSha256,
+    verificationNote:p.verificationNote,at:Date.now()};
+}
+/* התווית של יישום מסוים: מהמאגר כשהוא עדיין שם, אחרת מהצילום שביומן */
+const labelOf=a=>(a&&a.pid&&prodById(a.pid))||(a&&a.labelSnapshot)||null;
+
+/* זמן כניסה מחדש מצרפי – המחמיר ביותר מבין הערכים המספריים,
+   בתוספת הוראות מיוחדות המוצגות בנפרד ומשויכות למוצר שלהן */
+function reentryFor(j){
+  const out={minutes:0,numeric:[],special:[],conditional:[]};
+  (j.apps||[]).forEach(a=>{
+    const p=labelOf(a);if(!p)return;
+    const r=p.reentry||{};
+    if(r.type==='numeric'&&r.minutes>0){
+      out.numeric.push({product:p.nameHe,minutes:r.minutes,text:r.text});
+      out.minutes=Math.max(out.minutes,r.minutes);
+    }else if(r.type&&r.text){
+      out.special.push({product:p.nameHe,text:r.text});
+    }
+    activeConditionals(p,a).forEach(c=>out.conditional.push({product:p.nameHe,text:c.text}));
+  });
+  return out;
+}
+const minutesText=m=>m>=60?(m%60?`${Math.floor(m/60)} שעות ו-${m%60} דקות`:`${m/60} שעות`):`${m} דקות`;
+/* האזהרות של כל יישום, תמיד תחת שם המוצר שממנו נלקחו */
+function warningGroups(j){
+  const seen=new Set(),out=[];
+  (j.apps||[]).forEach(a=>{
+    const p=labelOf(a);if(!p||seen.has(p.id))return;seen.add(p.id);
+    out.push({id:p.id,name:p.nameHe,label:p,
+      conditionals:(j.apps||[]).filter(x=>(x.pid||((x.labelSnapshot||{}).id))===p.id)
+        .flatMap(x=>activeConditionals(p,x))});
+  });
+  return out;
+}
+
+/* ---- כרטיס מוצר במאגר ---- */
+function prodCard(p,{action='pickProd',idx=null,compact=false}={}){
+  const st=prodState(p),reason=prodBlockReason(p),exp=regExpired(p);
+  const cat=p.category==='rodents'?'מכרסמים':'חרקים זוחלים';
+  return `<button type="button" class="pcard ${st}" ${st==='blocked'?'disabled aria-disabled="true"':''}
+     data-a="${action}" data-p="${p.id}"${idx==null?'':` data-i="${idx}"`}>
+    <span class="picon">${st==='blocked'?ic('lock',22):ic(p.category==='rodents'?'mouse':'bug',22)}</span>
+    <span class="pmain">
+      <b>${esc(p.nameHe)}</b>
+      <small>${cat}${ingText(p)?' · '+esc(ingText(p)):''}</small>
+      ${st==='blocked'
+        ? `<small class="pblock">${ic('warn',13)} ${esc(reason)}</small>`
+        : `<small class="pok">${ic('check',13)} ${esc(p.statusLabel||'')} · רישום ${esc(p.registrationNumber)} · בתוקף עד ${esc(p.registrationExpiry)}</small>`}
+      ${exp?'<small class="pblock">תוקף הרישום חלף</small>':''}
+    </span></button>`;
+}
+/* פרטי האימות והקישור לתווית */
+function labelMeta(p,{full=true}={}){
+  if(!p)return '';
+  const exp=regExpired(p);
+  return `<div class="lmeta ${prodBlocked(p)?'bad':''}">
+    <div class="lrow"><b>${esc(p.nameHe)}</b>
+      ${p.officialLabelUrl?`<a class="btn sm ghost" href="${esc(p.officialLabelUrl)}" target="_blank" rel="noopener">${ic('pdf',15)} צפייה בתווית המקורית</a>`:'<span class="opt">אין קישור לתווית</span>'}</div>
+    ${prodBlocked(p)?`<p class="bad">${ic('warn',14)} ${esc(prodBlockReason(p))}</p>`
+      :`<p>${ic('check',14)} ${esc(p.statusLabel||'')} · אומת בתאריך ${esc(fmtD(p.lastVerifiedAt)||p.lastVerifiedAt||'—')}</p>
+        <p>מספר רישום ${esc(p.registrationNumber)} · תוקף הרישום בתווית: ${esc(p.registrationExpiry)}${exp?' — התוקף חלף':''}</p>`}
+    ${full&&p.verificationNote?`<p class="opt">${esc(p.verificationNote)}</p>`:''}
+  </div>`;
+}
+const listBox=(title,arr,cls)=>(arr||[]).length
+  ?`<div class="wbox ${cls||''}"><b>${esc(title)}</b><ul>${arr.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:'';
+const emptyNote=t=>`<p class="opt">${esc(t)}</p>`;
+
+/* ---- תצוגה 1: הנחיות ללקוח (בלי ציוד מגן מקצועי) ---- */
+function customerView(j){
+  const groups=warningGroups(j),re=reentryFor(j);
+  if(!groups.length)return '';
+  return `<div class="sec"><div class="sech"><h3>${ic('user',18)} הנחיות ללקוח</h3></div><div class="secb">
+   ${re.minutes?`<div class="reentry"><b>זמן כניסה מחדש: ${esc(minutesText(re.minutes))}</b>
+     ${re.numeric.length>1?`<small>הוחל הזמן המחמיר מבין התכשירים: ${re.numeric.map(x=>esc(x.product)+' – '+minutesText(x.minutes)).join(' · ')}</small>`:''}
+     <ul>${re.numeric.map(x=>`<li>${esc(x.product)}: ${esc(x.text)}</li>`).join('')}</ul></div>`:''}
+   ${re.special.map(x=>`<div class="reentry alt"><b>${esc(x.product)}</b><p>${esc(x.text)}</p></div>`).join('')}
+   ${re.conditional.length?`<div class="reentry warn"><b>הוראות מיוחדות נוספות</b>
+     <ul>${re.conditional.map(x=>`<li>${esc(x.product)}: ${esc(x.text)}</li>`).join('')}</ul></div>`:''}
+   ${groups.map(g=>{const p=g.label;return `<div class="pgroup">
+     <div class="pgh">${esc(p.nameHe)}</div>
+     ${listBox('לפני הטיפול',p.customerInstructionsBefore)}
+     ${listBox('בסיום הטיפול',p.customerInstructionsAfter)}
+     ${listBox('אזהרות לאדם',p.warningsHuman,'danger')}
+     ${listBox('אזהרות לבעלי חיים',p.warningsAnimals)}
+     ${listBox('אזהרות לסביבה',p.warningsEnvironment)}
+     ${g.conditionals.length?listBox('הוראה מיוחדת לטיפול הזה',g.conditionals.map(c=>c.text),'danger'):''}
+    </div>`}).join('')}
+   <p class="hint">האזהרות מוצגות תחת שם התכשיר שממנו נלקחו. ציוד המגן של המדביר אינו נדרש מהלקוח ואינו מוצג כאן.</p>
+  </div></div>`;
+}
+/* ---- תצוגה 2: מידע מקצועי למדביר ---- */
+function professionalView(j){
+  const groups=warningGroups(j);
+  if(!groups.length)return '';
+  return `<div class="sec"><div class="sech"><h3>${ic('book',18)} מידע מקצועי למדביר</h3></div><div class="secb">
+   ${groups.map(g=>{const p=g.label;return `<div class="pgroup pro">
+     <div class="pgh">${esc(p.nameHe)}</div>
+     ${labelMeta(p)}
+     ${listBox('מגבלות שימוש',p.applicationRestrictions)}
+     ${(()=>{/* רק המינונים הרלוונטיים לטיפול הזה, כדי שמינון של מזיק אחר לא יוצג */
+       const mine=(j.apps||[]).filter(x=>(x.pid||((x.labelSnapshot||{}).id))===p.id);
+       const picked=mine.some(x=>x.pest)
+         ? [...new Set(mine.flatMap(x=>allowedDosages(p,x.pest,x.surface)).map(d=>d.id))]
+             .map(id=>(p.dosages||[]).find(d=>d.id===id)).filter(Boolean)
+         : (p.dosages||[]);
+       const rest=(p.dosages||[]).length-picked.length;
+       return listBox(mine.some(x=>x.pest)?'מינון מהתווית לטיפול הזה':'מינונים מהתווית',
+         picked.map(d=>(d.conditionValue?d.conditionValue+': ':'')+d.text+((d.forPests||[]).length?' ('+d.forPests.join(', ')+')':'')))
+         +(rest>0?`<p class="opt">בתווית יש עוד ${rest} מינונים למזיקים או למשטחים אחרים. לצפייה בהם פתחו את התווית המקורית.</p>`:'')})()}
+     ${(p.professionalPpe||[]).length?listBox('ציוד מגן אישי',p.professionalPpe)
+       :emptyNote('ציוד מגן אישי: לא הוזנו נתונים מהתווית. יש לפעול לפי התווית ולפי תנאי הרישיון.')}
+     ${(p.firstAid||[]).length?listBox('עזרה ראשונה',p.firstAid)
+       :emptyNote('עזרה ראשונה: לא הוזנו נתונים מהתווית. יש לפעול לפי התווית.')}
+    </div>`}).join('')}
+   <div class="note">המידע מבוסס על התוויות שנבדקו ונרשמו במערכת. אין בו אישור גורף לעמידה בחוק. חובה לפעול לפי התווית העדכנית של המוצר ולפי תנאי רישיון המדביר.</div>
+  </div></div>`;
+}
+
+/* ---- בחירת תכשיר והשדות התלויים בתווית, בתוך שלב התכשירים ---- */
+function catalogBox(a,i){
+  const p=labelOf(a);
+  if(!p)return `<div class="sec"><div class="sech"><h3>בחירת תכשיר מהמאגר המאומת</h3></div><div class="secb">
+    <p class="hint" style="margin-top:10px">בשלב זה זמינים ארבעת התכשירים שאומתו מול התווית שלהם.</p>
+    <div class="pgrid">${PRODUCTS().map(x=>prodCard(x,{idx:i})).join('')}</div>
+    ${blockedNote()}
+   </div></div>`;
+  const pests=p.targetPests||[];
+  const surf=needsSurface(p),sOpts=surfaceOptions(p);
+  const dos=allowedDosages(p,a.pest,a.surface);
+  const pend=pendingConditionals(p,a);
+  return `<div class="sec"><div class="sech"><h3>${esc(p.nameHe)}</h3>
+     <button class="del" data-a="clearProd" data-i="${i}">החלפת תכשיר</button></div><div class="secb">
+   ${labelMeta(p)}
+   ${prodBlocked(p)?`<div class="vwarn"><b>${esc(prodBlockReason(p))}</b><p>לא ניתן לשמור יומן חדש עם תכשיר זה. ביומנים היסטוריים הוא נשאר זמין לצפייה.</p></div>`:''}
+   <div class="field"><span class="flabel req">המזיק שטופל <span class="opt">(מהתווית בלבד)</span></span>
+     <div class="chips${ec(`apps.${i}.pest`)}" data-fw="apps.${i}.pest">
+       ${pests.map(x=>`<button type="button" class="chip ${a.pest===x?'on':''}" data-a="setPest" data-i="${i}" data-val="${esc(x)}">${esc(x)}</button>`).join('')}</div>
+     <p class="hint">ניתן לבחור רק מזיק המופיע בתווית של ${esc(p.nameHe)}.</p></div>
+   ${surf?`<div class="field"><span class="flabel req">סוג המשטח</span>
+     <div class="seg${ec(`apps.${i}.surface`)}" data-fw="apps.${i}.surface">
+      ${sOpts.map(x=>`<button type="button" class="${a.surface===x?'on':''}" data-a="setSurface" data-i="${i}" data-val="${esc(x)}">${esc(x)}</button>`).join('')}</div>
+     ${a.surface?'':'<p class="hint">יש לבחור סוג משטח לפני הצגת המינון.</p>'}</div>`:''}
+   ${pend.map(c=>`<div class="qbox" data-fw="apps.${i}.${c.questionKey}">
+      <b>${esc(c.question)}</b>
+      <div class="seg"><button type="button" data-a="setCond" data-i="${i}" data-k="${c.questionKey}" data-val="yes">כן</button>
+      <button type="button" data-a="setCond" data-i="${i}" data-k="${c.questionKey}" data-val="no">לא</button></div></div>`).join('')}
+   ${(p.conditionalInstructions||[]).filter(c=>c.questionKey&&a[c.questionKey]!=null&&(!(c.forPests||[]).length||(c.forPests||[]).includes(a.pest))).map(c=>
+     `<div class="qbox done"><b>${esc(c.question)}</b> <span>${a[c.questionKey]?'כן':'לא'}</span>
+      <button class="link" data-a="setCond" data-i="${i}" data-k="${c.questionKey}" data-val="clear">שינוי</button>
+      ${a[c.questionKey]?`<p class="bad">${esc(c.text)}</p>`:''}</div>`).join('')}
+   <div class="field"><span class="flabel req">מינון מהתווית</span>
+     ${(surf&&!a.surface)?'<p class="hint">בחרו סוג משטח כדי לראות את המינון המאושר.</p>'
+      :!a.pest?'<p class="hint">בחרו מזיק כדי לראות את המינון המאושר.</p>'
+      :dos.length?`<div class="dosset${ec(`apps.${i}.dosageId`)}" data-fw="apps.${i}.dosageId">${dos.map(d=>`<button type="button" class="dos ${a.dosageId===d.id?'on':''}" data-a="setDos" data-i="${i}" data-p="${d.id}">
+          <b>${esc(d.text)}</b>${d.amountPerStation?`<small>${esc(d.amountPerStation)} · ${esc(d.stationSpacing||'')}</small>`:''}
+          ${d.conditionValue?`<small>${esc(d.conditionValue)}</small>`:''}</button>`).join('')}</div>`
+      :'<p class="errtxt">אין בתווית מינון למזיק שנבחר. יש לבחור מזיק אחר או תכשיר אחר.</p>'}</div>
+   <div class="note">אזהרות המוצר, מגבלות השימוש וזמן הכניסה מחדש נטענים מהתווית ואינם ניתנים לעריכה ידנית.</div>
+  </div></div>`;
+}
+const blockedNote=()=>{
+  const b=PRODUCTS().filter(prodBlocked);
+  return b.length?`<p class="hint">${b.map(p=>`${esc(p.nameHe)} — ${esc(prodBlockReason(p))}`).join(' · ')}</p>`:'';
+};
+/* השדות שהמדביר חייב להזין בעצמו בכל טיפול */
+function executionBox(a,i){
+  const p=labelOf(a);if(!p)return '';
+  const st=p.stationTracking||(p.dosages||[]).some(d=>d.method==='bait_station');
+  return `<div class="sec"><div class="sech"><h3>נתוני הביצוע</h3><span class="tag draft">הזנה ידנית</span></div><div class="secb">
+   <p class="hint" style="margin-top:10px">הנתונים האלה לעולם אינם נטענים מראש ואינם מועתקים מיומן קודם.</p>
+   ${fInput('מספר אצווה שעל האריזה',`apps.${i}.batch`)}
+   ${fInput('תאריך תפוגה שעל האריזה',`apps.${i}.pkgExpiry`,{type:'date'})}
+   <div class="two">${fInput('כמות חומר שבה השתמשת',`apps.${i}.amountUsed`,{ph:'למשל 100 סמ"ק'})}
+     ${fInput('כמות מים',`apps.${i}.waterAmount`,{req:!st,opt:st,ph:'למשל 10 ליטר'})}</div>
+   ${fText('אזורי הטיפול',`apps.${i}.areas`,{ph:'המקומות שטופלו בפועל'})}
+   ${st?stationsExecBox(a,i):''}
+  </div></div>`;
+}
+function stationsExecBox(a,i){
+  const list=a.stations||[];
+  const total=list.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
+  return `<div class="item"><div class="itemh"><strong>תיבות האכלה שהוצבו</strong><span class="tag ${list.length?'':'draft'}">${list.length}</span></div>
+   ${list.map((s,k)=>`<div class="stexec">
+     <div class="two"><label class="field" style="margin:0"><span>מספר סידורי</span><input data-stx="${i}:${k}:serial" value="${esc(s.serial)}" placeholder="מס׳ התיבה"></label>
+       <label class="field" style="margin:0"><span>כמות פיתיון</span><input data-stx="${i}:${k}:amount" value="${esc(s.amount)}" inputmode="decimal" placeholder="גרם"></label></div>
+     <label class="field"><span>מיקום התיבה</span><input data-stx="${i}:${k}:loc" value="${esc(s.loc)}" placeholder="היכן הוצבה"></label>
+     <label class="check"><input type="checkbox" data-stx="${i}:${k}:fixed" ${s.fixed?'checked':''}><span>התיבה קובעה במקומה</span></label>
+     <button class="del" data-a="rmStation" data-i="${i}" data-k="${k}">הסרת התיבה</button></div>`).join('')}
+   <button class="btn ghost w sm" data-a="addStation2" data-i="${i}">${ic('plus',16)} הוספת תיבה</button>
+   <div class="two" style="margin-top:10px">
+     <label class="field" style="margin:0"><span>כמות כוללת</span><input value="${total?esc(String(total)):''}" readonly placeholder="מחושב"></label>
+     <label class="field" style="margin:0"><span class="req">מועד ביקורת הבא</span><input type="date" data-f="apps.${i}.nextCheck" value="${esc(a.nextCheck)}"></label></div>
+   ${(labelOf(a)||{}).category==='rodents'?'<p class="hint">בסיום העבודה יש לאסוף את תיבות ההאכלה ואת פגרי המכרסמים הנראים בשטח.</p>':''}
+  </div>`;
+}
+
+/* ---- תבניות טיפול מוכנות לשימוש ----
+   התבנית קושרת מוצר + מזיק + שיטה. היא לעולם אינה נושאת נתוני ביצוע. */
+const TREATMENTS=[
+ {id:'t-dragon-crawling',pid:'dragon',name:'דרגון – תיקנים וחרקים זוחלים',
+  pests:['תיקנים','חרקים זוחלים אחרים'],
+  method:'ריסוס נקודתי ובהיקף בהתאם לתווית'},
+ {id:'t-dragon-bedbug',pid:'dragon',name:'דרגון – פשפש המיטה',
+  pests:['פשפש המיטה'],pest:'פשפש המיטה',
+  method:'ריסוס בהתאם לתווית',
+  needsAnswer:'bedFrameSprayed'},
+ {id:'t-draker-crawling',pid:'draker-10-2',name:'דרקר 10.2 – חרקים זוחלים',
+  pests:['תיקנים','נמלים','חרקים זוחלים אחרים'],
+  method:'ריסוס נקודתי במקומות מסתור',
+  needsSurface:true},
+ {id:'t-pastion-mice',pid:'pastion-plus-pasta',name:'פסטיון פלוס – עכברים',
+  pests:['עכברים'],pest:'עכברים',
+  method:'הצבת פיתיון בתיבות האכלה'},
+ {id:'t-pastion-rats',pid:'pastion-plus-pasta',name:'פסטיון פלוס – חולדות',
+  pests:['חולדות'],pest:'חולדות',
+  method:'הצבת פיתיון בתיבות האכלה',
+  reminder:'יש לבדוק את התיבות ולאסוף בסיום את פגרי המכרסמים הנראים בשטח.'},
+ {id:'t-blokion',pid:'blokion-plus',name:'בלוקיון פלוס – מכרסמים',
+  pests:[],method:'',
+  lockedNote:'התבנית תופעל לאחר אימות תווית ורישום בתוקף'}
+];
+const tplById=id=>TREATMENTS.find(t=>t.id===id)||null;
+function tplState(t){
+  const p=prodById(t.pid);
+  if(!p||prodBlocked(p))return 'blocked';
+  if(t.needsSurface||t.needsAnswer)return 'choice';
+  return 'ok';
+}
+const TPL_STATE_TXT={ok:'מוכנה לשימוש',choice:'דורשת השלמת פרטים',blocked:'חסומה'};
+function tplCard(t){
+  const p=prodById(t.pid),st=tplState(t);
+  const why=st==='blocked'?(t.lockedNote||prodBlockReason(p)):
+    st==='choice'?(t.needsSurface?'יש לבחור סוג משטח':'יש להשיב על שאלת ההכנה'):'';
+  return `<button type="button" class="tcard ${st}" ${st==='blocked'?'disabled aria-disabled="true"':''}
+    data-a="useTpl" data-p="${t.id}">
+    <span class="ticon">${st==='blocked'?ic('lock',24):ic(p&&p.category==='rodents'?'mouse':'bug',24)}</span>
+    <span class="tmain"><b>${esc(t.name)}</b>
+      <small>${esc((t.pests||[]).join(', ')||'—')}</small>
+      ${t.method?`<small>${esc(t.method)}</small>`:''}
+      <small class="tstate">${st==='blocked'?ic('warn',12):ic('check',12)} ${esc(TPL_STATE_TXT[st])}${why?' · '+esc(why):''}</small>
+      ${p&&!prodBlocked(p)?`<small class="opt">${esc(p.statusLabel||'')} · אומת ${esc(fmtD(p.lastVerifiedAt)||'—')}</small>`:''}
+    </span></button>`;
+}
+function vTemplates(){
+  return `${topbar('תבניות טיפול','home')}
+  <main class="page">
+   <p class="hint">כל תבנית טוענת את נתוני התווית של התכשיר שלה. נתוני הביצוע – אצווה, תפוגה, כמויות, אזורים, תאריך וחתימות – נשארים ריקים וימולאו בכל יומן מחדש.</p>
+   <div class="tgrid">${TREATMENTS.map(tplCard).join('')}</div>
+   <h2 style="font-size:16px;margin:20px 0 8px">תבניות לקוחות קבועים</h2>
+   ${clientTplList()}
+   <div class="note">${esc(PEST_CATALOG.disclaimer||'')}</div>
+  </main>`;
+}
+function clientTplList(){
+  const list=Object.values(S.clients||{}).filter(c=>c.siteTemplate);
+  if(!list.length)return '<p class="hint">אין עדיין תבניות אישיות. בכרטיס לקוח אפשר לשמור תבנית עם פרטי האתר הקבועים.</p>';
+  return list.map(c=>{const t=c.siteTemplate,p=t.pid&&prodById(t.pid);
+    const bad=t.pid&&(!p||prodBlocked(p));
+    return `<div class="tcard client ${bad?'blocked':'ok'}">
+     <span class="ticon">${ic('users',24)}</span>
+     <span class="tmain"><b>${esc(t.name||c.name)}</b>
+       <small>${esc(t.address||'')}</small>
+       <small>${esc([t.siteType,t.frequency].filter(Boolean).join(' · '))}</small>
+       ${t.pid?`<small class="tstate">${bad?ic('warn',12)+' '+esc(p?prodBlockReason(p):'התכשיר אינו במאגר'):ic('check',12)+' חומר מועדף: '+esc(p.nameHe)}</small>`:''}
+     </span>
+     <span class="tacts">
+      <button class="btn sm" data-a="ctplNew" data-p="${c.id}">פתח יומן חדש</button>
+      <button class="btn sm ghost" data-a="ctplLast" data-p="${c.id}">טען מיומן אחרון</button>
+      <button class="btn sm ghost" data-a="ctplEdit" data-p="${c.id}">ערוך תבנית</button>
+     </span></div>`}).join('');
+}
+/* תיבת "בחר תבנית מוכנה" בראש יומן חדש */
+function tplPickerBox(){
+  if(cur&&cur.tplId)return '';
+  const open=TREATMENTS.filter(t=>tplState(t)!=='blocked');
+  return `<div class="tpick"><div class="tph"><b>בחר תבנית מוכנה</b>
+     <button class="link" data-a="go" data-v="templates">כל התבניות</button></div>
+   <div class="trow">${open.map(t=>`<button type="button" class="tmini ${tplState(t)}" data-a="useTplHere" data-p="${t.id}">
+     ${ic(prodById(t.pid)&&prodById(t.pid).category==='rodents'?'mouse':'bug',18)}<span>${esc(t.name)}</span></button>`).join('')}</div></div>`;
+}
+function tplBanner(){
+  if(!cur||!cur.tplId)return '';
+  const t=tplById(cur.tplId),p=t&&prodById(t.pid);
+  if(!t)return '';
+  return `<div class="clonebar done"><span>${ic('check',16)} נטען מתבנית מאומתת · ${esc(t.name)}${p?` · ${esc(p.statusLabel||'')} · אומת ${esc(fmtD(p.lastVerifiedAt)||'—')}`:''}</span>
+    <button class="link" data-a="clearTpl">ביטול</button></div>`;
+}
+const tplTag=()=>'<span class="ttag">נטען מתבנית מאומתת</span>';
+
+/* ---- תבנית אישית ללקוח ---- */
+const CLIENT_TPL_FIELDS=[
+ ['name','שם התבנית'],['contact','איש קשר'],['siteType','סוג האתר'],
+ ['areas','אזורי טיפול קבועים'],['stationLocs','מיקומי תיבות האכלה'],
+ ['checkPoints','נקודות ביקורת קבועות'],['entry','הנחיות כניסה לאתר'],
+ ['gear','ציוד או מפתח שנדרשים'],['notes','הערות קבועות ללקוח'],
+ ['frequency','תדירות הטיפול']
+];
+function clientTplBox(c){
+  const t=c.siteTemplate;
+  if(!t)return `<div class="sec"><div class="sech"><h3>תבנית ללקוח</h3></div><div class="secb">
+    <p class="hint" style="margin-top:10px">שמירת תבנית תשמור את פרטי האתר הקבועים בלבד. אצווה, תפוגה, מינון שבוצע, כמויות, ממצאים וחתימות לעולם אינם נשמרים בתבנית.</p>
+    <button class="btn gold w" data-a="ctplSave" data-p="${c.id}">${ic('copy',18)} שמור כתבנית ללקוח</button></div></div>`;
+  const p=t.pid&&prodById(t.pid);
+  return `<div class="sec"><div class="sech"><h3>תבנית ללקוח</h3><span class="tag gold">שמורה</span></div><div class="secb">
+   ${CLIENT_TPL_FIELDS.map(([k,l])=>`<label class="field"><span>${l}</span><input data-ctpl="${k}" value="${esc(t[k]||'')}"></label>`).join('')}
+   <div class="field"><span class="flabel">חומר מועדף</span><div class="chips">
+     ${PRODUCTS().map(x=>`<button type="button" class="chip ${t.pid===x.id?'on':''} ${prodBlocked(x)?'off':''}" ${prodBlocked(x)?'disabled':''} data-a="ctplProd" data-p="${c.id}" data-val="${x.id}">${esc(x.nameHe)}</button>`).join('')}</div>
+     ${p&&prodBlocked(p)?`<p class="errtxt">${esc(prodBlockReason(p))} – לא ניתן לפתוח יומן חדש מהתבנית.</p>`:''}</div>
+   <label class="field"><span>מזיקים נפוצים</span><input data-ctpl="pests" value="${esc(t.pests||'')}" placeholder="מופרדים בפסיק"></label>
+   <label class="field"><span>אחריות קבועה <span class="opt">(ניתנת לעריכה בכל יומן)</span></span><input data-ctpl="warranty" value="${esc(t.warranty||'')}"></label>
+   <div class="stack" style="margin-top:10px">
+    <button class="btn" data-a="ctplNew" data-p="${c.id}">פתח יומן חדש</button>
+    <button class="btn ghost" data-a="ctplLast" data-p="${c.id}">טען מיומן אחרון</button>
+    <button class="del" data-a="ctplDel" data-p="${c.id}">מחיקת התבנית</button>
+   </div>
+   <p class="hint">התבנית אינה שומרת אצווה, תפוגה, מינון שבוצע, כמויות, ממצאים או חתימות.</p>
+  </div></div>`;
+}
+
+/* ---- פעולות ---- */
+/* נתוני ביצוע משתנים שלעולם אינם נטענים מראש ואינם מועתקים */
+const EXEC_FIELDS=['batch','pkgExpiry','amountUsed','waterAmount','areas','nextCheck'];
+function clearExecution(a){
+  EXEC_FIELDS.forEach(k=>a[k]='');
+  a.stations=[];
+  a.dose='';a.useConc='';
+  return a;
+}
+function applyProduct(a,p,{pest=null,dosageId=null}={}){
+  a.pid=p.id;
+  a.product=p.nameHe;
+  a.active=ingNames(p);
+  a.conc=ingPct(p);
+  a.registrationNumber=p.registrationNumber;
+  a.labelSnapshot=labelSnapshot(p);
+  a.rtu=false;
+  a.method=(p.dosages||[]).some(d=>d.method==='bait_station')?'תחנות האכלה':'ריסוס';
+  a.methodOther='';
+  a.surface='';a.dosageId='';
+  (p.conditionalInstructions||[]).forEach(c=>{if(c.questionKey)a[c.questionKey]=null});
+  a.pest=pest&&(p.targetPests||[]).includes(pest)?pest:'';
+  if(dosageId&&(p.dosages||[]).some(d=>d.id===dosageId))a.dosageId=dosageId;
+  clearExecution(a);
+  return a;
+}
+function syncDose(a){
+  const p=labelOf(a),d=(p&&(p.dosages||[]).find(x=>x.id===a.dosageId))||null;
+  if(!d){a.dose='';a.unit=a.unit||'';return}
+  a.dose=d.text;a.unit=a.unit||'אחר';a.unitOther=a.unitOther||'לפי התווית';
+}
+Object.assign(A,{
+  pickProd:d=>{const p=prodById(d.p);if(!p||prodBlocked(p))return;
+    const i=+d.i||0;applyProduct(cur.apps[i],p);
+    vMark(cur,'product:'+cur.apps[i].id);vOkMark(cur,'product:'+cur.apps[i].id,'changed');
+    touch();render();toast(`${p.nameHe} נבחר · נתוני התווית נטענו`)},
+  clearProd:async d=>{if(!await ask('להחליף תכשיר? נתוני התווית והביצוע של התכשיר הזה יימחקו.',{ok:'החלפה',danger:true}))return;
+    const i=+d.i||0,a=cur.apps[i];
+    ['pid','product','active','conc','registrationNumber','surface','dosageId'].forEach(k=>a[k]='');
+    a.labelSnapshot=null;clearExecution(a);touch();render()},
+  setPest:d=>{const i=+d.i,a=cur.apps[i],p=labelOf(a);
+    if(!p||!(p.targetPests||[]).includes(d.val))return;
+    a.pest=a.pest===d.val?'':d.val;
+    if(!allowedDosages(p,a.pest,a.surface).some(x=>x.id===a.dosageId))a.dosageId='';
+    syncDose(a);touch();render()},
+  setSurface:d=>{const i=+d.i,a=cur.apps[i];
+    a.surface=a.surface===d.val?'':d.val;
+    if(!allowedDosages(labelOf(a),a.pest,a.surface).some(x=>x.id===a.dosageId))a.dosageId='';
+    syncDose(a);touch();render()},
+  setDos:d=>{const i=+d.i,a=cur.apps[i],p=labelOf(a);
+    if(!allowedDosages(p,a.pest,a.surface).some(x=>x.id===d.p))return;
+    a.dosageId=a.dosageId===d.p?'':d.p;syncDose(a);
+    const k='dose:'+a.id;if(cur.verify&&cur.verify[k])vOkMark(cur,k,'changed');
+    touch();render()},
+  setCond:d=>{const i=+d.i,a=cur.apps[i];
+    a[d.k]=d.val==='clear'?null:d.val==='yes';touch();render()},
+  addStation2:d=>{const i=+d.i,a=cur.apps[i];
+    (a.stations=a.stations||[]).push({serial:'',loc:'',amount:'',fixed:false});touch();render()},
+  rmStation:d=>{const i=+d.i,a=cur.apps[i];a.stations.splice(+d.k,1);touch();render()},
+
+  /* תבניות טיפול */
+  useTpl:async d=>{const t=tplById(d.p);if(!t||tplState(t)==='blocked')return;
+    const open=cur&&cur.status==='draft'?null:null;
+    await A.newJ();if(!cur)return;applyTreatment(cur,t);go('wizard')},
+  useTplHere:d=>{const t=tplById(d.p);if(!t||tplState(t)==='blocked')return;
+    applyTreatment(cur,t);touch();render();window.scrollTo(0,0);toast(`התבנית "${t.name}" נטענה`)},
+  clearTpl:()=>{cur.tplId='';touch();render()},
+
+  /* תבנית אישית ללקוח */
+  ctplSave:d=>{const c=S.clients[d.p];if(!c)return;
+    const last=journalsForSite(c.name,(c.places||[])[0]||{},null,true)[0];
+    c.siteTemplate={name:c.name,contact:c.role||'',siteType:'',areas:'',stationLocs:'',
+      checkPoints:'',entry:'',gear:'',notes:'',frequency:(c.regular||{}).freq||'',
+      address:(c.places||[])[0]?placeText(c.places[0]):'',
+      pid:(last&&last.apps||[]).map(a=>a.pid).filter(Boolean)[0]||'',
+      pests:(last&&last.findings||[]).map(f=>f.pest).filter(Boolean).join(', '),
+      warranty:(last&&last.warranty||{}).period||'',at:Date.now()};
+    c.updatedAt=Date.now();saveLocal();pushClient(c);render();toast('התבנית נשמרה')},
+  ctplDel:async d=>{if(!await ask('למחוק את התבנית האישית?',{ok:'מחיקה',danger:true}))return;
+    const c=S.clients[d.p];delete c.siteTemplate;c.updatedAt=Date.now();saveLocal();pushClient(c);render()},
+  ctplProd:d=>{const c=S.clients[d.p],p=prodById(d.val);if(!c||!c.siteTemplate||!p||prodBlocked(p))return;
+    c.siteTemplate.pid=c.siteTemplate.pid===p.id?'':p.id;c.updatedAt=Date.now();saveLocal();pushClient(c);render()},
+  ctplEdit:d=>go('client',d.p),
+  ctplNew:async d=>{const c=S.clients[d.p],t=c&&c.siteTemplate;if(!t)return;
+    const p=t.pid?prodById(t.pid):null;
+    if(t.pid&&(!p||prodBlocked(p)))
+      return info(`${p?p.nameHe:'התכשיר'} — ${p?prodBlockReason(p):'אינו במאגר'}. לא ניתן לפתוח יומן חדש מהתבנית עד לאימות תווית ורישום בתוקף.`,'התכשיר חסום');
+    await A.newJ();if(!cur)return;applyClientTpl(cur,c);go('wizard')},
+  ctplLast:async d=>{const c=S.clients[d.p];if(!c)return;
+    const last=journalsForSite(c.name,(c.places||[])[0]||{},null,true)[0];
+    if(!last)return info('אין ליומן קודם שהושלם עבור הלקוח הזה.','טעינה מיומן אחרון');
+    const bad=(last.apps||[]).map(a=>a.pid&&prodById(a.pid)).filter(Boolean).filter(prodBlocked);
+    if(bad.length)return info(bad.map(p=>`${p.nameHe} — ${prodBlockReason(p)}`).join('\n')+'\n\nלא ניתן לטעון יומן שמבוסס על תכשיר חסום או שרישומו פג.','טעינה חסומה');
+    await A.newJ();if(!cur)return;
+    applyClientTpl(cur,c);
+    applyClone(cur,last,defaultSections());
+    (cur.apps||[]).forEach(clearExecution);
+    cur.findings=[newFinding()];cur.techSig=null;
+    cur.handover={delivered:false,receiverName:'',receiverSig:null};
+    audit(cur,'clone','נטען מיומן אחרון דרך תבנית הלקוח · נתוני הביצוע נוקו');
+    touch();go('wizard');
+    setTimeout(()=>compareSheet(),300)}
+});
+function applyTreatment(j,t){
+  const p=prodById(t.pid);if(!p||prodBlocked(p))return;
+  const a=j.apps[0]||newApp();
+  applyProduct(a,p,{pest:t.pest||null});
+  if(t.pest&&(p.targetPests||[]).includes(t.pest)){
+    const d=allowedDosages(p,t.pest,'');
+    if(d.length===1)a.dosageId=d[0].id;
+    syncDose(a);
+  }
+  j.apps=[a];
+  j.tplId=t.id;j.tplName=t.name;j.tplMethod=t.method||'';
+  if(t.pest&&!(j.findings||[]).some(f=>f.pest===t.pest)){
+    const f=j.findings[0]&&!j.findings[0].pest?j.findings[0]:newFinding();
+    f.pest=t.pest;j.findings=[f];
+  }
+  audit(j,'template','נטען מתבנית: '+t.name+' · תכשיר '+p.nameHe);
+  touch();
+}
+function applyClientTpl(j,c){
+  const t=c.siteTemplate;if(!t)return;
+  j.client.name=c.name;j.client.phone=c.phone||'';
+  if(c.role){j.client.role=c.role;j.client.roleOther=c.roleOther||''}
+  if((c.places||[])[0])j.place=Object.assign(j.place,clone(c.places[0]));
+  j.access=t.entry||'';
+  j.siteNotes=[t.notes,t.gear&&('ציוד/מפתח: '+t.gear),t.siteType&&('סוג האתר: '+t.siteType)].filter(Boolean).join('\n');
+  j.clientTplId=c.id;
+  if(t.checkPoints)j.spots=String(t.checkPoints).split(/[,\n]+/).map(x=>x.trim()).filter(Boolean)
+    .map(n=>({id:uid(),name:n,checked:false,note:''}));
+  if(t.pid){const p=prodById(t.pid);
+    if(p&&!prodBlocked(p)){const a=j.apps[0]||newApp();applyProduct(a,p);j.apps=[a]}}
+  (j.apps||[]).forEach(clearExecution);
+  audit(j,'template','נטען מתבנית הלקוח: '+(t.name||c.name));
+  touch();
+}
+
 document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(!el)return;if(el.tagName==='A')return;e.preventDefault();const f=A[el.dataset.a];f&&f(el.dataset,e,el)});
 document.addEventListener('input',e=>{
   const t=e.target;
+  if(t.dataset.stx&&cur){const[i,k,f]=t.dataset.stx.split(':');
+    const a=cur.apps[+i],st=a&&(a.stations||[])[+k];
+    if(st){st[f]=f==='fixed'?t.checked:t.value;touch()}return}
+  if(t.dataset.ctpl){const c=S.clients[param];if(c&&c.siteTemplate){c.siteTemplate[t.dataset.ctpl]=t.value;c.updatedAt=Date.now();saveLocalSoon();clearTimeout(A._ct);A._ct=setTimeout(()=>pushClient(c),900)}return}
   if(t.dataset.sted){const st=S.stations[t.dataset.sted];if(st){st.loc=t.value;saveLocalSoon();clearTimeout(A._sl);A._sl=setTimeout(()=>pushStation(st),1000)}return}
   if(t.dataset.pcap){const ph=S.photos[t.dataset.pcap];if(ph){ph.caption=t.value;saveLocalSoon();clearTimeout(A._pc);A._pc=setTimeout(()=>pushPhoto(ph),1200)}return}
   if(t.dataset.flt!==undefined){flt[t.dataset.flt]=t.value;const k=t.dataset.flt,pos=t.selectionStart;render();const n=document.querySelector(`[data-flt="${k}"]`);if(n){n.focus();if(k==='q')try{n.setSelectionRange(pos,pos)}catch(_){}}return}
@@ -2171,6 +2870,9 @@ document.addEventListener('change',async e=>{
   if(t.dataset.sted){const st=S.stations[t.dataset.sted];if(st){st.loc=t.value;saveLocalSoon();clearTimeout(A._sl);A._sl=setTimeout(()=>pushStation(st),1000)}return}
   if(t.dataset.pcap){const ph=S.photos[t.dataset.pcap];if(ph){ph.caption=t.value;saveLocalSoon();pushPhoto(ph)}return}
   if(t.dataset.c&&cur){setP(cur,t.dataset.c,t.checked);t.closest('.check')?.classList.remove('err');touch();return}
+  if(t.dataset.stx&&cur){const[i,k,f]=t.dataset.stx.split(':');
+    const a=cur.apps[+i],st=a&&(a.stations||[])[+k];
+    if(st){st[f]=f==='fixed'?t.checked:t.value;touch();if(f==='amount'||f==='fixed')render()}return}
   if(t.dataset.spot&&cur){const sp=(cur.spots||[]).find(x=>x.id===t.dataset.spot);if(sp){sp.checked=t.checked;touch()}return}
   if(t.dataset.sec){A._clSel[t.checked?'add':'delete'](t.dataset.sec);sectionSheet();return}
   if(t.dataset.reg){const c=S.clients[param];if(c){c.regular=c.regular||{};c.regular[t.dataset.reg]=t.value;c.updatedAt=Date.now();saveLocalSoon();clearTimeout(A._rg);A._rg=setTimeout(()=>pushClient(c),900)}return}

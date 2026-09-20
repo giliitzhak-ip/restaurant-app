@@ -1,0 +1,342 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-20",
+  "disclaimer": "המידע מבוסס על התוויות שנבדקו ונרשמו כאן. אין בו אישור גורף לעמידה בחוק. חובה לפעול לפי התווית העדכנית של המוצר ולפי תנאי רישיון המדביר.",
+  "products": [
+    {
+      "id": "dragon",
+      "nameHe": "דרגון",
+      "category": "crawling_insects",
+      "formulation": "",
+      "registrationNumber": "640",
+      "registrationExpiry": "2030",
+      "activeIngredients": [
+        {
+          "name": "Bifenthrin",
+          "percent": "9.6%"
+        }
+      ],
+      "targetPests": [
+        "תיקנים",
+        "פשפש המיטה",
+        "חרקים זוחלים אחרים"
+      ],
+      "warningsHuman": [
+        "רעיל בבליעה.",
+        "עלול להיות קטלני בבליעה ובחדירה לנתיבי האוויר.",
+        "עלול לגרום לתגובה אלרגית בעור.",
+        "עלול לגרום נזק לאיברים בחשיפה ממושכת או חוזרת."
+      ],
+      "warningsAnimals": [
+        "רעיל לדבורים; אין לרסס בזמן פעילות דבורים, סמוך לכוורות או על צמחים פורחים המייצרים צוף או אבקה."
+      ],
+      "warningsEnvironment": [
+        "רעיל מאוד לדגים וליצורים החיים במים ועלול לגרום נזק ארוך טווח לסביבה המימית.",
+        "אין לרוקן למערכות ביוב."
+      ],
+      "customerInstructionsBefore": [],
+      "customerInstructionsAfter": [
+        "כניסה מחדש רק לאחר התייבשות החומר ואוורור המקום, ולא פחות משעה לאחר הריסוס."
+      ],
+      "professionalPpe": [],
+      "firstAid": [],
+      "applicationRestrictions": [
+        "אין לרסס מזרנים, מצעים וכלי מיטה."
+      ],
+      "dosages": [
+        {
+          "id": "dragon-crawling",
+          "conditionType": "pest",
+          "forPests": [
+            "תיקנים",
+            "חרקים זוחלים אחרים"
+          ],
+          "method": "spray",
+          "text": "100 סמ\"ק ל-10 ליטר מים; ליטר תרסיס לכ-25 מ\"ר.",
+          "concentrate": "100 סמ\"ק",
+          "water": "10 ליטר",
+          "coverage": "ליטר תרסיס לכ-25 מ\"ר"
+        },
+        {
+          "id": "dragon-bedbug",
+          "conditionType": "pest",
+          "forPests": [
+            "פשפש המיטה"
+          ],
+          "method": "spray",
+          "text": "100 סמ\"ק ל-10 ליטר מים; ליטר תרסיס לכ-10 מ\"ר.",
+          "concentrate": "100 סמ\"ק",
+          "water": "10 ליטר",
+          "coverage": "ליטר תרסיס לכ-10 מ\"ר"
+        }
+      ],
+      "reentry": {
+        "type": "numeric",
+        "minutes": 60,
+        "text": "כניסה מחדש רק לאחר התייבשות החומר ואוורור המקום, ולא פחות משעה לאחר הריסוס."
+      },
+      "officialLabelUrl": "https://documents.sviva.gov.il/PesticideLabel_781.pdf",
+      "sourceType": "official_ministry",
+      "verificationStatus": "verified",
+      "isSelectable": true,
+      "lastVerifiedAt": "2026-09-20",
+      "labelSha256": "",
+      "statusLabel": "אומת מתווית רשמית",
+      "verificationMethod": "label_transcribed_by_licensee",
+      "verificationNote": "הנתונים הועתקו מתווית המוצר על ידי בעל הרישיון. קובץ התווית לא הורד ולא אומת אוטומטית על ידי המערכת (labelSha256 ריק). חובה לפעול לפי התווית העדכנית ולפי תנאי רישיון המדביר.",
+      "conditionalInstructions": [
+        {
+          "id": "dragon-bedframe-24h",
+          "audience": "customer",
+          "forPests": [
+            "פשפש המיטה"
+          ],
+          "question": "האם רוסס גוף או בסיס המיטה?",
+          "questionKey": "bedFrameSprayed",
+          "text": "אם רוסס גוף או מסגרת המיטה, אין לישון עליהם במשך 24 שעות."
+        }
+      ],
+      "preparationSteps": [],
+      "stationTracking": false
+    },
+    {
+      "id": "draker-10-2",
+      "nameHe": "דרקר 10.2",
+      "category": "crawling_insects",
+      "formulation": "",
+      "registrationNumber": "569",
+      "registrationExpiry": "2028",
+      "activeIngredients": [
+        {
+          "name": "Cypermethrin",
+          "percent": "10%"
+        },
+        {
+          "name": "Tetramethrin",
+          "percent": "2%"
+        },
+        {
+          "name": "Piperonyl Butoxide",
+          "percent": "10%"
+        }
+      ],
+      "targetPests": [
+        "תיקנים",
+        "נמלים",
+        "חרקים זוחלים אחרים",
+        "זבובים",
+        "יתושים",
+        "חרקים מעופפים אחרים"
+      ],
+      "warningsHuman": [
+        "רעיל בבליעה.",
+        "גורם לגירוי בעור.",
+        "גורם לגירוי חמור בעיניים.",
+        "גורם לגירוי במערכת הנשימה.",
+        "חשוד כגורם לסרטן במקרה של שאיפה.",
+        "עלול לגרום לתחושת נימול."
+      ],
+      "warningsAnimals": [
+        "רעיל לדבורים ולמאביקים; אין לרסס בזמן פעילות דבורים, בקרבת כוורות או על צמחים פורחים.",
+        "אין לרסס על בעלי חיים."
+      ],
+      "warningsEnvironment": [
+        "רעיל ליצורים החיים במים ועלול לגרום השפעות ארוכות טווח לסביבה המימית.",
+        "אין לזהם בריכות דגים או מאגרי מי שתייה."
+      ],
+      "customerInstructionsBefore": [],
+      "customerInstructionsAfter": [
+        "כניסה מחדש לאחר התייבשות החומר, אוורור המקום ולפחות שעה לאחר הריסוס."
+      ],
+      "professionalPpe": [],
+      "firstAid": [],
+      "applicationRestrictions": [
+        "אין לרסס על בעלי חיים, מזון, מזון לבעלי חיים, מספוא, כלי אוכל או משטחי הכנת מזון.",
+        "אין לרסס באוויר לצורך הדברת חרקים מעופפים; יש לרסס רק משטחים בהתאם לתווית."
+      ],
+      "dosages": [
+        {
+          "id": "draker-nonabsorbent",
+          "conditionType": "surface",
+          "conditionLabel": "סוג המשטח",
+          "conditionValue": "משטח שאינו סופג",
+          "forPests": [
+            "תיקנים",
+            "נמלים",
+            "חרקים זוחלים אחרים",
+            "זבובים",
+            "יתושים",
+            "חרקים מעופפים אחרים"
+          ],
+          "method": "spray",
+          "text": "5-10 מ\"ל לליטר מים; ליטר תמיסה מוכן לכ-25 מ\"ר.",
+          "concentrate": "5-10 מ\"ל",
+          "water": "ליטר",
+          "coverage": "ליטר תמיסה מוכן לכ-25 מ\"ר"
+        },
+        {
+          "id": "draker-absorbent",
+          "conditionType": "surface",
+          "conditionLabel": "סוג המשטח",
+          "conditionValue": "משטח סופג",
+          "forPests": [
+            "תיקנים",
+            "נמלים",
+            "חרקים זוחלים אחרים",
+            "זבובים",
+            "יתושים",
+            "חרקים מעופפים אחרים"
+          ],
+          "method": "spray",
+          "text": "10-20 מ\"ל לליטר מים; ליטר תמיסה מוכן לכ-25 מ\"ר.",
+          "concentrate": "10-20 מ\"ל",
+          "water": "ליטר",
+          "coverage": "ליטר תמיסה מוכן לכ-25 מ\"ר"
+        }
+      ],
+      "reentry": {
+        "type": "numeric",
+        "minutes": 60,
+        "text": "כניסה מחדש לאחר התייבשות החומר, אוורור המקום ולפחות שעה לאחר הריסוס."
+      },
+      "officialLabelUrl": "https://rpc.co.il/docs/draker-tavit.pdf",
+      "sourceType": "manufacturer_label",
+      "verificationStatus": "verified",
+      "isSelectable": true,
+      "lastVerifiedAt": "2026-09-20",
+      "labelSha256": "",
+      "statusLabel": "אומת מתווית היצרן",
+      "verificationMethod": "label_transcribed_by_licensee",
+      "verificationNote": "הנתונים הועתקו מתווית המוצר על ידי בעל הרישיון. קובץ התווית לא הורד ולא אומת אוטומטית על ידי המערכת (labelSha256 ריק). חובה לפעול לפי התווית העדכנית ולפי תנאי רישיון המדביר.",
+      "conditionalInstructions": [],
+      "preparationSteps": [],
+      "stationTracking": false
+    },
+    {
+      "id": "pastion-plus-pasta",
+      "nameHe": "פסטיון פלוס פסטה",
+      "category": "rodents",
+      "formulation": "",
+      "registrationNumber": "584",
+      "registrationExpiry": "2030",
+      "activeIngredients": [
+        {
+          "name": "Brodifacoum",
+          "percent": "0.005%"
+        },
+        {
+          "name": "Denatonium Benzoate",
+          "percent": "0.001%",
+          "role": "חומר מר"
+        }
+      ],
+      "targetPests": [
+        "עכברים",
+        "חולדות"
+      ],
+      "warningsHuman": [
+        "רעיל במגע עם העור ובבליעה.",
+        "עלול לגרום נזק למערכת הדם בחשיפה ממושכת או חוזרת.",
+        "עלול לפגוע בפוריות או בעובר."
+      ],
+      "warningsAnimals": [
+        "רעיל לבעלי חיים, לרבות ציפורים וחיות מחמד."
+      ],
+      "warningsEnvironment": [
+        "רעיל לדגים וליצורים החיים במים.",
+        "אין להשתמש בקרבת מקווה מים."
+      ],
+      "customerInstructionsBefore": [],
+      "customerInstructionsAfter": [
+        "אין לגעת בשקיות הפיתיון בידיים חשופות.",
+        "אין להזיז את תיבות ההאכלה."
+      ],
+      "professionalPpe": [],
+      "firstAid": [],
+      "applicationRestrictions": [
+        "יש להשתמש בפיתיונות בתוך תיבות האכלה בלבד, למעט החריגים המפורשים בתווית לגבי עומק מחילות ובורות ביוב.",
+        "יש לקבע את הפיתיון בתוך תיבת ההאכלה ולקבע את התיבה כך שלא יהיה ניתן להזיזה.",
+        "יש לבדוק את התיבות לפי הצורך.",
+        "בסיום העבודה יש לאסוף את תיבות ההאכלה ואת פגרי המכרסמים הנראים בשטח.",
+        "אין לגעת בשקיות הפיתיון בידיים חשופות."
+      ],
+      "dosages": [
+        {
+          "id": "pastion-rats",
+          "conditionType": "pest",
+          "forPests": [
+            "חולדות"
+          ],
+          "method": "bait_station",
+          "text": "כ-100-300 גרם לתיבת האכלה; מרחק של 5-15 מטר בין התיבות, בהתאם לנגיעות ולתוואי.",
+          "amountPerStation": "100-300 גרם לתיבת האכלה",
+          "stationSpacing": "5-15 מטר בין התיבות, בהתאם לנגיעות ולתוואי"
+        },
+        {
+          "id": "pastion-mice",
+          "conditionType": "pest",
+          "forPests": [
+            "עכברים"
+          ],
+          "method": "bait_station",
+          "text": "כ-10-60 גרם לתיבת האכלה; מרחק של 2-5 מטר בין התיבות, בהתאם לנגיעות ולתוואי.",
+          "amountPerStation": "10-60 גרם לתיבת האכלה",
+          "stationSpacing": "2-5 מטר בין התיבות, בהתאם לנגיעות ולתוואי"
+        }
+      ],
+      "reentry": {
+        "type": "not_applicable_by_label",
+        "minutes": null,
+        "text": "פיתיון בתיבות האכלה; יש לפעול לפי מגבלות התווית ומיקום התיבות"
+      },
+      "officialLabelUrl": "https://documents.sviva.gov.il/PesticideLabel_701.pdf",
+      "sourceType": "official_ministry",
+      "verificationStatus": "verified",
+      "isSelectable": true,
+      "lastVerifiedAt": "2026-09-20",
+      "labelSha256": "",
+      "statusLabel": "אומת מתווית רשמית",
+      "verificationMethod": "label_transcribed_by_licensee",
+      "verificationNote": "הנתונים הועתקו מתווית המוצר על ידי בעל הרישיון. קובץ התווית לא הורד ולא אומת אוטומטית על ידי המערכת (labelSha256 ריק). חובה לפעול לפי התווית העדכנית ולפי תנאי רישיון המדביר.",
+      "conditionalInstructions": [],
+      "preparationSteps": [],
+      "stationTracking": true
+    },
+    {
+      "id": "blokion-plus",
+      "nameHe": "בלוקיון פלוס",
+      "category": "rodents",
+      "formulation": "",
+      "registrationNumber": "",
+      "registrationExpiry": "",
+      "activeIngredients": [],
+      "targetPests": [],
+      "warningsHuman": [],
+      "warningsAnimals": [],
+      "warningsEnvironment": [],
+      "customerInstructionsBefore": [],
+      "customerInstructionsAfter": [],
+      "professionalPpe": [],
+      "firstAid": [],
+      "applicationRestrictions": [],
+      "dosages": [],
+      "reentry": {
+        "type": "",
+        "minutes": null,
+        "text": ""
+      },
+      "officialLabelUrl": "",
+      "sourceType": "",
+      "verificationStatus": "blocked",
+      "isSelectable": false,
+      "lastVerifiedAt": "",
+      "labelSha256": "",
+      "statusLabel": "ממתין לאימות תווית ורישום בתוקף",
+      "verificationMethod": "",
+      "verificationNote": "לא אותרה תווית רשמית בתוקף עבור מוצר זה. גישת הרשת לאתרי המשרד להגנת הסביבה חסומה בסביבת הפיתוח, ולכן לא בוצע חיפוש במאגר הרשמי. אין להשתמש במוצר ביומן טיפול עד לאיתור תווית רשמית ועדכנית ואימות כל הנתונים מולה. אין להעתיק לכאן נתונים מפסטיון פלוס או מכל תכשיר אחר.",
+      "conditionalInstructions": [],
+      "preparationSteps": [],
+      "stationTracking": true
+    }
+  ]
+}
