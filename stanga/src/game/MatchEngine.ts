@@ -10,8 +10,8 @@ import { GameConfig, kindForGoalPart, type GoalPart } from '../config/GameConfig
 import { EventBus } from '../core/EventBus';
 import { Rng } from '../core/Rng';
 import { angleDelta, clamp, horizontalDistance, rotateTowards, yawFromXZ } from '../core/math';
-import { BallEntity } from '../entities/BallEntity';
-import { PlayerEntity } from '../entities/PlayerEntity';
+import { BallBody } from '../entities/BallBody';
+import { PlayerBody } from '../entities/PlayerBody';
 import type { PlayerCommand } from '../input/PlayerCommand';
 import { yawOf } from '../input/PlayerCommand';
 import type { PhysicsWorld, RawCollision } from '../physics/PhysicsWorld';
@@ -63,8 +63,8 @@ const BALL_ID = 'ball';
 export class MatchEngine {
   readonly state: MatchState = createMatchState();
   readonly events = new EventBus<MatchEventMap>();
-  readonly ball: BallEntity;
-  readonly players: PlayerEntity[] = [];
+  readonly ball: BallBody;
+  readonly players: PlayerBody[] = [];
 
   private readonly scoring = new ScoringSystem();
   private readonly commands = new Map<string, PlayerCommand>();
@@ -82,11 +82,9 @@ export class MatchEngine {
     seed = 0x5741c6,
   ) {
     this.rng = new Rng(seed);
-    this.ball = new BallEntity(scene, world);
+    this.ball = new BallBody(scene, world);
     for (const player of this.state.players) {
-      this.players.push(
-        new PlayerEntity(scene, world, player.id, player.team, player.isHuman, player.position),
-      );
+      this.players.push(new PlayerBody(scene, world, player.id, player.team, player.position));
     }
   }
 
@@ -98,8 +96,8 @@ export class MatchEngine {
     return this.state.players.find((player) => !player.isHuman)?.id ?? 'away-1';
   }
 
-  entityFor(playerId: string): PlayerEntity | undefined {
-    return this.players.find((entity) => entity.id === playerId);
+  bodyFor(playerId: string): PlayerBody | undefined {
+    return this.players.find((body) => body.id === playerId);
   }
 
   /** Resets the match and places everyone for the opening kickoff. */
@@ -179,32 +177,17 @@ export class MatchEngine {
   }
 
   /**
-   * Render-rate visual update. Never touches physics or rules.
-   * The animation triggers are consumed here, so each one plays exactly once.
+   * Hands the renderer the one-shot animation flags for a player and clears
+   * them, so each kick or tackle plays exactly once. Simulation-free: the
+   * server never calls it, and calling it can never change the outcome.
    */
-  updateVisuals(dt: number, celebratingTeam: TeamId | null, defeatedTeam: TeamId | null): void {
-    for (const player of this.state.players) {
-      const entity = this.entityFor(player.id);
-      if (!entity) continue;
-      const triggers = this.animationTriggers.get(player.id);
-      entity.updateVisual(
-        player,
-        {
-          speed: Math.hypot(player.velocity.x, player.velocity.z),
-          hasBall: this.possessionPlayerId === player.id,
-          kickTriggered: triggers?.kick ?? false,
-          tackleTriggered: triggers?.tackle ?? false,
-          celebrating: celebratingTeam === player.team,
-          defeated: defeatedTeam === player.team,
-        },
-        dt,
-      );
-      entity.setInControl(this.possessionPlayerId === player.id);
-      if (triggers) {
-        triggers.kick = false;
-        triggers.tackle = false;
-      }
-    }
+  consumeAnimationTriggers(playerId: string): { kick: boolean; tackle: boolean } {
+    const triggers = this.animationTriggers.get(playerId);
+    if (!triggers) return { kick: false, tackle: false };
+    const consumed = { kick: triggers.kick, tackle: triggers.tackle };
+    triggers.kick = false;
+    triggers.tackle = false;
+    return consumed;
   }
 
   /** Flags a one-shot animation. Cleared once the renderer has consumed it. */
@@ -217,8 +200,8 @@ export class MatchEngine {
   // ── Commands ────────────────────────────────────────────────────────────────
 
   private applyCommand(player: PlayerState, dt: number, live: boolean): void {
-    const entity = this.entityFor(player.id);
-    if (!entity) return;
+    const body = this.bodyFor(player.id);
+    if (!body) return;
     const command = this.commands.get(player.id);
 
     player.kickCooldown = Math.max(0, player.kickCooldown - dt);
@@ -226,7 +209,7 @@ export class MatchEngine {
     player.stunTimer = Math.max(0, player.stunTimer - dt);
 
     if (!command || !live) {
-      entity.setHorizontalVelocity(0, 0);
+      body.setHorizontalVelocity(0, 0);
       player.sprinting = false;
       player.charging = false;
       player.kickCharge = 0;
@@ -265,7 +248,7 @@ export class MatchEngine {
     const rate = moveLength > 0.05 ? config.acceleration : config.deceleration;
     const nextX = approach(velocity.x, desiredX, rate * dt);
     const nextZ = approach(velocity.z, desiredZ, rate * dt);
-    entity.setHorizontalVelocity(nextX, nextZ);
+    body.setHorizontalVelocity(nextX, nextZ);
 
     // Facing: an explicit aim wins, otherwise follow the movement, otherwise hold.
     const aimLength = Math.hypot(command.aimX, command.aimY);
@@ -613,7 +596,7 @@ export class MatchEngine {
     resetForKickoff(this.state);
     this.ball.reset(this.state.ball.position);
     for (const player of this.state.players) {
-      this.entityFor(player.id)?.reset(player.position, player.facing);
+      this.bodyFor(player.id)?.reset(player.position);
     }
     this.scoring.reset();
     this.invalidateShot();
@@ -625,7 +608,7 @@ export class MatchEngine {
   private writeBackState(): void {
     this.ball.writeToState(this.state.ball);
     for (const player of this.state.players) {
-      this.entityFor(player.id)?.writeToState(player);
+      this.bodyFor(player.id)?.writeToState(player);
     }
   }
 }

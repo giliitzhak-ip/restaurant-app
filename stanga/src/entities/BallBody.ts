@@ -1,9 +1,13 @@
-/** The match ball: one dynamic body, plus the mesh that visualises it. */
-import { Vector3, Quaternion } from '@babylonjs/core/Maths/math.vector';
-import { Color3 } from '@babylonjs/core/Maths/math.color';
+/**
+ * The ball's physics body.
+ *
+ * Deliberately free of materials, textures and anything else that needs a
+ * browser: this runs unchanged inside the authoritative server on Babylon's
+ * NullEngine. The look of the ball lives in `rendering/BallView`.
+ */
+import { Quaternion, Vector3 } from '@babylonjs/core/Maths/math.vector';
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
 import type { Mesh } from '@babylonjs/core/Meshes/mesh';
-import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { PhysicsAggregate } from '@babylonjs/core/Physics/v2/physicsAggregate';
 import { PhysicsShapeType } from '@babylonjs/core/Physics/v2/IPhysicsEnginePlugin';
 import type { PhysicsBody } from '@babylonjs/core/Physics/v2/physicsBody';
@@ -12,9 +16,8 @@ import { GameConfig } from '../config/GameConfig';
 import type { Vec3 } from '../core/math';
 import type { BallState } from '../game/MatchState';
 import type { PhysicsWorld } from '../physics/PhysicsWorld';
-import { createBallTexture } from '../rendering/ProceduralTextures';
 
-export class BallEntity {
+export class BallBody {
   readonly mesh: Mesh;
   readonly body: PhysicsBody;
   private readonly scratch = new Vector3();
@@ -28,13 +31,6 @@ export class BallEntity {
       scene,
     );
     this.mesh.position.set(0, ball.radius, 0);
-
-    const material = new StandardMaterial('ballMat', scene);
-    material.diffuseTexture = createBallTexture(scene);
-    material.specularColor = new Color3(0.42, 0.42, 0.45);
-    material.specularPower = 48;
-    this.mesh.material = material;
-    this.mesh.receiveShadows = true;
 
     const aggregate = new PhysicsAggregate(
       this.mesh,

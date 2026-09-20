@@ -1,7 +1,10 @@
 /**
- * Arena — builds the street pitch: ground, walls, scenery, lighting and the two
- * goals. Each goal frame is made of five separate colliders so the scoring rules
- * can tell a post from a crossbar from the junction between them.
+ * Arena — the street pitch you can see.
+ *
+ * The collision geometry (ground, walls, the five colliders per goal frame, net
+ * stoppers) is built by `physics/ArenaColliders`, which the server runs too.
+ * This file only decorates those very same meshes and adds the purely
+ * decorative ones: sky, markings, nets, fence and the neighbourhood.
  */
 import '@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent';
 import { Color3 } from '@babylonjs/core/Maths/math.color';
@@ -11,12 +14,11 @@ import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight';
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
 import type { Mesh } from '@babylonjs/core/Meshes/mesh';
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
-import { PhysicsAggregate } from '@babylonjs/core/Physics/v2/physicsAggregate';
-import { PhysicsShapeType } from '@babylonjs/core/Physics/v2/IPhysicsEnginePlugin';
 import type { Scene } from '@babylonjs/core/scene';
 import { GameConfig, type GoalPart, type QualityProfile } from '../config/GameConfig';
 import { Rng } from '../core/Rng';
 import type { TeamId } from '../game/MatchState';
+import { buildArenaColliders } from '../physics/ArenaColliders';
 import type { PhysicsWorld } from '../physics/PhysicsWorld';
 import {
   createAsphaltBumpTexture,
@@ -44,16 +46,6 @@ export interface ArenaHandles {
 }
 
 const ACCENT = Color3.FromHexString('#ffa524');
-
-function staticAggregate(
-  mesh: Mesh,
-  type: PhysicsShapeType,
-  scene: Scene,
-  friction: number,
-  restitution: number,
-): PhysicsAggregate {
-  return new PhysicsAggregate(mesh, type, { mass: 0, friction, restitution }, scene);
-}
 
 export function buildArena(
   scene: Scene,
@@ -91,13 +83,11 @@ export function buildArena(
   sky.infiniteDistance = true;
   sky.isPickable = false;
 
+  // ── Collision geometry, shared with the server ──────────────────────────────
+  const colliders = buildArenaColliders(scene, world);
+
   // ── Ground ──────────────────────────────────────────────────────────────────
-  const ground = MeshBuilder.CreateBox(
-    'ground',
-    { width: field.width, height: 1, depth: outerLength },
-    scene,
-  );
-  ground.position.y = -0.5;
+  const { ground } = colliders;
   const groundMaterial = new StandardMaterial('groundMat', scene);
   const asphalt = createAsphaltTexture(scene);
   asphalt.uScale = 4;
@@ -111,7 +101,6 @@ export function buildArena(
   groundMaterial.specularPower = 28;
   ground.material = groundMaterial;
   ground.receiveShadows = true;
-  staticAggregate(ground, PhysicsShapeType.BOX, scene, 0.72, 0.28);
 
   // Painted markings as a thin overlay plane.
   const lines = MeshBuilder.CreateGround(
@@ -143,62 +132,10 @@ export function buildArena(
 
   const shadowCasters: Mesh[] = [];
 
-  const addWall = (
-    name: string,
-    width: number,
-    height: number,
-    depth: number,
-    x: number,
-    y: number,
-    z: number,
-  ): Mesh => {
-    const wall = MeshBuilder.CreateBox(name, { width, height, depth }, scene);
-    wall.position.set(x, y, z);
+  for (const wall of colliders.walls) {
     wall.material = concreteMaterial;
     wall.receiveShadows = true;
-    const aggregate = staticAggregate(wall, PhysicsShapeType.BOX, scene, 0.4, 0.45);
-    world.tag(aggregate.body, { kind: 'wall' });
-    return wall;
-  };
-
-  const sideWallY = field.wallHeight / 2;
-  addWall(
-    'wallLeft',
-    field.wallThickness,
-    field.wallHeight,
-    outerLength,
-    -halfWidth - field.wallThickness / 2,
-    sideWallY,
-    0,
-  );
-  addWall(
-    'wallRight',
-    field.wallThickness,
-    field.wallHeight,
-    outerLength,
-    halfWidth + field.wallThickness / 2,
-    sideWallY,
-    0,
-  );
-  const endZ = halfLength + goal.depth + field.wallThickness / 2;
-  addWall(
-    'wallBack',
-    field.width + field.wallThickness * 2,
-    field.wallHeight,
-    field.wallThickness,
-    0,
-    sideWallY,
-    endZ,
-  );
-  addWall(
-    'wallFront',
-    field.width + field.wallThickness * 2,
-    field.wallHeight,
-    field.wallThickness,
-    0,
-    sideWallY,
-    -endZ,
-  );
+  }
 
   // Chain-link fence above the concrete, purely decorative.
   const fenceMaterial = new StandardMaterial('fenceMat', scene);
@@ -251,65 +188,16 @@ export function buildArena(
   for (const owner of ['home', 'away'] as const) {
     const sign = owner === 'home' ? -1 : 1;
     const goalZ = sign * halfLength;
-    const parts = new Map<GoalPart, Mesh>();
+    const collider = colliders.goals.get(owner);
+    if (!collider) continue;
+    const parts = collider.parts;
 
     const postX = goal.width / 2 + goal.postRadius;
-    const barY = goal.height + goal.postRadius;
-    const junctionRadius = goal.junctionLength / 2;
-    const postHeight = goal.height - junctionRadius;
 
-    const addFramePart = (part: GoalPart, mesh: Mesh, shape: PhysicsShapeType) => {
+    for (const [part, mesh] of parts) {
       mesh.material = part.endsWith('Junction') ? junctionMaterial : frameMaterial;
       mesh.receiveShadows = true;
       shadowCasters.push(mesh);
-      const aggregate = new PhysicsAggregate(
-        mesh,
-        shape,
-        { mass: 0, friction: 0.25, restitution: 0.72 },
-        scene,
-      );
-      aggregate.body.setCollisionCallbackEnabled(true);
-      world.tag(aggregate.body, { kind: 'goalPart', goal: owner, part });
-      parts.set(part, mesh);
-    };
-
-    for (const [part, x] of [
-      ['leftPost', -postX],
-      ['rightPost', postX],
-    ] as const) {
-      const post = MeshBuilder.CreateCylinder(
-        `${owner}-${part}`,
-        { height: postHeight, diameter: goal.postRadius * 2, tessellation: 16 },
-        scene,
-      );
-      post.position.set(x, postHeight / 2, goalZ);
-      addFramePart(part, post, PhysicsShapeType.CYLINDER);
-    }
-
-    const crossbar = MeshBuilder.CreateCylinder(
-      `${owner}-crossbar`,
-      {
-        height: goal.width + goal.postRadius * 2 - goal.junctionLength,
-        diameter: goal.postRadius * 2,
-        tessellation: 16,
-      },
-      scene,
-    );
-    crossbar.rotation.z = Math.PI / 2;
-    crossbar.position.set(0, barY, goalZ);
-    addFramePart('crossbar', crossbar, PhysicsShapeType.CYLINDER);
-
-    for (const [part, x] of [
-      ['leftJunction', -postX],
-      ['rightJunction', postX],
-    ] as const) {
-      const junction = MeshBuilder.CreateSphere(
-        `${owner}-${part}`,
-        { diameter: junctionRadius * 2.2, segments: 12 },
-        scene,
-      );
-      junction.position.set(x, goal.height, goalZ);
-      addFramePart(part, junction, PhysicsShapeType.SPHERE);
     }
 
     // Net: back panel, two sides and a roof. Purely visual except for the stopper.
@@ -344,17 +232,6 @@ export function buildArena(
     netRoof.position.set(0, goal.height, goalZ + (sign * goal.depth) / 2);
     netRoof.material = netMaterial;
     netRoof.isPickable = false;
-
-    // Invisible stopper so the ball stays in the net instead of flying away.
-    const stopper = MeshBuilder.CreateBox(
-      `${owner}-netStopper`,
-      { width: goal.width + goal.postRadius * 2, height: goal.height + 0.4, depth: 0.2 },
-      scene,
-    );
-    stopper.position.set(0, (goal.height + 0.4) / 2, netBackZ + sign * 0.12);
-    stopper.isVisible = false;
-    const stopperAggregate = staticAggregate(stopper, PhysicsShapeType.BOX, scene, 0.9, 0.02);
-    world.tag(stopperAggregate.body, { kind: 'wall' });
 
     goals.set(owner, { owner, parts });
   }

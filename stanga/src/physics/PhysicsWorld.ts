@@ -13,8 +13,7 @@ import type { PhysicsBody } from '@babylonjs/core/Physics/v2/physicsBody';
 import type { IPhysicsCollisionEvent } from '@babylonjs/core/Physics/v2/IPhysicsEnginePlugin';
 import type { IPhysicsEngine } from '@babylonjs/core/Physics/IPhysicsEngine';
 import type { Scene } from '@babylonjs/core/scene';
-import HavokPhysics from '@babylonjs/havok';
-import havokWasmUrl from '@babylonjs/havok/lib/esm/HavokPhysics.wasm?url';
+import type HavokPhysics from '@babylonjs/havok';
 import { GameConfig, type GoalPart } from '../config/GameConfig';
 import type { TeamId } from '../game/MatchState';
 
@@ -32,13 +31,11 @@ export interface RawCollision {
   impulse: number;
 }
 
-let havokModulePromise: Promise<Awaited<ReturnType<typeof HavokPhysics>>> | null = null;
-
-/** Loads the Havok WASM module once per page. */
-export async function loadHavok(): Promise<Awaited<ReturnType<typeof HavokPhysics>>> {
-  havokModulePromise ??= HavokPhysics({ locateFile: () => havokWasmUrl });
-  return havokModulePromise;
-}
+/**
+ * The initialised Havok WASM module. How it is loaded differs by platform — the
+ * browser fetches a URL, Node reads the file — so the caller supplies it.
+ */
+export type HavokModule = Awaited<ReturnType<typeof HavokPhysics>>;
 
 /** Narrow view of the internal Babylon hook we override to take over stepping. */
 interface ManualStepScene {
@@ -67,8 +64,7 @@ export class PhysicsWorld {
     this.plugin.onCollisionObservable.add(this.handleCollision);
   }
 
-  static async create(scene: Scene): Promise<PhysicsWorld> {
-    const havok = await loadHavok();
+  static create(scene: Scene, havok: HavokModule): PhysicsWorld {
     const plugin = new HavokPlugin(true, havok);
     const enabled = scene.enablePhysics(new Vector3(0, GameConfig.physics.gravity, 0), plugin);
     const engine = scene.getPhysicsEngine();

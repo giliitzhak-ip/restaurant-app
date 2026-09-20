@@ -14,6 +14,7 @@ import { AIController } from '../ai/AIController';
 import { AudioManager } from '../audio/AudioManager';
 import { GameConfig, type Difficulty, type GoalPart } from '../config/GameConfig';
 import { MatchEngine } from '../game/MatchEngine';
+import { MatchViews } from '../rendering/MatchViews';
 import { outcomeOf } from '../game/MatchRules';
 import { MatchSession, type MatchMode, type PlayerSlot } from '../game/MatchSession';
 import type { TeamId } from '../game/MatchState';
@@ -30,6 +31,7 @@ import {
   type KeyboardProfileId,
 } from '../input/KeyBindings';
 import type { PlayerController } from '../input/PlayerController';
+import { loadHavok } from '../physics/loadHavokBrowser';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
 import { AimIndicator } from '../rendering/AimIndicator';
 import { buildArena, type ArenaHandles } from '../rendering/Arena';
@@ -60,6 +62,7 @@ export class Game {
   private scene!: Scene;
   private world!: PhysicsWorld;
   private match!: MatchEngine;
+  private views!: MatchViews;
   private arena!: ArenaHandles;
   private soloCamera!: CameraRig;
   private sharedCamera!: SharedMatchCamera;
@@ -166,7 +169,7 @@ export class Game {
     this.scene.skipPointerMovePicking = true;
 
     report(1, 0.2);
-    this.world = await PhysicsWorld.create(this.scene);
+    this.world = PhysicsWorld.create(this.scene, await loadHavok());
 
     report(2, 0.45);
     this.arena = buildArena(this.scene, this.world, GameConfig.quality[this.settings.quality]);
@@ -176,15 +179,13 @@ export class Game {
 
     report(4, 0.78);
     this.match = new MatchEngine(this.scene, this.world);
+    this.views = new MatchViews(this.scene, this.match);
     this.soloCamera = new CameraRig(this.scene);
     this.sharedCamera = new SharedMatchCamera(this.scene);
     this.aimIndicator = new AimIndicator(this.scene);
     this.effects = new Effects(this.scene);
 
-    this.quality.addCaster(this.match.ball.mesh);
-    for (const player of this.match.players) {
-      for (const mesh of player.meshes) this.quality.addCaster(mesh);
-    }
+    for (const mesh of this.views.shadowCasters) this.quality.addCaster(mesh);
     this.quality.apply(this.settings.quality);
 
     this.contactShadows = new ContactShadows(this.scene, this.arena.sun.direction);
@@ -288,9 +289,9 @@ export class Game {
     });
 
     for (const slot of slots) {
-      const entity = this.match.entityFor(slot.playerId);
-      entity?.applyKit(slot.colorId);
-      entity?.setMarkerVisible(slot.controller.kind !== 'ai');
+      const view = this.views.viewFor(slot.playerId);
+      view?.applyKit(slot.colorId);
+      view?.setMarkerVisible(slot.controller.kind !== 'ai');
     }
 
     this.match.start();
@@ -772,7 +773,7 @@ export class Game {
   private updatePresentation(dt: number): void {
     const state = this.match.state;
 
-    this.match.updateVisuals(dt, this.celebratingTeam, this.defeatedTeam);
+    this.views.update(dt, this.celebratingTeam, this.defeatedTeam);
 
     for (const player of state.players) {
       const handle = this.shadowHandles.get(player.id);
