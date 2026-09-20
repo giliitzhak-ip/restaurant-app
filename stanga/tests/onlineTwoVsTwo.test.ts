@@ -328,6 +328,34 @@ describe('online 2×2 room', () => {
     expect(host.room.state.players.size).toBe(4);
   }, 120_000);
 
+  it('refuses a surrender nobody has earned yet, and a shuffle from a guest', async () => {
+    const players = await quickFour();
+    const [host, guest] = players;
+    if (!host || !guest) throw new Error('nobody joined');
+
+    // A guest cannot redeal the teams; only the host may propose it, and the
+    // server decides that, not the button.
+    const seatBefore = [...host.room.state.players.values()].map(
+      (player) => `${player.playerId}:${player.name}`,
+    );
+    guest.room.send(ClientMessage.ShuffleTeams, {});
+    await sleep(400);
+    expect(
+      [...host.room.state.players.values()].map((player) => `${player.playerId}:${player.name}`),
+    ).toEqual(seatBefore);
+
+    await kickOff(players);
+
+    // Nobody is sixty seconds in and nobody is six points down, so the vote
+    // is simply not available — four clicks change nothing.
+    for (const player of players) player.room.send(ClientMessage.Surrender, {});
+    await sleep(600);
+    expect(host.room.state.stage).toBe('playing');
+    expect(
+      [...host.room.state.players.values()].every((player) => player.surrenderVote === false),
+    ).toBe(true);
+  }, 120_000);
+
   it('rejects a client on a different protocol version', async () => {
     await expect(
       new Client(endpoint).joinOrCreate(

@@ -63,6 +63,17 @@ export class OnlineMatch {
   private lastStage: RoomStage | null = null;
   private lastScoreTick = -1;
   private pendingSnap = true;
+  /**
+   * How far the prediction has been drifting, in metres.
+   *
+   * A netcode you cannot measure is a netcode you cannot judge: this is the
+   * one number that says whether the corrections are a nudge or a fight.
+   * Kept as a running mean plus the worst case since the match began.
+   */
+  private driftTotal = 0;
+  private driftSamples = 0;
+  private driftMax = 0;
+  private snapCount = 0;
 
   constructor(
     private readonly match: MatchEngine,
@@ -110,7 +121,9 @@ export class OnlineMatch {
   }
 
   get playersPerTeam(): number {
-    return this.snapshot?.playersPerTeam ?? 1;
+    // Before the first snapshot lands there is still a mode, and a 2x2 lobby
+    // that paints "1/2" for a frame and then corrects itself looks broken.
+    return this.snapshot?.playersPerTeam || (this.mode === 'twoVsTwo' ? 2 : 1);
   }
 
   get stage(): RoomStage {
@@ -348,12 +361,32 @@ export class OnlineMatch {
 
   // ── Corrections ─────────────────────────────────────────────────────────────
 
+  /** Prediction error as it stands: mean and worst since kick-off. */
+  get drift(): { mean: number; max: number; snaps: number } {
+    return {
+      mean: this.driftSamples > 0 ? this.driftTotal / this.driftSamples : 0,
+      max: this.driftMax,
+      snaps: this.snapCount,
+    };
+  }
+
   private correctPlayer(playerId: string, net: NetPlayer, snapDistance: number): void {
     const body = this.match.bodyFor(playerId);
     if (!body) return;
     const dx = net.x - body.position.x;
     const dz = net.z - body.position.z;
+
+    if (playerId === this.localPlayerId) {
+      const error = Math.hypot(dx, dz);
+      this.driftTotal += error;
+      this.driftSamples += 1;
+      if (error > this.driftMax) this.driftMax = error;
+    }
+
     if (this.pendingSnap || Math.hypot(dx, dz) > snapDistance) {
+      // A snap is a teleport the player can see; counting them is the honest
+      // way to tell "a nudge now and then" from "fighting the server".
+      if (!this.pendingSnap && playerId === this.localPlayerId) this.snapCount += 1;
       body.reset({ x: net.x, y: net.y, z: net.z });
       return;
     }

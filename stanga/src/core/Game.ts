@@ -204,7 +204,16 @@ export class Game {
         onOnlineCreateRoom: (name) => void this.connectOnline({ intent: 'create', name }),
         onOnlineJoinRoom: (name, code) =>
           void this.connectOnline({ intent: 'join', name, inviteCode: code }),
-        onOnlineReady: () => this.online?.sendReady(),
+        // One button, two meanings: "ready" in the lobby, "again" after the
+        // final whistle. The stage decides, so the label and the message can
+        // never disagree.
+        onOnlineReady: () => {
+          const online = this.online;
+          if (!online) return;
+          const stage = online.stage;
+          if (stage === 'finished' || stage === 'rematchVote') online.sendRematch();
+          else online.sendReady();
+        },
         onOnlineLeave: () => void this.leaveOnline(),
         onOnlineTeamSwitch: (team) => this.online?.requestTeamSwitch(team),
         onOnlineShuffleTeams: () => this.online?.requestShuffle(),
@@ -1740,6 +1749,7 @@ export class Game {
     playerId: string;
     seated: number;
     isPrivate: boolean;
+    drift: { mean: number; max: number; snaps: number };
   } | null {
     const online = this.online;
     if (!online) return null;
@@ -1757,6 +1767,7 @@ export class Game {
       playerId: online.localPlayerId,
       seated,
       isPrivate: snapshot?.isPrivate ?? false,
+      drift: online.drift,
     };
   }
 

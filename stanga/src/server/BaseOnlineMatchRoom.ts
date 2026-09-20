@@ -509,6 +509,9 @@ export abstract class BaseOnlineMatchRoom extends Room<MatchRoomState> {
       }
       case 'playing':
       case 'goalFreeze': {
+        // A seat can be empty while the match runs: somebody walked out of a
+        // 2×2, or a bot takeover was deferred because a leg was swinging.
+        this.countDroppedSeats(deltaMs / 1000);
         this.loop.advance(deltaMs);
         // The freeze is the match's own celebration phase surfaced as a room
         // stage, so a client can tell "stopped for a goal" from "stopped
@@ -920,6 +923,14 @@ export abstract class BaseOnlineMatchRoom extends Room<MatchRoomState> {
    * for it to be quicker or more accurate through.
    */
   private takeOverWithBot(binding: SeatBinding): void {
+    // Never mid-action. Swapping the driver while a leg is swinging would
+    // either cancel a strike that was already earned or hand the bot one it
+    // did not wind up; the seat waits the fraction of a second out instead.
+    if (this.midAction(binding.seat.playerId)) {
+      binding.droppedFor = Math.max(0, this.matchConfig.botSubstitutionSeconds - 0.2);
+      return;
+    }
+
     const bot = this.bots.takeOver({ playerId: binding.seat.playerId, team: binding.seat.team });
     binding.controller.setBot(bot);
     binding.controller.setConnected(true);
@@ -930,6 +941,13 @@ export abstract class BaseOnlineMatchRoom extends Room<MatchRoomState> {
       playerId: binding.seat.playerId,
       team: binding.seat.team,
     });
+  }
+
+  /** True while this player is in the middle of a strike or a tackle. */
+  private midAction(playerId: string): boolean {
+    const player = this.headless.match.state.players.find((candidate) => candidate.id === playerId);
+    if (!player) return false;
+    return player.windUpTimer > 0 || player.charging || player.stunTimer > 0;
   }
 
   /**

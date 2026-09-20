@@ -188,6 +188,18 @@ try {
     ).every((tick) => tick > 0),
   );
 
+  // Netcode instrumentation, read back from the client that did the running.
+  const drift = await host.evaluate(() => window.__stanga.online()?.drift ?? null);
+  console.log(
+    `  (prediction drift: mean ${drift?.mean.toFixed(2)}m, max ${drift?.max.toFixed(2)}m, ` +
+      `${drift?.snaps} snaps)`,
+  );
+  check(
+    'the prediction is corrected, not fought',
+    (drift?.mean ?? 99) < 1.5,
+    JSON.stringify(drift),
+  );
+
   console.log('quick chat');
   await host.click('[data-quick-chat="pass"]');
   await friend.waitForFunction(() => !document.getElementById('hud-chat').hidden, null, {

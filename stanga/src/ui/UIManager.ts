@@ -1182,10 +1182,6 @@ export class UIManager {
       this.callbacks.onInteraction();
       this.callbacks.onOnlineFindOpponents();
     });
-    this.onClick('btn-online-surrender', () => {
-      this.callbacks.onInteraction();
-      this.callbacks.onOnlineSurrender();
-    });
     // The lobby chips are in the markup; the HUD row is built here from the
     // same list of ids, so the two can never drift apart.
     const hudChat = requireElement('hud-quickchat');
@@ -1346,8 +1342,30 @@ export class UIManager {
     return item;
   }
 
+  /**
+   * Shares the invite, by whatever the device actually offers.
+   *
+   * On a phone that is the share sheet, which is how an invitation really
+   * travels; on a desktop it is the clipboard; and if both are refused the
+   * link itself is put on screen, because a notice saying "could not copy"
+   * helps nobody.
+   */
   private async copyInviteLink(): Promise<void> {
     if (this.inviteLink.length === 0) return;
+
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({
+          title: 'STANGA',
+          text: 'בוא לשחק STANGA',
+          url: this.inviteLink,
+        });
+        return;
+      } catch {
+        // Dismissed or unavailable; fall through to the clipboard.
+      }
+    }
+
     try {
       await navigator.clipboard.writeText(this.inviteLink);
       this.setOnlineNotice('הקישור הועתק');
