@@ -15,11 +15,20 @@ const withPwa = process.env.STANGA_NO_PWA !== '1';
  */
 const serverUrl = process.env.STANGA_SERVER_URL ?? '';
 
+/**
+ * Set STANGA_TEST_HOOKS=1 to expose a read-only `window.__stanga` with the
+ * current MatchState. The end-to-end tests read it to check that two browsers
+ * agree about where everything is. Off by default, so a shipped build has no
+ * debug surface at all.
+ */
+const withTestHooks = process.env.STANGA_TEST_HOOKS === '1';
+
 export default defineConfig({
   base: './',
   define: {
     'import.meta.env.STANGA_PWA': JSON.stringify(withPwa),
     'import.meta.env.STANGA_SERVER_URL': JSON.stringify(serverUrl),
+    'import.meta.env.STANGA_TEST_HOOKS': JSON.stringify(withTestHooks),
   },
   resolve: {
     // Without the plugin there is no `virtual:pwa-register` module to import.

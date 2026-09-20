@@ -13,6 +13,17 @@ async function bootstrap(): Promise<void> {
   const game = new Game(canvas, touchRoot);
   await game.initialize();
   window.addEventListener('pagehide', () => game.dispose());
+
+  // Read-only inspection hook for the end-to-end tests. Compiled out of a
+  // normal build, so a shipped game exposes nothing.
+  if (import.meta.env.STANGA_TEST_HOOKS) {
+    (window as unknown as { __stanga: unknown }).__stanga = {
+      matchState: () => structuredClone(game.inspectState()),
+      mode: () => game.inspectMode(),
+      phase: () => game.inspectPhase(),
+      online: () => game.inspectOnline(),
+    };
+  }
 }
 
 function showFatal(message: string): void {

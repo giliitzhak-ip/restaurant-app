@@ -25,7 +25,7 @@ export class PlayerBody {
 
   constructor(
     scene: Scene,
-    world: PhysicsWorld,
+    private readonly world: PhysicsWorld,
     readonly id: string,
     readonly team: TeamId,
     start: Vec3,
@@ -84,12 +84,14 @@ export class PlayerBody {
     this.body.applyImpulse(this.scratch, this.root.position);
   }
 
+  /** Teleports the player and kills all motion. Used for kickoffs and resets. */
   reset(position: Vec3): void {
     this.scratch.set(position.x, GameConfig.player.height / 2, position.z);
-    this.body.setTargetTransform(this.scratch, this.identity);
     this.root.position.copyFrom(this.scratch);
+    this.root.rotationQuaternion?.copyFrom(this.identity);
     this.body.setLinearVelocity(Vector3.ZeroReadOnly);
     this.body.setAngularVelocity(Vector3.ZeroReadOnly);
+    this.world.teleport(this.body);
   }
 
   /** Mirrors the physics result into the serializable match state. */

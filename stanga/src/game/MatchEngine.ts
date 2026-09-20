@@ -5,6 +5,7 @@
  * contacts translated into scoring inputs -> rules -> serializable state out.
  * The renderer and the UI only ever read the resulting MatchState and events.
  */
+import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import type { Scene } from '@babylonjs/core/scene';
 import { GameConfig, kindForGoalPart, type GoalPart } from '../config/GameConfig';
 import { EventBus } from '../core/EventBus';
@@ -91,6 +92,8 @@ export class MatchEngine {
   private ballSpeedBeforeStep = 0;
   private possessionPlayerId: string | null = null;
   private readonly pendingKicks: { playerId: string; power: number }[] = [];
+  /** Reused so a tick never allocates. */
+  private readonly ballVelocity = new Vector3();
   private readonly animationTriggers = new Map<string, { kick: boolean; tackle: boolean }>();
 
   private rulesAuthority: RulesAuthority;
@@ -494,7 +497,11 @@ export class MatchEngine {
       this.invalidateShot();
     }
 
-    const speed = Math.hypot(ball.velocity.x, ball.velocity.z);
+    // Live velocity, not the state mirror: within this tick the mirror is a
+    // tick old, so a ball that was just struck still reads as stationary and
+    // the assist below would write the kick straight back out again.
+    const velocity = this.ball.readVelocity(this.ballVelocity);
+    const speed = Math.hypot(velocity.x, velocity.z);
     if (speed > GameConfig.ball.dribbleMaxSpeed) return;
 
     // Control assist: a weak pull back towards the controlling player once the
@@ -509,10 +516,11 @@ export class MatchEngine {
       const toPlayerX = (closest.position.x - ball.position.x) / closestDistance;
       const toPlayerZ = (closest.position.z - ball.position.z) / closestDistance;
       this.ball.setVelocity(
-        ball.velocity.x + toPlayerX * pull,
-        ball.velocity.y,
-        ball.velocity.z + toPlayerZ * pull,
+        velocity.x + toPlayerX * pull,
+        velocity.y,
+        velocity.z + toPlayerZ * pull,
       );
+      this.ball.readVelocity(velocity);
     }
 
     const playerSpeed = Math.hypot(closest.velocity.x, closest.velocity.z);
@@ -524,9 +532,9 @@ export class MatchEngine {
     const step = GameConfig.ball.dribbleForce * dt;
 
     this.ball.setVelocity(
-      approach(ball.velocity.x, targetX, step),
-      ball.velocity.y,
-      approach(ball.velocity.z, targetZ, step),
+      approach(velocity.x, targetX, step),
+      velocity.y,
+      approach(velocity.z, targetZ, step),
     );
   }
 

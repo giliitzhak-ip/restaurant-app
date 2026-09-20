@@ -17,7 +17,7 @@ import { MatchEngine } from '../game/MatchEngine';
 import { MatchViews } from '../rendering/MatchViews';
 import { outcomeOf } from '../game/MatchRules';
 import { MatchSession, type MatchMode, type PlayerSlot } from '../game/MatchSession';
-import type { TeamId } from '../game/MatchState';
+import type { MatchState, TeamId } from '../game/MatchState';
 import { DeviceManager, type InputDevice } from '../input/DeviceManager';
 import { KeyboardState } from '../input/KeyboardState';
 import { CompositeController } from '../input/controllers/CompositeController';
@@ -332,6 +332,7 @@ export class Game {
     this.ui.setTwoPlayerHud(mode === 'localTwoPlayer');
     this.ui.showResumeCountdown(null);
 
+    this.ui.setPauseMode(mode === 'online');
     this.showTouchPadsFor(slots);
     this.session.resetControllers();
 
@@ -850,6 +851,12 @@ export class Game {
 
   pause(showScreen = true): void {
     if (this.phase !== 'playing') return;
+    // Online there is nothing to pause: the server plays on whatever this
+    // device does, so the screen is an overlay and the match keeps running.
+    if (this.mode === 'online') {
+      if (showScreen) this.ui.showScreen('pause');
+      return;
+    }
     this.phase = 'paused';
     this.session?.resetControllers();
     this.keyboard.clear();
@@ -859,6 +866,10 @@ export class Game {
   }
 
   resume(): void {
+    if (this.mode === 'online') {
+      this.ui.showScreen(null);
+      return;
+    }
     if (this.phase !== 'paused') return;
     this.phase = 'playing';
     this.loop.reset();
@@ -873,6 +884,8 @@ export class Game {
   private restart(): void {
     const session = this.session;
     if (!session) return;
+    // A rematch online is a vote, not a local restart.
+    if (this.mode === 'online') return;
     this.beginSession(this.mode, session.slots);
   }
 
@@ -1246,6 +1259,10 @@ export class Game {
   }
 
   private handleEscape(): void {
+    if (this.mode === 'online' && this.phase === 'playing') {
+      this.ui.showScreen(this.ui.activeScreen === 'pause' ? null : 'pause');
+      return;
+    }
     if (this.phase === 'playing' || (this.phase === 'paused' && this.ui.activeScreen === 'pause')) {
       this.togglePause();
     }
@@ -1287,7 +1304,9 @@ export class Game {
     if (document.hidden) {
       this.audio.suspend();
       this.audio.stopMusic();
-      if (this.phase === 'playing') this.pause();
+      // Online, hiding the tab does not stop the match; the view simply
+      // catches up from the server's snapshots when it comes back.
+      if (this.phase === 'playing' && this.mode !== 'online') this.pause();
       this.engine.stopRenderLoop();
     } else {
       this.loop.reset();
@@ -1299,7 +1318,9 @@ export class Game {
   private handleBlur(): void {
     this.keyboard.clear();
     this.session?.resetControllers();
-    if (this.phase === 'playing') this.pause();
+    // Dropping the held keys is right in every mode; stopping is not, because
+    // an online match keeps going on the server with or without this window.
+    if (this.phase === 'playing' && this.mode !== 'online') this.pause();
   }
 
   // ── Settings ────────────────────────────────────────────────────────────────
@@ -1364,6 +1385,29 @@ export class Game {
       },
     });
     this.ui.applySettingsToForm(this.settings);
+  }
+
+  /** Read-only snapshot for the end-to-end tests. Never used by the game. */
+  inspectState(): MatchState {
+    return this.match.state;
+  }
+
+  inspectMode(): MatchMode {
+    return this.mode;
+  }
+
+  inspectPhase(): string {
+    return this.phase;
+  }
+
+  inspectOnline(): { stage: string; serverTick: number; ping: number } | null {
+    const online = this.online;
+    if (!online) return null;
+    return {
+      stage: online.stage,
+      serverTick: online.client.state?.tick ?? -1,
+      ping: online.roundTripMs,
+    };
   }
 
   dispose(): void {

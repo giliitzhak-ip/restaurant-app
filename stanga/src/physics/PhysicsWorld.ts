@@ -47,6 +47,7 @@ export class PhysicsWorld {
   private readonly engine: IPhysicsEngine;
   private readonly tags = new Map<PhysicsBody, BodyTag>();
   private readonly collisionBuffer: RawCollision[] = [];
+  private readonly teleporting = new Set<PhysicsBody>();
 
   private constructor(
     private readonly scene: Scene,
@@ -88,6 +89,21 @@ export class PhysicsWorld {
 
   untag(body: PhysicsBody): void {
     this.tags.delete(body);
+    this.teleporting.delete(body);
+  }
+
+  /**
+   * Hard-teleports a body to wherever its mesh now sits, on the next step.
+   *
+   * Havok has no "move this body here" call: `setTargetTransform` gives the
+   * body a *velocity* towards the target, so a kickoff reset would send the
+   * ball flying across the pitch instead of placing it. The one real teleport
+   * is the pre-step transform sync, which is off by default for performance.
+   * This turns it on for exactly one step.
+   */
+  teleport(body: PhysicsBody): void {
+    body.disablePreStep = false;
+    this.teleporting.add(body);
   }
 
   /**
@@ -100,6 +116,12 @@ export class PhysicsWorld {
     const subDelta = dt / substeps;
     for (let i = 0; i < substeps; i += 1) {
       this.engine._step(subDelta);
+      // One substep is all a teleport needs; leaving the sync on would drag
+      // the body back to the mesh on every later substep.
+      if (this.teleporting.size > 0) {
+        for (const body of this.teleporting) body.disablePreStep = true;
+        this.teleporting.clear();
+      }
     }
     return this.collisionBuffer;
   }

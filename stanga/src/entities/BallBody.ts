@@ -23,7 +23,10 @@ export class BallBody {
   private readonly scratch = new Vector3();
   private readonly identity = Quaternion.Identity();
 
-  constructor(scene: Scene, world: PhysicsWorld) {
+  constructor(
+    scene: Scene,
+    private readonly world: PhysicsWorld,
+  ) {
     const { ball } = GameConfig;
     this.mesh = MeshBuilder.CreateSphere(
       'ball',
@@ -54,6 +57,18 @@ export class BallBody {
     return this.mesh.position;
   }
 
+  /**
+   * Live velocity, straight from the physics body.
+   *
+   * `MatchState.ball.velocity` is only refreshed after the physics step, so
+   * anything that reads it inside a tick — after a kick, say — is a tick
+   * behind. Writing that stale value back would undo the kick.
+   */
+  readVelocity(out: Vector3): Vector3 {
+    this.body.getLinearVelocityToRef(out);
+    return out;
+  }
+
   get speed(): number {
     this.body.getLinearVelocityToRef(this.scratch);
     return this.scratch.length();
@@ -72,10 +87,11 @@ export class BallBody {
   /** Teleports the ball and kills all motion. Used for kickoffs and resets. */
   reset(position: Vec3): void {
     this.scratch.set(position.x, position.y, position.z);
-    this.body.setTargetTransform(this.scratch, this.identity);
     this.mesh.position.copyFrom(this.scratch);
+    this.mesh.rotationQuaternion?.copyFrom(this.identity);
     this.body.setLinearVelocity(Vector3.ZeroReadOnly);
     this.body.setAngularVelocity(Vector3.ZeroReadOnly);
+    this.world.teleport(this.body);
   }
 
   /** Hard cap on speed so the ball can never outrun the collision substeps. */

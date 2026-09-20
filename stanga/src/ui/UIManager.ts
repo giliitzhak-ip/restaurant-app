@@ -483,6 +483,16 @@ export class UIManager {
 
   // ── Lobby ───────────────────────────────────────────────────────────────────
 
+  /**
+   * Online, opening this screen does not stop anything: the server keeps
+   * playing. The title says so, and "משחק חדש" is hidden rather than left as a
+   * button that would do nothing.
+   */
+  setPauseMode(online: boolean): void {
+    requireElement('pause-title').textContent = online ? 'תפריט — המשחק ממשיך לרוץ' : 'המשחק מושהה';
+    requireElement('btn-pause-restart').classList.toggle('is-hidden', online);
+  }
+
   renderLobby(slots: readonly LobbySlotView[], canStart: boolean, notice: string | null): void {
     for (const slot of slots) {
       const status = requireElement(`lobby-status-${slot.index}`);

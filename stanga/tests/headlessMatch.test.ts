@@ -5,6 +5,7 @@
  */
 import { describe, expect, it, beforeAll, afterEach } from 'vitest';
 import { GameConfig } from '../src/config/GameConfig';
+import { createPlayerCommand, type PlayerCommand } from '../src/input/PlayerCommand';
 import { HeadlessMatch } from '../src/server/HeadlessMatch';
 import { loadHavok } from '../src/server/loadHavokNode';
 import type { HavokModule } from '../src/physics/PhysicsWorld';
@@ -34,6 +35,35 @@ beforeAll(async () => {
 afterEach(() => {
   while (created.length > 0) created.pop()?.dispose();
 });
+
+/** Drives one player with a scripted command, tick by tick. */
+function driver(headless: HeadlessMatch) {
+  const command = createPlayerCommand('home-1', 0);
+  let tick = 0;
+  return (patch: Partial<PlayerCommand> = {}) => {
+    Object.assign(
+      command,
+      {
+        moveX: 0,
+        moveY: 0,
+        aimX: 0,
+        aimY: 1,
+        sprintPressed: false,
+        shootPressed: false,
+        shootHeld: false,
+        shootReleased: false,
+        tacklePressed: false,
+        lobToggle: false,
+        tickId: tick,
+        sequenceNumber: tick,
+      },
+      patch,
+    );
+    headless.match.submitCommand(command);
+    headless.step(DT, tick);
+    tick += 1;
+  };
+}
 
 describe('headless simulation', () => {
   it('builds a scene, physics world and match engine without a renderer', () => {
@@ -77,6 +107,48 @@ describe('headless simulation', () => {
     expect(scored).toHaveLength(1);
     expect(scored[0]?.kind).toBe('goal');
     expect(scored[0]?.points).toBe(GameConfig.match.points.goal);
+    expect(headless.match.state.phase).toBe('celebration');
+  });
+
+  it('places the ball exactly where a reset asks, instead of firing it there', () => {
+    const headless = makeMatch();
+    headless.match.start();
+    run(headless, 240);
+
+    headless.match.ball.reset({ x: 3, y: GameConfig.ball.radius, z: -6 });
+    run(headless, 1, 240);
+
+    // Havok has no teleport of its own: setTargetTransform gives the body a
+    // *velocity* towards the target, which used to hurl the ball across the
+    // pitch on every kickoff.
+    expect(headless.match.state.ball.position.x).toBeCloseTo(3, 1);
+    expect(headless.match.state.ball.position.z).toBeCloseTo(-6, 1);
+    expect(headless.match.ball.speed).toBeLessThan(1);
+  });
+
+  it('lets a charged shot leave the foot instead of being eaten by the assist', () => {
+    const headless = makeMatch();
+    const kicks: number[] = [];
+    headless.match.events.on('kick', (event) => kicks.push(event.power));
+    headless.match.start();
+
+    const drive = driver(headless);
+    for (let i = 0; i < 240; i += 1) drive();
+
+    // Stand the shooter just behind the ball, both clear of the opponent.
+    headless.match.ball.reset({ x: 0, y: GameConfig.ball.radius, z: 11 });
+    for (let i = 0; i < 5; i += 1) drive();
+    headless.match.bodyFor('home-1')?.reset({ x: 0, y: 0, z: 10.2 });
+    for (let i = 0; i < 20; i += 1) drive();
+
+    for (let i = 0; i < 70; i += 1) drive({ shootHeld: true, shootPressed: i === 0 });
+    drive({ shootReleased: true });
+    for (let i = 0; i < 90; i += 1) drive();
+
+    expect(kicks).toHaveLength(1);
+    expect(kicks[0]).toBeGreaterThan(0.9);
+    // The ball reached the net rather than being dragged back by ball control.
+    expect(headless.match.state.score.home).toBe(GameConfig.match.points.goal);
     expect(headless.match.state.phase).toBe('celebration');
   });
 
