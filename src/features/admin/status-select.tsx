@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { t } from "@/i18n";
+import { NativeSelect } from "@/components/ui/native-select";
 import { useToast } from "@/components/ui/toast";
 import { setOrderStatusAction, setQuoteStatusAction } from "@/server/actions/admin";
 import type { OrderStatus, QuoteStatus } from "@/types/commerce";
@@ -31,7 +32,8 @@ function StatusSelect<T extends string>({
   const { toast } = useToast();
 
   return (
-    <select
+    <NativeSelect
+      size2="sm"
       aria-label={label}
       value={value}
       disabled={pending}
@@ -46,7 +48,7 @@ function StatusSelect<T extends string>({
         );
         router.refresh();
       }}
-      className="h-9 rounded-sm border border-line-strong bg-surface px-2 text-xs text-ink focus:border-ink focus:outline-none disabled:opacity-50"
+      className="w-auto"
     >
       {options.map((option) => (
         <option
@@ -57,7 +59,7 @@ function StatusSelect<T extends string>({
           {option.label}
         </option>
       ))}
-    </select>
+    </NativeSelect>
   );
 }
 

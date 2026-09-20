@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { PackageOpen } from "lucide-react";
 import { t } from "@/i18n";
-import { cn } from "@/lib/utils";
 import { Breadcrumbs, type Crumb } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
@@ -95,7 +94,11 @@ export function CatalogView({
             <ul className="grid grid-cols-2 gap-x-4 gap-y-9 md:grid-cols-3 md:gap-x-6 md:gap-y-12">
               {results.items.map((product, index) => (
                 <li key={product.id}>
-                  <ProductCard product={product} priority={index < 4} />
+                  <ProductCard
+                    product={product}
+                    priority={index < 4}
+                    index={index}
+                  />
                 </li>
               ))}
             </ul>
@@ -164,39 +167,34 @@ function Pagination({
   return (
     <nav aria-label="דפי תוצאות" className="mt-14 flex items-center justify-center gap-1.5">
       {page > 1 ? (
-        <Link
-          href={href(page - 1)}
-          className="rounded-sm border border-line-strong px-3 py-2 text-xs text-ink transition-colors hover:border-ink"
-        >
-          {t.common.previous}
-        </Link>
+        <Button asChild variant="outline" size="sm" className="text-xs">
+          <Link href={href(page - 1)}>{t.common.previous}</Link>
+        </Button>
       ) : null}
       {pages.map((value, index) => (
         <span key={value} className="flex items-center gap-1.5">
           {index > 0 && value - pages[index - 1]! > 1 ? (
             <span className="px-1 text-xs text-muted-soft">…</span>
           ) : null}
-          <Link
-            href={href(value)}
-            aria-current={value === page ? "page" : undefined}
-            className={cn(
-              "num min-w-9 rounded-sm border px-3 py-2 text-center text-xs transition-colors",
-              value === page
-                ? "border-ink bg-ink text-canvas"
-                : "border-line-strong text-ink hover:border-ink",
-            )}
+          <Button
+            asChild
+            size="sm"
+            variant={value === page ? "primary" : "outline"}
+            className="num min-w-9 px-3 text-xs"
           >
-            {value}
-          </Link>
+            <Link
+              href={href(value)}
+              aria-current={value === page ? "page" : undefined}
+            >
+              {value}
+            </Link>
+          </Button>
         </span>
       ))}
       {page < totalPages ? (
-        <Link
-          href={href(page + 1)}
-          className="rounded-sm border border-line-strong px-3 py-2 text-xs text-ink transition-colors hover:border-ink"
-        >
-          {t.common.next}
-        </Link>
+        <Button asChild variant="outline" size="sm" className="text-xs">
+          <Link href={href(page + 1)}>{t.common.next}</Link>
+        </Button>
       ) : null}
     </nav>
   );

@@ -10,6 +10,8 @@ import { blurDataUrl } from "@/lib/media";
 import { cn } from "@/lib/utils";
 import { track } from "@/lib/analytics";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import { PriceTag } from "@/features/catalog/price-tag";
 import { useFavorites } from "@/features/catalog/favorites-provider";
 import { QuickView } from "@/features/catalog/quick-view";
@@ -18,10 +20,18 @@ import type { Product } from "@/types/catalog";
 export function ProductCard({
   product,
   priority = false,
+  index,
   className,
 }: {
   product: Product;
   priority?: boolean;
+  /**
+   * Position in the grid. Given one, the card fades up on arrival with a
+   * 40ms step after the card before it, capped in CSS so the bottom of a
+   * long page is not left waiting. The card is laid out and clickable from
+   * the first frame either way — only opacity and transform animate.
+   */
+  index?: number;
   className?: string;
 }) {
   const { isFavorite, toggle } = useFavorites();
@@ -33,7 +43,18 @@ export function ProductCard({
   const canVisualise = Boolean(product.texture);
 
   return (
-    <article className={cn("group relative flex flex-col", className)}>
+    <article
+      className={cn(
+        "group relative flex flex-col",
+        index !== undefined && "enter-item",
+        className,
+      )}
+      style={
+        index !== undefined
+          ? ({ "--enter-index": index } as React.CSSProperties)
+          : undefined
+      }
+    >
       <div className="relative overflow-hidden rounded-sm bg-surface-2">
         <Link
           href={routes.product(product.slug)}
@@ -82,42 +103,52 @@ export function ProductCard({
               <Badge variant="neutral">{t.common.outOfStock}</Badge>
             ) : null}
           </div>
-          <button
-            type="button"
-            onClick={() => toggle(product.id)}
+          <IconButton
+            size="iconSm"
+            label={favorite ? t.catalog.removeFavorite : t.catalog.addFavorite}
             aria-pressed={favorite}
-            aria-label={favorite ? t.catalog.removeFavorite : t.catalog.addFavorite}
-            className="pointer-events-auto rounded-full bg-surface/85 p-2 text-ink shadow-subtle backdrop-blur-sm transition-colors hover:bg-surface"
+            onClick={() => toggle(product.id)}
+            className="pointer-events-auto rounded-full bg-surface/85 text-ink shadow-subtle backdrop-blur-sm hover:bg-surface"
           >
-            <Heart
-              className={cn("size-4", favorite && "fill-clay text-clay")}
-            />
-          </button>
+            <Heart className={cn(favorite && "fill-clay text-clay")} />
+          </IconButton>
         </div>
 
         {/* Hover / focus actions — always reachable on touch via the row below */}
-        <div className="absolute inset-x-2.5 bottom-2.5 hidden gap-2 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100 md:flex">
+        {/*
+          * Pointer devices only, and behind `group-hover`, which Tailwind
+          * compiles inside `@media (hover: hover)` — so a tap on a phone can
+          * never leave this row stuck open over the photo. Touch reaches the
+          * same two actions through the row under the price.
+          */}
+        <div className="absolute inset-x-2.5 bottom-2.5 hidden gap-2 opacity-0 transition-opacity duration-[var(--dur-quick)] ease-[var(--ease-out-soft)] group-hover:opacity-100 group-focus-within:opacity-100 md:flex">
           {canVisualise ? (
-            <Link
-              href={routes.designerWithProduct(
-                product.slug,
-                product.specs.surface === "WALL" ? "wall" : "floor",
-              )}
-              onClick={() => track("start_room_designer", { entry: "product" })}
-              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xs bg-ink/92 px-3 py-2.5 text-xs text-canvas backdrop-blur-sm transition-colors hover:bg-ink"
+            <Button
+              asChild
+              size="sm"
+              className="flex-1 bg-ink/92 text-xs backdrop-blur-sm"
             >
-              <Sparkles className="size-3.5" />
-              {t.catalog.tryInRoom}
-            </Link>
+              <Link
+                href={routes.designerWithProduct(
+                  product.slug,
+                  product.specs.surface === "WALL" ? "wall" : "floor",
+                )}
+                onClick={() => track("start_room_designer", { entry: "product" })}
+              >
+                <Sparkles />
+                {t.catalog.tryInRoom}
+              </Link>
+            </Button>
           ) : null}
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => setQuickView(true)}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xs bg-surface/92 px-3 py-2.5 text-xs text-ink backdrop-blur-sm transition-colors hover:bg-surface"
+            className="bg-surface/92 text-xs backdrop-blur-sm hover:bg-surface"
           >
-            <Eye className="size-3.5" />
+            <Eye />
             {t.catalog.quickView}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -143,26 +174,27 @@ export function ProductCard({
 
         <div className="mt-3 flex gap-2 md:hidden">
           {canVisualise ? (
-            <Link
-              href={routes.designerWithProduct(
-                product.slug,
-                product.specs.surface === "WALL" ? "wall" : "floor",
-              )}
-              onClick={() => track("start_room_designer", { entry: "product" })}
-              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xs border border-line-strong px-2.5 py-2 text-xs text-ink"
-            >
-              <Sparkles className="size-3.5" />
-              {t.catalog.tryInRoom}
-            </Link>
+            <Button asChild variant="outline" size="sm" className="flex-1 text-xs">
+              <Link
+                href={routes.designerWithProduct(
+                  product.slug,
+                  product.specs.surface === "WALL" ? "wall" : "floor",
+                )}
+                onClick={() => track("start_room_designer", { entry: "product" })}
+              >
+                <Sparkles />
+                {t.catalog.tryInRoom}
+              </Link>
+            </Button>
           ) : null}
-          <button
-            type="button"
+          <IconButton
+            size="iconSm"
+            variant="outline"
+            label={t.catalog.quickView}
             onClick={() => setQuickView(true)}
-            className="inline-flex items-center justify-center rounded-xs border border-line-strong px-2.5 py-2 text-xs text-ink"
-            aria-label={t.catalog.quickView}
           >
-            <Eye className="size-3.5" />
-          </button>
+            <Eye />
+          </IconButton>
         </div>
       </div>
 

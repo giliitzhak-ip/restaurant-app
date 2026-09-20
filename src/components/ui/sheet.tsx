@@ -4,6 +4,7 @@ import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { IconButton } from "@/components/ui/icon-button";
 
 /**
  * Side / bottom sheet. Mobile flows use `side="bottom"` everywhere instead of
@@ -17,10 +18,10 @@ type SheetSide = "bottom" | "start" | "end";
 
 const sideClasses: Record<SheetSide, string> = {
   bottom:
-    "inset-x-0 bottom-0 max-h-[86dvh] rounded-t-xl border-t data-[state=open]:animate-fade-up",
+    "inset-x-0 bottom-0 max-h-[86dvh] rounded-t-xl border-t animate-[enter-sheet_var(--dur-enter)_var(--ease-out-soft)_both] data-[state=closed]:animate-[exit-sheet_var(--dur-gentle)_var(--ease-out-soft)_forwards]",
   start:
-    "inset-y-0 start-0 h-dvh w-[min(22rem,88vw)] border-e data-[state=open]:animate-fade-in",
-  end: "inset-y-0 end-0 h-dvh w-[min(26rem,92vw)] border-s data-[state=open]:animate-fade-in",
+    "inset-y-0 start-0 h-dvh w-[min(22rem,88vw)] border-e [--sheet-from:-100%] rtl:[--sheet-from:100%] animate-[enter-slide_var(--dur-enter)_var(--ease-out-soft)_both] data-[state=closed]:animate-[exit-slide_var(--dur-gentle)_var(--ease-out-soft)_forwards]",
+  end: "inset-y-0 end-0 h-dvh w-[min(26rem,92vw)] border-s [--sheet-from:100%] rtl:[--sheet-from:-100%] animate-[enter-slide_var(--dur-enter)_var(--ease-out-soft)_both] data-[state=closed]:animate-[exit-slide_var(--dur-gentle)_var(--ease-out-soft)_forwards]",
 };
 
 export const SheetContent = React.forwardRef<
@@ -36,7 +37,7 @@ export const SheetContent = React.forwardRef<
     ref,
   ) => (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-ink/40 backdrop-blur-[2px] data-[state=open]:animate-fade-in" />
+      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-ink/40 backdrop-blur-[2px] data-[state=open]:animate-[fade-in_var(--dur-enter)_var(--ease-out-soft)_both] data-[state=closed]:animate-[fade-in_var(--dur-gentle)_var(--ease-out-soft)_reverse_forwards]" />
       <DialogPrimitive.Content
         ref={ref}
         className={cn(
@@ -61,16 +62,19 @@ export const SheetContent = React.forwardRef<
         ) : null}
         {children}
         {!hideClose ? (
-          <DialogPrimitive.Close
-            className={cn(
-              "absolute end-4 top-4 rounded-xs p-1.5 transition-colors",
-              theme === "light"
-                ? "text-muted hover:bg-surface-2 hover:text-ink"
-                : "text-studio-ink/60 hover:bg-white/10 hover:text-studio-ink",
-            )}
-            aria-label="סגירה"
-          >
-            <X className="size-4" />
+          <DialogPrimitive.Close asChild>
+            <IconButton
+              label="סגירה"
+              size="iconSm"
+              className={cn(
+                "absolute end-4 top-4",
+                theme === "light"
+                  ? "text-muted"
+                  : "text-studio-ink/60 focus-ring-invert hover:bg-white/10 hover:text-studio-ink",
+              )}
+            >
+              <X />
+            </IconButton>
           </DialogPrimitive.Close>
         ) : null}
       </DialogPrimitive.Content>

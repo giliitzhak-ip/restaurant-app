@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
 import {
   Accordion,
   AccordionContent,
@@ -538,7 +539,8 @@ export function SortSelect() {
   return (
     <label className="inline-flex items-center gap-2 text-xs text-muted">
       <span className="hidden sm:inline">{t.catalog.sort}</span>
-      <select
+      <NativeSelect
+        size2="sm"
         value={value}
         onChange={(event) =>
           router.push(
@@ -547,14 +549,14 @@ export function SortSelect() {
           )
         }
         aria-label={t.catalog.sort}
-        className="h-9 rounded-sm border border-line-strong bg-surface px-2.5 text-xs text-ink focus:border-ink focus:outline-none"
+        className="w-auto"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
           </option>
         ))}
-      </select>
+      </NativeSelect>
     </label>
   );
 }

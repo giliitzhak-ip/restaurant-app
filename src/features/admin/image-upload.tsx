@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Loader2, Upload, X } from "lucide-react";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 import { uploadAdminImageAction } from "@/server/actions/admin";
 
 export function ImageUpload({
@@ -87,12 +88,12 @@ export function ImageUpload({
               event.target.value = "";
             }}
           />
-          <input
+          <Input
             value={value}
             onChange={(event) => onChange(event.target.value)}
             placeholder="/media/… או כתובת CDN"
             aria-label={`${label} — כתובת`}
-            className="h-9 w-full rounded-sm border border-line-strong bg-surface px-2.5 text-xs text-ink focus:border-ink focus:outline-none"
+            className="h-9 text-xs"
           />
           {value ? (
             <button

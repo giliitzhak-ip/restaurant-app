@@ -34,7 +34,7 @@ export const Slider = React.forwardRef<
     </SliderPrimitive.Track>
     <SliderPrimitive.Thumb
       className={cn(
-        "block size-4 rounded-full border shadow-subtle transition-transform hover:scale-110 focus-visible:outline-none",
+        "interactive block size-4 rounded-full border shadow-subtle",
         theme === "light"
           ? "border-ink bg-surface"
           : "border-studio-ink bg-studio-ink",

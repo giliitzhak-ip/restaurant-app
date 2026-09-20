@@ -56,7 +56,7 @@ export const TabsContent = React.forwardRef<
   <TabsPrimitive.Content
     ref={ref}
     forceMount
-    className={cn("pt-6 focus-visible:outline-none data-[state=inactive]:hidden", className)}
+    className={cn("pt-6 data-[state=inactive]:hidden", className)}
     {...props}
   />
 ));

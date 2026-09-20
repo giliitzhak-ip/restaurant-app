@@ -2,6 +2,7 @@
 
 import { Minus, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { IconButton } from "@/components/ui/icon-button";
 
 export function QuantityStepper({
   value,
@@ -27,15 +28,15 @@ export function QuantityStepper({
         className,
       )}
     >
-      <button
-        type="button"
+      <IconButton
+        label={`הפחתת ${label}`}
+        size="icon"
+        className="size-10 rounded-none tap-target"
         onClick={() => set(value - 1)}
         disabled={value <= min}
-        aria-label={`הפחתת ${label}`}
-        className="flex size-10 items-center justify-center text-ink transition-colors hover:bg-surface-2 disabled:opacity-35"
       >
-        <Minus className="size-4" />
-      </button>
+        <Minus />
+      </IconButton>
       <input
         type="number"
         inputMode="numeric"
@@ -47,17 +48,17 @@ export function QuantityStepper({
           const next = Number(event.target.value);
           if (Number.isFinite(next)) set(next);
         }}
-        className="num h-full w-12 border-x border-line bg-transparent text-center text-sm text-ink focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        className="num h-full w-12 border-x border-line bg-transparent text-center text-sm text-ink [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
       />
-      <button
-        type="button"
+      <IconButton
+        label={`הוספת ${label}`}
+        size="icon"
+        className="size-10 rounded-none tap-target"
         onClick={() => set(value + 1)}
         disabled={value >= max}
-        aria-label={`הוספת ${label}`}
-        className="flex size-10 items-center justify-center text-ink transition-colors hover:bg-surface-2 disabled:opacity-35"
       >
-        <Plus className="size-4" />
-      </button>
+        <Plus />
+      </IconButton>
     </div>
   );
 }

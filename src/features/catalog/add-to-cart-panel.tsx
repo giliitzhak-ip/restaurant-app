@@ -104,7 +104,7 @@ export function AddToCartPanel({ product }: { product: Product }) {
 
       {product.sampleAvailable ? (
         <Button
-          variant="subtle"
+          variant="secondary"
           block
           onClick={async () => {
             track("order_sample", { slug: product.slug });

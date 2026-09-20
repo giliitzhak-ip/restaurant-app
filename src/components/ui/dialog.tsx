@@ -4,6 +4,26 @@ import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { IconButton } from "@/components/ui/icon-button";
+
+/**
+ * Modal dialog.
+ *
+ * Radix supplies the parts that are hard to get right and invisible when they
+ * are: the focus trap, Escape, the scroll lock, and returning focus to
+ * whatever opened the dialog. What is set here is how it arrives and where it
+ * sits.
+ *
+ * On a pointer device it is centred and fades up with a 0.985 scale — enough
+ * to read as coming forward, not enough to look like a pop. On a phone it is
+ * a bottom sheet: it rises from the edge the thumb is already near, keeps its
+ * top corners rounded so the page behind stays legible, and never asks anyone
+ * to reach the middle of the screen to dismiss it.
+ *
+ * Centring is done with flexbox rather than a translate, because the close
+ * animation owns `transform` and the two would otherwise fight — and because
+ * a translate-based centre needs an RTL exception that flexbox does not.
+ */
 
 export const Dialog = DialogPrimitive.Root;
 export const DialogTrigger = DialogPrimitive.Trigger;
@@ -17,7 +37,11 @@ export const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-ink/35 backdrop-blur-[2px] data-[state=open]:animate-fade-in",
+      // Subtle: the page stays readable behind it, so the dialog reads as
+      // something on top of the page rather than a different screen.
+      "fixed inset-0 z-50 bg-ink/35 backdrop-blur-[2px]",
+      "data-[state=open]:animate-[fade-in_var(--dur-enter)_var(--ease-out-soft)_both]",
+      "data-[state=closed]:animate-[fade-in_var(--dur-gentle)_var(--ease-out-soft)_reverse_forwards]",
       className,
     )}
     {...props}
@@ -34,28 +58,43 @@ export const DialogContent = React.forwardRef<
 >(({ className, children, size = "md", hideClose, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        "fixed inset-x-4 top-1/2 z-50 mx-auto max-h-[calc(100dvh-2rem)] -translate-y-1/2 overflow-y-auto rounded-lg border border-line bg-surface p-6 shadow-raised data-[state=open]:animate-fade-up sm:inset-x-auto sm:start-1/2 sm:-translate-x-1/2 rtl:sm:translate-x-1/2",
-        size === "sm" && "sm:w-[26rem]",
-        size === "md" && "sm:w-[34rem]",
-        size === "lg" && "sm:w-[48rem]",
-        size === "xl" && "sm:w-[64rem]",
-        className,
-      )}
-      {...props}
-    >
-      {children}
-      {!hideClose ? (
-        <DialogPrimitive.Close
-          className="absolute end-4 top-4 rounded-xs p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-ink"
-          aria-label="סגירה"
-        >
-          <X className="size-4" />
-        </DialogPrimitive.Close>
-      ) : null}
-    </DialogPrimitive.Content>
+    {/* Positioning shell: it must not swallow clicks meant for the overlay. */}
+    <div className="pointer-events-none fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
+      <DialogPrimitive.Content
+        ref={ref}
+        className={cn(
+          "pointer-events-auto relative flex max-h-[90dvh] w-full flex-col overflow-y-auto",
+          "border border-line bg-surface p-6 shadow-raised",
+          // Phone: a sheet on the bottom edge.
+          "rounded-t-xl pb-[max(1.5rem,env(safe-area-inset-bottom))]",
+          "animate-[enter-sheet_var(--dur-enter)_var(--ease-out-soft)_both]",
+          "data-[state=closed]:animate-[exit-sheet_var(--dur-gentle)_var(--ease-out-soft)_forwards]",
+          // Pointer device: a centred panel.
+          "sm:rounded-lg sm:pb-6",
+          "sm:animate-[enter-scale_var(--dur-enter)_var(--ease-out-soft)_both]",
+          "sm:data-[state=closed]:animate-[exit-fade_var(--dur-gentle)_var(--ease-out-soft)_forwards]",
+          size === "sm" && "sm:max-w-[26rem]",
+          size === "md" && "sm:max-w-[34rem]",
+          size === "lg" && "sm:max-w-[48rem]",
+          size === "xl" && "sm:max-w-[64rem]",
+          className,
+        )}
+        {...props}
+      >
+        {children}
+        {!hideClose ? (
+          <DialogPrimitive.Close asChild>
+            <IconButton
+              label="סגירה"
+              size="iconSm"
+              className="absolute end-4 top-4 text-muted"
+            >
+              <X />
+            </IconButton>
+          </DialogPrimitive.Close>
+        ) : null}
+      </DialogPrimitive.Content>
+    </div>
   </DialogPortal>
 ));
 DialogContent.displayName = "DialogContent";
@@ -97,7 +136,10 @@ export function DialogFooter({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-start", className)}
+      className={cn(
+        "mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-start",
+        className,
+      )}
       {...props}
     />
   );

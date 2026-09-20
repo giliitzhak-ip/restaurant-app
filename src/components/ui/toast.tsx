@@ -1,11 +1,34 @@
 "use client";
 
 import * as React from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { AlertTriangle, Check, Info, X } from "lucide-react";
+import { AlertTriangle, Check, Info, TriangleAlert, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { IconButton } from "@/components/ui/icon-button";
 
-type ToastTone = "success" | "error" | "info";
+/**
+ * Transient confirmations.
+ *
+ * Three things this had to get right and one it used to get wrong:
+ *
+ * · It no longer pulls in framer-motion. The enter and exit are two CSS
+ *   keyframes; the only state React keeps is which toasts are on their way
+ *   out, so they stay mounted long enough to animate and are then dropped.
+ *   That is the entire animation library this file needed, and it takes the
+ *   last client-side motion dependency out of the bundle with it.
+ *
+ * · Four tones, each with its own icon and its own word. Nothing here is
+ *   distinguishable by colour alone.
+ *
+ * · `aria-live="polite"` on a region that is always in the DOM, so a screen
+ *   reader announces what arrives instead of announcing the region itself.
+ *
+ * · The thing it got wrong: the stack sat flush against the bottom edge, on
+ *   top of the mobile buy bar. It now honours `--toast-offset`, which a
+ *   sticky action bar raises while it is showing, so a confirmation never
+ *   covers the button that produced it.
+ */
+
+type ToastTone = "success" | "error" | "warning" | "info";
 
 interface ToastItem {
   id: string;
@@ -21,28 +44,54 @@ interface ToastContextValue {
 
 const ToastContext = React.createContext<ToastContextValue | null>(null);
 
-const icons: Record<ToastTone, React.ComponentType<{ className?: string }>> = {
-  success: Check,
-  error: AlertTriangle,
-  info: Info,
+/** Icon and screen-reader word per tone — the tone is never only a colour. */
+const tones: Record<
+  ToastTone,
+  { icon: React.ComponentType<{ className?: string }>; badge: string; word: string }
+> = {
+  success: { icon: Check, badge: "bg-success text-white", word: "הצלחה" },
+  error: { icon: AlertTriangle, badge: "bg-danger text-white", word: "שגיאה" },
+  warning: { icon: TriangleAlert, badge: "bg-warning text-white", word: "שימו לב" },
+  info: { icon: Info, badge: "bg-ink text-canvas", word: "הודעה" },
 };
+
+/** Long enough to read the exit, short enough not to hold the slot. */
+const EXIT_MS = 200;
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = React.useState<ToastItem[]>([]);
+  const [leaving, setLeaving] = React.useState<readonly string[]>([]);
   const timers = React.useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
-  const dismiss = React.useCallback((id: string) => {
-    setItems((current) => current.filter((item) => item.id !== id));
-    const timer = timers.current.get(id);
+  const clearTimer = React.useCallback((key: string) => {
+    const timer = timers.current.get(key);
     if (timer) {
       clearTimeout(timer);
-      timers.current.delete(id);
+      timers.current.delete(key);
     }
   }, []);
 
+  const dismiss = React.useCallback(
+    (id: string) => {
+      clearTimer(id);
+      setLeaving((current) => (current.includes(id) ? current : [...current, id]));
+      timers.current.set(
+        `exit:${id}`,
+        setTimeout(() => {
+          setItems((current) => current.filter((item) => item.id !== id));
+          setLeaving((current) => current.filter((value) => value !== id));
+          timers.current.delete(`exit:${id}`);
+        }, EXIT_MS),
+      );
+    },
+    [clearTimer],
+  );
+
   const toast = React.useCallback<ToastContextValue["toast"]>(
     ({ tone = "success", ...rest }) => {
-      const id = Math.random().toString(36).slice(2, 10);
+      const id = `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+      // At most three on screen; the oldest leaves rather than the newest
+      // being dropped, because the newest is the one that was just caused.
       setItems((current) => [...current.slice(-2), { id, tone, ...rest }]);
       timers.current.set(
         id,
@@ -68,62 +117,67 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       <div
         aria-live="polite"
         aria-atomic="false"
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-[100] flex flex-col items-center gap-2 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-start"
+        className={cn(
+          "pointer-events-none fixed inset-x-0 z-100 flex flex-col items-center gap-2 p-4 sm:items-start",
+          // Sits above a mobile action bar when one is up, above the home
+          // indicator when one is not.
+          "bottom-[var(--toast-offset,0px)] pb-[max(1rem,env(safe-area-inset-bottom))]",
+          "transition-[bottom] duration-[var(--dur-gentle)] ease-[var(--ease-out-soft)]",
+        )}
       >
-        <AnimatePresence initial={false}>
-          {items.map((item) => {
-            const Icon = icons[item.tone];
-            return (
-              <motion.div
-                key={item.id}
-                layout
-                initial={{ opacity: 0, y: 16, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 8, scale: 0.98 }}
-                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+        {items.map((item) => {
+          const { icon: Icon, badge, word } = tones[item.tone];
+          const isLeaving = leaving.includes(item.id);
+          return (
+            <div
+              key={item.id}
+              className={cn(
+                "pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-sm border bg-surface p-3.5 shadow-raised",
+                item.tone === "error" ? "border-danger/40" : "border-line",
+                isLeaving
+                  ? "animate-[exit-fade_var(--dur-gentle)_var(--ease-out-soft)_forwards]"
+                  : "animate-[enter-rise_var(--dur-enter)_var(--ease-out-soft)_both]",
+              )}
+            >
+              <span
                 className={cn(
-                  "pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-sm border bg-surface p-3.5 shadow-raised",
-                  item.tone === "error" ? "border-danger/40" : "border-line",
+                  "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full",
+                  badge,
                 )}
               >
-                <span
-                  className={cn(
-                    "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full",
-                    item.tone === "success" && "bg-success text-white",
-                    item.tone === "error" && "bg-danger text-white",
-                    item.tone === "info" && "bg-ink text-canvas",
-                  )}
-                >
-                  <Icon className="size-3" />
-                </span>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-ink">{item.title}</p>
-                  {item.description ? (
-                    <p className="mt-0.5 text-xs leading-relaxed text-muted">
-                      {item.description}
-                    </p>
-                  ) : null}
-                  {item.action ? (
-                    <a
-                      href={item.action.href}
-                      className="mt-2 inline-block text-xs font-medium text-brass underline underline-offset-4"
-                    >
-                      {item.action.label}
-                    </a>
-                  ) : null}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => dismiss(item.id)}
-                  className="rounded-xs p-1 text-muted transition-colors hover:bg-surface-2 hover:text-ink"
-                  aria-label="סגירת ההודעה"
-                >
-                  <X className="size-3.5" />
-                </button>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
+                <Icon className="size-3" />
+              </span>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-ink">
+                  <span className="sr-only">{word}: </span>
+                  {item.title}
+                </p>
+                {item.description ? (
+                  <p className="mt-0.5 text-xs leading-relaxed text-muted">
+                    {item.description}
+                  </p>
+                ) : null}
+                {item.action ? (
+                  <a
+                    href={item.action.href}
+                    className="interactive mt-2 inline-block rounded-xs text-xs font-medium text-brass underline underline-offset-4 hover:text-ink"
+                  >
+                    {item.action.label}
+                  </a>
+                ) : null}
+              </div>
+              <IconButton
+                size="iconSm"
+                label="סגירת ההודעה"
+                variant="ghost"
+                className="-me-1 -mt-1 shrink-0 text-muted"
+                onClick={() => dismiss(item.id)}
+              >
+                <X />
+              </IconButton>
+            </div>
+          );
+        })}
       </div>
     </ToastContext.Provider>
   );

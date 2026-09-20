@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field } from "@/components/ui/label";
 import { Input, Textarea } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -142,17 +143,16 @@ function SelectField<T extends string>({
       <span className="mb-1.5 block text-[0.8125rem] font-medium text-ink-soft">
         {label}
       </span>
-      <select
+      <NativeSelect
         value={value}
         onChange={(event) => onChange(event.target.value as T)}
-        className="h-11 w-full rounded-sm border border-line-strong bg-surface px-3 text-sm text-ink focus:border-ink focus:outline-none"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
           </option>
         ))}
-      </select>
+      </NativeSelect>
     </label>
   );
 }

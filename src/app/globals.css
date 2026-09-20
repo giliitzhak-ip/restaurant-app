@@ -70,8 +70,22 @@
   --text-display-md: clamp(2.1rem, 1.2rem + 3.4vw, 3.75rem);
   --text-display-lg: clamp(2.5rem, 1rem + 5.6vw, 5rem);
 
-  /* Motion */
+  /* Motion — one easing curve, four durations. Everything interactive in the
+     storefront picks from this list; nothing invents its own timing.
+       press   the 1px lift / 0.98 press on a control
+       quick   colour, border and shadow changes
+       gentle  entrances of small things: errors, inline success, chips
+       enter   cards, lists, sheets and dialogs arriving
+     The brief's ceiling is 220ms for interaction feedback; `enter` is above it
+     because it describes arrival, not response to a tap. */
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-press: 140ms;
+  --dur-quick: 170ms;
+  --dur-gentle: 200ms;
+  --dur-enter: 260ms;
+  /* Cap on a staggered list so the last row is never left waiting. */
+  --stagger-step: 40ms;
+  --stagger-max: 240ms;
 
   --animate-fade-up: fade-up 0.6s var(--ease-out-soft) both;
   --animate-fade-in: fade-in 0.5s var(--ease-out-soft) both;
@@ -104,6 +118,88 @@
   }
   to {
     background-position: -200% 0;
+  }
+}
+
+/* Arrival of a card, a row or a panel. transform + opacity only, so it costs
+   the compositor a frame and the layout nothing. */
+@keyframes enter-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* A dialog on a pointer device: the same rise, plus a scale small enough to
+   read as depth rather than as a pop. */
+@keyframes enter-scale {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes exit-fade {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* A sheet that belongs to the bottom edge slides from it. */
+@keyframes enter-sheet {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes exit-sheet {
+  from {
+    transform: none;
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+/* A side sheet. There is no logical `translate`, so the direction it comes
+   from is a variable the caller sets with an `rtl:` override. */
+@keyframes enter-slide {
+  from {
+    transform: translateX(var(--sheet-from, 100%));
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes exit-slide {
+  from {
+    transform: none;
+  }
+  to {
+    transform: translateX(var(--sheet-from, 100%));
+  }
+}
+
+@keyframes spin-soft {
+  to {
+    transform: rotate(360deg);
   }
 }
 
@@ -241,5 +337,149 @@
   &:hover::after,
   &:focus-visible::after {
     transform: scaleX(1);
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Interaction primitives
+ *
+ * The whole storefront gets its hover, press, focus and arrival
+ * behaviour from the five utilities below. A component that wants to
+ * feel like the rest of the system composes these instead of writing
+ * its own transition — which is how the timings stay in one place.
+ *
+ * Rules encoded here, so no component has to remember them:
+ *   · only transform, opacity, colour, border and shadow animate;
+ *     width, height, top and left never do, so nothing reflows;
+ *   · hover lives behind @media (hover: hover), so a tap on a phone
+ *     never leaves a control stuck in its hover state;
+ *   · a disabled control is excluded from both hover and press;
+ *   · prefers-reduced-motion drops the movement and keeps the colour
+ *     change, which then lands instantly.
+ * ------------------------------------------------------------------ */
+
+/* Transition set shared by every interactive surface. */
+@utility interactive {
+  transition-property: transform, opacity, background-color, border-color,
+    box-shadow, color;
+  transition-duration: var(--dur-quick);
+  transition-timing-function: var(--ease-out-soft);
+}
+
+/* The 1px lift and the 0.98 press. Apply to buttons and to anything else
+   that is genuinely clickable as a whole. */
+@utility press {
+  transition-property: transform, opacity, background-color, border-color,
+    box-shadow, color;
+  transition-duration: var(--dur-press);
+  transition-timing-function: var(--ease-out-soft);
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled):not([aria-disabled="true"]):not([data-busy]) {
+      transform: translateY(-1px);
+    }
+  }
+
+  &:active:not(:disabled):not([aria-disabled="true"]):not([data-busy]) {
+    transform: scale(0.98) translateY(0);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &:hover,
+    &:active {
+      transform: none;
+    }
+  }
+}
+
+/* A hit area of at least 44×44 without changing how big the control looks.
+   The pseudo-element is centred physically, so it behaves the same in RTL. */
+@utility tap-target {
+  position: relative;
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 100%;
+    height: 100%;
+    min-width: 44px;
+    min-height: 44px;
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* Focus ring for controls sitting on the dark studio surfaces, where the
+   brass ring the base layer draws does not carry enough contrast. */
+@utility focus-ring-invert {
+  &:focus-visible {
+    outline-color: var(--color-studio-ink);
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Surfaces
+ * ------------------------------------------------------------------ */
+
+/* The panel that repeats across account, admin, checkout and cart. It used
+   to be typed out as `rounded-lg border border-line bg-surface` in about
+   fifty places; it is one name now. */
+@utility card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+}
+
+/* A card the whole of which is a link or a button. The border carries the
+   hover — no shadow bloom, no scale. */
+@utility card-interactive {
+  transition-property: transform, opacity, background-color, border-color,
+    box-shadow, color;
+  transition-duration: var(--dur-quick);
+  transition-timing-function: var(--ease-out-soft);
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      border-color: var(--color-line-strong);
+      box-shadow: var(--shadow-raised);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &:hover {
+      box-shadow: none;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Arrival
+ * ------------------------------------------------------------------ */
+
+/* One item arriving. In a list, set --enter-index on each item to stagger
+   them; the delay is capped so a long page never makes anyone wait. The
+   element is laid out and clickable from the first frame — only opacity and
+   transform are animated, and neither blocks a pointer. */
+@utility enter-item {
+  animation: enter-rise var(--dur-enter) var(--ease-out-soft) both;
+  animation-delay: min(
+    calc(var(--enter-index, 0) * var(--stagger-step)),
+    var(--stagger-max)
+  );
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+/* Small things appearing inside a form: a validation message, an inline
+   confirmation, a chip. Opacity only — a message that slides pushes the
+   fields under it around. */
+@utility enter-soft {
+  animation: fade-in var(--dur-gentle) var(--ease-out-soft) both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
   }
 }
