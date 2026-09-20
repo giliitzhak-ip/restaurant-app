@@ -1,3 +1,33 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--
+  These three lines are not boilerplate. Each one was missing, and each one
+  was doing visible damage on a phone.
+
+  charset — the file is UTF-8 and said so nowhere. Opened from a download,
+  an AirDrop or a file:// URL there is no HTTP header to carry the encoding,
+  so the browser guesses; iOS Safari guessed a legacy single-byte encoding
+  and rendered every Hebrew character as mojibake. Reproduced exactly by
+  serving this file with an unlabelled Content-Type: document.characterSet
+  came back windows-1252. Only the ASCII survived, which is why
+  matching_events and 10,000 read correctly in the middle of the wreckage —
+  and why it looked like a missing font rather than a missing declaration.
+  The meta must also sit in the first 1024 bytes to be honoured, which is why
+  it is here rather than further down.
+
+  (The mojibake is deliberately NOT quoted here: tests/unit/simulator-page.ts
+  scans this file for exactly those byte sequences, and caught this comment
+  on its first run.)
+
+  doctype — without it the page was in QUIRKS MODE (document.compatMode
+  "BackCompat"), so box sizing and inheritance followed a 1990s compatibility
+  layer rather than the rules the CSS below was written against.
+
+  viewport — without it mobile Safari lays a page out at roughly 980px and
+  scales the result down, which is why a page designed at phone width arrived
+  shrunken.
+-->
 <title>GET SERVICE Simulator</title>
 
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;900&family=Sora:wght@500;700&display=swap">

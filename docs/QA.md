@@ -6,10 +6,10 @@ What is verified, how, and — importantly — what is **not**.
 
 ## Test inventory
 
-**284 tests, 32 files.** Run: `npm test`
+**291 tests, 33 files.** Run: `npm test`
 (first time: `npm run test:db` to create the test database).
 
-The 115 unit tests need nothing but Node. The 132 integration and 37 security
+The 122 unit tests need nothing but Node. The 132 integration and 37 security
 tests talk to a real PostgreSQL with PostGIS and are not mocked, because what
 they test — RLS policies, the transition trigger, `FOR UPDATE SKIP LOCKED`, a
 PostGIS distance — exists only in the database. Without one they do not fail
@@ -30,6 +30,7 @@ code, and should be reported as "not run" rather than as a pass or a failure.
 | `safe-redirect.test.ts` | 15 | `?next=` as an open redirect — absolute URLs, `//host`, backslashes, `javascript:`, control characters, percent-encoded versions of each — and as a wrong-role landing |
 | `document-sniff.test.ts` | 7 | Magic-byte typing of uploads, and the size ceiling |
 | `maintenance-interval.test.ts` | 5 | The clock's configuration, where every failure mode is silent |
+| `simulator-page.test.ts` | 7 | The shipped simulator declares UTF-8 in its first 1024 bytes, is valid UTF-8, carries no mojibake, opens in standards mode and lays out at device width |
 | `foundation.test.ts` | 2 | Class merging |
 
 ### Integration — against a real PostgreSQL + PostGIS

@@ -31,11 +31,11 @@ against a local PostgreSQL.
 
 ### Tests
 
-284 in total, across three suites:
+291 in total, across three suites:
 
 | Suite | Count | Needs a database |
 |---|---|---|
-| `npm run test:unit` | 115 | No — pure domain logic, runs anywhere |
+| `npm run test:unit` | 122 | No — pure domain logic, runs anywhere |
 | `npm run test:integration` | 132 | **Yes** |
 | `npm run test:security` | 37 | **Yes** |
 
@@ -80,7 +80,7 @@ refreshes it.
 | `npm run dev` | Development server |
 | `npm run build` / `npm start` | Production build and serve |
 | `npm run lint` · `npm run typecheck` | Static checks |
-| `npm test` | All 284 tests — the integration and security suites need a live PostgreSQL + PostGIS |
+| `npm test` | All 291 tests — the integration and security suites need a live PostgreSQL + PostGIS |
 | `npm run test:unit` · `test:integration` · `test:security` | One suite |
 | `npm run db:roles` · `db:migrate` · `db:seed` · `db:setup` | Database |
 | `npm run db:network -- --count 10000 --reset` | Reseed the synthetic network at any size up to 20,000 |
