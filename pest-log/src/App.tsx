@@ -19,10 +19,24 @@ import { ProfilePage } from '@/features/settings/ProfilePage';
 import { SettingsPage } from '@/features/settings/SettingsPage';
 import { ImportPage } from '@/features/legacyImport/ImportPage';
 import { WizardPage } from '@/features/wizard/WizardPage';
+import { RoutesPage } from '@/features/routes/RoutesPage';
+import { RouteDayPage } from '@/features/routes/RouteDayPage';
+import { RouteMapPage } from '@/features/routes/RouteMapPage';
+import { RouteReportPage } from '@/features/routes/RouteReportPage';
+import { RouteTemplatesPage } from '@/features/routes/RouteTemplatesPage';
+import { RouteAdminPage } from '@/features/routes/RouteAdminPage';
+import { VisitPage } from '@/features/routes/VisitPage';
 
 /** כותרות המסכים הפנימיים, לכותרת העליונה. */
 const PAGE_TITLES: Array<[RegExp, string]> = [
   [/^\/drafts$/, 'טיוטות'],
+  [/^\/routes$/, 'מסלול עבודה'],
+  [/^\/routes\/templates$/, 'קווי אחזקה קבועים'],
+  [/^\/routes\/admin$/, 'ניהול מסלולים'],
+  [/^\/routes\/[^/]+\/map$/, 'מפת המסלול'],
+  [/^\/routes\/[^/]+\/report$/, 'דוח מסלול'],
+  [/^\/routes\/[^/]+\/visits\//, 'ביקור במסלול'],
+  [/^\/routes\/[^/]+$/, 'מסלול עבודה'],
   [/^\/archive$/, 'ארכיון יומנים'],
   [/^\/clients$/, 'מזמינים ואתרים'],
   [/^\/bait-stations$/, 'תחנות האכלה'],
@@ -72,6 +86,7 @@ function InnerHeader(): React.JSX.Element {
         <NavLink to="/" end>
           בית
         </NavLink>
+        <NavLink to="/routes">מסלול</NavLink>
         <NavLink to="/drafts">טיוטות</NavLink>
         <NavLink to="/archive">ארכיון</NavLink>
         <NavLink to="/tasks">משימות</NavLink>
@@ -140,6 +155,13 @@ function Shell(): React.JSX.Element {
 
         <Route path="/logs/:logId" element={<InnerLayout><WizardPage /></InnerLayout>} />
         <Route path="/logs/:logId/completed" element={<InnerLayout><CompletedPage /></InnerLayout>} />
+        <Route path="/routes" element={<InnerLayout><RoutesPage /></InnerLayout>} />
+        <Route path="/routes/templates" element={<InnerLayout><RouteTemplatesPage /></InnerLayout>} />
+        <Route path="/routes/admin" element={<InnerLayout><RouteAdminPage /></InnerLayout>} />
+        <Route path="/routes/:routeId" element={<InnerLayout><RouteDayPage /></InnerLayout>} />
+        <Route path="/routes/:routeId/map" element={<InnerLayout><RouteMapPage /></InnerLayout>} />
+        <Route path="/routes/:routeId/report" element={<InnerLayout><RouteReportPage /></InnerLayout>} />
+        <Route path="/routes/:routeId/visits/:visitId" element={<InnerLayout><VisitPage /></InnerLayout>} />
         <Route path="/drafts" element={<InnerLayout><DraftsPage /></InnerLayout>} />
         <Route path="/archive" element={<InnerLayout><ArchivePage /></InnerLayout>} />
         <Route path="/clients" element={<InnerLayout><ClientsPage /></InnerLayout>} />

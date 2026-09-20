@@ -1,4 +1,6 @@
 import { getSupabase, translateDbError } from './supabase';
+import { isVisitLate, localDateIso, OPEN_VISIT_STATUSES } from './routes/status';
+import type { RouteVisitRow } from './routes/types';
 import { getCache, listDrafts, putCache } from './db/idb';
 import type { OutboxOperation } from './db/idb';
 import type { OperationOutcome } from './sync/engine';
@@ -395,9 +397,19 @@ export interface HomeCounters {
   tasks: number;
   /** יומנים שהושלמו מתחילת החודש. */
   archiveThisMonth: number;
+  /** ביקורים שנותרו היום במסלול העבודה. */
+  routeRemaining: number;
+  /** מתוכם — דחופים או באיחור. */
+  routeUrgent: number;
 }
 
-export const EMPTY_HOME_COUNTERS: HomeCounters = { drafts: 0, tasks: 0, archiveThisMonth: 0 };
+export const EMPTY_HOME_COUNTERS: HomeCounters = {
+  drafts: 0,
+  tasks: 0,
+  archiveThisMonth: 0,
+  routeRemaining: 0,
+  routeUrgent: 0,
+};
 
 /** תחילת החודש הנוכחי, כ-ISO, לשאילתות ספירה. */
 export function startOfMonthIso(now = new Date()): string {
@@ -494,7 +506,8 @@ export async function loadHomeCounters(now = new Date()): Promise<HomeCounters> 
   try {
     const supabase = getSupabase();
 
-    const [serverDrafts, archiveCount, followUps] = await Promise.all([
+    const today = localDateIso(now);
+    const [serverDrafts, archiveCount, followUps, todayVisits] = await Promise.all([
       supabase.from('pest_logs').select('id').eq('status', 'draft').is('deleted_at', null).limit(500),
       supabase
         .from('pest_logs')
@@ -503,15 +516,39 @@ export async function loadHomeCounters(now = new Date()): Promise<HomeCounters> 
         .is('deleted_at', null)
         .gte('completed_at', startOfMonthIso(now)),
       listFollowUpTasks(now),
+      // תחנות המסלול של היום ושל ימים שעברו ונשארו פתוחות.
+      supabase
+        .from('route_visits')
+        .select('id, route_id, position, planned_date, planned_start_time, time_window_end, priority, status')
+        .lte('planned_date', today)
+        .is('deleted_at', null)
+        .in('status', OPEN_VISIT_STATUSES)
+        .limit(500),
     ]);
 
     if (serverDrafts.error) fail(serverDrafts.error);
     for (const row of serverDrafts.data ?? []) draftIds.add(row.id as string);
 
+    const openVisits = (todayVisits.data ?? []) as Array<Record<string, unknown>>;
+    const routeUrgent = openVisits.filter((row) => {
+      if (row.priority === 'urgent') return true;
+      return isVisitLate(
+        {
+          status: row.status as RouteVisitRow['status'],
+          plannedDate: row.planned_date as string,
+          plannedStartTime: ((row.planned_start_time as string | null) ?? null)?.slice(0, 5) ?? null,
+          timeWindowEnd: ((row.time_window_end as string | null) ?? null)?.slice(0, 5) ?? null,
+        } as RouteVisitRow,
+        now,
+      );
+    }).length;
+
     const counters: HomeCounters = {
       drafts: draftIds.size,
       tasks: followUps.filter((task) => task.isOpen).length,
       archiveThisMonth: archiveCount.count ?? 0,
+      routeRemaining: openVisits.length,
+      routeUrgent,
     };
     await putCache('homeCounters', counters);
     return counters;
@@ -665,6 +702,59 @@ export async function executeOperation(operation: OutboxOperation): Promise<Oper
         const { error } = await supabase
           .from('bait_stations')
           .upsert(operation.payload.row as Record<string, unknown>, { onConflict: 'id' });
+        if (error) return { ok: false, error: translateDbError(error), permanent: error.code === '42501' };
+        return { ok: true };
+      }
+
+      case 'upsert_route': {
+        const { error } = await supabase
+          .from('maintenance_routes')
+          .upsert(operation.payload.row as Record<string, unknown>, { onConflict: 'id' });
+        if (error) return { ok: false, error: translateDbError(error), permanent: error.code === '42501' };
+        return { ok: true };
+      }
+
+      case 'upsert_route_template': {
+        const { error } = await supabase
+          .from('route_templates')
+          .upsert(operation.payload.row as Record<string, unknown>, { onConflict: 'id' });
+        if (error) return { ok: false, error: translateDbError(error), permanent: error.code === '42501' };
+        return { ok: true };
+      }
+
+      case 'upsert_route_visit': {
+        const { error } = await supabase
+          .from('route_visits')
+          .upsert(operation.payload.row as Record<string, unknown>, { onConflict: 'id' });
+        if (error) return { ok: false, error: translateDbError(error), permanent: error.code === '42501' };
+        return { ok: true };
+      }
+
+      case 'delete_route_visit': {
+        const { error } = await supabase.from('route_visits').delete().eq('id', operation.entityId);
+        if (error) return { ok: false, error: translateDbError(error), permanent: error.code === '42501' };
+        return { ok: true };
+      }
+
+      case 'upsert_focus_item': {
+        const { error } = await supabase
+          .from('visit_focus_items')
+          .upsert(operation.payload.row as Record<string, unknown>, { onConflict: 'id' });
+        if (error) return { ok: false, error: translateDbError(error), permanent: error.code === '42501' };
+        return { ok: true };
+      }
+
+      case 'delete_focus_item': {
+        const { error } = await supabase.from('visit_focus_items').delete().eq('id', operation.entityId);
+        if (error) return { ok: false, error: translateDbError(error), permanent: error.code === '42501' };
+        return { ok: true };
+      }
+
+      case 'reorder_route': {
+        const { error } = await supabase.rpc('reorder_route_visits', {
+          p_route_id: operation.entityId,
+          p_visit_ids: operation.payload.visitIds as string[],
+        });
         if (error) return { ok: false, error: translateDbError(error), permanent: error.code === '42501' };
         return { ok: true };
       }

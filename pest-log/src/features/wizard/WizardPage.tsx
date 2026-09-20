@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useApp } from '@/state/AppContext';
 import { useDraft } from '@/state/useDraft';
 import { Alert, focusField, PoisonNotice, ProblemList, SyncBadge } from '@/components/Common';
@@ -8,6 +8,8 @@ import { validateForCompletion, type ValidationProblem } from '@/schema/pestLog'
 import { serverNow } from '@/lib/time';
 import { idempotencyKey } from '@/lib/ids';
 import { completeLog, isApiError } from '@/lib/api';
+import { cachedRouteBundle, loadRouteBundle } from '@/lib/routes/repo';
+import { buildLogPrefill } from '@/lib/routes/prefill';
 import { Step1Parties } from './Step1Parties';
 import { Step2Location } from './Step2Location';
 import { Step3Monitoring } from './Step3Monitoring';
@@ -26,11 +28,44 @@ export function WizardPage(): React.JSX.Element {
   const { profile, syncEngine, syncStatus, reference } = useApp();
   const draft = useDraft(logId ?? '', profile?.organizationId ?? null, syncEngine);
 
+  const [searchParams] = useSearchParams();
+  const visitParam = searchParams.get('visit');
+  const routeParam = searchParams.get('route');
+  const [prefilledFromVisit, setPrefilledFromVisit] = useState(false);
+
   const [step, setStep] = useState<WizardStepIndex>(1);
   const [problems, setProblems] = useState<ValidationProblem[]>([]);
   const [validated, setValidated] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [completionError, setCompletionError] = useState<string | null>(null);
+
+  /**
+   * יומן שנפתח מתוך ביקור במסלול.
+   * מולאים רק פרטי המזמין והמקום. תאריך, שעה, ממצאים, מינונים, אצוות,
+   * חתימות ואזהרות אינם מועתקים — ראו NEVER_PREFILLED_PATHS.
+   */
+  useEffect(() => {
+    if (!visitParam || !routeParam || draft.loading || draft.readOnly || prefilledFromVisit) return;
+    // ממלאים רק טיוטה שעדיין ריקה, כדי לא לדרוס עבודה קיימת.
+    if (draft.content.orderer || draft.content.location) {
+      setPrefilledFromVisit(true);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const bundle =
+        (await cachedRouteBundle(routeParam)) ?? (await loadRouteBundle(routeParam).catch(() => null));
+      const visit = bundle?.visits.find((item) => item.id === visitParam);
+      const client = reference.clients.find((item) => item.id === visit?.clientId);
+      if (cancelled || !visit || !client) return;
+      const site = reference.sites.find((item) => item.id === visit.clientSiteId) ?? null;
+      draft.setFields(buildLogPrefill({ client, site, visitId: visit.id, routeId: routeParam }));
+      setPrefilledFromVisit(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [draft, prefilledFromVisit, reference.clients, reference.sites, routeParam, visitParam]);
 
   const errors = useMemo(() => {
     const map = new Map<string, string>();
@@ -132,6 +167,13 @@ export function WizardPage(): React.JSX.Element {
   return (
     <>
       <PoisonNotice />
+
+      {visitParam ? (
+        <Alert kind="info" title="היומן נפתח מתוך ביקור במסלול">
+          פרטי המזמין והמקום מולאו מכרטיס הלקוח. תאריך, שעה, ממצאים, מינונים, אצוות, חתימות ואזהרות אינם
+          מועתקים מטיפול קודם ויש להזין אותם עכשיו.
+        </Alert>
+      ) : null}
 
       <nav className="stepper" aria-label="שלבי מילוי היומן">
         {WIZARD_STEPS.map((definition) => {

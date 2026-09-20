@@ -161,6 +161,28 @@
     background: var(--danger); color: #fff; font-size: 12px; font-weight: 700;
     display: grid; place-items: center; z-index: 2;
   }
+  .badge.calm { background: var(--brand-dark); }
+  .alert-dot {
+    position: absolute; top: 14%; inset-inline-end: 14%;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: var(--danger); box-shadow: 0 0 0 3px var(--surface); z-index: 2;
+  }
+  .timeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+  .stop { position: relative; display: flex; gap: 10px; padding-bottom: 12px; }
+  .stop::before {
+    content: ''; position: absolute; inset-inline-start: 15px; top: 34px; bottom: 0;
+    width: 2px; background: var(--line);
+  }
+  .stop:last-child::before { display: none; }
+  .stop-num {
+    flex: none; width: 32px; height: 32px; border-radius: 50%;
+    display: grid; place-items: center; font-weight: 700; z-index: 1;
+    background: var(--brand-soft); color: var(--brand-dark); border: 2px solid var(--brand);
+  }
+  .stop-body { flex: 1; background: var(--surface); border-radius: 16px; padding: 12px; box-shadow: var(--shadow); }
+  .stop-body h3 { margin: 0; font-size: 15px; }
+  .stop-body p { margin: 4px 0 0; font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+
   .ripple {
     position: absolute; border-radius: 50%; transform: translate(-50%, -50%) scale(0);
     background: rgba(22, 201, 86, 0.22); pointer-events: none;
@@ -275,7 +297,7 @@
   <div class="legend">
     <h3>מה אפשר לבדוק כאן</h3>
     <ul>
-      <li>מסך הבית מציג שמונה פעולות; תחנות ההאכלה עברו למסך ההגדרות.</li>
+      <li>מסך הבית מציג תשע פעולות, ובהן „מסלול עבודה” עם מספר הביקורים שנותרו ונקודת התראה לביקור דחוף.</li>
       <li>לחיצה על עיגול: כיווץ 0.95, גל מהנקודה, הרמת האייקון ורטט קצר (במכשירים שתומכים).</li>
       <li>גלילה במסך הבית: ה־hero מתכווץ, הברכה נמוגה וכותרת קטנה נדבקת למעלה.</li>
       <li>מעברי מסך מותאמי RTL עם כיוון הפוך בחזרה, ושמירת מיקום גלילה לכל מסך.</li>
@@ -298,6 +320,7 @@
     clients: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/>',
     stations: '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
     products: '<path d="M10 2v7.3L4.7 18.4A2 2 0 0 0 6.4 21.5h11.2a2 2 0 0 0 1.7-3.1L14 9.3V2"/><path d="M8.5 2h7"/><path d="M7.4 16h9.2"/>',
+    route: '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="2.6"/><path d="M4.5 19.5c2 1 5 1.5 7.5 1.5s5.5-.5 7.5-1.5"/>',
     tasks: '<path d="m3 5 2 2 3-3"/><path d="m3 12 2 2 3-3"/><path d="m3 19 2 2 3-3"/><path d="M12 6h9"/><path d="M12 13h9"/><path d="M12 20h9"/>',
     profile: '<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>',
     settings: '<path d="M20 7h-8"/><path d="M6 7H4"/><path d="M20 17h-2"/><path d="M12 17H4"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/>',
@@ -341,6 +364,14 @@
       { id: "p2", title: "תכשיר לדוגמה 2", sub: "מקור: קובץ CSV מאומת · אומת 01.09.2026", state: "מוכן לשימוש", cls: "" },
       { id: "p3", title: "תכשיר לדוגמה 3", sub: "לא אומת מול מקור רשמי", state: "דורש אימות", cls: "bad" }
     ],
+    route: {
+      name: "קו ירושלים — יום ראשון (הדגמה)",
+      stops: [
+        { id: "r1", title: "לקוח הדגמה א׳", sub: "רחוב ההדגמה 12, ירושלים · 08:30 · אחזקה חודשית", state: "הושלם", cls: "ok" },
+        { id: "r2", title: "לקוח הדגמה ב׳", sub: "רחוב שני 4, בית שמש · 10:00 · טיפול יזום", state: "בטיפול · דחוף", cls: "bad" },
+        { id: "r3", title: "לקוח הדגמה ג׳", sub: "שדרת ההדגמה 7, מודיעין · 12:15 · ביקורת חוזרת", state: "טרם התחיל", cls: "" }
+      ]
+    },
     tasks: [
       { id: "t1", title: "ביקורת חוזרת — לקוח הדגמה א'", sub: "מועד יעד: היום", state: "פתוח", cls: "warn" },
       { id: "t2", title: "ביקורת חוזרת — לקוח הדגמה ב'", sub: "מועד יעד: 24.09.2026", state: "פתוח", cls: "" }
@@ -461,6 +492,7 @@
 
   var TILES = [
     { key: "newLog", label: "יומן חדש", icon: "newLog", primary: true },
+    { key: "route", label: "מסלול עבודה", icon: "route", badge: function () { return DEMO.route.stops.filter(function (s) { return s.state !== "הושלם"; }).length; }, badgeLabel: "ביקורים שנותרו היום", alert: true, alertLabel: "יש ביקור דחוף" },
     { key: "drafts", label: "טיוטות", icon: "drafts", badge: function () { return DEMO.drafts.length; }, badgeLabel: "טיוטות פתוחות" },
     { key: "archive", label: "ארכיון", icon: "archive" },
     { key: "clients", label: "לקוחות", icon: "clients" },
@@ -472,10 +504,12 @@
 
   function tileMarkup(tile, index) {
     var count = tile.badge ? tile.badge() : 0;
-    var aria = tile.label + (count > 0 ? ", " + count + " " + (tile.badgeLabel || "") : "");
+    var aria = tile.label + (count > 0 ? ", " + count + " " + (tile.badgeLabel || "") : "") +
+      (tile.alert ? ". " + (tile.alertLabel || "") : "");
     return '<div class="tile fade-up" style="animation-delay:' + (index * 40) + 'ms">' +
       '<button class="circle' + (tile.primary ? " primary" : "") + '" data-go="' + tile.key + '" aria-label="' + aria + '">' +
-      (count > 0 ? '<span class="badge">' + count + '</span>' : "") + svg(tile.icon, 30) + '</button>' +
+      (count > 0 ? '<span class="badge' + (tile.alert ? "" : " calm") + '">' + count + '</span>' : "") +
+      (tile.alert ? '<span class="alert-dot"></span>' : "") + svg(tile.icon, 30) + '</button>' +
       '<span class="tile-label">' + tile.label + '</span></div>';
   }
 
@@ -494,6 +528,27 @@
         '</div><div class="greeting" id="greeting"><h2>' + greetingForHour(hour) + ', ' + DEMO.user + '</h2>' +
         '<p>מה תרצה לבצע היום?</p></div></header>' +
         '<div class="grid">' + TILES.map(tileMarkup).join("") + '</div>' + poison();
+    },
+    route: function () {
+      var done = DEMO.route.stops.filter(function (s) { return s.state === "הושלם"; }).length;
+      return topBar("מסלול עבודה") + '<div class="body">' +
+        '<article class="card"><h3>' + DEMO.route.name + '</h3>' +
+        '<p>' + DEMO.route.stops.length + ' תחנות · ' + done + ' הושלמו · ' + (DEMO.route.stops.length - done) + ' נותרו</p>' +
+        '<p class="hint">זמן ומרחק מוצגים במערכת כהערכה לפי קו אווירי בלבד — אין כאן ניתוב אמיתי.</p>' +
+        '<button class="btn" data-toast="בהדגמה אין מסלול אמיתי להתחיל">התחלת מסלול</button></article>' +
+        '<ol class="timeline">' + DEMO.route.stops.map(function (stop, index) {
+          return '<li class="stop"><span class="stop-num">' + (index + 1) + '</span>' +
+            '<div class="stop-body"><div class="card-row"><h3>' + stop.title + '</h3>' +
+            '<span class="pill ' + (stop.cls === "ok" ? "" : stop.cls) + '">' + stop.state + '</span></div>' +
+            '<p>' + stop.sub + '</p>' +
+            '<div class="row" style="margin-top:8px">' +
+            '<button class="btn ghost" data-toast="ניווט נפתח ב-Waze או ב-Google Maps">ניווט</button>' +
+            '<button class="btn" data-toast="כאן נפתח כרטיס הלקוח והדגשים לביקור">התחלת טיפול</button></div>' +
+            '</div></li>';
+        }).join("") + '</ol>' +
+        '<article class="card"><h3>דגשים לביקור הנוכחי</h3>' +
+        '<p>המערכת מציעה דגשים מתוך היומן האחרון, משימות פתוחות ותחנות האכלה — והמדביר חייב לאשר כל הצעה לפני הביקור.</p>' +
+        '</article></div>' + poison();
     },
     drafts: function () { return listView("טיוטות", DEMO.drafts, "אין טיוטות פתוחות", "טיוטות נשמרות במכשיר ומסתנכרנות כשיש רשת."); },
     archive: function () { return listView("ארכיון", DEMO.archive, "אין יומנים שהושלמו", "יומן שהושלם נעול. תיקון נוצר כגרסה מקושרת ששומרת את המקור."); },

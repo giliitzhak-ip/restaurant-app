@@ -488,6 +488,18 @@ legend { font-size: 0.86rem; font-weight: 500; padding: 0 0.4rem; color: var(--t
 }
 .home-tile-badge.is-muted { background: var(--brand-dark); box-shadow: 0 2px 6px rgba(8, 122, 66, 0.35); }
 
+/* נקודת התראה: מלווה תמיד בטקסט ב-aria-label ובתווית שמתחת לכפתור. */
+.home-tile-alert {
+  position: absolute;
+  top: 10px;
+  inset-inline-start: 10px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--danger);
+  box-shadow: 0 0 0 3px var(--surface);
+}
+
 /* גל לחיצה */
 .ripple {
   position: absolute;
@@ -726,4 +738,175 @@ legend { font-size: 0.86rem; font-weight: 500; padding: 0 0.4rem; color: var(--t
 /* ניגודיות גבוהה */
 @media (prefers-contrast: more) {
   :root { --text-muted: #3f4a44; --text-dim: #4d574f; --border: #b6c2bc; --border-strong: #8c9a93; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   מסלול עבודה
+   הצבע לעולם אינו המידע היחיד: לכל סטטוס יש גם טקסט וגם אייקון.
+   ───────────────────────────────────────────────────────────────────────────── */
+:root {
+  --tone-grey-bg: #eef1f0;   --tone-grey-ink: #4b5650;   --tone-grey-line: #c9d2ce;
+  --tone-blue-bg: #e6f0ff;   --tone-blue-ink: #14468f;   --tone-blue-line: #9dbcf0;
+  --tone-orange-bg: #fff1e0; --tone-orange-ink: #8a4b06;  --tone-orange-line: #f0c48d;
+  --tone-green-bg: #e6f8ee;  --tone-green-ink: #08633a;   --tone-green-line: #8fd8b1;
+  --tone-red-bg: #fee9e7;    --tone-red-ink: #9b1c16;     --tone-red-line: #f4b0aa;
+  --tone-purple-bg: #f1e9fd; --tone-purple-ink: #5b2a94;  --tone-purple-line: #c9aef0;
+  --tone-yellow-bg: #fff8dd; --tone-yellow-ink: #7a5800;  --tone-yellow-line: #ecd591;
+}
+
+.route-header-top { display: flex; align-items: flex-start; gap: 0.75rem; justify-content: space-between; }
+.route-header-top h2, .route-header-top h3 { margin: 0 0 0.2rem; }
+
+.route-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 0.6rem;
+  margin: 0.8rem 0 0.4rem;
+}
+.route-stats div { background: var(--surface-muted, #f4f7f5); border-radius: 14px; padding: 0.5rem 0.6rem; }
+.route-stats dt { font-size: 0.72rem; color: var(--text-muted); margin: 0 0 0.15rem; }
+.route-stats dd { margin: 0; font-size: 1.05rem; font-weight: 700; }
+
+.status-chip {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  border-radius: 999px; padding: 0.2rem 0.6rem;
+  font-size: 0.78rem; font-weight: 600; white-space: nowrap;
+  background: var(--tone-grey-bg); color: var(--tone-grey-ink); border: 1px solid var(--tone-grey-line);
+}
+.status-chip-alert { font-weight: 700; }
+.status-chip.tone-blue { background: var(--tone-blue-bg); color: var(--tone-blue-ink); border-color: var(--tone-blue-line); }
+.status-chip.tone-orange { background: var(--tone-orange-bg); color: var(--tone-orange-ink); border-color: var(--tone-orange-line); }
+.status-chip.tone-green { background: var(--tone-green-bg); color: var(--tone-green-ink); border-color: var(--tone-green-line); }
+.status-chip.tone-red { background: var(--tone-red-bg); color: var(--tone-red-ink); border-color: var(--tone-red-line); }
+.status-chip.tone-purple { background: var(--tone-purple-bg); color: var(--tone-purple-ink); border-color: var(--tone-purple-line); }
+.status-chip.tone-yellow { background: var(--tone-yellow-bg); color: var(--tone-yellow-ink); border-color: var(--tone-yellow-line); }
+
+/* ציר התחנות */
+.route-timeline { list-style: none; margin: 0.6rem 0; padding: 0; position: relative; }
+.route-stop {
+  position: relative;
+  display: flex;
+  gap: 0.75rem;
+  padding: 0 0 1rem;
+}
+/* הקו האנכי שמחבר בין התחנות ויוצר תחושת מסלול */
+.route-stop::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 17px;
+  top: 36px;
+  bottom: -4px;
+  width: 2px;
+  background: var(--border);
+}
+.route-stop:last-child::before { display: none; }
+.route-stop.is-done::before { background: var(--brand); }
+
+.route-stop-index {
+  flex: none;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-weight: 700;
+  background: var(--tone-grey-bg); color: var(--tone-grey-ink);
+  border: 2px solid var(--tone-grey-line);
+  z-index: 1;
+}
+.route-stop.tone-blue .route-stop-index { background: var(--tone-blue-bg); color: var(--tone-blue-ink); border-color: var(--tone-blue-line); }
+.route-stop.tone-orange .route-stop-index { background: var(--tone-orange-bg); color: var(--tone-orange-ink); border-color: var(--tone-orange-line); }
+.route-stop.tone-red .route-stop-index { background: var(--tone-red-bg); color: var(--tone-red-ink); border-color: var(--tone-red-line); }
+.route-stop.tone-purple .route-stop-index { background: var(--tone-purple-bg); color: var(--tone-purple-ink); border-color: var(--tone-purple-line); }
+.route-stop.tone-yellow .route-stop-index { background: var(--tone-yellow-bg); color: var(--tone-yellow-ink); border-color: var(--tone-yellow-line); }
+.route-stop.is-done .route-stop-index {
+  background: var(--brand); color: #05301c; border-color: var(--brand-dark);
+  animation: stopDone 320ms ease-out;
+}
+@keyframes stopDone {
+  0% { transform: scale(0.85); }
+  60% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+.route-stop-body {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 0.7rem 0.8rem;
+  box-shadow: var(--shadow-sm, 0 2px 8px rgba(20, 50, 35, 0.06));
+  min-width: 0;
+}
+.route-stop-head { display: flex; align-items: center; gap: 0.5rem; justify-content: space-between; flex-wrap: wrap; }
+.route-stop-head h3 { margin: 0; font-size: 1rem; }
+.route-stop.is-current .route-stop-body {
+  border-color: var(--brand);
+  animation: currentPulse 2.4s ease-in-out infinite;
+}
+@keyframes currentPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(22, 201, 86, 0.22); }
+  50% { box-shadow: 0 0 0 6px rgba(22, 201, 86, 0.10); }
+}
+.route-stop[draggable='true'] { cursor: grab; }
+.route-stop p { margin: 0.25rem 0 0; }
+
+.btn-row-compact { gap: 0.35rem; flex-wrap: wrap; margin-top: 0.45rem; }
+
+/* דגשים */
+.focus-list { display: flex; flex-direction: column; gap: 0.6rem; margin: 0.6rem 0; }
+.focus-item {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 0.7rem;
+  background: var(--surface);
+}
+.focus-item.is-suggestion { border-style: dashed; background: var(--warning-bg, #fff8dd); }
+.focus-item.importance-high { border-inline-start: 4px solid var(--danger); }
+.focus-item-head { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+.focus-item-head h4 { margin: 0; font-size: 0.95rem; }
+.focus-item-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.field-inline { margin: 0; }
+.field-inline .field-label { font-size: 0.72rem; color: var(--text-muted); }
+.focus-photos { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.focus-photos img { width: 84px; height: 84px; object-fit: cover; border-radius: 12px; }
+
+.check-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0; }
+.check-row input { width: 22px; height: 22px; }
+
+.plain-list { list-style: none; margin: 0.4rem 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+.link-button {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  color: var(--brand-dark); text-decoration: underline; font: inherit;
+}
+.card-inner { box-shadow: none; border: 1px solid var(--border); }
+
+.progress-bar { height: 8px; border-radius: 999px; background: var(--tone-grey-bg); overflow: hidden; margin: 0.4rem 0; }
+.progress-bar span { display: block; height: 100%; background: var(--brand); }
+
+.data-table tr.is-late td { background: var(--tone-red-bg); }
+
+.route-map { width: 100%; height: auto; aspect-ratio: 1; background: var(--tone-grey-bg); border-radius: 18px; }
+.map-pin { fill: var(--tone-grey-bg); stroke: var(--tone-grey-ink); stroke-width: 0.5; }
+.map-pin.tone-green { fill: var(--tone-green-bg); stroke: var(--tone-green-ink); }
+.map-pin.tone-red { fill: var(--tone-red-bg); stroke: var(--tone-red-ink); }
+.map-pin.tone-orange { fill: var(--tone-orange-bg); stroke: var(--tone-orange-ink); }
+.map-pin.tone-blue { fill: var(--tone-blue-bg); stroke: var(--tone-blue-ink); }
+.map-pin.tone-purple { fill: var(--tone-purple-bg); stroke: var(--tone-purple-ink); }
+.map-pin.tone-yellow { fill: var(--tone-yellow-bg); stroke: var(--tone-yellow-ink); }
+.map-pin-label { font-size: 3px; font-weight: 700; fill: var(--text); }
+
+.signature-line { border-bottom: 1px solid var(--text-muted); height: 42px; max-width: 280px; }
+
+@media print {
+  .no-print, .app-header, .app-nav, .poison-notice { display: none !important; }
+  .route-report .card { box-shadow: none; border: 1px solid #999; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-stop.is-current .route-stop-body { animation: none; }
+  .route-stop.is-done .route-stop-index { animation: none; }
 }

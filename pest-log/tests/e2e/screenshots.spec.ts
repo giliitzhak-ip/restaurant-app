@@ -118,6 +118,44 @@ test.describe('@screenshots', () => {
       await shot(name);
     }
 
+    // 12ז. מסלול עבודה — רשימה, מסלול היום, ביקור ודגשים, מפה ודוח
+    await page.goto('/routes');
+    await page.waitForTimeout(700);
+    await shot('12g-routes');
+
+    await page.getByRole('button', { name: 'פתיחת המסלול' }).first().click();
+    await page.waitForTimeout(700);
+    await shot('12h-route-day');
+
+    await page.getByRole('button', { name: 'עריכת סדר' }).click();
+    await page.getByRole('button', { name: 'סידור מסלול אוטומטי' }).click();
+    await page.waitForTimeout(500);
+    await shot('12i-route-reorder');
+    await page.getByRole('button', { name: 'ביטול' }).click();
+
+    await page.getByRole('button', { name: 'התחלת טיפול' }).first().click();
+    await page.waitForTimeout(800);
+    await shot('12j-visit');
+
+    await page.getByRole('button', { name: 'הוספת דגש' }).click();
+    await page.getByLabel('כותרת הדגש').fill('בדיקת מוקד במחסן');
+    await page.getByRole('button', { name: 'הוספה' }).click();
+    await page.waitForTimeout(500);
+    await shot('12k-visit-focus');
+
+    await page.goBack();
+    await page.waitForTimeout(400);
+    const routeUrl = page.url();
+    await page.goto(`${routeUrl}/map`);
+    await page.waitForTimeout(700);
+    await shot('12l-route-map');
+    await page.goto(`${routeUrl}/report`);
+    await page.waitForTimeout(700);
+    await shot('12m-route-report');
+    await page.goto('/routes/templates');
+    await page.waitForTimeout(700);
+    await shot('12n-route-templates');
+
     // 13. ייבוא מהגרסה הקודמת — עם נתוני דוגמה ב-localStorage
     await page.evaluate(() => {
       window.localStorage.setItem(

@@ -19,6 +19,8 @@ export interface CircleButtonProps {
   badge?: number | undefined;
   /** תג משני (למשל ספירת יומנים מהחודש) בצבע רגוע יותר. */
   badgeMuted?: boolean;
+  /** נקודה אדומה קטנה להתראה (למשל ביקור דחוף או באיחור). */
+  alertDot?: boolean;
   /** הפעולה הראשית — מקבלת טבעת והדגשה. */
   primary?: boolean;
   /** השהיית הכניסה, ליצירת stagger. */
@@ -36,6 +38,7 @@ export function CircleButton({
   onActivate,
   badge,
   badgeMuted = false,
+  alertDot = false,
   primary = false,
   enterDelayMs = 0,
   entered = true,
@@ -96,6 +99,7 @@ export function CircleButton({
         <span className="home-tile-icon" aria-hidden="true">
           {icon}
         </span>
+        {alertDot ? <span className="home-tile-alert" aria-hidden="true" /> : null}
         {showBadge ? (
           <span className={`home-tile-badge${badgeMuted ? ' is-muted' : ''}`} aria-hidden="true">
             {badge > 99 ? '99+' : badge}

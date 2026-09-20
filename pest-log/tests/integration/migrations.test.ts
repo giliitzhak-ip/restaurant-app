@@ -29,6 +29,7 @@ const EXPECTED_TABLES = [
   'bait_stations',
   'client_sites',
   'clients',
+  'maintenance_routes',
   'organizations',
   'pest_catalog',
   'pest_findings',
@@ -38,13 +39,18 @@ const EXPECTED_TABLES = [
   'prevention_actions',
   'products',
   'profiles',
+  'route_assignments',
+  'route_templates',
+  'route_visits',
   'signatures',
   'sync_operations',
+  'visit_focus_items',
+  'visit_status_history',
   'warning_templates',
 ];
 
 describe('migrations בסביבה נקייה', () => {
-  it('נוצרו כל 18 הטבלאות', async () => {
+  it('נוצרו כל הטבלאות', async () => {
     const result = await admin.query(`
       select table_name from information_schema.tables
       where table_schema = 'public' and table_type = 'BASE TABLE'

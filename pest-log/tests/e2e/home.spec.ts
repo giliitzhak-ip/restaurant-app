@@ -14,6 +14,7 @@ test.beforeEach(async ({ page }) => {
 
 const TILES: Array<{ testId: string; label: string; path: string }> = [
   { testId: 'tile-new-log', label: 'יומן חדש', path: '/logs/' },
+  { testId: 'tile-route', label: 'מסלול עבודה', path: '/routes' },
   { testId: 'tile-drafts', label: 'טיוטות', path: '/drafts' },
   { testId: 'tile-archive', label: 'ארכיון', path: '/archive' },
   { testId: 'tile-clients', label: 'לקוחות', path: '/clients' },

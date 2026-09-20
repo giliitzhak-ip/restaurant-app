@@ -5,6 +5,7 @@ import {
   FilePen,
   FilePlus2,
   ListChecks,
+  MapPinned,
   Settings,
   SprayCan,
   UserRound,
@@ -63,6 +64,9 @@ interface TileDefinition {
   badge?: number;
   badgeMuted?: boolean;
   badgeNoun?: string;
+  /** נקודת התראה אדומה + המשמעות שלה ל-aria-label. */
+  alertDot?: boolean;
+  alertNoun?: string;
   primary?: boolean;
   onActivate?: () => void;
 }
@@ -144,6 +148,18 @@ export function HomePage(): React.JSX.Element {
       icon: <FilePlus2 size={ICON_SIZE} strokeWidth={ICON_STROKE} />,
       primary: true,
       onActivate: () => navigate(`/logs/${newUuid()}`),
+    },
+    {
+      key: 'route',
+      label: 'מסלול עבודה',
+      to: '/routes',
+      description: 'קווי אחזקה קבועים, סדר הביקורים והתחנה הבאה',
+      icon: <MapPinned size={ICON_SIZE} strokeWidth={ICON_STROKE} />,
+      badge: counters.routeRemaining,
+      badgeMuted: true,
+      badgeNoun: 'ביקורים שנותרו היום',
+      alertDot: counters.routeUrgent > 0,
+      alertNoun: 'יש ביקורים דחופים או באיחור',
     },
     {
       key: 'drafts',
@@ -256,15 +272,17 @@ export function HomePage(): React.JSX.Element {
           {tiles.map((tile, index) => {
             const badgeText =
               typeof tile.badge === 'number' && tile.badge > 0 ? ` — ${tile.badge} ${tile.badgeNoun ?? ''}`.trimEnd() : '';
+            const alertText = tile.alertDot && !loadingCounters ? `. ${tile.alertNoun ?? 'דורש תשומת לב'}` : '';
             return (
               <CircleButton
                 key={tile.key}
                 label={tile.label}
-                ariaLabel={`${tile.label}. ${tile.description}${badgeText}`}
+                ariaLabel={`${tile.label}. ${tile.description}${badgeText}${alertText}`}
                 icon={tile.icon}
                 primary={tile.primary ?? false}
                 badge={loadingCounters ? undefined : tile.badge}
                 badgeMuted={tile.badgeMuted ?? false}
+                alertDot={!loadingCounters && (tile.alertDot ?? false)}
                 enterDelayMs={index * STAGGER_STEP_MS}
                 entered={entered}
                 testId={`tile-${tile.key}`}

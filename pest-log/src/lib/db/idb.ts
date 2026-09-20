@@ -43,7 +43,16 @@ export type OutboxOperationType =
   | 'upsert_site'
   | 'upsert_bait_station'
   | 'cancel_log'
-  | 'correct_log';
+  | 'correct_log'
+  // מסלול עבודה: כל שינוי בתחנה, בדגשים ובסדר עובר דרך אותו תור, כדי
+  // שגם עבודה ללא קליטה תסתנכרן בלי כפילויות.
+  | 'upsert_route'
+  | 'upsert_route_visit'
+  | 'delete_route_visit'
+  | 'upsert_focus_item'
+  | 'delete_focus_item'
+  | 'reorder_route'
+  | 'upsert_route_template';
 
 export interface OutboxOperation {
   /** מפתח האידמפוטנטיות הוא גם המפתח הראשי — אין כפילויות. */
@@ -182,6 +191,16 @@ export async function listPendingOperations(): Promise<OutboxOperation[]> {
   const db = await getDb();
   const all = await db.getAllFromIndex('outbox', 'by-createdAt');
   return all.filter((op) => op.status !== 'inflight');
+}
+
+/**
+ * כל הפעולות שבתור, כולל אלה שנמצאות כרגע בשליחה.
+ * משמש להצגת מצב אמיתי במסך: פעולה שנשלחת ברגע זה היא עדיין האמת של
+ * המכשיר, גם אם התשובה מהשרת טרם חזרה.
+ */
+export async function listAllOperations(): Promise<OutboxOperation[]> {
+  const db = await getDb();
+  return db.getAllFromIndex('outbox', 'by-createdAt');
 }
 
 export async function updateOperation(op: OutboxOperation): Promise<void> {
