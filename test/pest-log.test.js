@@ -1,0 +1,401 @@
+/* בדיקות לפיצ'ר "טעינה מיומן אחרון" – רצות בדפדפן אמיתי מול public/pest-log.html
+   הרצה:  npm test                                                            */
+const path=require('path');
+const {chromium}=require('playwright-core');
+
+const PAGE='file://'+path.join(__dirname,'..','public','pest-log.html');
+const EXE=process.env.CHROMIUM||'/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+
+let pass=0,fail=0;const fails=[];
+function ok(name,cond,extra){
+  if(cond){pass++;console.log('  ✓ '+name)}
+  else{fail++;fails.push(name);console.log('  ✗ '+name+(extra?'\n      '+extra:''))}
+}
+const eq=(name,a,b)=>ok(name,JSON.stringify(a)===JSON.stringify(b),'expected '+JSON.stringify(b)+'  got '+JSON.stringify(a));
+
+/* ---------- seed ---------- */
+const PROFILE={company:'יצחק אחזקות והדברות',vat:'558436135',companyPhone:'02-6420555',
+  companyEmail:'a@b.com',name:'יצחק כהן',license:'12345',phone:'050-1234567',
+  email:'a@b.com',address:'ירושלים',licenseType:'במבנים ובשטח פתוח'};
+
+function doneJournal(o){
+  return Object.assign({
+    id:o.id,no:o.no,status:'done',createdAt:1,updatedAt:1,completedAt:o.completedAt||1,
+    date:o.date,time:'09:30',opKind:'הדברה רגילה',
+    company:{name:PROFILE.company,vat:PROFILE.vat,phone:PROFILE.companyPhone,email:PROFILE.companyEmail},
+    tech:{name:'יצחק כהן',license:'12345',phone:'050-1234567',email:'a@b.com',address:'ירושלים',licenseType:'במבנים ובשטח פתוח'},
+    geo:{lat:31.77,lng:35.21,acc:5,at:1},stationChecks:{st1:{status:'נצרך במלואו',no:1}},
+    hasOperator:false,operator:{name:'',phone:'',email:'',address:''},
+    client:{name:o.client,role:'מנהל אחזקה',roleOther:'',phone:'02-5551234'},
+    place:o.place,
+    findings:[{id:'f1',pest:'תיקן גרמני',subtype:'',identification:'ניטור מלכודות',stage:'',
+      signs:'תיקנים חיים מאחורי המקרר.',location:'מטבח',level:'בינונית'}],
+    prevention:'איטום סדקים ופתחים בקירות ובצנרת.',
+    circumstances:'נמצאה פעילות מזיקים בביקורת – נדרש טיפול להפחתת הפעילות.',
+    warnBefore:{nature:'ריסוס שאריתי',product:'סופר ג\'ל',active:'fipronil',riskHuman:'להרחיק ילדים',
+      riskAnimals:'להרחיק חיות מחמד',reentry:'4 שעות',other:''},
+    apps:[{id:'a1',pest:'תיקן גרמני',product:'סופר ג\'ל',active:'fipronil',conc:'0.05%',
+      batch:'BX-2291',dose:'3',unit:'גרם/מ"ר',unitOther:'',rtu:true,useConc:'',method:'אחר',methodOther:'ג\'ל',fromDb:false}],
+    sealing:'',publicNotice:'',warnAfter:'לאוורר את האזור המטופל.',supplementary:'',
+    needSupplementary:o.supp||false,natureAfter:'',
+    warranty:{period:'3 חודשים',note:'אחריות ל-3 חודשים ממועד הטיפול.',kind:'months',amount:3,
+      start:o.date,end:o.oldEnd||'2026-01-01',cond:'בכפוף לפעולות מניעה.',check:true,checkDays:30},
+    hasAssistants:false,assistants:[],assistGuidance:false,assistCopy:false,
+    spots:[{id:'sp1',name:'חדר אשפה',checked:true,note:''}],
+    siteNotes:'שער אחורי נעול',access:'קוד שער 1234',
+    handover:{delivered:true,receiverName:'דנה לוי',receiverSig:'data:image/png;base64,AAA'},
+    techSig:'data:image/png;base64,BBB',verify:{},audit_events:[]
+  },{});
+}
+const PLACE_A={kind:'building',city:'ירושלים',street:'הרצל',houseApt:'10',buildingType:'מפעל',
+  buildingTypeOther:'',houseNo:'',aptNo:'',authority:'',siteType:'',siteTypeOther:'',siteDesc:'',coords:'',neighborhood:''};
+const PLACE_B=Object.assign({},PLACE_A,{street:'יפו',houseApt:'55',buildingType:'בית מלון'});
+
+function seed(extra){
+  return JSON.stringify(Object.assign({
+    counter:1010,pending:{},mine:[],photos:{},stations:{},
+    profile:PROFILE,
+    clients:{c1:{id:'c1',name:'מסעדת הגפן',phone:'02-5551234',role:'מנהל אחזקה',updatedAt:2,
+      places:[PLACE_A,PLACE_B],regular:{on:true,service:'הדברה תקופתית',freq:'אחת לחודש'}}},
+    journals:{}
+  },extra||{}));
+}
+
+/* ---------- harness ---------- */
+async function withPage(store,fn){
+  const p=await BROWSER.newPage({viewport:{width:420,height:900}});
+  const errs=[];
+  p.on('pageerror',e=>errs.push(e.message));
+  await p.addInitScript(s=>{localStorage.setItem('yp-reg-log-v2',s)},store);
+  await p.goto(PAGE);
+  await p.waitForFunction(()=>document.querySelector('#app')&&document.querySelector('#app').children.length>0);
+  try{await fn(p,errs)}finally{await p.close()}
+  return errs;
+}
+/* open a fresh journal and put the client + place in, so the card can appear */
+const startJournal=async(p,place)=>p.evaluate(async pl=>{
+  await A.newJ();
+  cur.client.name='מסעדת הגפן';cur.client.phone='02-5551234';
+  cur.place=Object.assign(cur.place,pl);
+  touch();render();
+},place);
+
+let BROWSER;
+(async()=>{
+BROWSER=await chromium.launch({executablePath:EXE,args:['--no-sandbox']});
+const prev=doneJournal({id:'j1',no:1001,client:'מסעדת הגפן',place:PLACE_A,date:'2026-06-10',completedAt:2000,supp:true,oldEnd:'2026-09-10'});
+const older=doneJournal({id:'j0',no:999,client:'מסעדת הגפן',place:PLACE_A,date:'2026-03-01',completedAt:1000});
+older.apps[0].batch='OLD-111';older.apps[0].product='פרו-ג\'ל';older.findings[0].pest='נמלים';
+const otherSite=doneJournal({id:'j2',no:1002,client:'מסעדת הגפן',place:PLACE_B,date:'2026-07-01',completedAt:3000});
+otherSite.apps[0].batch='HOTEL-7';
+const FULL=seed({journals:{j0:older,j1:prev,j2:otherSite}});
+
+console.log('\n1. זיהוי יומן קודם');
+await withPage(seed(),async p=>{
+  await startJournal(p,PLACE_A);
+  ok('לקוח חדש ללא יומן קודם – אין כרטיס',!(await p.$('.prevcard')));
+});
+await withPage(FULL,async p=>{
+  await startJournal(p,PLACE_A);
+  ok('לקוח קבוע עם יומן קודם – מוצג כרטיס',!!(await p.$('.prevcard')));
+  const t=await p.textContent('.prevcard .ph');
+  ok('הכרטיס מציג מספר ותאריך',t.includes('1001')&&t.includes('10/06/2026'),t);
+  ok('מסומן כלקוח אחזקה קבוע',(await p.textContent('.prevcard')).includes('לקוח אחזקה קבוע'));
+  const kv=await p.textContent('.pkv');
+  ok('תקציר: מזיקים',kv.includes('תיקן גרמני'));
+  ok('תקציר: תכשירים',kv.includes('סופר ג\'ל'));
+  ok('תקציר: אצווה',kv.includes('BX-2291'));
+  ok('תקציר: אחריות',kv.includes('3 חודשים'));
+  ok('דגשים: טיפול משלים',(await p.textContent('.pflags')).includes('טיפול משלים'));
+  ok('שלוש אפשרויות',(await p.$$('[data-a="smartClone"],[data-a="pickSections"],[data-a="blankStart"]')).length===3);
+});
+await withPage(FULL,async p=>{
+  await startJournal(p,PLACE_B);
+  const n=await p.evaluate(()=>findPrev(cur).j.no);
+  eq('לקוח עם כמה אתרים – נבחר היומן של האתר הנכון',n,1002);
+});
+await withPage(FULL,async p=>{
+  await startJournal(p,PLACE_A);
+  const n=await p.evaluate(()=>findPrev(cur).j.no);
+  eq('נבחר היומן האחרון של האתר (ולא הישן)',n,1001);
+});
+
+console.log('\n2. שכפול חכם');
+await withPage(FULL,async p=>{
+  await startJournal(p,PLACE_A);
+  await p.click('[data-a="smartClone"]');
+  const r=await p.evaluate(()=>({
+    client:cur.client.name,role:cur.client.role,phone:cur.client.phone,
+    street:cur.place.street,kind:cur.place.kind,notes:cur.siteNotes,access:cur.access,
+    spots:(cur.spots||[]).map(s=>s.name),spotsChecked:(cur.spots||[]).some(s=>s.checked),
+    product:cur.apps[0].product,active:cur.apps[0].active,method:cur.apps[0].method,
+    batch:cur.apps[0].batch,dose:cur.apps[0].dose,
+    findings:cur.findings.map(f=>f.pest),signs:cur.findings[0].signs,
+    reentry:cur.warnBefore.reentry,risk:cur.warnBefore.riskHuman,
+    src:cur.source_pest_log_id,sections:cur.copied_sections.length,
+    status:cur.verification_status,pending:Object.values(cur.verify).filter(v=>v.state==='pending').length
+  }));
+  ok('הועתקו פרטי לקוח',r.client==='מסעדת הגפן'&&r.role==='מנהל אחזקה'&&r.phone==='02-5551234');
+  ok('הועתקו כתובת וסוג מקום',r.street==='הרצל'&&r.kind==='building');
+  ok('הועתקו הערות קבועות והוראות הגעה',r.notes==='שער אחורי נעול'&&r.access==='קוד שער 1234');
+  eq('הועתקו מוקדי בדיקה (ללא הסימון הקודם)',[r.spots,r.spotsChecked],[['חדר אשפה'],false]);
+  ok('הועתקו תכשיר, חומר פעיל ושיטה',r.product==='סופר ג\'ל'&&r.active==='fipronil'&&r.method==='אחר');
+  eq('אצווה ומינון לא נטענו בברירת המחדל',[r.batch,r.dose],['','']);
+  eq('הועתק שם המזיק',r.findings,['תיקן גרמני']);
+  eq('ממצאי הניטור לא הועתקו בברירת המחדל',r.signs,'');
+  ok('הועתקו אזהרות וזמן כניסה',r.reentry==='4 שעות'&&r.risk==='להרחיק ילדים');
+  ok('נשמר קישור ליומן המקור',r.src==='j1'&&r.sections>0);
+  ok('היומן במצב "ממתין לאימות"',r.status==='pending'&&r.pending>0);
+});
+
+console.log('\n3. מה שאסור להעתיק');
+await withPage(FULL,async p=>{
+  await startJournal(p,PLACE_A);
+  const before=await p.evaluate(()=>({no:cur.no,date:cur.date,time:cur.time}));
+  await p.click('[data-a="smartClone"]');
+  const r=await p.evaluate(()=>({
+    no:cur.no,date:cur.date,time:cur.time,geo:cur.geo,sig:cur.techSig,
+    recv:cur.handover.receiverSig,recvName:cur.handover.receiverName,
+    delivered:cur.handover.delivered,status:cur.status,completedAt:cur.completedAt,
+    checks:Object.keys(cur.stationChecks||{}).length,id:cur.id
+  }));
+  ok('מספר היומן לא הועתק',r.no!==1001&&r.no===before.no);
+  ok('תאריך ושעה נשארו של הטיפול הנוכחי',r.date===before.date&&r.time===before.time);
+  ok('נ"צ הטיפול הקודם לא הועתק',r.geo===null);
+  ok('חתימות לא הועתקו',r.sig===null&&r.recv===null);
+  ok('אישור המסירה ושם המקבל לא הועתקו',r.delivered===false&&r.recvName==='');
+  ok('סטטוס וזמן השלמה לא הועתקו',r.status==='draft'&&r.completedAt===null);
+  ok('תוצאות התחנות מהביקור הקודם לא הועתקו',r.checks===0);
+  ok('מזהה חדש ליומן',r.id!=='j1');
+});
+
+console.log('\n4. בחירת פרטים להעתקה');
+await withPage(FULL,async p=>{
+  await startJournal(p,PLACE_A);
+  await p.click('[data-a="pickSections"]');
+  ok('נפתחה חלונית בחירה',!!(await p.$('[data-sec]')));
+  const def=await p.evaluate(()=>[...A._clSel]);
+  ok('ברירת מחדל: אצווה ומינון לא מסומנים',!def.includes('batch')&&!def.includes('dose'));
+  ok('ברירת מחדל: ממצאים קודמים לא מסומנים',!def.includes('findings'));
+  ok('ברירת מחדל: לקוח, כתובת, תחנות, תכשיר ואחריות מסומנים',
+     ['client','address','stations','product','warPeriod','spots'].every(k=>def.includes(k)));
+  await p.click('[data-a="secAll"]');
+  eq('בחר הכול',await p.evaluate(()=>A._clSel.size),await p.evaluate(()=>ALL_SECTIONS().length));
+  await p.click('[data-a="secNone"]');
+  eq('נקה בחירה',await p.evaluate(()=>A._clSel.size),0);
+  await p.click('[data-a="secDef"]');
+  await p.evaluate(()=>{A._clSel=new Set(['product','batch']);sectionSheet()});
+  await p.click('[data-a="secLoad"]');
+  const r=await p.evaluate(()=>({b:cur.apps[0].batch,d:cur.apps[0].dose,
+    keys:Object.keys(cur.verify),sections:cur.copied_sections}));
+  ok('נטענו רק השדות שנבחרו',r.b==='BX-2291'&&r.d==='');
+  ok('אצווה סומנה לאימות',r.keys.some(k=>k.startsWith('batch:')));
+  ok('נשמרו קבוצות המידע שהועתקו',r.sections.includes('batch'));
+});
+await withPage(FULL,async p=>{
+  await startJournal(p,PLACE_A);
+  await p.evaluate(()=>{A._clSrc='j1';A._clSel=new Set(['product','active']);sectionSheet()});
+  await p.click('[data-a="secLoad"]');
+  const r=await p.evaluate(()=>({b:cur.apps[0].batch,p:cur.apps[0].product,
+    hasBatchKey:Object.keys(cur.verify).some(k=>k.startsWith('batch:'))}));
+  ok('העתקת תכשיר ללא אצווה',r.p==='סופר ג\'ל'&&r.b===''&&!r.hasBatchKey);
+});
+
+console.log('\n5. אימות אצווה, מינון ואזהרות');
+await withPage(FULL,async p=>{
+  await startJournal(p,PLACE_A);
+  await p.evaluate(()=>{A._clSrc='j1';A._clSel=new Set(ALL_SECTIONS());sectionSheet()});
+  await p.click('[data-a="secLoad"]');
+  await p.evaluate(()=>{cur.step=3;render()});
+  const id=await p.evaluate(()=>cur.apps[0].id);
+  ok('שדה האצווה מסומן בצבע אזהרה',!!(await p.$('.vfield.vpend')));
+  ok('מוצג "נדרש אימות"',(await p.textContent('#app')).includes('נדרש אימות'));
+  ok('קיים כפתור "האצווה עדיין בשימוש"',(await p.textContent('#app')).includes('האצווה עדיין בשימוש'));
+  await p.click(`[data-a="vOk"][data-key="batch:${id}"]`);
+  const v=await p.evaluate(i=>cur.verify['batch:'+i],id);
+  ok('אישור האצווה נשמר עם מי ומתי',v.state==='ok'&&v.at>0&&v.by.includes('יצחק כהן'),JSON.stringify(v));
+  /* שינוי מינון מאמת אותו אוטומטית */
+  await p.evaluate(i=>{const idx=cur.apps.findIndex(a=>a.id===i);
+    const el=document.querySelector(`[data-f="apps.${idx}.dose"]`);
+    el.value='5';el.dispatchEvent(new Event('input',{bubbles:true}))},id);
+  const dv=await p.evaluate(i=>cur.verify['dose:'+i],id);
+  ok('שינוי המינון נרשם כאימות',dv.state==='ok'&&dv.how==='changed',JSON.stringify(dv));
+  /* אזהרות דורשות אישור מפורש – עריכה לבדה לא מספיקה */
+  await p.evaluate(()=>{cur.step=4;render()});
+  await p.evaluate(()=>{const el=document.querySelector('[data-f="warnBefore.riskHuman"]');
+    el.value='להרחיק ילדים ובעלי חיים';el.dispatchEvent(new Event('input',{bubbles:true}))});
+  eq('עריכת אזהרה אינה מאמתת אותה לבד',await p.evaluate(()=>cur.verify.warnBefore.state),'pending');
+  await p.click('[data-a="vOk"][data-key="warnBefore"]');
+  eq('אישור מפורש של מסירת האזהרות',await p.evaluate(()=>cur.verify.warnBefore.state),'ok');
+  ok('מוצג מאיזה תכשיר נלקחו האזהרות',(await p.textContent('#app')).includes('סופר ג\'ל'));
+});
+
+console.log('\n6. אישור מרוכז');
+await withPage(FULL,async p=>{
+  await startJournal(p,PLACE_A);
+  await p.evaluate(()=>{A._clSrc='j1';A._clSel=new Set(ALL_SECTIONS());sectionSheet()});
+  await p.click('[data-a="secLoad"]');
+  await p.evaluate(()=>{cur.step=5;render()});
+  const r=await p.evaluate(()=>{
+    const pend=Object.keys(cur.verify).filter(k=>cur.verify[k].state==='pending');
+    return {bulk:pend.filter(k=>vBulkOk(k)),strict:pend.filter(k=>!vBulkOk(k))};
+  });
+  ok('אצווה, מינון, ממצאים ואזהרות אינם ניתנים לאישור מרוכז',
+     r.strict.some(k=>k.startsWith('batch:'))&&r.strict.some(k=>k.startsWith('dose:'))&&
+     r.strict.some(k=>k.startsWith('finding:'))&&r.strict.includes('warnBefore')&&r.strict.includes('reentry'),
+     JSON.stringify(r));
+  await p.click('[data-a="vOkBulk"]');
+  const after=await p.evaluate(()=>Object.keys(cur.verify).filter(k=>cur.verify[k].state==='pending'));
+  ok('האישור המרוכז לא נגע בשדות הרגישים',after.some(k=>k.startsWith('batch:'))&&after.includes('reentry'));
+  ok('פס ההתקדמות מוצג',!!(await p.$('.vbar i')));
+});
+
+console.log('\n7. חסימת סיום כל עוד יש שדות לא מאומתים');
+await withPage(FULL,async p=>{
+  await startJournal(p,PLACE_A);
+  await p.evaluate(()=>{A._clSrc='j1';A._clSel=new Set(ALL_SECTIONS());sectionSheet()});
+  await p.click('[data-a="secLoad"]');
+  const r=await p.evaluate(()=>{
+    /* להשלים את כל שאר השדות כדי שרק האימות ייחסום */
+    cur.findings[0].signs='נמצאו תיקנים';cur.findings[0].level='בינונית';
+    cur.handover.delivered=true;cur.handover.receiverName='דנה';
+    cur.handover.receiverSig='x';cur.techSig='y';
+    const errs=validate(cur);
+    return {blocked:errs.filter(e=>e.path.startsWith('verify:')).length,total:errs.length};
+  });
+  ok('שדות לא מאומתים חוסמים את הסיום',r.blocked>0,JSON.stringify(r));
+  await p.evaluate(()=>{Object.keys(cur.verify).forEach(k=>vOkMark(cur,k,'kept'))});
+  eq('לאחר אימות מלא אין יותר חסימת אימות',
+     await p.evaluate(()=>validate(cur).filter(e=>e.path.startsWith('verify:')).length),0);
+  eq('סטטוס האימות',await p.evaluate(()=>cur.verification_status),'verified');
+  ok('נשמר מי אימת ומתי',await p.evaluate(()=>!!cur.verified_at&&!!cur.verified_by));
+});
+
+console.log('\n8. אחריות');
+await withPage(FULL,async p=>{
+  await startJournal(p,PLACE_A);
+  await p.evaluate(()=>{cur.date='2026-09-20';touch()});
+  await p.evaluate(()=>{A._clSrc='j1';A._clSel=new Set(ALL_SECTIONS());sectionSheet()});
+  await p.click('[data-a="secLoad"]');
+  const w=await p.evaluate(()=>cur.warranty);
+  eq('תקופת האחריות הועתקה',[w.kind,w.amount],['months',3]);
+  eq('תאריך הסיום חושב מחדש ממועד הטיפול',w.end,'2026-12-20');
+  ok('תאריך הסיום הישן לא הועתק',w.end!=='2026-09-10');
+  eq('תאריך ההתחלה הוא מועד הטיפול',w.start,'2026-09-20');
+  eq('חושב מועד ביקור בקרה',w.checkAt,'2026-10-20');
+  /* שינוי תאריך הטיפול מזיז את סוף האחריות */
+  await p.evaluate(()=>{cur.date='2026-10-01';touch()});
+  eq('שינוי מועד הטיפול מחשב מחדש את האחריות',await p.evaluate(()=>cur.warranty.end),'2027-01-01');
+  /* תבניות */
+  const n=await p.evaluate(()=>S.warTpls.length);
+  ok('קיימות תבניות אחריות מובנות',n>=7,'got '+n);
+  await p.evaluate(()=>{const t=S.warTpls.find(x=>x.id==='w-30d');applyWarTpl(cur,t);touch()});
+  const w2=await p.evaluate(()=>cur.warranty);
+  eq('תבנית 30 יום מחושבת נכון',[w2.period,w2.end],['30 ימים','2026-10-31']);
+});
+
+console.log('\n9. יומן קודם שאינו האחרון + השוואה');
+await withPage(FULL,async p=>{
+  await startJournal(p,PLACE_A);
+  await p.click('[data-a="pickPrev"]');
+  const txt=await p.textContent('#sheet');
+  ok('הרשימה מציגה מספר, תאריך, מזיקים, תכשירים ואצוות',
+     txt.includes('#1001')&&txt.includes('#999')&&txt.includes('נמלים')&&txt.includes('OLD-111'));
+  ok('היומן האחרון מסומן',txt.includes('האחרון'));
+  ok('טיוטות אינן ברשימה',!txt.includes('טיוטה נוכחית'));
+  await p.click('[data-a="prevPick"][data-p="j0"]');
+  await p.evaluate(()=>{A._clSel=new Set(ALL_SECTIONS());sectionSheet()});
+  await p.click('[data-a="secLoad"]');
+  const r=await p.evaluate(()=>({no:cur.cloned_from_no,pest:cur.findings[0].pest,b:cur.apps[0].batch}));
+  eq('נטען מיומן ישן שנבחר ידנית',[r.no,r.pest,r.b],[999,'נמלים','OLD-111']);
+  /* השוואה */
+  await p.evaluate(()=>{cur.apps[0].batch='NEW-999';cur.findings[0].level='גבוהה';touch()});
+  await p.click('[data-a="compare"]');
+  const c=await p.textContent('#sheet');
+  ok('ההשוואה מציגה ערך קודם וערך נוכחי',c.includes('OLD-111')&&c.includes('NEW-999'));
+  ok('ההשוואה מסמנת מה השתנה',c.includes('שונה'));
+  ok('ההשוואה מדגישה שינוי אצווה',(await p.$$('.cmp tr.hot')).length>0);
+});
+
+console.log('\n10. מניעת כפילויות ועצמאות היומן');
+await withPage(FULL,async p=>{
+  const n=await p.evaluate(async()=>{
+    await Promise.all([A.newJ(),A.newJ(),A.newJ()]);
+    return Object.keys(S.journals).length;
+  });
+  eq('לחיצות כפולות אינן יוצרות כמה יומנים',n,4);
+});
+await withPage(FULL,async p=>{
+  await startJournal(p,PLACE_A);
+  const found=await p.evaluate(()=>{
+    const d=openDraftForSite('מסעדת הגפן',cur.place,null);
+    return d?d.id===cur.id:false;
+  });
+  ok('מזוהה טיוטה פתוחה לאותו אתר',found);
+});
+await withPage(FULL,async p=>{
+  await startJournal(p,PLACE_A);
+  await p.click('[data-a="smartClone"]');
+  const r=await p.evaluate(()=>{
+    cur.findings[0].pest='נמלים';cur.apps[0].product='אחר';touch();
+    const src=S.journals.j1;
+    return {srcPest:src.findings[0].pest,srcProd:src.apps[0].product,srcVerify:Object.keys(src.verify||{}).length};
+  });
+  eq('שינוי היומן החדש לא נגע ביומן המקור',[r.srcPest,r.srcProd,r.srcVerify],['תיקן גרמני','סופר ג\'ל',0]);
+});
+
+console.log('\n11. עבודה ללא ענן + ביטול טעינה');
+await withPage(FULL,async p=>{
+  await startJournal(p,PLACE_A);
+  await p.click('[data-a="smartClone"]');
+  ok('ללא חיבור לענן – הנתונים מסומנים כעשויים להיות לא מעודכנים',
+     await p.evaluate(()=>cur.clone_stale===true));
+  ok('מוצגת התראה במסך',(await p.textContent('#app')).includes('ייתכן שאינם מעודכנים'));
+  ok('נרשם audit trail ביומן',await p.evaluate(()=>cur.audit_events.some(e=>e.ev==='clone')));
+  ok('נרשם גם ב-audit הכללי',await p.evaluate(()=>S.auditEvents.some(e=>e.ev==='clone')));
+  await p.evaluate(()=>clearClone(cur));
+  const r=await p.evaluate(()=>({v:Object.keys(cur.verify).length,src:cur.source_pest_log_id,
+    st:cur.verification_status,prod:cur.apps[0].product}));
+  eq('ביטול הטעינה מסיר את דרישת האימות',[r.v,r.src,r.st],[0,null,'none']);
+  ok('הערכים שכבר הוזנו נשארים',r.prod==='סופר ג\'ל');
+});
+
+console.log('\n12. אימות תכשיר ותווית');
+await withPage(FULL,async p=>{
+  await startJournal(p,PLACE_A);
+  const r=await p.evaluate(()=>({
+    known:labelCheck('סופר ג\'ל').ok,
+    unknown:labelCheck('תכשיר שלא קיים').ok,
+    why:labelCheck('תכשיר שלא קיים').why,
+    fit:labelFit({product:'סופר ג\'ל',pest:'תיקן גרמני'}),
+    bad:labelFit({product:'סופר ג\'ל',pest:'חולדות'})
+  }));
+  ok('תכשיר מהמאגר מזוהה',r.known===true);
+  ok('תכשיר שאינו במאגר אינו מאומת',r.unknown===false&&!!r.why);
+  ok('התאמת מזיק לרישום – תקין',r.fit===null);
+  ok('התאמת מזיק לרישום – אי התאמה מזוהה',typeof r.bad==='string'&&r.bad.includes('חולדות'));
+  await p.evaluate(()=>{cur.apps[0].product='תכשיר שלא קיים';cur.step=3;touch();render()});
+  ok('מוצגת אזהרה על תכשיר שלא ניתן לאמת',
+     (await p.textContent('#app')).includes('לא ניתן לאמת את התכשיר'));
+});
+
+console.log('\n13. רגרסיה – מסלולים קיימים');
+const errs=await withPage(FULL,async p=>{
+  await p.evaluate(()=>go('archive'));
+  ok('הארכיון נטען',(await p.textContent('#app')).includes('יומני הדברה'));
+  await p.evaluate(()=>go('clients'));
+  ok('מסך הלקוחות נטען',(await p.textContent('#app')).includes('מסעדת הגפן'));
+  await p.evaluate(()=>go('client','c1'));
+  ok('הגדרות לקוח קבוע מוצגות',(await p.textContent('#app')).includes('לקוח אחזקה קבוע'));
+  await p.evaluate(()=>go('journal','j1'));
+  ok('יומן שהושלם נפתח',(await p.textContent('#app')).includes('#1001')||(await p.textContent('#app')).includes('1001'));
+  ok('יומן ישן ללא שדות חדשים אינו נשבר',await p.evaluate(()=>validate(S.journals.j1).length>=0));
+  await p.evaluate(()=>go('profile'));
+  ok('הפרופיל נטען',(await p.textContent('#app')).includes('פרופיל מדביר'));
+});
+ok('אין שגיאות JavaScript בזמן ריצה',errs.length===0,errs.join(' | '));
+
+await BROWSER.close();
+console.log(`\n${pass} עברו, ${fail} נכשלו`);
+if(fail){console.log('נכשלו:\n - '+fails.join('\n - '));process.exit(1)}
+})().catch(e=>{console.error(e);process.exit(1)});

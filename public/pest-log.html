@@ -127,6 +127,34 @@ textarea{min-height:96px;resize:vertical}
 .empty{text-align:center;padding:36px 20px;color:var(--muted)}
 .filters{display:grid;gap:8px;margin-bottom:12px}
 
+/* טעינה מיומן אחרון */
+.prevcard{background:var(--surface);border:2px solid var(--gold);border-radius:var(--r-lg);padding:14px;margin:14px 0}
+.prevcard .ph{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.prevcard .ph b{font-size:16px;color:var(--forest-2)}
+:root[data-theme="dark"] .prevcard .ph b{color:var(--leaf)}
+.pkv{display:grid;gap:2px;margin-top:10px;font-size:14px}
+.pkv div{display:flex;gap:6px;padding:3px 0;border-bottom:1px dotted var(--line)}
+.pkv div:last-child{border-bottom:0}
+.pkv b{color:var(--muted);font-weight:500;flex:none}
+.pkv span{min-width:0;overflow-wrap:anywhere}
+.pflags{background:var(--gold-soft);border-radius:var(--r-md);padding:8px 12px;margin-top:10px;font-size:14px;color:#7a6634}
+.pflags ul{margin:4px 18px 0 0;padding:0}
+.clonebar{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--gold-soft);color:#7a6634;padding:8px 14px;font-size:13px;flex-wrap:wrap}
+.clonebar.done{background:var(--mint);color:var(--forest-2)}
+.clonestale{background:var(--danger-soft);color:var(--danger);padding:8px 14px;font-size:13px}
+.vwarn{background:var(--gold-soft);border:1px solid var(--gold);border-radius:var(--r-md);padding:10px 12px;margin-top:8px;font-size:14px;color:#7a6634}
+.vwarn b{display:block;margin-bottom:2px}
+.vwarn p{margin:0 0 8px;font-size:13px}
+.vok{background:var(--mint);color:var(--forest-2);border-radius:var(--r-md);padding:7px 12px;margin-top:8px;font-size:13px}
+.vfield.vpend input,.vfield.vpend textarea,.vfield.vpend select{border-color:var(--gold);background:var(--gold-soft)}
+.vbar{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin:10px 0 6px}
+.vbar i{display:block;height:100%;background:var(--leaf);transition:width .3s}
+.cmp{width:100%;border-collapse:collapse;font-size:13px}
+.cmp th{background:var(--mint-2);text-align:right;padding:6px;border:1px solid var(--line);font-weight:600}
+.cmp td{padding:6px;border:1px solid var(--line);vertical-align:top;overflow-wrap:anywhere}
+.cmp tr.changed td,.cmp tr.new td,.cmp tr.removed td{background:var(--gold-soft)}
+.cmp tr.hot td{box-shadow:inset 2px 0 0 var(--danger)}
+
 .audit{list-style:none;margin:0;padding:0}
 .audit>li{border-bottom:1px solid var(--line);padding:10px 0}
 .audit>li:last-child{border-bottom:0}
@@ -272,7 +300,8 @@ const GROUPS=[
   {name:'פרטי מדביר',step:0},{name:'מזמין',step:0},{name:'מקום',step:0},
   {name:'ניטור וממצאים',step:1},{name:'פעולות מניעה/חלופות',step:2},
   {name:'אזהרות לפני ההדברה',step:4},{name:'פרטי תכשירים ויישום',step:3},
-  {name:'אזהרות בסיום',step:4},{name:'מסירת היומן וחתימות',step:5}
+  {name:'אזהרות בסיום',step:4},{name:'מסירת היומן וחתימות',step:5},
+  {name:'אימות פרטים שהועתקו',step:5}
 ];
 const BUILTIN=([["למבדה סטאר אולטרה קאפ - CS","lambda-cyhalothrin 9.70%","תרכיז רחיף מיקרוקפסולרי (CS)","חברת רימי כימיקלים בע\"מ","חרקים זוחלים אחרים, נמלים, פישפשי מיטה, פרעושים, קרציות קשות, תיקנים"],["באג","bifenthrin 4.00%, imidacloprid 5.00%","תרחיף נוזלי","","יתושים בוגרים"],["זירו-פליי לתברואה","Dinotefuran 18.00%","תרכיז נוזלי","תפזול תעשיות כימיות בע\"מ","זבובים בוגרים, חרקים זוחלים אחרים, נמלים, פישפשי מיטה, פרעושים, תיקנים"],["שובל","White mineral oil (petroleum) 97.00%","שמן","דור.קי פיתוח ושיווק בע\"מ","זחלי יתושים"],["וולקנו","fipronil 0.05%","פיתיון מוכן לשימוש גרגירים","דורקי פיתוח ושיווק בע\"מ","נמלים, נמלת האש הקטנה"],["רייד מקס דלתא - גוקים","deltamethrin 0.05%, imiprothrin 0.10%","אירוסול","אס.סי. גונסון ישראל בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["ברודיטופ וקס בלוק","brodifacoum 0.01%","פתיון מוכן לשימוש בלוקים","תפזול תעשיות כימיות בע\"מ","חולדות, עכברים"],["ברודיטופ ג'ל","brodifacoum 0.01%","פתיון ג'ל","תפזול תעשיות כימיות בע\"מ","חולדות, עכברים"],["סנו K 4000","1R-TRANS-Phenothrin 0.14%, Piperonyl Butoxide 0.60%, prallethrin 0.10%","מיקרואמולסיה","סנו מפעלי ברונוס בע\"מ","זבובים בוגרים, חרקים מעופפים אחרים, יתושים בוגרים"],["בנגל החדש סלילים לבעירה איטית קוטל יתושים","prallethrin 0.10%","סלילים","גורי ע.ע.ע. בע\"מ","יתושים בוגרים"],["רעם","bifenthrin 10.00%","תרכיז רחיף","אר.פי.סי החברה להדברה - נס הרים","נמלים"],["כופתיון פלוס","brodifacoum 0.01%","פתיון מוכן לשימוש כופתיות","אר.פי.סי החברה להדברה - נס הרים","חולדות, עכברים"],["בלוקיון פלוס","brodifacoum 0.01%","פתיון מוכן לשימוש בלוקים","אר.פי.סי החברה להדברה - נס הרים","חולדות, עכברים"],["פסטיון פלוס פסטה","brodifacoum 0.01%","פיתיון מוכן לשימוש בצורת פסטה","אר.פי.סי החברה להדברה - נס הרים","חולדות, עכברים"],["פרו ג'ל נמלת האש הקטנה","fipronil 0.01%","פתיון ג'ל","תפזול תעשיות כימיות בע\"מ","נמלת האש הקטנה"],["דלתא סופר","deltamethrin 2.50%, s-bioallethrin 2.00%","תרכיז מתחלב","תפזול תעשיות כימיות בע\"מ","זבובים בוגרים, חרקים זוחלים אחרים, חרקים מעופפים אחרים, פישפשי מיטה, תיקנים"],["אדוויון 20","indoxacarb 20.00%","גרגרים רחיפים","זרעים גדרה בע\"מ","נמלים"],["קומנדו 313","bifenthrin 0.05%","תמיסה","סאסאטק אגש\"ח בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["K 300 פלוס 8","lambda-cyhalothrin 0.03%, novaluron 0.10%, prallethrin 0.10%","אירוסול","סנו מפעלי ברונוס בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["in2care","Beauveria bassiana 10.00%, Pyriproxyfen 75.00%","פתיון מרוכז אבקה","גדות אגרו בע\"מ","זחלי יתושים, יתושים בוגרים"],["פיקס ג'ל","fipronil 0.01%","ג'ל","אר.פי.סי החברה להדברה - נס הרים","נמלים, נמלת האש הקטנה"],["ספיר","MGK 264 6.40%, cypermethrin cis/trans 40/60 20.00%","מיקרואמולסיה","חברת רימי כימיקלים בע\"מ","זבובים בוגרים, יתושים בוגרים, נמלים, פרוקי רגלים אחרים, פרעושים, תיקנים"],["פרמיס 350","imidacloprid 30.40%, imidacloprid 30.50%","תרכיז רחיף","לידור אלמנטס בע\"מ- ירושלים","טרמיטים"],["טאצ' די תוש ספריי קוטל חרקים מעופפים","Bioallethrin 0.15%, Piperonyl Butoxide 0.60%, TETRAMETHRIN 0.15%","אירוסול","סאסאטק אגש\"ח בע\"מ","זבובים בוגרים, חרקים מעופפים אחרים, יתושים בוגרים"],["סנו K-2000","cyphenothrin 0.30%","תמיסה מוכנה לשימוש בתוארית מיקרוקפסולרית","אלמנדה ישראל בע\"מ","חרקים זוחלים אחרים, פרעושים, תיקנים"],["מאסטר פליי","Dinotefuran 12.00%","נוזל","סאסאטק אגש\"ח בע\"מ","זבובים בוגרים"],["פליי - אוף","Dinotefuran 0.30%","תרסיס","סאסאטק אגש\"ח בע\"מ","זבובים בוגרים"],["סופר ג'ל","fipronil 0.05%","ג'ל","אר.פי.סי החברה להדברה - נס הרים","תיקנים"],["סנו שמפו שטיחים פלוס דוחה קרדית אבק הבית","perfume 1.70%","אירוסול","סנו מפעלי ברונוס בע\"מ","קרדית אבק הבית"],["מארש","emamectin benzoate 1.92%","נוזל","אר.פי.סי החברה להדברה - נס הרים","תהלוכן האורן"],["מדביר יתושים וזבובים","Bioallethrin 0.15%, Piperonyl Butoxide 0.40%, TETRAMETHRIN 0.15%, cypermethrin cis/trans 40/60 0.10%","אירוסול","סאסאטק אגש\"ח בע\"מ","זבובים בוגרים, יתושים בוגרים"],["קינג ג'ל","fipronil 0.05%","ג'ל","א.ע יזמות ופרוייקטים","תיקנים"],["קווין ג'ל פיתיון","fipronil 0.01%","ג'ל","א.ע יזמות ופרוייקטים","נמלים"],["סולו בלוק","brodifacoum 0.01%","פתיון מוכן לשימוש בלוקים","חברת רימי כימיקלים בע\"מ","חולדות, עכברים"],["אלמוג","deltamethrin 4.75%","תרכיז רחיף","חברת רימי כימיקלים בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["דרגון","bifenthrin 9.60%","תרכיז רחיף","אר.פי.סי החברה להדברה - נס הרים","חרקים זוחלים אחרים, פישפשי מיטה, תיקנים"],["פרו ג'ל נמלים וטרמיטים","fipronil 0.01%","ג'ל","תפזול תעשיות כימיות בע\"מ","טרמיטים, נמלים"],["K3 פתיון ג'ל - קוטל נמלים בבית ובחצר","fipronil 0.01%","ג'ל","סנו מפעלי ברונוס בע\"מ","נמלים"],["נוזל ניקוי רצפות דוחה תיקנים \"המותג/מג'יק פואוור\"","Perfume Citronella 2.00%","נוזל","סאסאטק אגש\"ח בע\"מ","תיקנים"],["דלתא מקס","Piperonyl Butoxide 5.00%, Pyriproxyfen 1.00%, deltamethrin 1.60%","נוזל מתחלב","סיקמקס בע\"מ","פרעושים, תיקנים"],["אנטי אנט","fipronil 0.05%","גרגרים","אקו רד (כמיארט) בע\"מ","נמלת האש הקטנה"],["טרמיטקס","diflubenzuron 0.25%","פתיון מוכן לשימוש אבקה","א.ע יזמות ופרוייקטים","טרמיטים"],["דרקר 10.2","Piperonyl Butoxide 10.00%, TETRAMETHRIN 2.00%, cypermethrin cis/trans 40/60 10.00%","תרכיז רחיף מיקרוקפסולרי","אר.פי.סי החברה להדברה - נס הרים","זבובים בוגרים, חרקים זוחלים אחרים, חרקים מעופפים אחרים, יתושים בוגרים, נמלים, תיקנים"],["ספירה נוזל דוחה יתושים","prallethrin 1.20%","נוזל/אדים","גורי ע.ע.ע. בע\"מ","יתושים בוגרים"],["פירתרון","MGK 264 10.00%, Piperonyl Butoxide 6.00%, pyrethrum 3.00%","תרכיז לערפול","נורון חברה לייבוא ולייצור בע\"מ","יתושים בוגרים, מזיקי מזון"],["פרמקס 20","Permethrin 20.00%","תרכיז מתחלב","חברת רימי כימיקלים בע\"מ","זבובים בוגרים, יתושים בוגרים"],["ברודיטופ פסטה לתברואה","brodifacoum 0.01%","פיתיון מוכן לשימוש בצורת פסטה","תפזול תעשיות כימיות בע\"מ","חולדות, עכברים"],["שוהם","bifenthrin 10.00%","תרכיז רחיף","חברת רימי כימיקלים בע\"מ","חרקים זוחלים אחרים, טרמיטים, נמלים, פרעושים, תיקנים"],["רטרים בלוק","bromadiolone 0.01%","פתיון מוכן לשימוש בלוקים","חברת רימי כימיקלים בע\"מ","חולדות, עכברים"],["טאצ' די תיקן פורטה","Piperonyl Butoxide 0.34%, TETRAMETHRIN 0.20%, cyfluthrin 0.10%, cypermethrin cis/trans 40/60 0.17%","אירוסול","סאסאטק אגש\"ח בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["גוליבר תיקנים","fipronil 0.05%","ג'ל","אפקטיבי הדברות","תיקנים"],["גוליבר נמלים","fipronil 0.01%","ג'ל","אפקטיבי הדברות","נמלים"],["פאלקון","bifenthrin 5.00%, imidacloprid 10.00%","תרכיז מתחלב","אר.פי.סי החברה להדברה - נס הרים","נמלים, תיקנים"],["סיפ 20","cypermethrin cis/trans 40/60 20.00%","תרכיז מתחלב","אר.פי.סי החברה להדברה - נס הרים","זבובים בוגרים, זחלי יתושים, חרקים מעופפים אחרים, יתושים בוגרים, תיקנים"],["סנו K-600 (חדש)","MGK 264 1.00%, Piperonyl Butoxide 1.00%, TETRAMETHRIN 0.30%, esbiothrin 0.08%, phenothrin 0.15%","אירוסול","סנו מפעלי ברונוס בע\"מ","זבובים בוגרים, יתושים בוגרים, מזיקי בד אחרים, מזיקי ספרים, עש"],["קילר","bifenthrin 0.05%","תרכיז רחיף","חברת רימי כימיקלים בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["K3 תחנת פתיון","fipronil 0.05%","פתיון מוכן לשימוש בקופסת האכלה","סנו מפעלי ברונוס בע\"מ","תיקנים"],["פרפקט פרו 500","Bioallethrin 0.20%, Piperonyl Butoxide 0.80%, deltamethrin 0.02%","אירוסול","סאסאטק אגש\"ח בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["סנו רצפז פלוס ווקס נוזל להברקת רצפות דוחה תיקנים","perfume 2.00%","נוזל","סנו מפעלי ברונוס בע\"מ","תיקנים"],["רייד בוטני קוטל זוחלים ומעופפים","Piperonyl Butoxide 1.05%, pyrethrum 0.25%","אירוסול","אס.סי. גונסון ישראל בע\"מ","זבובים בוגרים, חרקים זוחלים אחרים, חרקים מעופפים אחרים, יתושים בוגרים, נמלים, פרעושים, צרעות, תיקנים"],["טאץ' רב קוטל","Piperonyl Butoxide 0.50%, TETRAMETHRIN 0.15%, cyfluthrin 0.10%, cypermethrin cis/trans 40/60 0.15%","אירוסול","סאסאטק אגש\"ח בע\"מ","זבובים בוגרים, חרקים זוחלים אחרים, חרקים מעופפים אחרים, יתושים בוגרים, נמלים, תיקנים"],["טופז","D-limonene 1.50%, pyrethrum 0.25%","תרסיס","דע קדם פרוייקטים (1987) בע\"מ","תיקנים"],["אנט ג'ל","fipronil 0.01%","ג'ל","סיקמקס בע\"מ","נמלים"],["דוחה תיקנים רמי לוי","perfume 3.00%","נוזל","קומפלקס כימיקלים בע\"מ","תיקנים"],["פרמתרול 25","Permethrin 25.00%","אבקה רטיבה","תפזול תעשיות כימיות בע\"מ","זבובים בוגרים, יתושים בוגרים, נמלים, תיקנים"],["מורין דיפה פסטה","difenacoum 0.01%","פיתיון מוכן לשימוש בצורת פסטה","אדמה פתרונות לחקלאות בע\"מ-ארומה","חולדות, עכברים"],["סנטור","lambda-cyhalothrin 9.70%","תחליב שמן במים","אדמה פתרונות לחקלאות בע\"מ-ארומה","זבובים בוגרים, חרקים זוחלים אחרים, חרקים מעופפים אחרים, יתושים בוגרים, פישפשי מיטה, קרציות קשות, תיקנים"],["סיזמיק","lambda-cyhalothrin 9.70%","תרכיז רחיף מיקרוקפסולרי","אדמה פתרונות לחקלאות בע\"מ-ארומה","זבובים בוגרים, חרקים זוחלים אחרים, יתושים בוגרים, נמלים, פרוקי רגלים אחרים, תיקנים"],["אנטיפליי","Dinotefuran 0.30%","נוזל","חברת רימי כימיקלים בע\"מ","זבובים בוגרים"],["ברקת","MGK 264 6.40%, Pyriproxyfen 0.80%, cypermethrin cis/trans 40/60 20.00%","מיקרואמולסיה","חברת רימי כימיקלים בע\"מ","פרעושים"],["פרמנונה 200","Permethrin 20.00%","נוזל מתחלב","סיקמקס בע\"מ","זבובים בוגרים, חרקים זוחלים אחרים, חרקים מעופפים אחרים, יתושים בוגרים, נמלים, תיקנים"],["גרנולר - פיתיוןגרגירי לנמלת האש הקטנה ונמלים אחר","fipronil 0.05%","פתיון מוכן לשימוש גרגירים","אר.פי.סי החברה להדברה - נס הרים","נמלים, נמלת האש הקטנה"],["פנטום פרו","cyphenothrin 10.00%","תרכיז רחיף מיקרוקפסולרי","אלמנדה ישראל בע\"מ","פרעושים, תיקנים"],["סיפזול 20","cypermethrin cis/trans 40/60 20.00%","תרכיז מתחלב","תפזול תעשיות כימיות בע\"מ","זבובים בוגרים, תיקנים"],["אודם","bifenthrin 4.00%, imidacloprid 5.00%","תרכיז רחיף","חברת רימי כימיקלים בע\"מ","חרקים זוחלים אחרים, יתושים בוגרים, נמלים, תיקנים"],["פרו ג'ל נמלים","fipronil 0.01%","פתיון ג'ל","תפזול תעשיות כימיות בע\"מ","נמלים"],["רימקס","Permethrin 25.00%","אבקה רטיבה","חברת רימי כימיקלים בע\"מ","זבובים בוגרים, חרקים זוחלים אחרים, יתושים בוגרים, נמלים, תיקנים"],["דמנד","lambda-cyhalothrin 9.60%","תרכיז רחיף מיקרוקפסולרי","זרעים גדרה בע\"מ","נמלים, פישפשי מיטה, תיקנים"],["ספירה מאט טבליות קוטלי יתושים","prallethrin 1.33%","טבליות אידוי","גורי ע.ע.ע. בע\"מ","יתושים בוגרים"],["סיפרין לתברואה","cypermethrin cis/trans 40/60 20.00%","תרכיז מתחלב","חברת רימי כימיקלים בע\"מ","זבובים בוגרים, זחלי יתושים, יתושים בוגרים, נמלים, פרעושים, תיקנים"],["טיגריס","Dinotefuran 0.15%","תרסיס","חברת רימי כימיקלים בע\"מ","יתושים בוגרים"],["אדוויון פתיון ג'ל להדברת תיקנים","indoxacarb 0.60%","ג'ל","זרעים גדרה בע\"מ","תיקנים"],["אדוויון פתיון ג'ל להדברת נמלים","indoxacarb 0.05%","ג'ל","זרעים גדרה בע\"מ","נמלים"],["K3 נמלת האש פיתיון ג'ל קוטל את נמלת האש הקטנה בבית","fipronil 0.01%","ג'ל","סנו מפעלי ברונוס בע\"מ","נמלת האש הקטנה"],["רימי 90 נוזלי","Pyriproxyfen 5.00%","תרכיז מתחלב","חברת רימי כימיקלים בע\"מ","זחלי יתושים, זחלי פרעושים, רימות זבובים, תיקנים"],["סיפרימי","cypermethrin cis/trans 40/60 10.00%","אבקה רטיבה","חברת רימי כימיקלים בע\"מ","זבובים בוגרים, חרקים זוחלים אחרים, חרקים מעופפים אחרים, יתושים בוגרים, נמלים, תיקנים"],["פורסטאר","Bacillus sphaericus 6.00%, bacillus thuringiensis var israelensis 1.00%","בלוק","חברת רימי כימיקלים בע\"מ","זחלי יתושים"],["טופ גריין","fipronil 0.05%","גרגרים","חברת רימי כימיקלים בע\"מ","נמלים, נמלת האש הקטנה"],["אינוויקט גולד","imidacloprid 2.15%","ג'ל","חברת רימי כימיקלים בע\"מ","תיקנים"],["אדמירל","bifenthrin 7.90%","תרכיז רחיף","אדמה פתרונות לחקלאות בע\"מ","טרמיטים, נמלים, פרעושים, תיקנים"],["מגלון בלוק לתברואה","bromadiolone 0.01%","פתיון מוכן לשימוש בלוקים","סיקמקס בע\"מ","חולדות, עכברים"],["זאגור פסטה","brodifacoum 0.01%","פיתיון מוכן לשימוש בצורת פסטה","סיקמקס בע\"מ","חולדות, עכברים"],["סיפרמקס","cypermethrin cis/trans 40/60 20.00%","נוזל מתחלב","סיקמקס בע\"מ","זבובים בוגרים, זחלי יתושים, חרקים מעופפים אחרים"],["רייד זבובים ויתושים מבושם","d-phenothrin 0.13%, prallethrin 0.10%","אירוסול","","זבובים בוגרים, יתושים בוגרים"],["רייד קוטל נמלים 2 ב-1","cypermethrin cis/trans 40/60 0.10%, imiprothrin 0.10%","אירוסול","","נמלים"],["אימפקט","cypermethrin cis/trans 40/60 20.00%, cyromazine 5.00%","תרכיז רחיף","","פרעושים"],["בק תוש","bacillus thuringiensis var israelensis","תרכיז נוזלי","","זחלי יתושים"],["רייד נגד עש ג'ל - \"לבנדר\"","transfluthrin 0.15%","ג'ל","","עש"],["מקספורס פורטה","fipronil 0.05%","ג'ל","","תיקנים"],["אקואטיין AMF","silicone fluid 87.50%","נוזל","לוכסמבורג תעשיות בע\"מ","זחלי יתושים"],["צרעון","Piperonyl Butoxide 0.85%, TETRAMETHRIN 0.18%, cypermethrin cis/trans 40/60 0.09%","אירוסול","סאסאטק אגש\"ח בע\"מ","צרעות"],["גרגירמקס","fipronil 0.05%","גרגרים","א.ע יזמות ופרוייקטים","נמלים, נמלת האש הקטנה"],["תרסיפ 20","cypermethrin cis/trans 40/60 20.00%","תרכיז מתחלב","תרסיס חברה לחימיקלים חקלאיים ותעשיתיים בעמ","זחלי יתושים"],["פרו-ג'ל","fipronil 0.05%","פתיון ג'ל","תפזול תעשיות כימיות בע\"מ","תיקנים"],["רייד זבובים ויתושים","d-phenothrin 0.13%, prallethrin 0.11%","אירוסול","אס.סי. גונסון ישראל בע\"מ","חרקים מעופפים אחרים"],["אדוויון פתיון גרגרי להדברת נמלת האש","indoxacarb 0.05%","גרגרים","זרעים גדרה בע\"מ","נמלים, נמלת האש הקטנה"],["מקפז","MGK 264 0.50%, Piperonyl Butoxide 0.50%, TETRAMETHRIN 0.40%, deltamethrin 0.04%","אירוסול","סנו מפעלי ברונוס בע\"מ","חרקים זוחלים אחרים, תיקנים"],["טפיר","bifenthrin 5.00%, imidacloprid 25.00%","תרכיז רחיף","אדמה פתרונות לחקלאות בע\"מ-ארומה","נמלים"],["סנו K-400","MGK 264 1.00%, Piperonyl Butoxide 0.60%, TETRAMETHRIN 0.65%","אירוסול","סנו מפעלי ברונוס בע\"מ","זבובים בוגרים, חרקים מעופפים אחרים, יתושים בוגרים"],["סנו K מעופפים פירטרום - קוטל יתושים, זבובים","Piperonyl Butoxide 1.50%, pyrethrum 0.25%","אירוסול","סנו מפעלי ברונוס בע\"מ","זבובים בוגרים, חרקים מעופפים אחרים, יתושים בוגרים"],["סנו רצפז פלוס - נוזל לניקוי רצפה - דוחה תקנים","perfume 2.00%","נוזל","סנו מפעלי ברונוס בע\"מ","תיקנים"],["מוריברום ברודיפקום בלוק","brodifacoum 0.01%","פתיון מוכן לשימוש בלוקים","א.ע יזמות ופרוייקטים","חולדות, עכברים"],["מוריברום ברודיפקום פסטה","brodifacoum 0.01%","פיתיון מוכן לשימוש בצורת פסטה","א.ע יזמות ופרוייקטים","חולדות, עכברים"],["סיפרפקט 200 לתברואה","D-limonene 5.00%, cypermethrin cis/trans 40/60 20.00%","תרכיז מתחלב","דור.קי פיתוח ושיווק בע\"מ","זבובים בוגרים, חרקים זוחלים אחרים, חרקים מעופפים אחרים, יתושים בוגרים, תיקנים"],["ווינר","Piperonyl Butoxide 0.30%, TETRAMETHRIN 0.06%, cypermethrin cis/trans 40/60 0.30%","תמיסה מוכנה לשימוש בתוארית מיקרוקפסולרית","אר.פי.סי החברה להדברה - נס הרים","זבובים בוגרים, חרקים זוחלים אחרים, חרקים מעופפים אחרים, יתושים בוגרים, נמלים, תיקנים"],["נפורקס 2%","cyromazine 2.00%","גרגרים","אביק תוצרים וטרינריים בע\"מ","זחלי פרעושים, רימות זבובים"],["הדרית","D-limonene 7.00%","תרסיס","דע קדם פרוייקטים (1987) בע\"מ","חרקים מעופפים אחרים, יתושים בוגרים, נמלים"],["טמפריד","Beta-Cyfluthrin 10.88%, imidacloprid 21.65%","","לידור אלמנטס בע\"מ- ירושלים","זבובים בוגרים, חרקים זוחלים אחרים, נמלים, פישפשי מיטה, פרוקי רגלים אחרים, תיקנים"],["דיפון 100","difenacoum 0.08%","תרסיס","סאסאטק אגש\"ח בע\"מ","חולדות, עכברים"],["סנו K-333 נוזל - קוטל תיקנים נמלים וחרקים זוחלים א","bifenthrin 0.05%","תרחיף נוזלי","סנו מפעלי ברונוס בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["K3 פיתיון ג'ל","fipronil 0.05%","ג'ל","סנו מפעלי ברונוס בע\"מ","תיקנים"],["K 500","lambda-cyhalothrin 0.03%, prallethrin 0.10%","אירוסול","סנו מפעלי ברונוס בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["סנו K רב קוטל","Piperonyl Butoxide 1.00%, deltamethrin 0.02%, prallethrin 0.10%","אירוסול","סנו מפעלי ברונוס בע\"מ","זבובים בוגרים, חרקים זוחלים אחרים, חרקים מעופפים אחרים, יתושים בוגרים, נמלים, תיקנים"],["סנו רצפז פלוס-מטליות","perfume 1.00%","אחר","סנו מפעלי ברונוס בע\"מ","תיקנים"],["סנו k 303 פלוס 8 - קוטל תיקנים נמלים וחרקים זוחלים","Piperonyl Butoxide 1.20%, deltamethrin 0.05%, esbiothrin 0.30%, novaluron 0.10%","אירוסול","סנו מפעלי ברונוס בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["סנו k303 - קוטל תיקנים נמלים וחרקים זוחלים אחרים","Piperonyl Butoxide 1.20%, deltamethrin 0.05%, esbiothrin 0.30%","אירוסול","סנו מפעלי ברונוס בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["סנו K800","Piperonyl Butoxide 1.00%, cypermethrin cis/trans 40/60 0.10%, imiprothrin 0.10%","אירוסול","סנו מפעלי ברונוס בע\"מ","נמלים"],["K 300","Piperonyl Butoxide 1.00%, lambda-cyhalothrin 0.03%, prallethrin 0.10%","אירוסול","סנו מפעלי ברונוס בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["ז-אפס-3","Bioallethrin 0.20%, Piperonyl Butoxide 0.50%, TETRAMETHRIN 0.20%, cyfluthrin 0.10%","אירוסול","סאסאטק אגש\"ח בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["ז-אפס מיקרוקפסולרי","Piperonyl Butoxide 0.30%, TETRAMETHRIN 0.06%, cypermethrin cis/trans 40/60 0.30%","תמיסה מוכנה לשימוש בתוארית מיקרוקפסולרית","סאסאטק אגש\"ח בע\"מ","חרקים זוחלים אחרים, נמלים, תיקנים"],["דינופליי","Dinotefuran 12.00%","אבקה מסיסה","חברת רימי כימיקלים בע\"מ","זבובים בוגרים, פישפשי מיטה"],["טרמיט ג'ל","fipronil 0.05%","פיתיון מוכן לשימוש ג'ל","אר.פי.סי החברה להדברה - נס הרים","טרמיטים"],["סנו מט דוחה יתושים לוחיות אידוי","prallethrin 1.33%","טבליות אידוי","סנו מפעלי ברונוס בע\"מ","יתושים בוגרים"],["נמסיס פיתיון לטרמיטים","N-(4-(3-chloro-5-trifluoromethyl-2-pyridinyl-oxy)-3,5-dichloro-phenyl-aminocarbonyl)-2,6-difluorobenzamide 0.10%","פיתיון מרוכז אבקה","חברת רימי כימיקלים בע\"מ","טרמיטים"],["סנומט דוחה יתושים - נוזלי","prallethrin 1.20%","נוזל","סנו מפעלי ברונוס בע\"מ","יתושים בוגרים"],["בי-10","bifenthrin 10.00%","נוזל","סיקמקס בע\"מ","נמלים, תיקנים"],["בזלת","hydramethylnon 0.37%, methoprene 0.25%","פתיון מוכן לשימוש גרגירים","חברת רימי כימיקלים בע\"מ","נמלים, נמלת האש הקטנה"],["פרמתרול אבוקות עשן","Permethrin 13.50%","אבוקת עשן","תפזול תעשיות כימיות בע\"מ","חרקי מחסן, תיקנים"],["רטרים פסטה","brodifacoum 0.01%","פיתיון מוכן לשימוש בצורת פסטה","חברת רימי כימיקלים בע\"מ","חולדות, עכברים"],["טורפדו ג'ל פיתיון קוטל תיקנים","fipronil 0.05%","ג'ל","רועי נעים","תיקנים"],["טופ ג'ל פתיון קוטל נמלים","fipronil 0.01%","ג'ל","רועי נעים","נמלים"],["אלפא ג'ל","fipronil 0.01%","ג'ל","רועי נעים","טרמיטים, נמלים"],["פזטוקס (חדש)","Piperonyl Butoxide 1.00%, phenothrin 0.06%, prallethrin 0.05%","אירוסול","סנו מפעלי ברונוס בע\"מ","זבובים בוגרים, חרקים מעופפים אחרים, יתושים בוגרים"],["דורפליי נוזל לתברואה","Dinotefuran 12.00%","תרכיז נוזלי","דור.קי פיתוח ושיווק בע\"מ","זבובים בוגרים"],["דלתא פורטה לתברואה","Pyriproxyfen 1.00%, deltamethrin 1.60%","תחליב שמן במים","","נמלים, פרעושים, תיקנים"],["רקויאם","chlorfluazuron 0.10%","אבקה מסיסה","","טרמיטים"],["רייד נגד עש ג'ל - \"עץ ארז\"","transfluthrin 0.15%","ג'ל","","עש"],["פלייקו 2 לתברואה","D-limonene 3.50%, Permethrin 20.00%, Piperonyl Butoxide 10.00%, citronella oil 3.50%","תרכיז מתחלב","","זבובים בוגרים, חרקים זוחלים אחרים, חרקים מעופפים אחרים, יתושים בוגרים, תיקנים"],["רייד נוזל","prallethrin 1.20%","נוזל","","יתושים בוגרים"],["רייד נוזל בריח אקליפטוס","prallethrin 1.20%","נוזל","","יתושים בוגרים"],["אקספרו 314","bifenthrin 9.60%","תרכיז רחיף","א.ע יזמות ופרוייקטים","חרקים זוחלים אחרים, נמלים, פישפשי מיטה, תיקנים"]]).map(([n,a,f,h,p])=>({n,a,f,h,p}));
 
@@ -338,6 +367,11 @@ function blankJournal(no,profile){
     apps:[newApp()],sealing:'',publicNotice:'',
     warnAfter:'',supplementary:'',needSupplementary:false,natureAfter:'',warranty:{period:'',note:''},
     hasAssistants:false,assistants:[],assistGuidance:false,assistCopy:false,
+    spots:[],siteNotes:'',access:'',warnSrcProducts:[],warnSnapshot:null,
+    /* טעינה מיומן קודם – מקור, מה הועתק ומה עדיין דורש אימות */
+    verify:{},audit_events:[],source_pest_log_id:null,cloned_from_no:null,cloned_from_date:null,
+    cloned_at:null,cloned_by:'',copied_sections:[],clone_stale:false,
+    verification_status:'none',verified_at:null,verified_by:'',
     handover:{delivered:false,receiverName:'',receiverSig:null},techSig:null};
 }
 const annexFor=pest=>ANNEX.find(a=>a.re.test(pest||''));
@@ -372,7 +406,7 @@ const PLACE_KIND={home:'בית/דירה',building:'מבנה',open:'שטח פתו
    4. CENTRAL VALIDATION SCHEMA (conditional)
    ========================================================= */
 function validate(j){
-  const E=[];const add=(g,path,msg)=>E.push({g,step:GROUPS[g].step,path,msg});
+  const E=[];const add=(g,path,msg,step)=>E.push({g,step:step==null?GROUPS[g].step:step,path,msg});
   const req=(g,path,msg)=>{if(blankStr(getP(j,path)))add(g,path,msg)};
   // 0 tech (+ date/time, operator when exists)
   req(0,'date','תאריך ביצוע ההדברה');req(0,'time','שעת ביצוע ההדברה');
@@ -417,6 +451,10 @@ function validate(j){
   // 8 handover & signatures
   if(!j.handover.delivered)add(8,'handover.delivered','אישור שהיומן הושאר/נמסר אצל המזמין');
   req(8,'handover.receiverName','שם מקבל היומן');req(8,'handover.receiverSig','חתימת מקבל היומן');req(8,'techSig','חתימת המדביר');
+  // 9 details copied from an earlier journal must be verified for THIS treatment
+  Object.entries(j.verify||{}).forEach(([k,v])=>{
+    if(v&&v.state==='pending')add(9,'verify:'+k,'טרם אומת: '+vLabel(k,j),vStep(k));
+  });
   if(j.hasAssistants){
     if(!j.assistants.length)add(8,'assistants','יש להוסיף מדביר מסייע או לבטל את הסעיף');
     j.assistants.forEach((a,i)=>{const n=`מסייע ${i+1}: `;
@@ -456,6 +494,8 @@ async function initCloud(){
     snap.docs.forEach(d=>{const r=d.data();if(!r)return;const l=S.journals[d.id];if(!l||(r.updatedAt||0)>(l.updatedAt||0)){if(cur&&cur.id===d.id)return;S.journals[d.id]=clone(r)}});
     try{const ft=await DB.collection('data/users/me').doc('pest_find_templates').get();if(ft.exists&&ft.data()){const r=ft.data();TPL_STORES.forEach(k=>{if(Array.isArray(r[k]))S[k]=[...new Set([...S[k],...clone(r[k])])]});if(Array.isArray(r.list))S.findTpl=[...new Set([...S.findTpl,...clone(r.list)])];if(Array.isArray(r.circ))S.circTpl=[...new Set([...S.circTpl,...clone(r.circ)])]}}catch(e){}
     try{const ss=await DB.collection('pest_stations').get();ss.docs.forEach(x=>{const r=x.data();if(r)S.stations[x.id]=clone(r)})}catch(e){}
+    try{const wt=await DB.collection('data/users/me').doc('pest_war_templates').get();if(wt.exists&&wt.data()&&Array.isArray(wt.data().list)){const seen=new Set();S.warTpls=[...clone(wt.data().list),...S.warTpls].filter(t=>!seen.has(t.id)&&seen.add(t.id))}}catch(e){}
+    try{const ae=await DB.collection('data/users/me').doc('pest_audit').get();if(ae.exists&&ae.data()&&Array.isArray(ae.data().events)){const seen=new Set();S.auditEvents=[...clone(ae.data().events),...S.auditEvents].filter(e=>{const k=e.at+'|'+e.jid+'|'+e.ev;return !seen.has(k)&&seen.add(k)}).sort((a,b)=>b.at-a.at).slice(0,400)}}catch(e){}
     try{const ps=await DB.collection('pest_photos').get();ps.docs.forEach(x=>{const r=x.data();if(r)S.photos[x.id]=clone(r)})}catch(e){}
     const cs=await DB.collection('pest_clients').get();cs.docs.forEach(d=>{const r=d.data();if(r)S.clients[d.id]=clone(r)});
     try{const pr=await DB.collection('data/users/me').doc('pest_profile').get();if(pr.exists&&pr.data()){const r=pr.data();if(!S.profile.name||r.name)S.profile=Object.assign({...PROFILE_DEFAULT},clone(r))}else if(S.profile.name)pushProfile()}catch(e){}
@@ -476,6 +516,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 /* photos are stored separately from the journal (a journal document has a size limit) */
 if(!S.photos)S.photos={};
 if(!S.stations)S.stations={};
+if(!S.auditEvents)S.auditEvents=[];
 if(!S.findTpl)S.findTpl=[];
 if(!S.circTpl)S.circTpl=[];
 ['prevTpl','natureTpl','natureAfterTpl','warnTpl','warTpl'].forEach(k=>{if(!S[k])S[k]=[]});
@@ -541,7 +582,7 @@ function splitActive(a){ // "x 5.00%, y 10.00%" -> names / concentrations, as st
    ========================================================= */
 let view='home',param=null,cur=null,showErr=false,flt={q:'',from:'',to:'',status:''};
 function go(v,p=null){view=v;param=p;render();window.scrollTo(0,0)}
-function touch(){if(!cur)return;cur.updatedAt=Date.now();S.journals[cur.id]=cur;saveLocalSoon();queuePush(cur)}
+function touch(){if(!cur)return;cur.updatedAt=Date.now();if(cur.warranty)applyWarranty(cur);vSync(cur);S.journals[cur.id]=cur;saveLocalSoon();queuePush(cur)}
 
 /* =========================================================
    7. VIEWS
@@ -599,6 +640,7 @@ function vWizard(){
   const pct=Math.round((s+1)/STEPS.length*100);
   const sub=`<div class="sub">שלב ${s+1} מתוך ${STEPS.length} · ${STEPS[s]} · <span id="sync">${syncLabel()}</span></div><div class="progress" aria-hidden="true"><i style="width:${pct}%"></i></div>`;
   return `${topbar('יומן הדברה #'+cur.no,'home',sub,`<button class="iconbtn" data-a="preview" aria-label="תצוגה מקדימה">${ic('eye',22)}</button>`)}
+  ${cloneBanner()}
   <nav class="stepper" aria-label="שלבי היומן">${STEPS.map((n,i)=>`<button class="st ${i===s?'on':''} ${badSteps.has(i)?'bad':''}" data-a="step" data-i="${i}" ${i===s?'aria-current="step"':''}><b>${i+1}</b>${n}</button>`).join('')}</nav>
   <main class="page">${[w0,w1,w2,w3,w4,w5][s]()}</main>
   <div class="footer"><div class="in">${s>0?`<button class="btn ghost" data-a="step" data-i="${s-1}">הקודם</button>`:''}${s<STEPS.length-1?`<button class="btn" data-a="step" data-i="${s+1}">הבא</button>`:`<button class="btn ghost" data-a="preview">${ic('eye',18)} תצוגה מקדימה</button><button class="btn gold" data-a="complete">סיום היומן</button>`}</div></div>`;
@@ -631,7 +673,7 @@ function w0(){
 
   <div class="sec"><div class="sech"><h3>פרטי המזמין</h3></div><div class="secb">
     <div class="ac">${fInput('שם מלא','client.name',{ph:'הקלידו אות ראשונה והשמות יופיעו'})}<div class="aclist" id="acList"></div></div>
-    ${(()=>{const L=lastForClient(cur.client.name,cur.client.phone,cur.id);return L?`<button class="btn gold w sm" style="margin-top:10px" data-a="loadLastSheet" data-p="${L.id}">${ic('hist',18)} טעינה מהיומן האחרון של הלקוח (#${L.no}, ${fmtD(L.date)})</button>`:''})()}
+    ${A._noPrev===cur.id?'':prevCard()}
     ${match&&match.places&&match.places.length?`<div class="note"><b>לקוח חוזר.</b> כתובות קודמות:<div class="chips" style="margin-top:8px">${match.places.map((pl,i)=>`<button class="chip" data-a="usePlace" data-p="${match.id}" data-i="${i}">${ic('pin',16)} ${esc(placeText(pl))}</button>`).join('')}</div></div>`:''}
     ${fChips('תפקיד','client.role',ROLES)}
     ${cur.client.role==='אחר'?fInput('פירוט התפקיד','client.roleOther'):''}
@@ -647,6 +689,8 @@ function w0(){
     ${p.kind==='open'?`${fInput('שם הרשות המקומית','place.authority')}${fChips('שם/סוג האתר','place.siteType',SITE_TYPES)}${p.siteType==='אחר'?fInput('פירוט האתר','place.siteTypeOther'):''}${fText('תיאור האתר','place.siteDesc')}
       <label class="field${ec('place.coords')}"><span class="req">נ"צ</span><div style="display:flex;gap:8px"><input class="inp" data-f="place.coords" value="${esc(p.coords)}" placeholder="קו רוחב, קו אורך" style="flex:1"><button type="button" class="btn sm ghost" data-a="gps">${ic('pin',18)} מיקום נוכחי</button></div></label>`:''}
     ${cur.opKind==='ערפול'?fInput('שם שכונה','place.neighborhood',{req:false,opt:true}):''}
+    ${fInput('הוראות הגעה','access',{req:false,opt:true,ph:'קוד שער, חניה, מפתח אצל השומר'})}
+    ${fText('הערות קבועות על האתר','siteNotes',{req:false,opt:true,ph:'מידע שחוזר בכל ביקור'})}
     ${geoBox()}
   </div></div>`;
 }
@@ -664,9 +708,11 @@ function w1(){
       <textarea data-f="findings.${i}.signs" placeholder="הקלד או הוסף מתבנית קיימת..">${esc(f.signs)}</textarea></div>
     ${fInput('מיקום הנגיעות',`findings.${i}.location`)}
     ${fSeg('רמת נגיעות',`findings.${i}.level`,LEVELS)}
+    ${vBox('finding:'+f.id,'הממצאים הועתקו מהיומן הקודם. יש לבדוק בפועל מה נמצא בטיפול הנוכחי לפני האישור.')}
   </div></div>`}).join('')}
   <datalist id="pestlist">${PEST_CHIPS.map(p=>`<option value="${p}">`).join('')}</datalist>
   <button class="btn ghost w" data-a="addFinding">${ic('plus',18)} הוספת מזיק</button>
+  ${spotsBox()}
   ${photoBox('hazard','תיעוד מפגעים','צילום המפגעים שנמצאו: סדקים, נזילות, פסולת, מקורות מזון ומים, סימני פעילות.')}`;
 }
 
@@ -675,8 +721,10 @@ function w2(){
     <div class="note">לפני שימוש בתכשיר: תעדו מה נבדק, אילו פעולות מניעה או טיפול אחר בוצעו או הומלצו, ולמה בכל זאת הוחלט להדביר.</div>
     <div class="field${ec('prevention')}"><span class="flabel req" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span>פעולות מניעה ו/או טיפול שבוצעו או הומלצו ללקוח</span>${tplBtn('prevention','prevention')}</span>
       <textarea data-f="prevention" placeholder="הקלד או הוסף מתבנית קיימת..">${esc(cur.prevention)}</textarea></div>
+    ${vBox('prevention','הפעולות הועתקו מהיומן הקודם. אשרו שהן מתאימות לטיפול הנוכחי.')}
     <div class="field${ec('circumstances')}"><span class="flabel req" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span>הנסיבות שבהן הוחלט לנקוט בהדברה ולא בטיפול אחר</span>${tplBtn('circum','circumstances')}</span>
       <textarea data-f="circumstances" placeholder="הקלד ליצירת תבנית או הוסף מתבנית קיימת..">${esc(cur.circumstances)}</textarea></div>
+    ${vBox('circumstances','הנסיבות הועתקו מהיומן הקודם. אשרו שהן מתאימות לטיפול הנוכחי.')}
   </div></div>
   ${photoBox('prevent','תיעוד פעולות מניעה','צילום הפעולות שבוצעו או שנדרשות מהלקוח: איטום, תיקון, ניקיון, סילוק פסולת.')}`;
 }
@@ -693,10 +741,18 @@ function w3(){
     <div id="dbnote-${i}">${a.fromDb?dbNote(i):''}${a.fromRecent?'<span class="dbtag">נטען מיומן קודם – יש להזין מזיק ומינון ולוודא אצווה</span>':''}</div>
     ${fInput('שם החומר הפעיל',`apps.${i}.active`)}
     ${fInput('ריכוז החומר הפעיל בתכשיר',`apps.${i}.conc`,{ph:'למשל 10%'})}
-    ${fInput('מספר אצווה / סדרת ייצור',`apps.${i}.batch`,{list:'batches-'+i})}<datalist id="batches-${i}">${batchesFor(a.product).map(b=>`<option value="${esc(b)}">`).join('')}</datalist>
-    <div class="two">${fInput('מינון',`apps.${i}.dose`,{mode:'decimal',ph:'כמות'})}
+    ${(()=>{const c=labelCheck(a.product);const fit=labelFit(a);
+      if(!a.product)return '';
+      if(!c.ok)return `<div class="vwarn"><b>לא ניתן לאמת את התכשיר</b><p>${esc(c.why)}. אין להשתמש בו כתכשיר מאושר לפני בדיקה מול התווית, ואפשר לבחור תכשיר חלופי מהמאגר.</p></div>`;
+      return fit?`<div class="vwarn"><b>התאמה לרישום</b><p>${esc(fit)}</p></div>`:''})()}
+    ${vBox('product:'+a.id,'התכשיר הוצע מהיומן הקודם. ודאו מול התווית העדכנית שהוא מתאים למזיק ולשיטת היישום.')}
+    <div class="vfield${vPend('batch:'+a.id)}">${fInput('מספר אצווה / סדרת ייצור',`apps.${i}.batch`,{list:'batches-'+i})}</div><datalist id="batches-${i}">${batchesFor(a.product).map(b=>`<option value="${esc(b)}">`).join('')}</datalist>
+    ${vBox('batch:'+a.id,'האצווה נלקחה מהיומן הקודם. אשרו שהיא עדיין בשימוש, או הזינו את מספר האצווה שבידיכם עכשיו.')}
+    <div class="two vfield${vPend('dose:'+a.id)}">${fInput('מינון',`apps.${i}.dose`,{mode:'decimal',ph:'כמות'})}
       <label class="field${ec(`apps.${i}.unit`)}"><span class="req">יחידת מידה</span><select data-f="apps.${i}.unit"><option value="">בחרו</option>${UNITS.map(u=>`<option ${a.unit===u?'selected':''}>${u}</option>`).join('')}</select></label></div>
     ${a.unit==='אחר'?fInput('פירוט יחידת המידה',`apps.${i}.unitOther`,{ph:'כמות תמיסה/תערובת/מלכודות ליחידת אורך, שטח או נפח'}):''}
+    ${(cur.verify||{})['dose:'+a.id]?`<p class="hint">מינון מהטיפול הקודם: ${esc([a.dose,a.unit==='אחר'?a.unitOther:a.unit].filter(Boolean).join(' '))||'—'}</p>`:''}
+    ${vBox('dose:'+a.id,'המינון נלקח מהיומן הקודם. אשרו שהוא מתאים לתכשיר, לשיטת היישום ולתווית העדכנית, או עדכנו אותו.')}
     <p class="hint">מינון: כמות תמיסה, תערובת או מלכודות ליחידת אורך, שטח או נפח.</p>
     ${fToggle('תכשיר מוכן לשימוש',`apps.${i}.rtu`)}
     ${a.rtu?'':fInput('ריכוז החומר הפעיל בתכשיר המוכן לשימוש',`apps.${i}.useConc`,{ph:'ריכוז בתמיסה שהוכנה'})}
@@ -717,6 +773,7 @@ function lastForClient(name,phone,exceptId){
 function loadFromJournal(src,mode){
   const j=cur;
   j.apps=clone(src.apps).map(a=>Object.assign(a,{id:uid(),fromRecent:true,fromDb:false}));
+  j.apps.forEach(a=>{vMark(j,'product:'+a.id);if(a.batch)vMark(j,'batch:'+a.id);if(a.dose)vMark(j,'dose:'+a.id)});
   if(mode==='all'){
     j.opKind=src.opKind;
     j.findings=clone(src.findings).map(f=>Object.assign(f,{id:uid()}));
@@ -726,7 +783,21 @@ function loadFromJournal(src,mode){
     j.place=Object.assign(clone(src.place),{});
     j.client=Object.assign(clone(src.client),{});
     j.hasOperator=src.hasOperator;j.operator=clone(src.operator);
+    j.findings.forEach(f=>vMark(j,'finding:'+f.id));
+    if(j.prevention)vMark(j,'prevention');
+    if(j.circumstances)vMark(j,'circumstances');
+    if(j.warnBefore.riskHuman||j.warnBefore.riskAnimals||j.warnBefore.nature)vMark(j,'warnBefore');
+    if(j.warnBefore.reentry)vMark(j,'reentry');
+    if(j.warnAfter)vMark(j,'warnAfter');
+    j.warnSrcProducts=(src.apps||[]).map(a=>a.product).filter(Boolean);
+    if(j.warranty&&j.warranty.kind&&j.warranty.kind!=='none'){j.warranty.until='';applyWarranty(j);vMark(j,'warranty')}
   }
+  j.source_pest_log_id=src.id;j.cloned_from_no=src.no;j.cloned_from_date=src.date;
+  j.cloned_at=Date.now();j.cloned_by=profileWho();j.geo=null;j.stationChecks={};
+  j.copied_sections=mode==='all'?defaultSections():['product','active','batch','dose','useConc','method'];
+  j.clone_stale=!DB||!!(S.pending&&S.pending[src.id]);
+  vSync(j);
+  audit(j,'clone',`נטען מיומן #${src.no} (${mode==='all'?'הכול':'תכשירים בלבד'}) · ${vPending(j).length} פרטים לאימות`);
   touch();
 }
 const PHOTO_KINDS={hazard:'מפגע',prevent:'פעולת מניעה',general:'תיעוד כללי'};
@@ -821,6 +892,8 @@ const appIsEmpty=a=>['pest','product','active','conc','batch','dose','unit','use
 function addFromRecent(src){
   const n=Object.assign(newApp(),{product:src.product,active:src.active,conc:src.conc,batch:src.batch,unit:src.unit,unitOther:src.unitOther,rtu:!!src.rtu,useConc:src.rtu?'':src.useConc,method:src.method,methodOther:src.methodOther,dose:'',pest:'',fromDb:false,fromRecent:true});
   const empty=cur.apps.findIndex(appIsEmpty);if(empty>-1)cur.apps[empty]=n;else cur.apps.push(n);
+  vMark(cur,'product:'+n.id);if(n.batch)vMark(cur,'batch:'+n.id);
+  vSync(cur);
 }
 function askNum(msg){return new Promise(res=>{
   closeSheet();const d=document.createElement('div');d.className='sheet';d.id='sheet';
@@ -849,9 +922,12 @@ function w4(){
     ${fInput('שם התכשיר','warnBefore.product')}
     ${fInput('החומר הפעיל','warnBefore.active')}
     <button class="link" data-a="fillFromApps">${ic('copy',16)} העתקה מטבלת התכשירים</button>
+    ${(cur.warnSrcProducts||[]).length?`<p class="hint">האזהרות שלהלן נלקחו מהתכשירים: ${esc(cur.warnSrcProducts.join(', '))}</p>`:''}
     ${fText('סיכונים לאדם','warnBefore.riskHuman')}
     ${fText('סיכונים לבעלי חיים','warnBefore.riskAnimals')}
-    ${fInput('זמן כניסה לאחר ההדברה','warnBefore.reentry',{ph:'לפי תווית התכשיר'})}
+    ${vBox('warnBefore','האזהרות הועתקו מהיומן הקודם. אשרו שהן תואמות לתכשירים של הטיפול הזה ושנמסרו ללקוח.')}
+    <div class="vfield${vPend('reentry')}">${fInput('זמן כניסה לאחר ההדברה','warnBefore.reentry',{ph:'לפי תווית התכשיר'})}</div>
+    ${vBox('reentry','זמן הכניסה נלקח מהיומן הקודם. בדקו אותו מול התווית העדכנית של התכשירים שבשימוש היום.')}
     ${fText('הוראות/אזהרות רלוונטיות נוספות','warnBefore.other',{req:false,opt:true})}
   </div></div>
   <div class="sec"><div class="sech"><h3>במהלך ההדברה ובסיומה</h3></div><div class="secb">
@@ -859,11 +935,14 @@ function w4(){
       <textarea data-f="natureAfter" placeholder="תיאור ההדברה שבוצעה בפועל">${esc(cur.natureAfter)}</textarea></div>
     <div class="field${ec('warnAfter')}"><span class="flabel req" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span>אזהרות ומידע ללקוח במהלך ההדברה ובסיומה</span>${tplBtn('warn','warnAfter')}</span>
       <textarea data-f="warnAfter" placeholder="הקלד או הוסף מתבנית קיימת..">${esc(cur.warnAfter)}</textarea></div>
+    ${vBox('warnAfter','האזהרות הועתקו מהיומן הקודם. אשרו שהן נמסרו ללקוח בטיפול הנוכחי.')}
     ${fToggle('נדרש טיפול משלים','needSupplementary')}
     ${cur.needSupplementary?fText('פרטי הטיפול המשלים','supplementary',{req:false,opt:true,ph:'מה נדרש ומתי'}):''}
   </div></div>
   <div class="sec"><div class="sech"><h3>אחריות והערות</h3></div><div class="secb">
     ${fChips('אחריות על הטיפול','warranty.period',WARRANTY_PERIODS,{req:false})}
+    ${warrantyBox()}
+    ${vBox('warranty','תנאי האחריות הועתקו מהיומן הקודם. תאריך הסיום חושב מחדש לפי מועד הטיפול הנוכחי.')}
     <div class="field"><span class="flabel" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span>הערה לאחריות <span class="opt">(לא חובה)</span></span>${tplBtn('warranty','warranty.note')}</span>
       <textarea data-f="warranty.note" placeholder="הקלד או הוסף מתבנית קיימת..">${esc(cur.warranty.note)}</textarea></div>
   </div></div>`;
@@ -892,6 +971,7 @@ function w5(){
     <div class="poison">${POISON}</div>
   </div></div>
 
+  ${verifyPanel()}
   ${photoBox('general','תיעוד כללי','תמונות נוספות מהטיפול, לפי הצורך.')}
   <div class="sec" id="audit"><div class="sech"><h3>בדיקת תקינות היומן</h3><span class="tag ${errs.length?'draft':''}">${errs.length?errs.length+' חסרים':'תקין'}</span></div><div class="secb">
     <ul class="audit">${GROUPS.map((g,gi)=>{const ge=errs.filter(e=>e.g===gi);return `<li><div class="ah"><span class="ok ${ge.length?'no':''}" aria-hidden="true">${ge.length?'!':'✓'}</span>${g.name}${ge.length?` <span class="opt">(${ge.length})</span>`:''}</div>${ge.length?`<ul>${ge.map(e=>`<li><button data-a="jump" data-path="${e.path}" data-i="${e.step}">${esc(e.msg)}</button></li>`).join('')}</ul>`:''}</li>`}).join('')}</ul>
@@ -911,6 +991,7 @@ function docHTML(j){
   <div class="dh"><div><div class="co">${esc(c.name)}</div><div class="meta">ע.מ ${esc(c.vat)} | טל׳ ${esc(c.phone)} | ${esc(c.email)}</div></div><div class="mk2">י</div></div>
   <div class="dtitle"><h2>יומן ביצוע הדברה</h2><span>מס׳ ${j.no}${j.status==='draft'?' (טיוטה)':''}</span></div>
   <div class="kv">${row('תאריך ביצוע',fmtD(j.date))}${row('שעת ביצוע',j.time)}${row('סוג הפעולה',j.opKind)}${row('סטטוס',j.status==='done'?'הושלם':'טיוטה')}</div>
+  ${j.source_pest_log_id?`<div class="kv" style="margin-top:2px">${row('הוכן על בסיס יומן',`#${j.cloned_from_no||''}${j.cloned_from_date?' מתאריך '+fmtD(j.cloned_from_date):''}`)}${row('אימות הפרטים שהועתקו',j.verification_status==='verified'?`אומתו${j.verified_at?' ב-'+new Date(j.verified_at).toLocaleString('he-IL'):''}${j.verified_by?' · '+j.verified_by:''}`:'לא הושלם')}</div>`:''}
 
   <div class="avoid"><h3>פרטי המדביר</h3><div class="kv">${row('שם מלא',j.tech.name)}${row('מספר רישיון',j.tech.license)}${row('טלפון נייד',j.tech.phone)}${row('דוא"ל',j.tech.email)}${row('כתובת',j.tech.address)}${row('סוג רישיון',j.tech.licenseType)}</div></div>
   ${j.hasOperator?`<div class="avoid"><h3>פרטי המפעיל</h3><div class="kv">${row('שם המפעיל',j.operator.name)}${row('טלפון',j.operator.phone)}${row('דוא"ל',j.operator.email)}${row('כתובת',j.operator.address)}</div></div>`:''}
@@ -942,12 +1023,14 @@ function docHTML(j){
   ${j.natureAfter?`<p class="pre"><b>טיב ההדברה שבוצעה:</b> ${esc(j.natureAfter)}</p>`:''}
   <p class="pre">${esc(j.warnAfter)||'—'}</p>
   ${j.needSupplementary||j.supplementary?`<p class="pre" style="margin-top:4px"><b>נדרש טיפול משלים:</b> ${esc(j.supplementary)||'כן'}</p>`:''}
-  ${(j.warranty&&(j.warranty.period||j.warranty.note))?`<p class="pre" style="margin-top:4px"><b>אחריות על הטיפול:</b> ${esc(j.warranty.period)||'—'}${j.warranty.note?' · '+esc(j.warranty.note):''}</p>`:''}</div>
+  ${(j.warranty&&(j.warranty.period||j.warranty.note))?`<p class="pre" style="margin-top:4px"><b>אחריות על הטיפול:</b> ${esc(j.warranty.period)||'—'}${j.warranty.end?` · בתוקף מ-${fmtD(j.warranty.start||j.date)} עד ${fmtD(j.warranty.end)}`:''}${j.warranty.note?' · '+esc(j.warranty.note):''}${j.warranty.cond?'<br><b>תנאי האחריות:</b> '+esc(j.warranty.cond):''}${j.warranty.checkAt?`<br><b>ביקור בקרה עד:</b> ${fmtD(j.warranty.checkAt)}`:''}</p>`:''}</div>
 
   ${(()=>{const cks=Object.entries(j.stationChecks||{}).map(([id,c])=>({id,...c})).filter(c=>c.status).sort((a,b)=>(a.no||0)-(b.no||0));
     if(!cks.length)return '';
     return `<h3>תחנות האכלה וניטור</h3><div class="tblwrap"><table class="tbl"><tr><th>מס׳</th><th>סוג</th><th>מיקום</th><th>מצב</th></tr>
     ${cks.map(c=>`<tr><td>${c.no||''}</td><td>${stTypeOf(c.type).n}</td><td>${esc(c.loc||'')}</td><td>${esc(c.status)}</td></tr>`).join('')}</table></div>`})()}
+  ${(()=>{const sp=(j.spots||[]).filter(x=>x.name);if(!sp.length)return '';
+    return `<h3>מוקדי בדיקה קבועים</h3><p style="margin:2px 0">${sp.map(x=>`${x.checked?'☑':'☐'} ${esc(x.name)}`).join(' &nbsp; ')}</p>`})()}
   ${(()=>{const ph=photosOf(j.id);if(!ph.length)return '';
     return `<h3>תיעוד מצולם</h3>${Object.keys(PHOTO_KINDS).map(k=>{const l=ph.filter(x=>x.kind===k);return l.length?`<p style="margin:4px 0 2px"><b>${PHOTO_KINDS[k]}:</b></p><div class="dph">${l.map(x=>`<figure><img src="${x.src}" alt=""><figcaption>${esc(x.caption)||'—'}</figcaption></figure>`).join('')}</div>`:''}).join('')}`})()}
   <div class="avoid"><h3>מסירת היומן וחתימות</h3>
@@ -1067,6 +1150,7 @@ function vClient(){
      ${done.length?`<button class="btn ghost" data-a="openJ" data-p="${done[0].id}">${ic('book',18)} היומן האחרון</button>`:'<span></span>'}
     </div>
    </div></div>
+   ${regularBox(c)}
    ${(c.places&&c.places.length)?`<div class="sec"><div class="sech"><h3>אתרים ותחנות</h3></div><div class="secb">
     ${c.places.map(p=>{const key=norm(c.name)+'|'+norm(placeText(p));const st=stationsOf(key);
       return `<div class="strow"><div class="mid"><b>${esc(placeText(p))}</b><small>${st.length?st.length+' תחנות ממוספרות':'לא הוגדרו תחנות'}</small></div>
@@ -1245,7 +1329,11 @@ const A={
     t.split('\n').map(x=>x.trim()).filter(Boolean).forEach(x=>{if(!cfg.lib().includes(x)&&!S[cfg.store].includes(x))S[cfg.store].unshift(x)});
     saveLocal();pushTpl();renderLib();toast('נשמר בתבניות שלי')},
   fDelTpl:async d=>{if(!await ask('למחוק את התבנית?',{ok:'מחיקה',danger:true}))return;const cfg=LIBS[A._lk];S[cfg.store]=S[cfg.store].filter(x=>x!==d.t);saveLocal();pushTpl();renderLib()},
-  newForClient:d=>{const c=S.clients[d.p];A.newJ().then(()=>{if(!cur)return;
+  newForClient:async d=>{const c=S.clients[d.p];
+    const open=openDraftForSite(c.name,(c.places||[])[0]||{},null);
+    if(open&&!await ask(`קיימת כבר טיוטה פתוחה (#${open.no}) לאותו לקוח ואתר. ליצור יומן חדש בכל זאת?`,{ok:'יומן חדש',cancel:'המשך בטיוטה',title:'טיוטה פתוחה'})){
+      cur=clone(open);S.journals[cur.id]=cur;showErr=false;go('wizard');return}
+    A.newJ().then(()=>{if(!cur)return;
       cur.client.name=c.name;cur.client.phone=c.phone||'';if(c.role){cur.client.role=c.role;cur.client.roleOther=c.roleOther||''}
       if(c.places&&c.places[0])cur.place=Object.assign(cur.place,clone(c.places[0]));touch();render()})},
   delClient:async d=>{const c=S.clients[d.p];
@@ -1338,6 +1426,706 @@ const A={
     go('home')},
 };
 
+/* =========================================================
+   10. טעינה מיומן אחרון – שכפול חכם, בחירת פרטים ואימות
+   ========================================================= */
+const profileWho=()=>[S.profile.name||'מדביר',S.profile.license&&('רישיון '+S.profile.license)].filter(Boolean).join(' · ');
+const REG=new Set(BUILTIN.map(p=>norm(p.n)));
+const siteKeyOf=(name,place)=>norm(name||'')+'|'+norm(placeText(place||{}));
+
+/* ---- audit trail ---- */
+function audit(j,ev,info){
+  if(!j)return;
+  (j.audit_events=j.audit_events||[]).push({at:Date.now(),by:profileWho(),ev,info:info||''});
+  if(j.audit_events.length>300)j.audit_events=j.audit_events.slice(-300);
+  S.auditEvents=S.auditEvents||[];
+  S.auditEvents.unshift({at:Date.now(),by:profileWho(),jid:j.id,no:j.no,ev,info:info||''});
+  if(S.auditEvents.length>400)S.auditEvents=S.auditEvents.slice(0,400);
+  saveLocalSoon();pushAuditSoon();
+}
+let auditT=null;
+const pushAuditSoon=()=>{clearTimeout(auditT);auditT=setTimeout(pushAudit,2000)};
+async function pushAudit(){if(!DB)return;try{await DB.collection('data/users/me').doc('pest_audit').set({events:clone((S.auditEvents||[]).slice(0,400)),updatedAt:Date.now()})}catch(e){}}
+
+/* ---- previous journals for this client / site ---- */
+function journalsForSite(name,place,exceptId,doneOnly){
+  const key=siteKeyOf(name,place),n=norm(name),bySite=!!(place&&place.kind);
+  return journals().filter(j=>j.id!==exceptId&&(!doneOnly||j.status==='done')&&
+      (bySite?siteKey(j)===key:(n&&norm(j.client.name)===n)))
+    .sort((a,b)=>(b.completedAt||b.updatedAt||0)-(a.completedAt||a.updatedAt||0));
+}
+const lastForSite=(name,place,exceptId)=>journalsForSite(name,place,exceptId,true)[0]||null;
+function findPrev(j){
+  if(!j||!norm(j.client.name))return null;
+  const s=lastForSite(j.client.name,j.place,j.id);
+  if(s)return {j:s,exact:true};
+  const c=lastForClient(j.client.name,j.client.phone,j.id);
+  return c?{j:c,exact:false}:null;
+}
+function openDraftForSite(name,place,exceptId){
+  const key=siteKeyOf(name,place);
+  return journals().find(j=>j.status==='draft'&&j.id!==exceptId&&siteKey(j)===key&&norm(j.client.name))||null;
+}
+
+/* ---- verification engine ----
+   j.verify[key] = {state:'pending'|'ok', at, by, how:'kept'|'changed'}
+   key = kind | kind:itemId                                                    */
+const VK={
+  product     :{step:3,n:'תכשיר ותווית',   bulk:1},
+  batch       :{step:3,n:'מספר אצווה',     bulk:0,ok:'האצווה עדיין בשימוש'},
+  dose        :{step:3,n:'מינון',          bulk:0,ok:'המינון מתאים לטיפול הזה'},
+  finding     :{step:1,n:'ממצאי ניטור',    bulk:0,ok:'הממצא נבדק בטיפול הנוכחי'},
+  prevention  :{step:2,n:'פעולות מניעה',   bulk:1},
+  circumstances:{step:2,n:'נסיבות ההחלטה', bulk:1},
+  warnBefore  :{step:4,n:'אזהרות וסיכונים לפני הטיפול',bulk:0,ok:'האזהרות נמסרו ללקוח'},
+  reentry     :{step:4,n:'זמן כניסה מחדש', bulk:0,ok:'נבדק מול התווית ונמסר ללקוח'},
+  warnAfter   :{step:4,n:'אזהרות בסיום',   bulk:0,ok:'האזהרות נמסרו ללקוח'},
+  warranty    :{step:4,n:'אחריות',         bulk:1}
+};
+const vKind=k=>String(k).split(':')[0];
+const vId=k=>String(k).split(':')[1]||'';
+const vStep=k=>(VK[vKind(k)]||{step:5}).step;
+const vOkLabel=k=>(VK[vKind(k)]||{}).ok||'אישור';
+function vLabel(k,j){
+  j=j||cur;const kind=vKind(k),id=vId(k),base=(VK[kind]||{n:k}).n;
+  if(!j||!id)return base;
+  if(kind==='finding'){const f=(j.findings||[]).find(x=>x.id===id);return base+(f&&f.pest?' – '+f.pest:'')}
+  const a=(j.apps||[]).find(x=>x.id===id);
+  return base+(a&&a.product?' – '+a.product:'');
+}
+/* a field may be approved together with others only when it is not one of the
+   explicit-consent kinds, and – for a product – only when its label was found */
+function vBulkOk(k,j){
+  j=j||cur;const kind=vKind(k);
+  if(!(VK[kind]||{}).bulk)return false;
+  if(kind==='product'){const a=(j.apps||[]).find(x=>x.id===vId(k));return !!(a&&labelCheck(a.product).ok)}
+  return true;
+}
+function vMark(j,key){
+  j.verify=j.verify||{};
+  if(!j.verify[key])j.verify[key]={state:'pending',at:null,by:'',how:''};
+}
+function vOkMark(j,key,how){
+  j.verify=j.verify||{};
+  if(!j.verify[key])return false;
+  if(j.verify[key].state==='ok')return false;
+  j.verify[key]={state:'ok',at:Date.now(),by:profileWho(),how:how||'kept'};
+  audit(j,'verify',vLabel(key,j)+' · '+(how==='changed'?'עודכן בטיפול הנוכחי':'אומת'));
+  vSync(j);return true;
+}
+const vPending=j=>Object.entries((j&&j.verify)||{}).filter(([,v])=>v&&v.state==='pending');
+function vSync(j){
+  const all=Object.entries(j.verify||{});
+  if(!all.length){j.verification_status='none';return}
+  const pend=all.filter(([,v])=>v.state==='pending');
+  j.verification_status=pend.length?'pending':'verified';
+  if(!pend.length){
+    const last=all.map(([,v])=>v).sort((a,b)=>(b.at||0)-(a.at||0))[0];
+    j.verified_at=last?last.at:Date.now();j.verified_by=last?last.by:profileWho();
+  }else{j.verified_at=null;j.verified_by=''}
+}
+/* editing a copied value counts as verifying it – except for the warning
+   fields, which need an explicit "נמסרו ללקוח" confirmation */
+const V_AUTO=['product','batch','dose','finding','prevention','circumstances','warranty'];
+function vKeyForPath(j,path){
+  let m=path.match(/^apps\.(\d+)\.(\w+)$/);
+  if(m){const a=j.apps[+m[1]];if(!a)return null;
+    if(m[2]==='batch')return 'batch:'+a.id;
+    if(m[2]==='dose'||m[2]==='unit'||m[2]==='unitOther')return 'dose:'+a.id;
+    if(['product','active','conc','useConc','rtu'].includes(m[2]))return 'product:'+a.id;
+    return null}
+  m=path.match(/^findings\.(\d+)\./);
+  if(m){const f=j.findings[+m[1]];return f?'finding:'+f.id:null}
+  if(path==='warnBefore.reentry')return 'reentry';
+  if(path.startsWith('warnBefore.'))return 'warnBefore';
+  if(path==='warnAfter'||path==='natureAfter')return 'warnAfter';
+  if(path.startsWith('warranty.'))return 'warranty';
+  if(path==='prevention')return 'prevention';
+  if(path==='circumstances')return 'circumstances';
+  return null;
+}
+function vAuto(path){
+  if(!cur||!cur.verify)return;
+  const k=vKeyForPath(cur,path);
+  if(!k||!cur.verify[k]||cur.verify[k].state!=='pending')return;
+  if(!V_AUTO.includes(vKind(k)))return;
+  vOkMark(cur,k,'changed');
+}
+
+/* ---- product / label check against the bundled registry ---- */
+function labelCheck(name){
+  const n=norm(name);
+  if(!n)return {ok:false,why:'לא הוזן שם תכשיר'};
+  if(REG.has(n))return {ok:true,src:'מאגר התכשירים המובנה',p:prodIdx.get(n)};
+  if(prodIdx.has(n))return {ok:false,manual:true,why:'התכשיר הוזן ידנית ואינו מופיע במאגר הרשום',p:prodIdx.get(n)};
+  return {ok:false,why:'התכשיר לא נמצא במאגר התכשירים הרשומים'};
+}
+/* does the registry still list this pest for the product?
+   the registry names pests in the plural ("תיקנים") while the exterminator
+   writes a species ("תיקן גרמני"), so compare word stems, not whole strings */
+const HEB_FIN={'\u05da':'\u05db','\u05dd':'\u05de','\u05df':'\u05e0','\u05e3':'\u05e4','\u05e5':'\u05e6'};
+const stem=w=>norm(w).replace(/[\u05da\u05dd\u05df\u05e3\u05e5]/g,c=>HEB_FIN[c]).replace(/(יות|ים|ות|ת|י)$/,'');
+const pestWords=s=>String(s||'').split(/[,\s/]+/).map(stem).filter(w=>w.length>=3);
+function labelFit(a){
+  const c=labelCheck(a.product);
+  if(!c.ok||!c.p||!a.pest)return null;
+  const reg=pestWords(c.p.p),mine=pestWords(a.pest);
+  if(!reg.length||!mine.length)return null;
+  const hit=mine.some(m=>reg.some(r=>r.startsWith(m.slice(0,3))||m.startsWith(r.slice(0,3))));
+  return hit?null:`הרישום של ${a.product} מתייחס ל: ${c.p.p}. יש לוודא מול התווית שהתכשיר מתאים ל${a.pest}, או לבחור תכשיר אחר.`;
+}
+
+/* ---- warranty templates ---- */
+const WAR_KINDS=[
+  {k:'none' ,n:'ללא אחריות'},
+  {k:'days' ,n:'אחריות לימים'   ,unit:'ימים'},
+  {k:'weeks',n:'אחריות לשבועות' ,unit:'שבועות'},
+  {k:'months',n:'אחריות לחודשים',unit:'חודשים'},
+  {k:'until',n:'אחריות עד תאריך'},
+  {k:'visit',n:'טיפול משלים אחד'},
+  {k:'cond' ,n:'מותנית בביצוע פעולות מניעה',unit:'חודשים'},
+  {k:'free' ,n:'נוסח מותאם אישית'}
+];
+const warKind=k=>WAR_KINDS.find(x=>x.k===k)||WAR_KINDS[0];
+const WAR_TPL_SEED=[
+ {id:'w-none',name:'ללא אחריות',kind:'none',amount:0,text:'לא ניתנה אחריות על הטיפול.',cond:'',pests:[],clients:[],check:false,checkDays:0},
+ {id:'w-30d' ,name:'אחריות 30 יום',kind:'days',amount:30,text:'אחריות ל-30 יום ממועד הטיפול.',cond:'האחריות בתוקף בכפוף לביצוע פעולות המניעה שהומלצו.',pests:[],clients:[],check:false,checkDays:0},
+ {id:'w-3m'  ,name:'אחריות 3 חודשים',kind:'months',amount:3,text:'אחריות ל-3 חודשים ממועד הטיפול.',cond:'האחריות אינה חלה על נגיעות חדשה ממקור חיצוני.',pests:[],clients:[],check:true,checkDays:30},
+ {id:'w-6m'  ,name:'אחריות 6 חודשים',kind:'months',amount:6,text:'אחריות ל-6 חודשים ממועד הטיפול.',cond:'האחריות מותנית בשמירה על תנאי תברואה תקינים.',pests:[],clients:[],check:true,checkDays:60},
+ {id:'w-12m' ,name:'אחריות 12 חודשים',kind:'months',amount:12,text:'אחריות ל-12 חודשים ממועד הטיפול.',cond:'האחריות מותנית בשמירה על תנאי תברואה תקינים ובביצוע פעולות המניעה שהומלצו.',pests:[],clients:[],check:true,checkDays:90},
+ {id:'w-visit',name:'טיפול משלים אחד',kind:'visit',amount:0,text:'ניתן טיפול משלים אחד ללא תשלום במסגרת האחריות.',cond:'',pests:[],clients:[],check:true,checkDays:14},
+ {id:'w-cond',name:'מותנית בפעולות מניעה',kind:'cond',amount:3,text:'אחריות ל-3 חודשים, המותנית בביצוע פעולות המניעה שפורטו ביומן.',cond:'לא בוצעו פעולות המניעה – האחריות בטלה.',pests:[],clients:[],check:true,checkDays:30}
+];
+if(!S.warTpls||!S.warTpls.length)S.warTpls=clone(WAR_TPL_SEED);
+function warEnd(kind,amount,start,until){
+  if(['none','visit','free'].includes(kind))return '';
+  if(kind==='until')return until||'';
+  const d=new Date(String(start||'')+'T00:00:00');
+  if(isNaN(d.getTime()))return '';
+  const n=+amount||0;if(!n)return '';
+  if(kind==='days')d.setDate(d.getDate()+n);
+  else if(kind==='weeks')d.setDate(d.getDate()+n*7);
+  else d.setMonth(d.getMonth()+n);
+  d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
+  return d.toISOString().slice(0,10);
+}
+/* the legacy quick chips keep working: turn their text into a kind + amount */
+function parsePeriod(s){
+  s=String(s||'');
+  if(!s||s==='ללא אחריות')return {kind:'none',amount:0};
+  if(s==='לפי הסכם')return {kind:'free',amount:0};
+  const m=s.match(/(\d+)/);const n=m?+m[1]:0;
+  if(/יום|ימים/.test(s))return {kind:'days',amount:n};
+  if(/שבוע/.test(s))return {kind:'weeks',amount:n};
+  if(/חודש/.test(s))return {kind:'months',amount:n};
+  return {kind:'free',amount:0};
+}
+const periodText=w=>{
+  if(!w)return '';
+  const k=warKind(w.kind);
+  if(w.kind==='until')return w.until?'עד '+fmtD(w.until):k.n;
+  return k.unit?`${w.amount} ${k.unit}`:k.n;
+};
+/* recomputed from the CURRENT treatment date – a copied end date is never kept */
+function applyWarranty(j){
+  const w=j.warranty=j.warranty||{period:'',note:''};
+  if(!w.tplId){const p=parsePeriod(w.period);w.kind=p.kind;w.amount=p.amount}
+  if(!w.kind)w.kind='none';
+  if(!w.period)w.period=periodText(w);
+  w.start=j.date||today();
+  w.end=warEnd(w.kind,w.amount,w.start,w.until);
+  w.checkAt=w.check?warEnd('days',w.checkDays||0,w.start):'';
+  return w;
+}
+function applyWarTpl(j,t){
+  const w=j.warranty=j.warranty||{};
+  w.tplId=t.id;w.tplName=t.name;w.kind=t.kind;w.amount=t.amount;w.until=t.until||'';
+  w.note=t.text||'';w.cond=t.cond||'';w.check=!!t.check;w.checkDays=t.checkDays||0;
+  w.period=periodText(w);
+  applyWarranty(j);
+  audit(j,'warranty','תבנית אחריות: '+t.name+(w.end?' · בתוקף עד '+fmtD(w.end):''));
+}
+
+/* ---- what may be copied, and what may never be ----
+   never copied as final data: journal number, date, time, GPS of the previous
+   treatment, signatures, photos, handover, status, completion time, and the
+   result of the previous treatment.                                          */
+const COPY_SECTIONS=[
+ {g:'פרטי לקוח ומקום',items:[
+   {k:'client'    ,n:'פרטי הלקוח'            ,def:1},
+   {k:'contact'   ,n:'איש הקשר ותפקידו'      ,def:1},
+   {k:'address'   ,n:'הכתובת'                ,def:1},
+   {k:'placeKind' ,n:'סוג המקום'             ,def:1},
+   {k:'siteNotes' ,n:'הערות קבועות והוראות הגעה',def:1}]},
+ {g:'ניטור וטיפול',items:[
+   {k:'pests'     ,n:'מזיקים'                ,def:1,v:'ממצא לכל מזיק יידרש אימות'},
+   {k:'spots'     ,n:'מוקדי בדיקה קבועים'    ,def:1},
+   {k:'findings'  ,n:'ממצאי ניטור קודמים'    ,def:0,v:'דורש אימות'},
+   {k:'prevention',n:'פעולות מניעה'          ,def:0,v:'דורש אימות'},
+   {k:'circumstances',n:'נסיבות לביצוע הדברה',def:0,v:'דורש אימות'},
+   {k:'stations'  ,n:'תחנות האכלה'           ,def:1}]},
+ {g:'תכשירים',items:[
+   {k:'product'   ,n:'שם התכשיר'             ,def:1,v:'דורש אימות מול התווית'},
+   {k:'active'    ,n:'חומר פעיל וריכוז'      ,def:1},
+   {k:'batch'     ,n:'מספר אצווה'            ,def:0,v:'דורש אימות נפרד'},
+   {k:'dose'      ,n:'מינון ויחידה'          ,def:0,v:'דורש אימות נפרד'},
+   {k:'useConc'   ,n:'ריכוז במוכן לשימוש'    ,def:1},
+   {k:'method'    ,n:'שיטת יישום'            ,def:1}]},
+ {g:'אזהרות',items:[
+   {k:'riskHuman' ,n:'סיכונים לאדם'          ,def:1,v:'דורש אישור מסירה'},
+   {k:'riskAnimals',n:'סיכונים לבעלי חיים'   ,def:1,v:'דורש אישור מסירה'},
+   {k:'reentry'   ,n:'זמן כניסה מחדש'        ,def:1,v:'דורש בדיקה מול התווית'},
+   {k:'warnBefore',n:'הוראות לפני הטיפול'    ,def:1,v:'דורש אישור מסירה'},
+   {k:'warnAfter' ,n:'הוראות בסיום'          ,def:1,v:'דורש אישור מסירה'}]},
+ {g:'אחריות',items:[
+   {k:'warPeriod' ,n:'תקופת אחריות'          ,def:1,v:'תאריך הסיום מחושב מחדש'},
+   {k:'warText'   ,n:'נוסח אחריות'           ,def:1},
+   {k:'warCond'   ,n:'תנאי אחריות'           ,def:1},
+   {k:'supplementary',n:'טיפול משלים'        ,def:0}]}
+];
+const ALL_SECTIONS=()=>COPY_SECTIONS.flatMap(g=>g.items.map(i=>i.k));
+const defaultSections=()=>COPY_SECTIONS.flatMap(g=>g.items.filter(i=>i.def).map(i=>i.k));
+const sectionName=k=>{for(const g of COPY_SECTIONS){const i=g.items.find(x=>x.k===k);if(i)return i.n}return k};
+
+function applyClone(j,src,keys){
+  const K=new Set(keys||[]);
+  /* client + place – constant data, no verification needed */
+  if(K.has('client')){j.client.name=src.client.name||'';j.client.phone=src.client.phone||''}
+  if(K.has('contact')){j.client.role=src.client.role||'';j.client.roleOther=src.client.roleOther||''}
+  if(K.has('address')||K.has('placeKind')){
+    const p=clone(src.place||{});
+    if(!K.has('placeKind'))p.kind=j.place.kind;
+    if(!K.has('address')){['city','street','houseNo','aptNo','houseApt','authority','siteDesc','coords','neighborhood'].forEach(k=>delete p[k])}
+    j.place=Object.assign(j.place,p);
+  }
+  if(K.has('siteNotes')){j.siteNotes=src.siteNotes||'';j.access=src.access||''}
+  j.geo=null; /* the previous treatment's GPS is never carried over */
+
+  /* fixed inspection spots – names only, never the previous results */
+  if(K.has('spots'))j.spots=(src.spots||[]).map(s=>({id:uid(),name:s.name,checked:false,note:''}));
+
+  /* stations belong to the site; copy the definitions when the site key moved */
+  if(K.has('stations')){
+    const from=siteKey(src),to=siteKey(j);
+    if(from&&to&&from!==to&&!stationsOf(to).length)
+      stationsOf(from).forEach(st=>addStation(to,st.label,st.type,st.loc));
+  }
+  j.stationChecks={}; /* previous station results are never carried over */
+
+  /* findings */
+  if(K.has('pests')){
+    const list=(src.findings||[]).filter(f=>f.pest);
+    if(list.length){
+      j.findings=list.map(f=>{const n=newFinding();
+        n.pest=f.pest;n.subtype=f.subtype||'';n.location=f.location||'';
+        if(K.has('findings')){n.identification=f.identification||'';n.stage=f.stage||'';n.signs=f.signs||'';n.level=f.level||''}
+        return n});
+      j.findings.forEach(f=>vMark(j,'finding:'+f.id));
+    }
+  }
+  if(K.has('prevention')&&src.prevention){j.prevention=src.prevention;vMark(j,'prevention')}
+  if(K.has('circumstances')&&src.circumstances){j.circumstances=src.circumstances;vMark(j,'circumstances')}
+
+  /* products – always a suggestion, never an approved entry */
+  if(K.has('product')){
+    const list=(src.apps||[]).filter(a=>a.product);
+    if(list.length){
+      j.apps=list.map(a=>{const n=newApp();
+        n.product=a.product;
+        if(K.has('pests'))n.pest=a.pest||'';
+        if(K.has('active')){n.active=a.active||'';n.conc=a.conc||''}
+        if(K.has('batch'))n.batch=a.batch||'';
+        if(K.has('dose')){n.dose=a.dose||'';n.unit=a.unit||'';n.unitOther=a.unitOther||''}
+        if(K.has('useConc')){n.rtu=!!a.rtu;n.useConc=a.rtu?'':(a.useConc||'')}
+        if(K.has('method')){n.method=a.method||'';n.methodOther=a.methodOther||''}
+        return n});
+      j.apps.forEach(a=>{
+        vMark(j,'product:'+a.id);
+        if(a.batch)vMark(j,'batch:'+a.id);
+        if(a.dose)vMark(j,'dose:'+a.id);
+      });
+    }
+  }
+
+  /* warnings – each one keeps the products it came from */
+  const wb=src.warnBefore||{};
+  let wTouched=false;
+  if(K.has('riskHuman')&&wb.riskHuman){j.warnBefore.riskHuman=wb.riskHuman;wTouched=true}
+  if(K.has('riskAnimals')&&wb.riskAnimals){j.warnBefore.riskAnimals=wb.riskAnimals;wTouched=true}
+  if(K.has('warnBefore')){
+    if(wb.nature)j.warnBefore.nature=wb.nature;
+    if(wb.other)j.warnBefore.other=wb.other;
+    if(wb.product)j.warnBefore.product=wb.product;
+    if(wb.active)j.warnBefore.active=wb.active;
+    if(wb.nature||wb.other)wTouched=true;
+  }
+  if(wTouched){
+    j.warnSrcProducts=(src.apps||[]).map(a=>a.product).filter(Boolean);
+    vMark(j,'warnBefore');
+  }
+  if(K.has('reentry')&&wb.reentry){j.warnBefore.reentry=wb.reentry;vMark(j,'reentry')}
+  if(K.has('warnAfter')&&(src.warnAfter||src.natureAfter)){
+    j.warnAfter=src.warnAfter||'';j.natureAfter=src.natureAfter||'';
+    vMark(j,'warnAfter');
+  }
+  if(K.has('supplementary')){j.needSupplementary=!!src.needSupplementary;j.supplementary=src.supplementary||''}
+
+  /* warranty – the period is reused, the end date is always recomputed */
+  const sw=src.warranty||{};
+  if(K.has('warPeriod')||K.has('warText')||K.has('warCond')){
+    const w=j.warranty=j.warranty||{};
+    if(K.has('warPeriod')){
+      w.kind=sw.kind||parsePeriod(sw.period).kind;
+      w.amount=sw.amount!=null?sw.amount:parsePeriod(sw.period).amount;
+      w.until='';                /* an absolute end date is never copied */
+      w.tplId=sw.tplId||'';w.tplName=sw.tplName||'';
+      w.check=!!sw.check;w.checkDays=sw.checkDays||0;
+      if(w.kind==='until'){w.kind='months';w.amount=w.amount||3}
+    }
+    if(K.has('warText'))w.note=sw.note||'';
+    if(K.has('warCond'))w.cond=sw.cond||'';
+    w.period=periodText(w);
+    applyWarranty(j);
+    if(w.kind&&w.kind!=='none')vMark(j,'warranty');
+  }
+
+  j.source_pest_log_id=src.id;
+  j.cloned_from_no=src.no;j.cloned_from_date=src.date;
+  j.cloned_at=Date.now();j.cloned_by=profileWho();
+  j.copied_sections=[...K];
+  j.clone_stale=!DB||!!(S.pending&&S.pending[src.id]);
+  vSync(j);
+  audit(j,'clone',`שוכפל מיומן #${src.no} (${fmtD(src.date)}) · ${K.size} קבוצות מידע · ${vPending(j).length} פרטים לאימות`);
+  return j;
+}
+function clearClone(j){
+  j.verify={};j.source_pest_log_id=null;j.cloned_at=null;j.cloned_by='';
+  j.copied_sections=[];j.cloned_from_no=null;j.cloned_from_date=null;j.clone_stale=false;
+  j.verification_status='none';j.verified_at=null;j.verified_by='';
+}
+
+/* ---- UI: the previous-journal card ---- */
+function prevSummary(p){
+  const ap=(p.apps||[]).filter(a=>a.product);
+  const rows=[
+    ['מזיקים',(p.findings||[]).map(f=>f.pest).filter(Boolean).join(', ')],
+    ['תכשירים',ap.map(a=>a.product).join(', ')],
+    ['מספרי אצווה',ap.map(a=>a.batch).filter(Boolean).join(', ')],
+    ['שיטות יישום',[...new Set(ap.map(a=>a.method==='אחר'?a.methodOther:a.method).filter(Boolean))].join(', ')],
+    ['תאריך הטיפול',fmtD(p.date)+' '+(p.time||'')],
+    ['טיפול משלים',p.needSupplementary?(p.supplementary||'נדרש'):'לא נדרש'],
+    ['אחריות',[(p.warranty||{}).period,(p.warranty||{}).end&&('עד '+fmtD(p.warranty.end))].filter(Boolean).join(' · ')]
+  ];
+  return rows.map(([k,v])=>`<div><b>${k}:</b><span>${esc(v)||'—'}</span></div>`).join('');
+}
+function prevCard(){
+  const f=findPrev(cur);
+  if(!f)return '';
+  const p=f.j,c=S.clients[findClientId(cur.client.name,cur.client.phone)]||{};
+  const reg=c.regular&&c.regular.on;
+  const st=stationsOf(siteKey(p)).length;
+  const flags=[
+    p.needSupplementary&&'נדרש טיפול משלים מהביקור הקודם',
+    st&&`${st} תחנות האכלה וניטור לבדיקה`,
+    (p.spots||[]).length&&`${p.spots.length} מוקדי בדיקה קבועים`,
+    (p.warranty||{}).end&&`האחריות הקודמת בתוקף עד ${fmtD(p.warranty.end)}`
+  ].filter(Boolean);
+  return `<div class="prevcard">
+   <div class="ph"><b>נמצא יומן קודם מס׳ ${p.no} מתאריך ${fmtD(p.date)}</b>
+     ${reg?'<span class="tag gold">לקוח אחזקה קבוע</span>':''}</div>
+   ${f.exact?'':'<p class="hint" style="margin:4px 0 0">היומן הזה הוא מאתר אחר של אותו לקוח. בדקו שהפרטים מתאימים.</p>'}
+   <div class="pkv">${prevSummary(p)}</div>
+   ${flags.length?`<div class="pflags"><b>דגשים לביקור הנוכחי</b><ul>${flags.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:''}
+   <div class="stack" style="margin-top:12px">
+    <button class="btn gold" data-a="smartClone" data-p="${p.id}">${ic('copy',18)} שכפול חכם מיומן אחרון</button>
+    <button class="btn" data-a="pickSections" data-p="${p.id}">${ic('edit',18)} בחירת פרטים להעתקה</button>
+    <button class="btn ghost" data-a="blankStart">המשך ביומן ריק</button>
+    <button class="link" data-a="pickPrev">בחירת יומן קודם אחר</button>
+   </div>
+   ${reg?'<p class="hint">לקוח אחזקה קבוע – מומלץ שכפול חכם, ואז בדיקה ואישור של האצווה, המינון והאזהרות.</p>':''}
+  </div>`;
+}
+function cloneBanner(){
+  if(!cur||!cur.source_pest_log_id)return '';
+  const pend=vPending(cur).length,src=S.journals[cur.source_pest_log_id];
+  return `<div class="clonebar ${pend?'':'done'}">
+    <span>${ic(pend?'edit':'check',16)} שוכפל מיומן #${cur.cloned_from_no||(src&&src.no)||'?'} · ${pend?`${pend} פרטים ממתינים לאימות`:'כל הפרטים אומתו'}</span>
+    <button class="link" data-a="compare">השוואה</button></div>
+   ${cur.clone_stale?'<div class="clonestale">הנתונים נטענו מעותק שנשמר במכשיר וייתכן שאינם מעודכנים. בדקו את התכשירים והאצוות מול המקור.</div>':''}`;
+}
+
+/* ---- UI: field-level verification marker ---- */
+function vBox(key,hint){
+  if(!cur||!cur.verify||!cur.verify[key])return '';
+  const v=cur.verify[key];
+  if(v.state==='ok')return `<div class="vok">${ic('check',14)} ${esc(vLabel(key))} — ${v.how==='changed'?'עודכן בטיפול הנוכחי':'אומת'} · ${new Date(v.at).toLocaleString('he-IL')}${v.by?' · '+esc(v.by):''}</div>`;
+  return `<div class="vwarn" data-fw="verify:${key}">
+    <b>נטען מהיומן הקודם — נדרש אימות</b>
+    ${hint?`<p>${esc(hint)}</p>`:''}
+    <button class="btn sm gold" data-a="vOk" data-key="${key}">${esc(vOkLabel(key))}</button></div>`;
+}
+const vPend=key=>(cur&&cur.verify&&cur.verify[key]&&cur.verify[key].state==='pending')?' vpend':'';
+
+function verifyPanel(){
+  if(!cur||!cur.verify)return '';
+  const all=Object.entries(cur.verify);
+  if(!all.length)return '';
+  const pend=all.filter(([,v])=>v.state==='pending');
+  const pct=Math.round((all.length-pend.length)/all.length*100);
+  const bulk=pend.filter(([k])=>vBulkOk(k));
+  return `<div class="sec" id="verify"><div class="sech"><h3>אימות פרטים שהועתקו</h3><span class="tag ${pend.length?'draft':''}">${all.length-pend.length}/${all.length}</span></div><div class="secb">
+   <div class="vbar" aria-hidden="true"><i style="width:${pct}%"></i></div>
+   <p class="hint">${pend.length?`נותרו ${pend.length} פרטים לאימות. לא ניתן לסיים את היומן עד שכולם יאומתו.`:'כל הפרטים שהועתקו אומתו בטיפול הנוכחי.'}</p>
+   ${pend.length?`<ul class="audit">${pend.map(([k])=>`<li><div class="ah"><span class="ok no" aria-hidden="true">!</span>${esc(vLabel(k))}</div><ul><li><button data-a="jump" data-path="verify:${k}" data-i="${vStep(k)}">מעבר לשדה</button></li></ul></li>`).join('')}</ul>`:''}
+   ${bulk.length?`<button class="btn w sm gold" data-a="vOkBulk">אשר את כל הפרטים המוצגים (${bulk.length})</button>
+     <p class="hint">אצווה, מינון, ממצאים ואזהרות דורשים אישור נפרד ואינם נכללים באישור המרוכז.</p>`:''}
+   <div class="two" style="margin-top:10px"><button class="btn ghost sm" data-a="compare">${ic('hist',16)} השוואה ליומן הקודם</button><button class="btn ghost sm" data-a="clearClone">ביטול הטעינה</button></div>
+  </div></div>`;
+}
+
+/* ---- UI: fixed inspection spots ---- */
+function spotsBox(){
+  const list=cur.spots||[];
+  return `<div class="sec"><div class="sech"><h3>מוקדי בדיקה קבועים</h3><span class="tag ${list.length&&list.some(s=>!s.checked)?'draft':''}">${list.filter(s=>s.checked).length}/${list.length}</span></div><div class="secb">
+   ${list.length?list.map((s,i)=>`<label class="check"><input type="checkbox" data-spot="${s.id}" ${s.checked?'checked':''}><span>${esc(s.name)}</span><button class="del" data-a="rmSpot" data-p="${s.id}" aria-label="הסרה">${ic('trash',16)}</button></label>`).join('')
+     :'<p class="hint" style="margin-top:10px">אין מוקדים קבועים לאתר הזה.</p>'}
+   <div style="display:flex;gap:8px;margin-top:10px"><input class="inp" id="spotNew" placeholder="מוקד לבדיקה (מטבח, מחסן, חדר אשפה)" style="flex:1"><button class="btn sm" data-a="addSpot">${ic('plus',16)} הוספה</button></div>
+  </div></div>`;
+}
+
+/* ---- UI: "בחירת פרטים להעתקה" ---- */
+function sectionSheet(){
+  const p=S.journals[A._clSrc];if(!p)return;
+  const sel=A._clSel;
+  sheet(`<h3>בחירת פרטים להעתקה</h3>
+   <p class="hint" style="margin:0">מיומן #${p.no} · ${fmtD(p.date)} · ${esc(p.client.name)}</p>
+   <div style="display:flex;gap:8px;margin:10px 0"><button class="btn sm ghost" style="flex:1" data-a="secAll">בחר הכול</button><button class="btn sm ghost" style="flex:1" data-a="secNone">נקה בחירה</button><button class="btn sm ghost" style="flex:1" data-a="secDef">ברירת מחדל</button></div>
+   <div style="max-height:48vh;overflow:auto">
+   ${COPY_SECTIONS.map(g=>`<p class="achead" style="border-radius:8px">${g.g}</p>
+     ${g.items.map(i=>`<label class="check" style="padding:8px 2px"><input type="checkbox" data-sec="${i.k}" ${sel.has(i.k)?'checked':''}>
+       <span>${esc(i.n)}${i.v?`<br><small class="opt">${esc(i.v)}</small>`:''}</span></label>`).join('')}`).join('')}
+   </div>
+   <div class="note">תאריך, שעה, מספר יומן, נ"צ, חתימות, תמונות, אישור המסירה ותוצאות הביקור הקודם לעולם אינם מועתקים.</div>
+   <div class="stack" style="margin-top:12px">
+    <button class="btn gold" data-a="secLoad">טען את הפרטים שנבחרו (${sel.size})</button>
+    <button class="btn ghost" data-a="closeSheet">ביטול</button>
+   </div>`);
+}
+
+/* ---- UI: "בחירת יומן קודם" ---- */
+function prevListSheet(){
+  const list=journalsForSite(cur.client.name,cur.place,cur.id,false)
+    .filter(j=>j.status==='done').slice(0,25);
+  const drafts=journalsForSite(cur.client.name,cur.place,cur.id,false).filter(j=>j.status==='draft').length;
+  sheet(`<h3>בחירת יומן קודם</h3>
+   <p class="hint" style="margin:0">ברירת המחדל היא היומן האחרון שהושלם. טיוטות אינן ניתנות לבחירה${drafts?` (${drafts} טיוטות הוסתרו)`:''}.</p>
+   <div style="max-height:52vh;overflow:auto;margin-top:10px">
+   ${list.map((j,i)=>{const ap=(j.apps||[]).filter(a=>a.product);
+     return `<button class="pick" data-a="prevPick" data-p="${j.id}"><div class="main">
+      <b>#${j.no} · ${fmtD(j.date)}${i===0?' · האחרון':''}</b>
+      <small>${esc((j.findings||[]).map(f=>f.pest).filter(Boolean).join(', ')||'ללא מזיקים')} · ${esc(j.opKind||'')}</small>
+      <small>${esc(ap.map(a=>a.product).join(', ')||'ללא תכשירים')}${ap.some(a=>a.batch)?' · אצוות: '+esc(ap.map(a=>a.batch).filter(Boolean).join(', ')):''}</small>
+      <small>מדביר: ${esc(j.tech.name||'—')} · הושלם${(j.warranty||{}).period?' · אחריות '+esc(j.warranty.period):''}</small>
+     </div><span class="plusb" aria-hidden="true">${ic('copy',18)}</span></button>`}).join('')
+    ||'<p class="hint">אין יומנים קודמים שהושלמו לאתר הזה.</p>'}
+   </div>
+   <button class="btn ghost w" style="margin-top:12px" data-a="closeSheet">סגירה</button>`);
+}
+
+/* ---- UI: comparison with the source journal ---- */
+const CMP=[
+ ['מזיקים'            ,j=>(j.findings||[]).map(f=>f.pest).filter(Boolean).join(', '),1],
+ ['רמת הנגיעות'       ,j=>(j.findings||[]).map(f=>f.level).filter(Boolean).join(', '),1],
+ ['ממצאי ניטור'       ,j=>(j.findings||[]).map(f=>f.signs).filter(Boolean).join(' | '),0],
+ ['תכשירים'           ,j=>(j.apps||[]).map(a=>a.product).filter(Boolean).join(', '),1],
+ ['מספרי אצווה'       ,j=>(j.apps||[]).map(a=>a.batch).filter(Boolean).join(', '),1],
+ ['מינונים'           ,j=>(j.apps||[]).map(a=>[a.dose,a.unit==='אחר'?a.unitOther:a.unit].filter(Boolean).join(' ')).filter(Boolean).join(', '),1],
+ ['שיטות יישום'       ,j=>(j.apps||[]).map(a=>a.method==='אחר'?a.methodOther:a.method).filter(Boolean).join(', '),0],
+ ['זמן כניסה מחדש'    ,j=>(j.warnBefore||{}).reentry,1],
+ ['סיכונים לאדם'      ,j=>(j.warnBefore||{}).riskHuman,1],
+ ['סיכונים לבעלי חיים',j=>(j.warnBefore||{}).riskAnimals,1],
+ ['אזהרות בסיום'      ,j=>j.warnAfter,1],
+ ['טיפול משלים'       ,j=>j.needSupplementary?(j.supplementary||'נדרש'):'לא נדרש',0],
+ ['אחריות'            ,j=>[(j.warranty||{}).period,(j.warranty||{}).end&&('עד '+fmtD(j.warranty.end))].filter(Boolean).join(' · '),1],
+ ['פעולות מניעה'      ,j=>j.prevention,0],
+ ['נסיבות ההחלטה'     ,j=>j.circumstances,0]
+];
+function compareSheet(){
+  const src=S.journals[cur.source_pest_log_id];
+  if(!src)return info('היומן שממנו הועתקו הפרטים אינו זמין במכשיר.','השוואה');
+  const rows=CMP.map(([n,f,hot])=>{
+    const a=String(f(src)||'').trim(),b=String(f(cur)||'').trim();
+    let state='same';
+    if(a&&!b)state='removed';else if(!a&&b)state='new';else if(a!==b)state='changed';
+    return {n,a,b,state,hot};
+  });
+  const ch=rows.filter(r=>r.state!=='same').length;
+  const pend=vPending(cur).length;
+  sheet(`<h3>השוואה ליומן #${src.no}</h3>
+   <p class="hint" style="margin:0">${fmtD(src.date)} · ${ch} שדות שונים${pend?` · ${pend} פרטים עוד לא אומתו`:' · כל הפרטים אומתו'}</p>
+   <div style="max-height:56vh;overflow:auto;margin-top:10px"><table class="cmp">
+    <tr><th>שדה</th><th>יומן #${src.no}</th><th>היומן הנוכחי</th></tr>
+    ${rows.map(r=>`<tr class="${r.state}${r.hot&&r.state!=='same'?' hot':''}">
+      <td>${esc(r.n)}${r.hot&&r.state!=='same'?' ★':''}</td>
+      <td>${esc(r.a)||'—'}</td>
+      <td>${esc(r.b)||'—'}${r.state==='changed'?'<br><small class="opt">שונה</small>':r.state==='new'?'<br><small class="opt">חדש</small>':r.state==='removed'?'<br><small class="opt">הוסר</small>':''}</td></tr>`).join('')}
+   </table></div>
+   ${pend?`<div class="note">${pend} פרטים עדיין מסומנים "נדרש אימות" ואינם נחשבים כאילו תועדו בטיפול הנוכחי.</div>`:''}
+   <button class="btn ghost w" style="margin-top:12px" data-a="closeSheet">סגירה</button>`);
+}
+
+/* ---- UI: warranty templates ---- */
+function warTplSheet(){
+  const list=S.warTpls||[],e=A._wtE||null;
+  sheet(`<h3>תבניות אחריות</h3>
+   <p class="hint" style="margin:0">תאריך סיום האחריות מחושב תמיד ממועד הטיפול הנוכחי (${fmtD(cur.date)}).</p>
+   <div style="max-height:34vh;overflow:auto;margin-top:10px">
+   ${list.map(t=>`<div class="strow"><div class="mid"><b>${esc(t.name)}</b>
+      <small>${esc(periodText(t))}${t.check?` · ביקורת בקרה אחרי ${t.checkDays} ימים`:''}${(t.pests||[]).length?' · '+esc(t.pests.join(', ')):''}</small></div>
+      <button class="btn sm" data-a="warTplPick" data-p="${t.id}">בחירה</button>
+      ${String(t.id).startsWith('w-')?'':`<button class="del" data-a="warTplDel" data-p="${t.id}" aria-label="מחיקה">${ic('trash',18)}</button>`}</div>`).join('')}
+   </div>
+   <details class="sec" style="margin-top:12px" ${e?'open':''}><summary class="sech"><h3>שמירת תבנית חדשה</h3><span class="hint" style="margin:0">▾</span></summary><div class="secb">
+    <label class="field"><span>שם התבנית</span><input class="inp" id="wtName" value="${esc((e&&e.name)||'')}" placeholder="אחריות מסעדות 6 חודשים"></label>
+    <div class="field"><span class="flabel">סוג האחריות</span><div class="chips">${WAR_KINDS.map(k=>`<button class="chip ${(A._wtKind||'months')===k.k?'on':''}" data-a="warTplKind" data-k="${k.k}">${k.n}</button>`).join('')}</div></div>
+    ${warKind(A._wtKind||'months').unit?`<label class="field"><span>מספר ${warKind(A._wtKind||'months').unit}</span><input class="inp" id="wtAmt" type="number" inputmode="numeric" min="1" value="${A._wtAmt||3}"></label>`:''}
+    ${(A._wtKind==='until')?`<label class="field"><span>בתוקף עד תאריך</span><input class="inp" id="wtUntil" type="date" value="${esc(A._wtUntil||'')}"></label>`:''}
+    <label class="field"><span>נוסח האחריות</span><textarea class="inp" id="wtText" placeholder="הנוסח שיופיע ביומן">${esc(cur.warranty.note||'')}</textarea></label>
+    <label class="field"><span>תנאים והחרגות</span><textarea class="inp" id="wtCond" placeholder="מה מבטל את האחריות">${esc(cur.warranty.cond||'')}</textarea></label>
+    <div class="field"><span class="flabel">מזיקים רלוונטיים <span class="opt">(לא חובה)</span></span><div class="chips">${PEST_CHIPS.map(p=>`<button class="chip ${(A._wtPests||[]).includes(p)?'on':''}" data-a="warTplPest" data-val="${esc(p)}">${p}</button>`).join('')}</div></div>
+    <div class="field"><span class="flabel">סוגי לקוחות <span class="opt">(לא חובה)</span></span><div class="chips">${ROLES.map(r=>`<button class="chip ${(A._wtClients||[]).includes(r)?'on':''}" data-a="warTplClient" data-val="${esc(r)}">${r}</button>`).join('')}</div></div>
+    <div class="toggle"><span>נדרש ביקור בקרה</span><button type="button" class="sw" role="switch" aria-checked="${!!A._wtCheck}" data-a="warTplCheck"></button></div>
+    ${A._wtCheck?`<label class="field"><span>ביקור בקרה בתוך כמה ימים</span><input class="inp" id="wtDays" type="number" inputmode="numeric" min="1" value="${A._wtDays||30}"></label>`:''}
+    <button class="btn gold w" data-a="warTplSave">שמירת התבנית</button>
+   </div></details>
+   <button class="btn ghost w" style="margin-top:10px" data-a="closeSheet">סגירה</button>`);
+}
+function warrantyBox(){
+  const w=applyWarranty(cur);
+  return `<div class="field"><span class="flabel" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span>תבנית אחריות</span>
+     <button type="button" class="link" data-a="warTpl">ניהול תבניות</button></span>
+    <div class="chips">${(S.warTpls||[]).slice(0,8).map(t=>`<button type="button" class="chip ${w.tplId===t.id?'on':''}" data-a="warTplPick" data-p="${t.id}">${esc(t.name)}</button>`).join('')}</div></div>
+   ${w.kind&&w.kind!=='none'?`<div class="note">${esc(periodText(w))}${w.end?` · בתוקף עד ${fmtD(w.end)}`:''}${w.checkAt?` · ביקור בקרה עד ${fmtD(w.checkAt)}`:''}
+     <br><small class="opt">מחושב ממועד הטיפול הנוכחי (${fmtD(cur.date)}). תאריך הסיום של היומן הקודם אינו מועתק.</small></div>`:''}
+   ${w.cond?`<label class="field"><span>תנאי האחריות</span><textarea data-f="warranty.cond">${esc(w.cond)}</textarea></label>`:''}`;
+}
+
+/* ---- UI: regular maintenance client ---- */
+function regularBox(c){
+  const r=c.regular||{};
+  const F=(l,k,ph)=>`<label class="field"><span>${l}</span><input data-reg="${k}" value="${esc(r[k]||'')}" placeholder="${esc(ph||'')}"></label>`;
+  return `<div class="sec"><div class="sech"><h3>לקוח אחזקה קבוע</h3>${r.on?'<span class="tag gold">פעיל</span>':''}</div><div class="secb">
+   <div class="toggle"><span>לקוח אחזקה קבוע</span><button type="button" class="sw" role="switch" aria-checked="${!!r.on}" data-a="regToggle" data-p="${c.id}"></button></div>
+   ${r.on?`${F('סוג השירות הקבוע','service','הדברה תקופתית, ניטור מכרסמים')}
+    ${F('תדירות הטיפול','freq','אחת לחודש / אחת לרבעון')}
+    ${F('תכשירים נפוצים','products','מופרדים בפסיק')}
+    ${F('מוקדים קבועים לבדיקה','spots','מטבח, מחסן, חדר אשפה')}
+    ${F('זמן טיפול משוער','duration','שעה וחצי')}
+    ${F('הוראות כניסה','entry','קוד שער, מפתח אצל השומר')}
+    ${F('איש קשר קבוע','contact','שם וטלפון')}
+    ${F('מסלול עבודה קבוע','route','יום ג׳ – ירושלים מרכז')}
+    <p class="hint">בפתיחת ביקור חדש ללקוח הזה יוצע אוטומטית שכפול חכם מהיומן האחרון.</p>`
+   :'<p class="hint" style="margin:0">סימון הלקוח כלקוח קבוע שומר את השירות, התדירות, המוקדים והתכשירים, ומציע שכפול חכם בכל ביקור.</p>'}
+  </div></div>`;
+}
+
+/* ---- actions ---- */
+Object.assign(A,{
+  smartClone:d=>{const p=S.journals[d.p];if(!p)return;
+    applyClone(cur,p,defaultSections());touch();render();window.scrollTo(0,0);
+    const pend=vPending(cur).length;
+    toast(pend?`נטען מיומן #${p.no} · ${pend} פרטים לאימות`:`נטען מיומן #${p.no}`)},
+  pickSections:d=>{A._clSrc=d.p;A._clSel=new Set(defaultSections());sectionSheet()},
+  secAll:()=>{A._clSel=new Set(ALL_SECTIONS());sectionSheet()},
+  secNone:()=>{A._clSel=new Set();sectionSheet()},
+  secDef:()=>{A._clSel=new Set(defaultSections());sectionSheet()},
+  secLoad:()=>{const p=S.journals[A._clSrc];if(!p)return closeSheet();
+    if(!A._clSel.size){toast('לא נבחרו פרטים');return}
+    applyClone(cur,p,[...A._clSel]);touch();closeSheet();render();window.scrollTo(0,0);
+    const pend=vPending(cur).length;
+    toast(pend?`נטענו ${A._clSel.size} קבוצות · ${pend} פרטים לאימות`:`נטענו ${A._clSel.size} קבוצות מידע`)},
+  blankStart:()=>{A._noPrev=cur.id;render();toast('ממשיכים ביומן ריק')},
+  pickPrev:()=>prevListSheet(),
+  prevPick:d=>{A._clSrc=d.p;A._clSel=new Set(defaultSections());sectionSheet()},
+  compare:()=>compareSheet(),
+  clearClone:async()=>{
+    if(!await ask('לבטל את הטעינה מהיומן הקודם? השדות שהועתקו יישארו, אך סימוני האימות יוסרו ולא תהיה דרישת אימות.',{ok:'ביטול הטעינה',danger:true}))return;
+    audit(cur,'clone-cancel','הטעינה מהיומן הקודם בוטלה');
+    clearClone(cur);touch();render();toast('הטעינה בוטלה')},
+  vOk:d=>{if(vOkMark(cur,d.key,'kept')){touch();render();
+    const left=vPending(cur).length;
+    toast(left?`אומת · נותרו ${left} פרטים`:'כל הפרטים אומתו')}},
+  vOkBulk:()=>{const list=vPending(cur).filter(([k])=>vBulkOk(k));
+    if(!list.length)return toast('אין פרטים שניתן לאשר יחד');
+    list.forEach(([k])=>vOkMark(cur,k,'kept'));touch();render();
+    const left=vPending(cur).length;
+    toast(left?`${list.length} פרטים אושרו · נותרו ${left}`:`${list.length} פרטים אושרו`)},
+  addSpot:()=>{const el=document.getElementById('spotNew');const v=(el&&el.value||'').trim();
+    if(!v)return toast('לא הוזן שם מוקד');
+    (cur.spots=cur.spots||[]).push({id:uid(),name:v,checked:false,note:''});touch();render()},
+  rmSpot:d=>{cur.spots=(cur.spots||[]).filter(s=>s.id!==d.p);touch();render()},
+  warTpl:()=>{A._wtKind=A._wtKind||'months';A._wtAmt=A._wtAmt||3;warTplSheet()},
+  warTplKind:d=>{A._wtKind=d.k;warTplSheet()},
+  warTplPest:d=>{A._wtPests=A._wtPests||[];
+    A._wtPests=A._wtPests.includes(d.val)?A._wtPests.filter(x=>x!==d.val):[...A._wtPests,d.val];warTplSheet()},
+  warTplClient:d=>{A._wtClients=A._wtClients||[];
+    A._wtClients=A._wtClients.includes(d.val)?A._wtClients.filter(x=>x!==d.val):[...A._wtClients,d.val];warTplSheet()},
+  warTplCheck:()=>{A._wtCheck=!A._wtCheck;A._wtDays=A._wtDays||30;warTplSheet()},
+  warTplSave:()=>{
+    const g=id=>(document.getElementById(id)||{}).value||'';
+    const name=g('wtName').trim();
+    if(!name)return toast('יש להזין שם לתבנית');
+    const t={id:uid(),name,kind:A._wtKind||'months',amount:+g('wtAmt')||0,until:g('wtUntil'),
+      text:g('wtText'),cond:g('wtCond'),pests:A._wtPests||[],clients:A._wtClients||[],
+      check:!!A._wtCheck,checkDays:+g('wtDays')||0};
+    S.warTpls=[t,...(S.warTpls||[])].slice(0,60);saveLocal();pushWarTpls();
+    applyWarTpl(cur,t);touch();warTplSheet();toast('התבנית נשמרה והוחלה על היומן')},
+  warTplDel:async d=>{if(!await ask('למחוק את התבנית? יומנים שכבר הושלמו לא ישתנו.',{ok:'מחיקה',danger:true}))return;
+    S.warTpls=(S.warTpls||[]).filter(t=>t.id!==d.p);saveLocal();pushWarTpls();warTplSheet()},
+  warTplPick:d=>{const t=(S.warTpls||[]).find(x=>x.id===d.p);if(!t)return;
+    applyWarTpl(cur,t);touch();closeSheet();render();
+    toast(cur.warranty.end?`אחריות ${periodText(cur.warranty)} · עד ${fmtD(cur.warranty.end)}`:`אחריות: ${t.name}`)},
+  regToggle:d=>{const c=S.clients[d.p];if(!c)return;
+    c.regular=c.regular||{};c.regular.on=!c.regular.on;c.updatedAt=Date.now();
+    saveLocal();pushClient(c);render()},
+  contFromDraft:d=>{const j=S.journals[d.p];if(!j)return;
+    cur=clone(j);S.journals[cur.id]=cur;showErr=false;closeSheet();go('wizard')}
+});
+async function pushWarTpls(){if(!DB)return;try{await DB.collection('data/users/me').doc('pest_war_templates').set({list:clone(S.warTpls||[]),updatedAt:Date.now()})}catch(e){}}
+/* picking a quick period chip drops the template binding so the end date is
+   recomputed from the chip, not from a template that no longer applies */
+const _setv=A.setv;
+A.setv=d=>{if(d.f==='warranty.period'&&cur&&cur.warranty){cur.warranty.tplId='';cur.warranty.tplName=''}return _setv(d)};
+/* before completing, re-check every product against the registry */
+const _complete=A.complete;
+A.complete=async()=>{
+  if(cur){
+    const bad=[];
+    (cur.apps||[]).forEach(a=>{if(!a.product)return;
+      const c=labelCheck(a.product);if(!c.ok)bad.push(`${a.product} – ${c.why}`);
+      const fit=labelFit(a);if(fit)bad.push(fit)});
+    if(bad.length&&!A._labelOk){
+      A._labelOk=true;
+      await info(bad.join('\n')+'\n\nיש לוודא את הפרטים מול התווית העדכנית לפני סיום היומן.','בדיקת תכשירים ותוויות');
+      return;
+    }
+    if(cur.source_pest_log_id||Object.keys(cur.verify||{}).length){
+      cur.warnSnapshot={at:Date.now(),by:profileWho(),
+        warnBefore:clone(cur.warnBefore),warnAfter:cur.warnAfter||'',
+        products:(cur.apps||[]).map(a=>a.product).filter(Boolean)};
+      audit(cur,'complete','היומן הושלם · '+Object.keys(cur.verify||{}).length+' פרטים שהועתקו אומתו');
+    }
+  }
+  A._labelOk=false;
+  return _complete();
+};
+/* a new journal never reuses an open draft for the same site by accident */
+const _newJ=A.newJ;
+A.newJ=async()=>{
+  if(A._creating)return;A._creating=true;
+  try{await _newJ()}finally{A._creating=false}
+};
+
 document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(!el)return;if(el.tagName==='A')return;e.preventDefault();const f=A[el.dataset.a];f&&f(el.dataset,e,el)});
 document.addEventListener('input',e=>{
   const t=e.target;
@@ -1347,9 +2135,11 @@ document.addEventListener('input',e=>{
   if(t.dataset.cl){const c=S.clients[param];if(c){const k=t.dataset.cl,old=c.name;c[k]=t.value;c.updatedAt=Date.now();
     if(k==='name')journals().forEach(j=>{if(norm(j.client.name)===norm(old)){j.client.name=t.value;S.journals[j.id]=j;queuePush(j)}});
     saveLocalSoon();clearTimeout(A._clp);A._clp=setTimeout(()=>pushClient(c),1000)}return}
+  if(t.dataset.reg){const c=S.clients[param];if(c){c.regular=c.regular||{};c.regular[t.dataset.reg]=t.value;c.updatedAt=Date.now();saveLocalSoon();clearTimeout(A._rg);A._rg=setTimeout(()=>pushClient(c),900)}return}
   if(t.dataset.pf){S.profile[t.dataset.pf]=t.value;if(A._pfErr){A._pfErr=A._pfErr.filter(k=>k!==t.dataset.pf);t.closest('.field')?.classList.remove('err')}saveLocalSoon();clearTimeout(A._pf);A._pf=setTimeout(pushProfile,1200);return}
   const f=t.dataset.f;if(!f||!cur)return;
   setP(cur,f,t.value);t.classList.remove('err');t.closest('.field')?.classList.remove('err');
+  vAuto(f);
   const m=f.match(/^apps\.(\d+)\.product$/);if(m)productPicked(+m[1]);
   if(f==='client.name'){acRender(t.value);touch();
     clearTimeout(A._cl);A._cl=setTimeout(()=>{
@@ -1381,7 +2171,10 @@ document.addEventListener('change',async e=>{
   if(t.dataset.sted){const st=S.stations[t.dataset.sted];if(st){st.loc=t.value;saveLocalSoon();clearTimeout(A._sl);A._sl=setTimeout(()=>pushStation(st),1000)}return}
   if(t.dataset.pcap){const ph=S.photos[t.dataset.pcap];if(ph){ph.caption=t.value;saveLocalSoon();pushPhoto(ph)}return}
   if(t.dataset.c&&cur){setP(cur,t.dataset.c,t.checked);t.closest('.check')?.classList.remove('err');touch();return}
-  if(t.tagName==='SELECT'&&t.dataset.f&&cur){setP(cur,t.dataset.f,t.value);touch();render()}
+  if(t.dataset.spot&&cur){const sp=(cur.spots||[]).find(x=>x.id===t.dataset.spot);if(sp){sp.checked=t.checked;touch()}return}
+  if(t.dataset.sec){A._clSel[t.checked?'add':'delete'](t.dataset.sec);sectionSheet();return}
+  if(t.dataset.reg){const c=S.clients[param];if(c){c.regular=c.regular||{};c.regular[t.dataset.reg]=t.value;c.updatedAt=Date.now();saveLocalSoon();clearTimeout(A._rg);A._rg=setTimeout(()=>pushClient(c),900)}return}
+  if(t.tagName==='SELECT'&&t.dataset.f&&cur){setP(cur,t.dataset.f,t.value);vAuto(t.dataset.f);touch();render()}
 });
 function productPicked(i){
   const a=cur.apps[i],p=prodIdx.get(norm(a.product));if(!p)return;
