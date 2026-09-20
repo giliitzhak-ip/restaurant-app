@@ -2319,7 +2319,9 @@ const initial = () => ({
      is the whole point of the gate. */
   proposals: [],
   /* The reviewer's in-progress form, keyed by proposal id. */
-  reviewForm: {}
+  reviewForm: {},
+  /* Stars the customer picked for the finished job, 0 = not yet. */
+  reviewStars: 0
 });
 let S = initial();
 const history = [];
@@ -2384,6 +2386,40 @@ const eligibleList = (timing) => ranked(timing).filter((c) => c.e.ok && !c.rejec
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const ltr = (s) => '<span class="ltr">' + esc(s) + '</span>';
 const money = (n) => '<span class="ltr">₪' + n + '</span>';
+
+/*
+ * The price to show for a matched provider — and what to do when there
+ * isn't one.
+ *
+ * A provider can be offered a job without having priced that exact service:
+ * dispatch carries `scored.priceIls` onto the offer and that column is
+ * nullable, so the offer really can go out with no price. קרן פרידמן, who
+ * ranks first in this recording, is exactly that case — she prices
+ * "החלפת ברזים" and "החלפת צנרת" but not "נזילה מתחת לכיור".
+ *
+ * Five screens printed `money(p.price)` straight, so they rendered the
+ * string "₪null" — two of them on the match and tracking screens, which
+ * shipped that way. The honest answer is not a zero and not a hidden row:
+ * it is the catalogue's guide price, labelled as an estimate, which is what
+ * the request screen already tells the customer ("מחיר מוערך … המחיר הסופי
+ * יוצג לאישורכם").
+ */
+function priceFor(provider) {
+  if (provider.price !== null && provider.price !== undefined) {
+    return { amount: provider.price, estimated: false };
+  }
+  const guide = servicePrice(RECORDED_SERVICE);
+  return { amount: guide, estimated: true };
+}
+
+/** `money()` plus the "מוערך" marker when the number is a guide, not a quote. */
+function priceLabel(provider) {
+  const { amount, estimated } = priceFor(provider);
+  if (amount === null || amount === undefined) return '<span class="ltr">—</span>';
+  return money(amount) + (estimated
+    ? ' <span style="font-size:11px;font-weight:500;color:var(--p-ink-3)">מוערך</span>'
+    : '');
+}
 const initials = (name) => name.split(' ').slice(0, 2).map((w) => w[0] || '').join('');
 const hue = (name) => [...name].reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
 
@@ -2560,7 +2596,14 @@ function screenSearching() {
     <p style="margin:18px 0 0;font-size:12.5px;color:var(--p-ink-3);text-align:center">
       ההצעות יצאו במקביל לכל הכשירים. <b style="color:var(--p-ink-2)">הראשון שמאשר לוקח.</b>
     </p>
-    <div style="margin-top:14px"><button class="gs-btn ok" id="sim-accept">מקצוען מאשר את ההצעה</button></div>`;
+    <p style="margin:8px 0 0;font-size:12px;color:var(--p-ink-3);text-align:center">
+      המסך הזה מתקדם מעצמו, כמו במערכת — שם ההמתנה היא עד
+      ${ltr((SYSTEM.waves && SYSTEM.waves.offerTtlSeconds) || 60)} שניות
+      ופה היא מקוצרת לשתיים.
+    </p>
+    <div style="margin-top:14px">
+      <button class="gs-btn quiet" id="sim-accept">לא רוצים לחכות? דלגו קדימה</button>
+    </div>`;
 }
 
 function screenMatch() {
@@ -2601,7 +2644,7 @@ function screenMatch() {
         </div>
         <div class="gs-inset" style="background:var(--bg)">
           <dt style="font-size:12px;color:var(--p-ink-2)">מחיר</dt>
-          <dd style="margin:4px 0 0;font-size:24px;font-weight:900">${money(p.price)}</dd>
+          <dd style="margin:4px 0 0;font-size:24px;font-weight:900">${priceLabel(p)}</dd>
         </div>
       </dl>
 
@@ -2667,10 +2710,184 @@ function screenTracking() {
 
     <div class="gs-card" style="margin-top:14px">
       <p style="margin:0;font-size:13px;color:var(--p-ink-2)">מחיר מאושר</p>
-      <p style="margin:4px 0 0;font-size:20px;font-weight:900">${money(p.price)}</p>
+      <p style="margin:4px 0 0;font-size:20px;font-weight:900">${priceLabel(p)}</p>
       <p style="margin:8px 0 0;font-size:12.5px;color:var(--p-ink-3);line-height:1.5">
         עמלת הפלטפורמה ${ltr('15%')} עד ${money(1000)}. התשלום נתפס רק בסיום העבודה.
       </p>
+    </div>`;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   The second half of the job.
+
+   The customer flow used to end at "המקצוען בדרך אליך" — permanently. No
+   arrival, no work, no confirmation, no payment, no review. Half the
+   lifecycle the product is built around simply was not reachable, and the
+   honest description of that is not "a simplification", it is broken: you
+   order a professional and the screen never changes again.
+
+   Each screen below is a real status from `job_transitions`, reached by a
+   move that table permits and by the actor it names. The ones the customer
+   only WATCHES (the provider arriving, starting, finishing) advance on
+   their own, because that is what the customer's screen does in the real
+   product — it updates from realtime, untouched. The ones that are the
+   customer's to make — confirming the work, paying, reviewing — are
+   buttons, because they are decisions.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/** AWAITING → COMPLETED → PAID: the fee, by the real tiered rule. */
+function feeSplit(priceIls) {
+  const gross = Math.round(priceIls * 100);
+  const tiers = (typeof SYSTEM !== 'undefined' && SYSTEM.fees && SYSTEM.fees.tiers) || [];
+  let fee = 0, prev = 0;
+  for (const t of tiers) {
+    const cap = t.upTo === null || t.upTo === undefined ? Infinity : t.upTo;
+    if (gross > prev) fee += (Math.min(gross, cap) - prev) * (t.percentage / 100);
+    prev = cap;
+    if (gross <= cap) break;
+  }
+  fee = Math.max(Math.round(fee), (SYSTEM.fees && SYSTEM.fees.minFee) || 0);
+  return { gross, fee, net: gross - fee, pct: (fee / gross) * 100 };
+}
+
+function jobHeader(badgeClass, badgeText) {
+  const p = S.matched.p;
+  return `
+    <div class="gs-head">${logo()}<span class="gs-badge ${badgeClass}">${badgeText}</span></div>
+    <div class="gs-card rise">
+      <div style="display:flex;gap:10px;align-items:center">
+        ${avatar(p.name, 40)}
+        <div style="min-width:0">
+          <button id="sim-details" style="background:none;border:0;padding:0;font-family:var(--sans);font-size:18px;font-weight:700;color:var(--p-ink);text-decoration:underline;text-decoration-color:var(--line-strong);text-underline-offset:4px;cursor:pointer">${esc(p.name)}</button>
+          <div style="margin-top:3px">${stars(p.rating, p.reviews)}</div>
+        </div>
+      </div>`;
+}
+
+function screenArrived() {
+  return jobHeader('ok', 'המקצוען הגיע') + `
+      <div class="gs-inset" style="margin-top:16px;background:var(--bg)">
+        <p style="margin:0;font-size:14px;color:var(--p-ink)">המקצוען בכתובת שלכם.</p>
+        <p style="margin:6px 0 0;font-size:12.5px;color:var(--p-ink-3);line-height:1.5">
+          <code style="font-family:var(--mono);font-size:11.5px">ARRIVED</code> — סומן על ידי בעל המקצוע.
+          המערכת אינה מדווחת הגעה בשמו.
+        </p>
+      </div>
+    </div>`;
+}
+
+function screenWorking() {
+  return jobHeader('brand', 'בעבודה') + `
+      <div class="gs-inset" style="margin-top:16px;background:var(--bg)">
+        <p style="margin:0;font-size:14px;color:var(--p-ink)">העבודה בעיצומה.</p>
+        <p style="margin:6px 0 0;font-size:12.5px;color:var(--p-ink-3);line-height:1.5">
+          <code style="font-family:var(--mono);font-size:11.5px">IN_PROGRESS</code>.
+          בשירותים שדורשים זאת, בעל המקצוע מצלם לפני ואחרי — ובלי התמונות
+          המערכת לא תיתן לו לסמן שסיים.
+        </p>
+      </div>
+    </div>`;
+}
+
+function screenDone() {
+  const p = S.matched.p;
+  return jobHeader('warn', 'ממתין לאישורכם') + `
+      <div class="gs-inset" style="margin-top:16px;background:var(--bg)">
+        <p style="margin:0;font-size:14px;color:var(--p-ink)">בעל המקצוע סימן שסיים.</p>
+        <p style="margin:6px 0 0;font-size:12.5px;color:var(--p-ink-3);line-height:1.5">
+          <code style="font-family:var(--mono);font-size:11.5px">AWAITING_CUSTOMER_CONFIRMATION</code>.
+          האישור הוא שלכם — ואם לא תאשרו, הוא נופל אוטומטית אחרי
+          ${ltr(((SYSTEM.timeouts && SYSTEM.timeouts.autoCompleteAfterHours) || 24) + ' שעות')}.
+        </p>
+      </div>
+      <div style="margin-top:16px;display:grid;gap:10px">
+        <button class="gs-btn ok" id="sim-confirm-done">העבודה בוצעה — אישור</button>
+        <button class="gs-btn quiet" id="sim-dispute">משהו לא בסדר</button>
+      </div>
+    </div>
+    <div class="gs-card" style="margin-top:14px">
+      <p style="margin:0;font-size:13px;color:var(--p-ink-2)">לתשלום</p>
+      <p style="margin:4px 0 0;font-size:20px;font-weight:900">${priceLabel(p)}</p>
+    </div>`;
+}
+
+function screenPay() {
+  const p = S.matched.p;
+  const f = feeSplit(priceFor(p).amount);
+  return jobHeader('ok', 'העבודה הושלמה') + `
+      <div class="gs-inset" style="margin-top:16px;background:var(--bg)">
+        <p style="margin:0;font-size:13px;color:var(--p-ink-2)">סך הכול</p>
+        <p style="margin:4px 0 0;font-size:26px;font-weight:900">${priceLabel(p)}</p>
+        <div style="display:flex;height:26px;border-radius:8px;overflow:hidden;margin:12px 0 6px">
+          <span style="width:${(100 - f.pct).toFixed(1)}%;background:var(--ok)"></span>
+          <span style="width:${f.pct.toFixed(1)}%;background:var(--warn)"></span>
+        </div>
+        <p style="margin:0;font-size:12px;color:var(--p-ink-3);display:flex;justify-content:space-between">
+          <span>לבעל המקצוע ${money(f.net / 100)}</span>
+          <span>עמלה ${ltr(f.pct.toFixed(1) + '%')}</span>
+        </p>
+      </div>
+      <div style="margin-top:16px">
+        <button class="gs-btn" id="sim-pay">שלמו ${money(priceFor(p).amount)}</button>
+      </div>
+      <p style="margin:10px 0 0;font-size:12px;color:var(--warn-bright);line-height:1.5">
+        ⚠︎ כאן לא עובר כסף. ספק התשלומים במערכת הוא <code style="font-family:var(--mono);font-size:11px">mock</code>
+        ומדווח <code style="font-family:var(--mono);font-size:11px">isReal = false</code>;
+        העלייה בייצור מסרבת להריץ אותו.
+      </p>
+    </div>`;
+}
+
+function screenReviewJob() {
+  const p = S.matched.p;
+  const chosen = S.reviewStars || 0;
+  return jobHeader('ok', 'שולם') + `
+      <div class="gs-inset" style="margin-top:16px;background:var(--bg)">
+        <p style="margin:0 0 10px;font-size:14px;color:var(--p-ink)">איך היה?</p>
+        <div style="display:flex;gap:6px;direction:ltr;justify-content:center">
+          ${[1, 2, 3, 4, 5].map((n) => `
+            <button class="sim-star" data-star="${n}" aria-label="${n}"
+              style="background:none;border:0;cursor:pointer;font-size:30px;line-height:1;padding:2px;
+                     color:${n <= chosen ? 'var(--warn-bright)' : 'var(--line-strong)'}">★</button>`).join('')}
+        </div>
+      </div>
+      <div style="margin-top:16px">
+        <button class="gs-btn" id="sim-review" ${chosen ? '' : 'disabled style="opacity:.45"'}>שליחת הביקורת</button>
+      </div>
+      <p style="margin:10px 0 0;font-size:12px;color:var(--p-ink-3);line-height:1.5">
+        רק מי שהעבודה שלו הושלמה יכול לדרג — <code style="font-family:var(--mono);font-size:11px">can_review()</code>
+        נאכף בבסיס הנתונים, לא במסך.
+      </p>
+    </div>`;
+}
+
+function screenReviewed() {
+  const p = S.matched.p;
+  return `
+    <div class="gs-head">${logo()}<span class="gs-badge ok">תודה</span></div>
+    <div class="gs-card rise" style="text-align:center">
+      <p style="margin:0;font-size:34px" aria-hidden="true">✓</p>
+      <h2 style="margin:10px 0 0;font-size:19px;font-weight:700">הביקורת נשלחה</h2>
+      <p style="margin:10px 0 0;font-size:14px;color:var(--p-ink-2);line-height:1.5">
+        ${ltr(S.reviewStars)} כוכבים ל${esc(p.name)}. העבודה במצב
+        <code style="font-family:var(--mono);font-size:11.5px">REVIEWED</code> — סוף המסלול.
+      </p>
+      <button class="gs-btn" id="sim-restart" style="margin-top:18px">בקשה חדשה</button>
+    </div>`;
+}
+
+function screenDisputed() {
+  return `
+    <div class="gs-head">${logo()}<span class="gs-badge bad">בבדיקה</span></div>
+    <div class="gs-card rise" style="text-align:center;border-color:rgba(239,68,68,.35)">
+      <h2 style="margin:0;font-size:19px;font-weight:700">פתחנו בירור</h2>
+      <p style="margin:10px 0 0;font-size:14px;color:var(--p-ink-2);line-height:1.5">
+        העבודה במצב <code style="font-family:var(--mono);font-size:11.5px">DISPUTED</code>.
+        התשלום מוקפא עד שמנהל יכריע — ורק מנהל יכול להוציא אותה ממצב זה,
+        לפי <code style="font-family:var(--mono);font-size:11.5px">job_transitions</code>.
+      </p>
+      <button class="gs-btn" id="sim-restart" style="margin-top:18px">בקשה חדשה</button>
     </div>`;
 }
 
@@ -3559,7 +3776,7 @@ function renderCands() {
   const list = ranked(S.timing);
   box.innerHTML = list.map((c) => {
     const out = !c.e.ok || c.rejected;
-    const isMatched = S.matched && S.matched.p.id === c.p.id && (S.step === 'match' || S.step === 'tracking');
+    const isMatched = S.matched && S.matched.p.id === c.p.id && ['match','tracking','arrived','working','done','pay','reviewing'].includes(S.step);
     const r = c.s.route;
     const tag = out ? '<span class="tag no">מודר</span>'
       : r.basis === 'destination_route' ? '<span class="tag route">בדרך</span>'
@@ -3583,7 +3800,30 @@ function renderCands() {
 /* ── Render root ───────────────────────────────────────────────────────── */
 let lastScreenKey = '';
 
+/*
+ * The search screen resolves on its own.
+ *
+ * It used to sit on the radar forever, and the only way forward was a button
+ * reading "מקצוען מאשר את ההצעה" — a control that describes the SIMULATOR's
+ * mechanics, not the customer's next step. So the honest report was the one
+ * that arrived: you type, you tap "מצא לי מקצוען", and nothing ever happens.
+ * The real product does not work that way: the offers go out, a provider
+ * accepts, and the customer's screen updates without them touching anything.
+ *
+ * Two seconds is not a claim about how fast a real provider answers — the
+ * screen says so, and names the real window (settings.dispatch.offerTtlSeconds)
+ * beside it. The skip button stays for anyone who does not want to wait, now
+ * labelled as what it is.
+ *
+ * The handle is module-scoped and cleared before every render, because a
+ * timer that survives a screen change fires into the wrong state — switch to
+ * the provider tab mid-search and the customer's job would accept itself
+ * behind your back.
+ */
+let searchTimer = null;
+
 function render() {
+  if (searchTimer) { clearTimeout(searchTimer); searchTimer = null; }
   const vp = document.getElementById('viewport');
   let html = '';
   if (S.side === 'review') html = screenReview();
@@ -3594,6 +3834,13 @@ function render() {
   else if (S.step === 'searching') html = screenSearching();
   else if (S.step === 'match') html = screenMatch();
   else if (S.step === 'tracking') html = screenTracking();
+  else if (S.step === 'arrived') html = screenArrived();
+  else if (S.step === 'working') html = screenWorking();
+  else if (S.step === 'done') html = screenDone();
+  else if (S.step === 'pay') html = screenPay();
+  else if (S.step === 'reviewing') html = screenReviewJob();
+  else if (S.step === 'reviewed') html = screenReviewed();
+  else if (S.step === 'disputed') html = screenDisputed();
   else if (S.step === 'cancelled') html = screenCancelled();
   else if (S.step === 'exhausted') html = screenExhausted();
   /* Reset the scroll only when the screen itself changes. Resetting on every
@@ -3621,6 +3868,47 @@ function render() {
   renderRail();
   renderKv();
   renderCands();
+
+  /*
+   * Arm the advance only while the search screen is the one on show, and
+   * only on the customer's side: the provider and admin views have their own
+   * screens and must not be interrupted by the customer's job resolving.
+   */
+  if (S.side !== 'customer') return;
+
+  if (S.step === 'searching') {
+    searchTimer = setTimeout(() => {
+      searchTimer = null;
+      if (S.side !== 'customer' || S.step !== 'searching') return;
+      const list = eligibleList(S.timing);
+      push();
+      if (list.length === 0) S.step = 'exhausted';
+      else { S.matched = list[0]; S.step = 'match'; }
+      render();
+    }, 2000);
+    return;
+  }
+
+  /*
+   * The stretch the customer only watches.
+   *
+   * Arriving, starting and finishing are the PROVIDER's moves in
+   * job_transitions — the customer's screen just updates as they happen.
+   * Making the customer press a button for each would put them in charge of
+   * moves that are not theirs, which is the opposite of what the table says.
+   * The pauses are compressed, and the screens say which status they are.
+   */
+  const WATCHED = { tracking: 'arrived', arrived: 'working', working: 'done' };
+  const next = WATCHED[S.step];
+  if (next) {
+    searchTimer = setTimeout(() => {
+      searchTimer = null;
+      if (S.side !== 'customer' || WATCHED[S.step] !== next) return;
+      push();
+      S.step = next;
+      render();
+    }, 2600);
+  }
 }
 
 function push() { history.push(JSON.parse(JSON.stringify(S))); }
@@ -3859,6 +4147,12 @@ document.getElementById('viewport').addEventListener('click', (ev) => {
     render();
     return;
   }
+  if (t.dataset.star) {
+    // Picking a star is not a state change worth an undo step of its own —
+    // it is filling in the form that `sim-review` then submits.
+    S.reviewStars = Number(t.dataset.star);
+    render(); return;
+  }
   if (t.dataset.until) {
     push();
     if (t.dataset.until === 'off') { S.providerOnline = false; S.providerUntil = null; }
@@ -3901,6 +4195,20 @@ document.getElementById('viewport').addEventListener('click', (ev) => {
 
     case 'sim-confirm':
       push(); S.step = 'tracking'; render(); break;
+
+    /* The three moves that ARE the customer's, per job_transitions. */
+    case 'sim-confirm-done':
+      push(); S.step = 'pay'; render(); break;
+
+    case 'sim-pay':
+      push(); S.step = 'reviewing'; render(); break;
+
+    case 'sim-review':
+      if (!S.reviewStars) break;
+      push(); S.step = 'reviewed'; render(); break;
+
+    case 'sim-dispute':
+      push(); S.step = 'disputed'; render(); break;
 
     case 'sim-cancel':
       push(); S.step = 'cancelled'; render(); break;

@@ -67,6 +67,14 @@ the server uses — `SERVICE_RULES` plus `services.strong_phrases` /
 same functions. It was checked against `POST /api/understand` on 20
 descriptions and agrees on category, service, urgency and confidence.
 
+The customer's job now runs to the end: match → arrival → work → the
+customer's confirmation → payment → review → `REVIEWED`. The stretch the
+customer only watches (the provider arriving, starting, finishing) advances
+on its own, because those are the provider's moves in `job_transitions` and
+the customer's screen just updates as they happen. The three that are the
+customer's — confirming, paying, reviewing — are buttons, because they are
+decisions. Pauses are compressed and each screen names the status it is in.
+
 ## What in it is not real
 
 There is no server and no payment. The candidate list is one dispatch, so it
