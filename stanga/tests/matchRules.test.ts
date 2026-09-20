@@ -38,11 +38,13 @@ function scoreEvent(overrides: Partial<ScoreEventRecord> = {}): ScoreEventRecord
     kind: 'goal',
     team: 'home',
     playerId: 'home-1',
+    assistingPlayerId: null,
     points: 1,
     tick: 1,
     ownGoal: false,
     shotType: 'ground',
     power: 0.8,
+    lastTouches: [],
     ...overrides,
   };
 }

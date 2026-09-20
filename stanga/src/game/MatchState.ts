@@ -124,12 +124,68 @@ export interface ScoreEventRecord {
   team: TeamId;
   /** Player credited with the points, or null for an unattributed rolling ball. */
   playerId: string | null;
+  /**
+   * The team-mate who set it up, if anybody did: the meaningful touch before
+   * the scorer's, by a different player on the same side, inside the assist
+   * window. Never set on an own goal — nobody assists that.
+   */
+  assistingPlayerId: string | null;
   points: number;
   tick: number;
   /** True when the ball went into the scorer's own net. */
   ownGoal: boolean;
   shotType: ShotType;
   power: number;
+  /** The touches that led here, newest first. Kept short on purpose. */
+  lastTouches: readonly TouchLogEntry[];
+}
+
+/** One meaningful touch, remembered just long enough to credit an assist. */
+export interface TouchLogEntry {
+  playerId: string;
+  team: TeamId;
+  tick: number;
+}
+
+/**
+ * What one player did in this match.
+ *
+ * Everything here is counted by the simulation as it happens, so the server's
+ * copy is the only one that matters online and an offline match gets the same
+ * numbers from the same code.
+ */
+export interface PlayerStats {
+  /** Scoring events credited to this player, own goals excluded. */
+  goals: number;
+  /** STANGA points from those events — a junction is worth five of them. */
+  points: number;
+  assists: number;
+  ownGoals: number;
+  /** Strikes at the ball, passes excluded. */
+  shots: number;
+  passes: number;
+  juggles: number;
+  /** Double touches called against this player. */
+  violations: number;
+  /** Meaningful touches, which is what the touch rule counts. */
+  touches: number;
+  /** Tackles that took the ball. */
+  tackles: number;
+}
+
+export function createPlayerStats(): PlayerStats {
+  return {
+    goals: 0,
+    points: 0,
+    assists: 0,
+    ownGoals: 0,
+    shots: 0,
+    passes: 0,
+    juggles: 0,
+    violations: 0,
+    touches: 0,
+    tackles: 0,
+  };
 }
 
 export interface MatchState {
@@ -150,6 +206,10 @@ export interface MatchState {
   lastViolation: ViolationRecord | null;
   /** Whose turn it is to touch the ball. Owned by the touch rule. */
   touch: TouchRuleState;
+  /** Meaningful touches, newest first, capped. Feeds assist attribution. */
+  recentTouches: TouchLogEntry[];
+  /** Per-player tallies, keyed by player id. */
+  stats: Record<string, PlayerStats>;
   /** Team that kicks off next; set after a scoring event. */
   kickoffTeam: TeamId;
 }
@@ -243,6 +303,8 @@ export function createMatchState(roster: MatchRoster = ONE_VS_ONE_ROSTER): Match
     lastEvent: null,
     lastViolation: null,
     touch: createTouchRuleState(),
+    recentTouches: [],
+    stats: Object.fromEntries(roster.entries.map((entry) => [entry.playerId, createPlayerStats()])),
     kickoffTeam: 'home',
   };
 }

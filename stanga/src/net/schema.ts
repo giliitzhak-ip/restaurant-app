@@ -55,6 +55,19 @@ export class NetPlayer extends Schema {
   declare sprinting: boolean;
   declare stunTimer: number;
 
+  // Match statistics. Counted by the simulation on the server, which is why
+  // they travel: the client's mirrored engine must not invent its own.
+  declare goals: number;
+  declare points: number;
+  declare assists: number;
+  declare ownGoals: number;
+  declare shots: number;
+  declare passes: number;
+  declare juggles: number;
+  declare violations: number;
+  declare touches: number;
+  declare tackles: number;
+
   constructor() {
     super();
     this.playerId = '';
@@ -84,6 +97,16 @@ export class NetPlayer extends Schema {
     this.lofted = false;
     this.sprinting = false;
     this.stunTimer = 0;
+    this.goals = 0;
+    this.points = 0;
+    this.assists = 0;
+    this.ownGoals = 0;
+    this.shots = 0;
+    this.passes = 0;
+    this.juggles = 0;
+    this.violations = 0;
+    this.touches = 0;
+    this.tackles = 0;
   }
 }
 
@@ -115,6 +138,16 @@ defineTypes(NetPlayer, {
   lofted: 'boolean',
   sprinting: 'boolean',
   stunTimer: 'float32',
+  goals: 'uint16',
+  points: 'uint16',
+  assists: 'uint16',
+  ownGoals: 'uint16',
+  shots: 'uint16',
+  passes: 'uint16',
+  juggles: 'uint16',
+  violations: 'uint16',
+  touches: 'uint16',
+  tackles: 'uint16',
 });
 
 export class NetBall extends Schema {
@@ -156,8 +189,11 @@ export class NetScore extends Schema {
   declare kind: string;
   declare team: string;
   declare playerId: string;
+  /** Empty when nobody set it up. The server decides this, never a client. */
+  declare assistingPlayerId: string;
   declare points: number;
   declare ownGoal: boolean;
+  declare shotType: string;
   declare tick: number;
 
   constructor() {
@@ -165,8 +201,10 @@ export class NetScore extends Schema {
     this.kind = '';
     this.team = '';
     this.playerId = '';
+    this.assistingPlayerId = '';
     this.points = 0;
     this.ownGoal = false;
+    this.shotType = '';
     this.tick = 0;
   }
 }
@@ -175,8 +213,10 @@ defineTypes(NetScore, {
   kind: 'string',
   team: 'string',
   playerId: 'string',
+  assistingPlayerId: 'string',
   points: 'uint8',
   ownGoal: 'boolean',
+  shotType: 'string',
   tick: 'uint32',
 });
 

@@ -241,4 +241,52 @@ describe('the touch rule in a running match', () => {
 
     expect(touches).toBeGreaterThan(10);
   }, 60_000);
+
+  it('counts what each player did, as the simulation sees it', () => {
+    const headless = makeMatch();
+    headless.match.setRoster(TWO_VS_TWO_ROSTER);
+    headless.match.start();
+
+    const drive = driver(headless, 'home-1');
+    for (let i = 0; i < 200; i += 1) drive.step();
+
+    // One legal touch, then chase it down for an illegal second one.
+    for (let i = 0; i < 400 && headless.match.state.phase !== 'violation'; i += 1) {
+      const me = headless.match.state.players.find((player) => player.id === 'home-1');
+      const ball = headless.match.state.ball.position;
+      if (!me) break;
+      const dx = ball.x - me.position.x;
+      const dz = ball.z - me.position.z;
+      const length = Math.hypot(dx, dz) || 1;
+      drive.step({ moveX: dx / length, moveY: dz / length, sprintPressed: true });
+    }
+
+    const stats = headless.match.state.stats;
+    expect(headless.match.state.phase).toBe('violation');
+    expect(stats['home-1']?.violations).toBe(1);
+    expect(stats['home-1']?.touches).toBeGreaterThanOrEqual(1);
+    // The illegal touch is not counted as a touch, and nobody else moved.
+    expect(stats['home-2']?.touches).toBe(0);
+    expect(stats['away-1']?.violations).toBe(0);
+  }, 30_000);
+
+  it('starts a fresh match with a clean sheet', () => {
+    const headless = makeMatch();
+    headless.match.start();
+    const drive = driver(headless, 'home-1');
+    for (let i = 0; i < 300; i += 1) {
+      const me = headless.match.state.players.find((player) => player.id === 'home-1');
+      const ball = headless.match.state.ball.position;
+      if (!me) break;
+      const dx = ball.x - me.position.x;
+      const dz = ball.z - me.position.z;
+      const length = Math.hypot(dx, dz) || 1;
+      drive.step({ moveX: dx / length, moveY: dz / length, sprintPressed: true });
+    }
+    expect(headless.match.state.stats['home-1']?.touches).toBeGreaterThan(0);
+
+    headless.match.start();
+    expect(headless.match.state.stats['home-1']?.touches).toBe(0);
+    expect(headless.match.state.recentTouches).toHaveLength(0);
+  }, 30_000);
 });

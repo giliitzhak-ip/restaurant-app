@@ -65,6 +65,8 @@ export const ClientMessage = {
   Surrender: 'g',
   /** One of a fixed set of phrases. Never free text. */
   QuickChat: 'c',
+  /** Host only: throw a private room open so strangers fill the empty seats. */
+  OpenRoom: 'o',
 } as const;
 export type ClientMessageName = (typeof ClientMessage)[keyof typeof ClientMessage];
 
@@ -206,7 +208,9 @@ export interface NetEvent {
     /** A player who dropped is back and has their seat again. */
     | 'playerReturned'
     /** A team gave up. */
-    | 'surrender';
+    | 'surrender'
+    /** A party opened its private room to matchmaking. */
+    | 'roomOpened';
   playerId?: string;
   team?: TeamId | null;
   /** Free-form detail: goal part, score kind, outcome, violation kind. */

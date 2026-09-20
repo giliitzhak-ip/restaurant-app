@@ -610,6 +610,43 @@ kbd {
   letter-spacing: 0.08em;
 }
 
+.result__stats {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.result__stats th,
+.result__stats td {
+  padding: 0.3rem 0.2rem;
+  text-align: center;
+  border-bottom: 1px solid var(--concrete-light);
+}
+
+.result__stats th:first-child,
+.result__stats td:first-child {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.result__stats th {
+  color: var(--paper-dim);
+  font-weight: 700;
+  font-size: 0.74rem;
+  letter-spacing: 0.02em;
+}
+
+.result__stats tr.is-home td:first-child {
+  border-right: 3px solid var(--accent);
+  padding-right: 0.4rem;
+}
+
+.result__stats tr.is-away td:first-child {
+  border-right: 3px solid #4aa8ff;
+  padding-right: 0.4rem;
+}
+
 .result__detail {
   margin: 0;
   text-align: center;
@@ -1609,6 +1646,72 @@ kbd {
   font-size: 0.95rem;
   font-weight: 800;
   letter-spacing: 0.04em;
+}
+
+/* Quick chat during play: a thin row, thumb-reachable, never over the pitch */
+
+.hud__quickchat {
+  position: absolute;
+  top: 50%;
+  inset-inline-start: 0.4rem;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  pointer-events: auto;
+}
+
+.hud__quickchat .btn--chip {
+  padding: 0.18rem 0.5rem;
+  font-size: 0.72rem;
+  opacity: 0.72;
+}
+
+.hud__quickchat .btn--chip:hover,
+.hud__quickchat .btn--chip:focus-visible {
+  opacity: 1;
+}
+
+/* Off-screen arrows */
+
+.hud__arrows {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.edge-arrow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  margin: -14px 0 0 -14px;
+  pointer-events: none;
+}
+
+.edge-arrow__head {
+  width: 0;
+  height: 0;
+  border-top: 9px solid transparent;
+  border-bottom: 9px solid transparent;
+  border-left: 15px solid var(--accent);
+  transform: rotate(var(--angle, 0rad));
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.8));
+}
+
+.edge-arrow--mate .edge-arrow__head {
+  border-left-color: #ffd79a;
+}
+
+.edge-arrow__label {
+  font-size: 0.66rem;
+  font-weight: 800;
+  color: var(--paper);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Quick chat — a single line, so it never covers the pitch */

@@ -57,6 +57,8 @@ export interface GameSettings {
   profiles: { player1: PlayerProfile; player2: PlayerProfile };
   /** False until the player has seen the controls primer once. */
   seenControlsPrimer: boolean;
+  /** Separate flag: the 2×2 primer teaches things 1×1 never mentions. */
+  seenTeamPrimer: boolean;
 }
 
 export interface StorageLike {
@@ -102,6 +104,7 @@ export function defaultSettings(): GameSettings {
       player2: { name: 'שחקן 2', colorId: 1 },
     },
     seenControlsPrimer: false,
+    seenTeamPrimer: false,
   };
 }
 
@@ -204,6 +207,7 @@ export function sanitizeSettings(raw: unknown): GameSettings {
       player2: sanitizeProfile(profilesRaw.player2, defaults.profiles.player2),
     },
     seenControlsPrimer: coerceBool(source.seenControlsPrimer, defaults.seenControlsPrimer),
+    seenTeamPrimer: coerceBool(source.seenTeamPrimer, defaults.seenTeamPrimer),
   };
 }
 

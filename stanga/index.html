@@ -61,6 +61,12 @@
           <span class="hud__touch-text" id="hud-touch-text"></span>
         </div>
 
+        <!-- Quick chat during play. Fixed phrases, and only in 2x2. -->
+        <div class="hud__quickchat is-hidden" id="hud-quickchat"></div>
+
+        <!-- Arrows for the ball and a team-mate who are off screen. -->
+        <div class="hud__arrows" id="hud-arrows" aria-hidden="true"></div>
+
         <!-- Quick chat from team-mates and opponents. Fixed phrases only. -->
         <div class="hud__chat" id="hud-chat" hidden aria-live="polite"></div>
 
@@ -325,10 +331,10 @@
         </div>
       </section>
 
-      <!-- Online 1x1: matchmaking and private rooms -->
+      <!-- Online 1x1 and 2x2: matchmaking, private rooms and parties -->
       <section class="screen screen--dialog is-hidden" id="screen-online" aria-label="משחק אונליין">
         <div class="panel panel--wide">
-          <h2 class="panel__title">אונליין — 1 על 1</h2>
+          <h2 class="panel__title" id="online-title">אונליין — 1 על 1</h2>
           <p class="panel__lead" id="online-lead">
             שחקו מול חבר במכשיר אחר. חפשו יריב, או פתחו חדר פרטי ושלחו קישור.
           </p>
@@ -352,9 +358,6 @@
             </button>
             <button type="button" class="btn btn--secondary" id="btn-online-create">
               חדר פרטי חדש
-            </button>
-            <button type="button" class="btn btn--secondary" id="btn-online-party">
-              חיפוש עם חבר
             </button>
             <div class="online__join">
               <label class="lobby__field">
@@ -419,6 +422,9 @@
             </button>
             <button type="button" class="btn btn--ghost is-hidden" id="btn-online-shuffle">
               ערבב קבוצות
+            </button>
+            <button type="button" class="btn btn--secondary is-hidden" id="btn-online-open">
+              חפשו לנו יריבים
             </button>
             <button type="button" class="btn btn--danger is-hidden" id="btn-online-surrender">
               כניעה
@@ -736,18 +742,14 @@
             </button>
             <button type="button" class="btn btn--ghost" id="btn-pause-settings">הגדרות</button>
             <button type="button" class="btn btn--ghost" id="btn-pause-restart">משחק חדש</button>
+            <button type="button" class="btn btn--danger is-hidden" id="btn-pause-surrender">
+              כניעה
+            </button>
             <button type="button" class="btn btn--danger" id="btn-pause-menu">יציאה לתפריט</button>
           </div>
           <div class="controls-help">
             <h3>מקשים</h3>
-            <ul>
-              <li><kbd>W A S D</kbd> תנועה</li>
-              <li><kbd>Shift</kbd> ספרינט</li>
-              <li><kbd>רווח</kbd> טעינת בעיטה ושחרור</li>
-              <li><kbd>E</kbd> חטיפה</li>
-              <li><kbd>Q</kbd> בעיטה שטוחה או מוגבהת</li>
-              <li><kbd>Esc</kbd> השהיה</li>
-            </ul>
+            <ul id="pause-keys"></ul>
           </div>
         </div>
       </section>
@@ -758,6 +760,23 @@
           <h2 class="panel__title" id="result-title">סיום</h2>
           <p class="result__score" id="result-score">0 : 0</p>
           <p class="result__detail" id="result-detail"></p>
+
+          <!-- Per-player statistics, filled from the match state. -->
+          <table class="result__stats is-hidden" id="result-stats">
+            <thead>
+              <tr>
+                <th scope="col">שחקן</th>
+                <th scope="col" title="נקודות">נק׳</th>
+                <th scope="col" title="שערים והשגות">שער</th>
+                <th scope="col" title="בישולים">בישול</th>
+                <th scope="col" title="מסירות">מסירה</th>
+                <th scope="col" title="הקפצות">הקפצה</th>
+                <th scope="col" title="נגיעות כפולות">עבירה</th>
+              </tr>
+            </thead>
+            <tbody id="result-stats-body"></tbody>
+          </table>
+
           <div class="panel__actions panel__actions--stack">
             <button type="button" class="btn btn--primary btn--lg" id="btn-rematch">
               משחק חוזר

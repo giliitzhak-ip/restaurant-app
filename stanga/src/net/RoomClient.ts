@@ -175,6 +175,10 @@ export class RoomClient {
     this.room?.send(ClientMessage.ShuffleTeams, {});
   }
 
+  sendOpenRoom(): void {
+    this.room?.send(ClientMessage.OpenRoom, {});
+  }
+
   sendSurrender(): void {
     this.room?.send(ClientMessage.Surrender, {});
   }

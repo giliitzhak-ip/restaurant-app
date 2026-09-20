@@ -48,6 +48,7 @@ function makeCallbacks(): MockedCallbacks {
     onOnlineLeave: vi.fn<UICallbacks['onOnlineLeave']>(),
     onOnlineTeamSwitch: vi.fn<UICallbacks['onOnlineTeamSwitch']>(),
     onOnlineShuffleTeams: vi.fn<UICallbacks['onOnlineShuffleTeams']>(),
+    onOnlineFindOpponents: vi.fn<UICallbacks['onOnlineFindOpponents']>(),
     onOnlineSurrender: vi.fn<UICallbacks['onOnlineSurrender']>(),
     onOnlineQuickChat: vi.fn<UICallbacks['onOnlineQuickChat']>(),
     onPrimerDismissed: vi.fn<UICallbacks['onPrimerDismissed']>(),

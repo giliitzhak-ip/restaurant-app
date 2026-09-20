@@ -255,6 +255,79 @@ describe('online 2×2 room', () => {
     expect(watcher.room.state.players.size).toBe(4);
   }, 120_000);
 
+  it('queues a party of two together and lets strangers fill the other seats', async () => {
+    const host = await connect((client) =>
+      client.create<MatchRoomState>(ROOM_TWO_VS_TWO, joinOptions('מארח', { intent: 'create' })),
+    );
+    await until(() => host.room.state.inviteCode.length > 0);
+    const code = host.room.state.inviteCode;
+
+    const friend = await connect((client) =>
+      client.joinById<MatchRoomState>(
+        host.room.roomId,
+        joinOptions('חבר', { intent: 'join', inviteCode: code }),
+      ),
+    );
+
+    // The pair put themselves on the same side; that is what makes it a party.
+    if (friend.welcome.team !== host.welcome.team) {
+      friend.room.send(ClientMessage.TeamSwitch, { team: host.welcome.team });
+    }
+    await until(
+      () =>
+        [...host.room.state.players.values()].filter(
+          (player) => player.connected && player.team === host.welcome.team,
+        ).length === 2,
+      10_000,
+    );
+
+    // A stranger cannot find the room while it is private.
+    const early = await connect((client) =>
+      client.joinOrCreate<MatchRoomState>(ROOM_TWO_VS_TWO, joinOptions('זר')),
+    );
+    expect(early.room.roomId).not.toBe(host.room.roomId);
+    await early.room.leave(true);
+
+    // The host asks for opponents; only then does the room join the queue.
+    host.room.send(ClientMessage.OpenRoom, {});
+    await until(() => host.room.state.isPrivate === false, 10_000);
+    expect(host.room.state.inviteCode).toBe('');
+    // The code stops resolving, so it is not a back door into a public room.
+    expect((await fetch(`${endpoint}/invite/${code}`)).status).toBe(404);
+
+    const opponent = await connect((client) =>
+      client.joinOrCreate<MatchRoomState>(ROOM_TWO_VS_TWO, joinOptions('יריב')),
+    );
+    expect(opponent.room.roomId).toBe(host.room.roomId);
+    // Nobody was moved: the pair are still two on the host's side, and the
+    // stranger was seated opposite them.
+    const onHostTeam = [...host.room.state.players.values()].filter(
+      (player) => player.connected && player.team === host.welcome.team,
+    );
+    expect(onHostTeam).toHaveLength(2);
+    expect(onHostTeam.map((player) => player.name).sort()).toEqual(['מארח', 'חבר'].sort());
+    expect(opponent.welcome.team).not.toBe(host.welcome.team);
+    void friend;
+  }, 120_000);
+
+  it('refuses to open a room that is not the host asking, or already full', async () => {
+    const players = await quickFour();
+    const [host, other] = players;
+    if (!host || !other) throw new Error('nobody joined');
+
+    // A full quick-match room is public already and has nothing to open.
+    host.room.send(ClientMessage.OpenRoom, {});
+    await sleep(400);
+    expect(host.room.state.stage).toBe('teamSelection');
+
+    // And once the match is under way, nothing opens at all.
+    await kickOff(players);
+    other.room.send(ClientMessage.OpenRoom, {});
+    await sleep(400);
+    expect(host.room.state.stage).toBe('playing');
+    expect(host.room.state.players.size).toBe(4);
+  }, 120_000);
+
   it('rejects a client on a different protocol version', async () => {
     await expect(
       new Client(endpoint).joinOrCreate(

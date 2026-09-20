@@ -30,15 +30,18 @@ import {
 import {
   attackingGoalZ,
   createMatchState,
+  createPlayerStats,
   opponentOf,
   type MatchOutcome,
   type MatchState,
   type PlayerState,
+  type PlayerStats,
   type ScoreEventRecord,
   type ShotRecord,
   type TeamId,
   type ViolationRecord,
 } from './MatchState';
+import { findAssist } from './Attribution';
 import { ONE_VS_ONE_ROSTER, type MatchRoster } from './MatchRoster';
 import { magnusImpulse, resolveShot, type ResolvedShot } from './ShotResolver';
 import { TouchRuleEngine, type TouchOutcome } from './TouchRuleEngine';
@@ -86,6 +89,12 @@ interface ActiveShot {
 }
 
 const BALL_ID = 'ball';
+
+/**
+ * How many touches back the attribution looks. Four covers a pass, a control
+ * and a finish with one to spare; a longer log would only invent assists.
+ */
+const TOUCH_LOG_LENGTH = 4;
 
 /** One-shot animation cues the renderer consumes and clears. */
 export type AnimationTrigger = 'kick' | 'tackle' | 'pass' | 'juggle';
@@ -248,6 +257,8 @@ export class MatchEngine {
   /** Resets the match and places everyone for the opening kickoff. */
   start(): void {
     startMatch(this.state);
+    for (const player of this.state.players) this.state.stats[player.id] = createPlayerStats();
+    this.state.recentTouches.length = 0;
     this.scoring.reset();
     this.activeShot = null;
     this.shotCounter = 0;
@@ -325,9 +336,11 @@ export class MatchEngine {
         this.events.emit('violation', record);
       }
 
-      for (const record of this.scoring.update(this.state.elapsed)) {
+      for (const raw of this.scoring.update(this.state.elapsed)) {
         if (this.state.phase !== 'playing') continue;
+        const record = this.attribute(raw);
         applyScoreEvent(this.state, record);
+        this.recordScoreStats(record);
         this.activeShot = null;
         this.events.emit('scored', record);
       }
@@ -516,6 +529,18 @@ export class MatchEngine {
   }
 
   /** The team-mate a pass should go to, or null when there is nobody to aim at. */
+  /**
+   * Who a pass from this player would go to right now, for the HUD to point
+   * at. Read-only, and it asks exactly the same question the pass itself does,
+   * so the ring never promises a target the pass would not pick.
+   */
+  passTargetFor(playerId: string): string | null {
+    const player = this.state.players.find((candidate) => candidate.id === playerId);
+    if (!player) return null;
+    const command = this.commands.get(playerId);
+    return this.choosePassTarget(player, command?.preferredPassSlot ?? -1)?.id ?? null;
+  }
+
   private choosePassTarget(player: PlayerState, preferredSlot: number): PlayerState | null {
     const mates = this.state.players.filter(
       (other) => other.team === player.team && other.id !== player.id,
@@ -575,6 +600,7 @@ export class MatchEngine {
       juggle.lift,
       Math.cos(player.facing) * juggle.forward,
     );
+    this.statsFor(player.id).juggles += 1;
     this.trigger(player.id, 'juggle');
     this.events.emit('juggle', {
       playerId: player.id,
@@ -670,6 +696,7 @@ export class MatchEngine {
     };
 
     if (pass) {
+      this.statsFor(player.id).passes += 1;
       this.trigger(player.id, 'pass');
       this.events.emit('pass', {
         playerId: player.id,
@@ -680,6 +707,7 @@ export class MatchEngine {
       return;
     }
 
+    this.statsFor(player.id).shots += 1;
     this.trigger(player.id, 'kick');
     this.events.emit('kick', {
       playerId: player.id,
@@ -748,6 +776,7 @@ export class MatchEngine {
       // the turn — which is exactly how a tackle should feel.
       const outcome = this.registerTouch(player, true, Number.POSITIVE_INFINITY);
       if (outcome !== 'violation' && outcome !== 'ignored') {
+        this.statsFor(player.id).tackles += 1;
         this.lastContactTick.set(player.id, this.state.tick);
         const dirX = Math.sin(player.facing);
         const dirZ = Math.cos(player.facing);
@@ -838,10 +867,14 @@ export class MatchEngine {
     if (outcome === 'violation') {
       // Recorded here, acted on at the end of the tick: the physics step has
       // already run, and a restart must not move bodies mid-step.
-      this.pendingViolation ??= { playerId: player.id, team: player.team };
+      if (!this.pendingViolation) {
+        this.pendingViolation = { playerId: player.id, team: player.team };
+        this.statsFor(player.id).violations += 1;
+      }
       return outcome;
     }
 
+    this.logTouch(player.id, player.team);
     this.state.ball.lastTouchBy = player.id;
     this.state.ball.lastTouchTeam = player.team;
     this.state.ball.lastTouchTick = this.state.tick;
@@ -885,6 +918,64 @@ export class MatchEngine {
   private contactDebounced(playerId: string): boolean {
     const last = this.lastContactTick.get(playerId);
     return last !== undefined && this.state.tick - last < GameConfig.touch.contactDebounceTicks;
+  }
+
+  /**
+   * Works out who set a goal up.
+   *
+   * The assist is the last meaningful touch before the scorer's own, by a
+   * different player on the same side, inside the assist window. Nothing is
+   * credited for an own goal, and nothing is credited across a restart —
+   * `recentTouches` is cleared at every kickoff, so a touch from before the
+   * last goal can never turn into an assist for this one.
+   */
+  private attribute(record: ScoreEventRecord): ScoreEventRecord {
+    const touches = this.state.recentTouches.slice(0, TOUCH_LOG_LENGTH);
+    const scorer = record.playerId;
+    if (scorer === null || record.ownGoal) {
+      return { ...record, assistingPlayerId: null, lastTouches: touches };
+    }
+
+    const windowTicks = Math.round(
+      GameConfig.pass.assistWindowSeconds / GameConfig.simulation.fixedDeltaSeconds,
+    );
+    const assist = findAssist(touches, scorer, record.team, record.tick, windowTicks);
+    return { ...record, assistingPlayerId: assist, lastTouches: touches };
+  }
+
+  /** Counts a scoring event against the people responsible for it. */
+  private recordScoreStats(record: ScoreEventRecord): void {
+    if (record.ownGoal) {
+      // The points go to the other team; the own goal goes on the record of
+      // whoever put it in, which is the last person to touch it.
+      const culprit = this.state.recentTouches[0]?.playerId ?? null;
+      if (culprit !== null) this.statsFor(culprit).ownGoals += 1;
+      return;
+    }
+    if (record.playerId !== null) {
+      const stats = this.statsFor(record.playerId);
+      stats.goals += 1;
+      stats.points += record.points;
+    }
+    if (record.assistingPlayerId !== null) this.statsFor(record.assistingPlayerId).assists += 1;
+  }
+
+  /** The tally for one player, created on demand so a roster swap is safe. */
+  private statsFor(playerId: string): PlayerStats {
+    const existing = this.state.stats[playerId];
+    if (existing) return existing;
+    const created = createPlayerStats();
+    this.state.stats[playerId] = created;
+    return created;
+  }
+
+  /** Remembers a meaningful touch, newest first, for assists and attribution. */
+  private logTouch(playerId: string, team: TeamId): void {
+    this.state.recentTouches.unshift({ playerId, team, tick: this.state.tick });
+    if (this.state.recentTouches.length > TOUCH_LOG_LENGTH) {
+      this.state.recentTouches.length = TOUCH_LOG_LENGTH;
+    }
+    this.statsFor(playerId).touches += 1;
   }
 
   /**
@@ -1048,6 +1139,9 @@ export class MatchEngine {
 
   private applyKickoffReset(): void {
     this.touchRule.reset(this.state.tick);
+    // A restart wipes the touch log: a touch from before the last goal must
+    // never come back as an assist for the next one.
+    this.state.recentTouches.length = 0;
     this.lastContactTick.clear();
     this.possessionPlayerId = null;
     resetForKickoff(this.state);

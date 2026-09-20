@@ -75,6 +75,17 @@ interface SeatBinding {
   droppedFor: number;
 }
 
+/** What travels with a player when they change seats, rather than staying. */
+interface Person {
+  name: string;
+  colorId: number;
+  connected: boolean;
+  botControlled: boolean;
+  departed: boolean;
+  rematchVote: boolean;
+  surrenderVote: boolean;
+}
+
 const PATCH_RATE_MS = 50;
 
 function rejection(reason: RejectReasonCode): ServerError {
@@ -346,10 +357,11 @@ export abstract class BaseOnlineMatchRoom extends Room<MatchRoomState> {
 
       // Requests only. The manager checks there is room and that the match has
       // not started; a client can never state which side it is on.
+      // Moving seats moves identity with it, so names and kits follow.
+      const people = this.capturePeople();
       const result = this.teams.requestSwitch(client.sessionId, team, this.teamsLocked);
       if (result !== 'ok') return;
-      // Moving seats moves identity with it, so names and kits follow.
-      this.reseat();
+      this.applyPeople(people);
       this.refreshStage();
     });
 
@@ -359,8 +371,9 @@ export abstract class BaseOnlineMatchRoom extends Room<MatchRoomState> {
       if (!this.lobby.isHost(client.sessionId) || this.teamsLocked) return;
       // A player who has already said they are ready keeps their seat: the
       // host proposes a shuffle, they do not move people around under them.
+      const people = this.capturePeople();
       this.teams.shuffle(() => this.shuffleRng.next(), this.lobby.readySessions);
-      this.reseat();
+      this.applyPeople(people);
       this.refreshStage();
     });
 
@@ -378,6 +391,12 @@ export abstract class BaseOnlineMatchRoom extends Room<MatchRoomState> {
       if (!isQuickChatId(id)) return;
       const chat: NetChat = { playerId: binding.seat.playerId, team: binding.seat.team, id };
       this.broadcast(ServerMessage.Chat, chat);
+    });
+
+    this.onMessage(ClientMessage.OpenRoom, (client) => {
+      const binding = this.controlMessage(client);
+      if (!binding) return;
+      void this.openToMatchmaking(client.sessionId);
     });
 
     this.onMessage(ClientMessage.Rematch, (client) => {
@@ -403,8 +422,10 @@ export abstract class BaseOnlineMatchRoom extends Room<MatchRoomState> {
       this.state.lastScore.kind = record.kind;
       this.state.lastScore.team = record.team;
       this.state.lastScore.playerId = record.playerId ?? '';
+      this.state.lastScore.assistingPlayerId = record.assistingPlayerId ?? '';
       this.state.lastScore.points = record.points;
       this.state.lastScore.ownGoal = record.ownGoal;
+      this.state.lastScore.shotType = record.shotType;
       this.state.lastScore.tick = record.tick;
       this.emit({
         kind: 'scored',
@@ -645,6 +666,37 @@ export abstract class BaseOnlineMatchRoom extends Room<MatchRoomState> {
   }
 
   /**
+   * A party of friends asks for opponents.
+   *
+   * This is the whole of "queue as a pair": the two of them are already
+   * seated together in their own private room, and opening it to matchmaking
+   * lets strangers take the seats that are left. Nobody is moved, so the pair
+   * cannot be split by the matchmaker — which is the one thing a party is for.
+   *
+   * Every condition is checked here, on the server. The host asks; the room
+   * decides.
+   */
+  private async openToMatchmaking(sessionId: string): Promise<void> {
+    if (!this.lobby.isHost(sessionId)) return;
+    if (!this.state.isPrivate) return;
+    // Never once the teams are settled: a room in countdown or in play does
+    // not take anybody new, party or not.
+    if (this.teamsLocked) return;
+    if (this.teams.freeSeatCount() === 0) return;
+    // One person alone is not a party; that is an ordinary quick match.
+    if (this.teams.occupied().length < 2) return;
+
+    this.state.isPrivate = false;
+    await this.setPrivate(false);
+    await this.unlock();
+    // The code is no longer a way in, so it stops existing rather than
+    // lingering as a shareable link to a room anyone can now find.
+    await this.invites.release(this.state.inviteCode);
+    this.state.inviteCode = '';
+    this.emit({ kind: 'roomOpened' });
+  }
+
+  /**
    * True when an empty seat should be given to a bot rather than ending the
    * match: a mode with team-mates, a match that is actually under way, and a
    * result that has not been decided yet.
@@ -721,17 +773,65 @@ export abstract class BaseOnlineMatchRoom extends Room<MatchRoomState> {
   }
 
   /**
-   * Re-applies identity after seats moved: the person keeps their name and
-   * kit, and the seat keeps its place in the simulation.
+   * Takes a copy of everything that belongs to the *person* rather than to the
+   * seat, keyed by their session.
+   *
+   * Seats are fixtures of the simulation — `home-1` is always the same body in
+   * the same place — so moving somebody between teams means moving their name,
+   * their kit and their connection state to a different seat. Capture this
+   * before asking the TeamManager to move anybody, and apply it afterwards.
    */
-  private reseat(): void {
+  private capturePeople(): Map<string, Person> {
+    const people = new Map<string, Person>();
+    for (const assignment of this.teams.seats) {
+      const sessionId = assignment.sessionId;
+      const binding = this.bindings.get(assignment.seat.playerId);
+      if (sessionId === null || !binding) continue;
+      people.set(sessionId, {
+        name: binding.netPlayer.name,
+        colorId: binding.netPlayer.colorId,
+        connected: binding.netPlayer.connected,
+        botControlled: binding.netPlayer.botControlled,
+        departed: binding.netPlayer.departed,
+        rematchVote: binding.netPlayer.rematchVote,
+        surrenderVote: binding.netPlayer.surrenderVote,
+      });
+    }
+    return people;
+  }
+
+  /** Writes the captured people back into whichever seats they now hold. */
+  private applyPeople(people: ReadonlyMap<string, Person>): void {
     for (const assignment of this.teams.seats) {
       const binding = this.bindings.get(assignment.seat.playerId);
       if (!binding) continue;
-      const occupied = assignment.sessionId !== null;
-      binding.controller.setConnected(occupied);
-      binding.netPlayer.connected = occupied;
-      if (!occupied) binding.netPlayer.name = '';
+      const sessionId = assignment.sessionId;
+      const person = sessionId === null ? undefined : people.get(sessionId);
+
+      if (!person) {
+        binding.controller.setConnected(false);
+        binding.controller.setBot(null);
+        binding.netPlayer.connected = false;
+        binding.netPlayer.botControlled = false;
+        binding.netPlayer.departed = false;
+        binding.netPlayer.rematchVote = false;
+        binding.netPlayer.surrenderVote = false;
+        binding.netPlayer.name = '';
+        continue;
+      }
+
+      binding.netPlayer.name = person.name;
+      // The kit is re-picked for the new side, so a player crossing over does
+      // not end up wearing the same colour as the people they now face.
+      binding.netPlayer.colorId = this.pickColor(person.colorId, assignment.seat.team);
+      binding.netPlayer.connected = person.connected;
+      binding.netPlayer.botControlled = person.botControlled;
+      binding.netPlayer.departed = person.departed;
+      binding.netPlayer.rematchVote = person.rematchVote;
+      binding.netPlayer.surrenderVote = person.surrenderVote;
+      binding.controller.setConnected(person.connected || person.botControlled);
+      this.session.setName(binding.seat.playerId, person.name);
+      this.session.setColor(binding.seat.playerId, binding.netPlayer.colorId);
     }
     this.syncSeats();
   }
@@ -880,6 +980,22 @@ export abstract class BaseOnlineMatchRoom extends Room<MatchRoomState> {
       net.stunTimer = player.stunTimer;
       net.lastInput = binding.controller.lastProcessedSequence;
       net.botControlled = binding.controller.isBotControlled;
+
+      // Statistics are counted by the simulation, so they come from here and
+      // are never taken from anything a client claims about itself.
+      const stats = this.headless.match.state.stats[player.id];
+      if (stats) {
+        net.goals = stats.goals;
+        net.points = stats.points;
+        net.assists = stats.assists;
+        net.ownGoals = stats.ownGoals;
+        net.shots = stats.shots;
+        net.passes = stats.passes;
+        net.juggles = stats.juggles;
+        net.violations = stats.violations;
+        net.touches = stats.touches;
+        net.tackles = stats.tackles;
+      }
     }
   }
 

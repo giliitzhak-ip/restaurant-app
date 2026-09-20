@@ -120,6 +120,11 @@ export class ScoringSystem {
         team: pending.team,
         // An own goal is credited to the opponent's team but to no player.
         playerId: pending.ownGoal ? null : pending.shot.playerId,
+        // Attribution beyond the striker needs the touch log, which lives in
+        // the match state; `MatchEngine` fills these in before the event goes
+        // anywhere. This system only knows about shots and collisions.
+        assistingPlayerId: null,
+        lastTouches: [],
         points: pointsFor(pending.kind),
         tick: pending.tick,
         ownGoal: pending.ownGoal,

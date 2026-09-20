@@ -162,6 +162,11 @@ export class OnlineMatch {
     this.client.sendShuffleTeams();
   }
 
+  /** Host only: asks for the private room to be opened to matchmaking. */
+  requestOpenRoom(): void {
+    this.client.sendOpenRoom();
+  }
+
   voteSurrender(): void {
     this.client.sendSurrender();
   }
@@ -211,6 +216,23 @@ export class OnlineMatch {
     state.elapsed = snapshot.elapsed;
     state.phase = snapshot.phase as MatchPhase;
     state.kickoffTeam = snapshot.kickoffTeam as TeamId;
+
+    // Statistics are copied rather than counted: the mirrored engine sees only
+    // its own predictions, and two clients counting separately would disagree.
+    snapshot.players.forEach((net, playerId) => {
+      state.stats[playerId] = {
+        goals: net.goals,
+        points: net.points,
+        assists: net.assists,
+        ownGoals: net.ownGoals,
+        shots: net.shots,
+        passes: net.passes,
+        juggles: net.juggles,
+        violations: net.violations,
+        touches: net.touches,
+        tackles: net.tackles,
+      };
+    });
   }
 
   // ── Server truth ────────────────────────────────────────────────────────────
@@ -279,11 +301,16 @@ export class OnlineMatch {
           kind: (event.detail ?? 'goal') as ScoreKind,
           team: event.team ?? 'home',
           playerId: event.playerId ?? null,
+          // Attribution is the server's: the mirrored engine never works out
+          // who assisted, it is told.
+          assistingPlayerId:
+            last && last.assistingPlayerId.length > 0 ? last.assistingPlayerId : null,
           points: event.points ?? 1,
           tick,
           ownGoal: last?.ownGoal ?? false,
-          shotType: 'ground',
+          shotType: (last?.shotType as ScoreEventRecord['shotType']) || 'ground',
           power: 0,
+          lastTouches: [],
         };
         this.match.events.emit('scored', record);
         return;

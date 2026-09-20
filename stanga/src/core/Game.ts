@@ -20,7 +20,12 @@ import { configFor } from '../game/MatchConfig';
 import { rosterFor } from '../game/MatchRoster';
 import { MatchSession, type MatchMode, type PlayerSlot } from '../game/MatchSession';
 import { canPlayerTouch } from '../game/TouchRuleEngine';
-import type { MatchState, TeamId } from '../game/MatchState';
+import {
+  createPlayerStats,
+  type MatchState,
+  type PlayerState,
+  type TeamId,
+} from '../game/MatchState';
 import { DeviceManager, type InputDevice } from '../input/DeviceManager';
 import { KeyboardState } from '../input/KeyboardState';
 import { CompositeController } from '../input/controllers/CompositeController';
@@ -28,9 +33,13 @@ import { HumanGamepadController } from '../input/controllers/GamepadController';
 import { HumanKeyboardController } from '../input/controllers/KeyboardController';
 import { HumanTouchController } from '../input/controllers/TouchController';
 import {
-  soloKeyMap,
+  ACTION_LABELS,
+  BINDABLE_ACTIONS,
   defaultKeyMapFor,
+  keyLabel,
+  soloKeyMap,
   type BindableAction,
+  type KeyMap,
   type KeyboardProfileId,
 } from '../input/KeyBindings';
 import { NetworkController } from '../input/controllers/NetworkController';
@@ -47,6 +56,8 @@ import type { RoomStage } from '../net/schema';
 import { loadHavok } from '../physics/loadHavokBrowser';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
 import { AimIndicator } from '../rendering/AimIndicator';
+import { EdgeArrows, type EdgeArrowTarget } from '../rendering/EdgeArrows';
+import { PlayerMarkers } from '../rendering/PlayerMarkers';
 import { buildArena, type ArenaHandles } from '../rendering/Arena';
 import { CameraRig } from '../rendering/CameraRig';
 import { ContactShadows } from '../rendering/ContactShadows';
@@ -93,6 +104,8 @@ export class Game {
   private quality!: QualityManager;
   private effects!: Effects;
   private aimIndicator!: AimIndicator;
+  private markers!: PlayerMarkers;
+  private edgeArrows!: EdgeArrows;
   private contactShadows!: ContactShadows;
 
   private readonly audio = new AudioManager();
@@ -177,6 +190,7 @@ export class Game {
         onOnlineLeave: () => void this.leaveOnline(),
         onOnlineTeamSwitch: (team) => this.online?.requestTeamSwitch(team),
         onOnlineShuffleTeams: () => this.online?.requestShuffle(),
+        onOnlineFindOpponents: () => this.online?.requestOpenRoom(),
         onOnlineSurrender: () => this.online?.voteSurrender(),
         onOnlineQuickChat: (id) => this.online?.sendQuickChat(id),
         onPrimerDismissed: () => this.dismissPrimer(),
@@ -226,6 +240,8 @@ export class Game {
     this.soloCamera = new CameraRig(this.scene);
     this.sharedCamera = new SharedMatchCamera(this.scene);
     this.aimIndicator = new AimIndicator(this.scene);
+    this.markers = new PlayerMarkers(this.scene);
+    this.edgeArrows = new EdgeArrows(requireArrowLayer());
     this.effects = new Effects(this.scene);
 
     this.quality.apply(this.settings.quality);
@@ -364,6 +380,12 @@ export class Game {
     this.ui.showResumeCountdown(null);
 
     this.ui.setPauseMode(mode === 'online');
+    this.ui.renderPauseKeys(
+      keyboardSection('', mode === 'localTwoPlayer' ? this.settings.keyBindings.left : soloKeyMap())
+        .rows,
+    );
+    // Talking to a partner only means anything when you have one.
+    this.ui.setQuickChatVisible(mode === 'online' && this.onlineMode === 'twoVsTwo');
     this.showTouchPadsFor(slots);
     this.session.resetControllers();
 
@@ -397,13 +419,18 @@ export class Game {
   private openOnline(mode: OnlineMode = 'oneVsOne'): void {
     this.onlineMode = mode;
     this.audio.unlock();
+    this.ui.setOnlineMode(mode);
     this.ui.setOnlineName(this.settings.profiles.player1.name);
     this.ui.showOnlineEntry(null);
     this.ui.setOnlineNotice(
       RoomClient.hasResumableSession() ? 'אפשר לחזור למשחק שנקטע — חפשו יריב כדי לנסות.' : null,
     );
     // Learn the controls before readying up, not on top of a running match.
-    if (!this.settings.seenControlsPrimer) this.showPrimer('online', 'online');
+    // 2×2 gets its own showing even for a veteran of 1×1: rings, arrows and
+    // quick chat are all new, and none of them were in the first primer.
+    const owed =
+      mode === 'twoVsTwo' ? !this.settings.seenTeamPrimer : !this.settings.seenControlsPrimer;
+    if (owed) this.showPrimer('online', 'online');
   }
 
   /**
@@ -470,6 +497,7 @@ export class Game {
       canReady: false,
       canSwitchTeam: false,
       canShuffle: false,
+      canFindOpponents: false,
       readyLabel: 'מוכן',
     });
 
@@ -642,6 +670,14 @@ export class Game {
       canReady: stage === 'teamSelection' && you?.ready !== true,
       canSwitchTeam: stage === 'waitingForPlayers' || stage === 'teamSelection',
       canShuffle: (you?.isHost ?? false) && stage === 'teamSelection',
+      // A party: the host of a private room that still has an empty seat and
+      // at least one friend already in it.
+      canFindOpponents:
+        (you?.isHost ?? false) &&
+        (snapshot?.isPrivate ?? false) &&
+        seated >= 2 &&
+        seated < online.playersPerTeam * 2 &&
+        (stage === 'waitingForPlayers' || stage === 'teamSelection'),
       readyLabel: stage === 'finished' || stage === 'rematchVote' ? 'עוד משחק' : 'מוכן',
     });
   }
@@ -865,62 +901,80 @@ export class Game {
 
   private showPrimer(mode: MatchMode, returnTo: ScreenName | null = null): void {
     this.primerReturnTo = returnTo;
-    const sections =
-      mode === 'localTwoPlayer'
-        ? [
-            {
-              title: 'שחקן 1 — מקלדת',
-              rows: [
-                ['W A S D', 'תנועה'],
-                ['Shift שמאל', 'ספרינט'],
-                ['F', 'בעיטה'],
-                ['G', 'חטיפה'],
-                ['R', 'שטוחה / מוגבהת'],
-              ] as [string, string][],
-            },
-            {
-              title: 'שחקן 2 — מקלדת',
-              rows: [
-                ['← ↑ ↓ →', 'תנועה'],
-                ['Shift ימין', 'ספרינט'],
-                ['K', 'בעיטה'],
-                ['L', 'חטיפה'],
-                ['O', 'שטוחה / מוגבהת'],
-              ] as [string, string][],
-            },
-            {
-              title: 'בקר משחק',
-              rows: [
-                ['מוט שמאלי', 'תנועה'],
-                ['מוט ימני', 'כוונת בעיטה'],
-                ['A', 'בעיטה — החזק ושחרר'],
-                ['X', 'חטיפה'],
-                ['הדק ימני', 'ספרינט'],
-                ['Y', 'שטוחה / מוגבהת'],
-                ['Start', 'השהיה'],
-              ] as [string, string][],
-            },
-          ]
-        : [
-            {
-              title: 'מקלדת',
-              rows: [
-                ['W A S D', 'תנועה'],
-                ['Shift', 'ספרינט'],
-                ['רווח', 'בעיטה — החזק ושחרר'],
-                ['E', 'חטיפה'],
-                ['Q', 'שטוחה / מוגבהת'],
-                ['Esc', 'השהיה'],
-              ] as [string, string][],
-            },
-          ];
-    this.ui.renderPrimer(sections);
+    this.ui.renderPrimer(this.primerSections(mode));
     this.ui.showScreen('primer');
     if (this.phase === 'playing') this.pause(false);
   }
 
+  /**
+   * The primer is generated from the bindings actually in force, so a remapped
+   * key is never taught wrong. The rules block comes first: after the touch
+   * rule, knowing which key kicks matters less than knowing that you only get
+   * one touch.
+   */
+  private primerSections(mode: MatchMode): PrimerSection[] {
+    const sections: PrimerSection[] = [
+      {
+        title: 'חוק הנגיעה',
+        rows: [
+          ['נגיעה אחת', 'אחרי שנגעתם, אי אפשר לגעת שוב עד שמישהו אחר נוגע'],
+          ['הקפצה', 'כל עוד הכדור באוויר — אתם ממשיכים. הוא נוגע ברצפה, התור נגמר'],
+          ['נגיעה כפולה', 'הכדור עובר ליריב, וכל שער מהנגיעה הזאת מתבטל'],
+        ],
+      },
+      {
+        title: 'ניקוד',
+        rows: [
+          ['שער', '1'],
+          ['קורה אנכית', '2'],
+          ['רוחבית', '3'],
+          ['חיבורים', '5'],
+        ],
+      },
+    ];
+
+    if (this.onlineMode === 'twoVsTwo' && mode === 'online') {
+      sections.push({
+        title: 'שניים בקבוצה',
+        rows: [
+          ['הטבעת הכתומה', 'אתם'],
+          ['הטבעת הבהירה', 'השותף שלכם'],
+          ['טבעת ירוקה', 'היעד שאליו תצא המסירה'],
+          ['חץ בקצה המסך', 'הכדור או השותף מחוץ לתמונה, והמרחק במטרים'],
+          ['צ׳אט מהיר', 'חמישה משפטים קבועים, בלי כתיבה חופשית'],
+        ],
+      });
+    }
+
+    if (mode === 'localTwoPlayer') {
+      sections.push(
+        keyboardSection('שחקן 1 — מקלדת', this.settings.keyBindings.left),
+        keyboardSection('שחקן 2 — מקלדת', this.settings.keyBindings.right),
+      );
+    } else {
+      sections.push(keyboardSection('מקלדת', soloKeyMap()));
+    }
+
+    sections.push({
+      title: 'בקר משחק',
+      rows: [
+        ['מוט שמאלי', 'תנועה'],
+        ['מוט ימני', 'גובה הכוונת וסיבוב'],
+        ['A', 'בעיטה — החזק ושחרר'],
+        ['B', 'מסירה'],
+        ['Y', 'הקפצה'],
+        ['X', 'חטיפה'],
+        ['הדק שמאלי', 'הרמה קצרה'],
+        ['הדק ימני', 'ספרינט'],
+        ['Start', 'השהיה'],
+      ],
+    });
+
+    return sections;
+  }
+
   private dismissPrimer(): void {
-    this.settings = { ...this.settings, seenControlsPrimer: true };
+    this.settings = { ...this.settings, seenControlsPrimer: true, seenTeamPrimer: true };
     saveSettings(this.settings);
     this.ui.showScreen(this.primerReturnTo);
     this.primerReturnTo = null;
@@ -1087,8 +1141,39 @@ export class Game {
    * Re-points the shadow blobs and the shadow-map casters at the current
    * line-up. Called once at boot and again whenever the roster changes.
    */
+  /**
+   * Rings under the players and arrows for whatever is off screen.
+   *
+   * Only worth drawing once there is somebody to confuse you with: in 1×1 and
+   * in a local two-player match everybody is already on screen, so the rings
+   * stay off and the pitch stays clean.
+   */
+  private updateAwareness(humans: readonly PlayerState[]): void {
+    const state = this.match.state;
+    const crowded = state.playersPerTeam > 1;
+    const live = this.phase === 'playing' && state.phase !== 'idle';
+    if (!crowded || !live) {
+      this.markers.hide();
+      this.edgeArrows.hide();
+      return;
+    }
+
+    const localIds = humans.map((player) => player.id);
+    const localTeam = humans[0]?.team ?? null;
+    const viewer = humans[0] ?? null;
+    this.markers.update(state, localIds, localTeam, this.match.passTargetFor(viewer?.id ?? ''));
+
+    const targets: EdgeArrowTarget[] = [{ kind: 'ball', position: state.ball.position }];
+    const mate = state.players.find(
+      (player) => player.team === localTeam && !localIds.includes(player.id),
+    );
+    if (mate) targets.push({ kind: 'mate', position: mate.position });
+    this.edgeArrows.update(this.scene, targets, viewer?.position ?? null);
+  }
+
   private refreshRosterVisuals(): void {
     this.quality.setDynamicCasters(this.views.shadowCasters);
+    this.markers.setPlayers(this.views.playerIds);
     this.shadowHandles.clear();
     const ids = this.views.playerIds;
     for (let i = 0; i < this.playerShadowPool.length; i += 1) {
@@ -1171,6 +1256,7 @@ export class Game {
     this.aimIndicator.update(charging, charging?.kickCharge ?? 0, charging?.lofted ?? false);
 
     const humans = state.players.filter((player) => this.isLocallyDriven(player.id));
+    this.updateAwareness(humans);
     for (let i = 0; i < humans.length; i += 1) {
       const player = humans[i];
       if (!player) continue;
@@ -1318,6 +1404,18 @@ export class Game {
       const home = state.players.find((player) => player.team === 'home');
       const away = state.players.find((player) => player.team === 'away');
       this.ui.setHudVisible(false);
+      this.ui.showResultStats(
+        [...state.players]
+          .sort(
+            (a, b) =>
+              a.team.localeCompare(b.team) || a.slotIndex - b.slotIndex || a.id.localeCompare(b.id),
+          )
+          .map((player) => ({
+            name: player.name,
+            team: player.team,
+            stats: state.stats[player.id] ?? createPlayerStats(),
+          })),
+      );
       this.ui.showResult(
         outcome,
         state.score.home,
@@ -1456,6 +1554,11 @@ export class Game {
     this.sharedCamera.setReduceMotion(settings.accessibility.reduceCameraMotion);
     this.effects.setReduceFlashes(settings.accessibility.reduceFlashes);
     this.effects.setQuality(settings.quality);
+    // The lowest preset drops the rings: four extra transparent meshes is not
+    // what a phone struggling to hold 30 frames needs. The arrows stay —
+    // they cost nothing and they are the difference between playing and
+    // guessing where the ball went.
+    this.markers.setEnabled(settings.quality !== 'low');
     this.session?.setAimAssist(settings.aimAssist);
 
     for (const slot of this.session?.slots ?? []) {
@@ -1554,6 +1657,33 @@ function frameSoundFor(part: GoalPart): 'post' | 'crossbar' | 'junction' {
 /** Kit that is guaranteed to differ from the one already chosen. */
 /** Most players any mode fields. 2×2 is the largest; the pools size to it. */
 const MAX_PLAYERS = 4;
+
+/** One block of the controls primer. */
+interface PrimerSection {
+  title: string;
+  rows: [string, string][];
+}
+
+/**
+ * Turns a key map into primer rows. Generated rather than written out, so a
+ * player who has remapped their keys is taught the keys they actually have.
+ */
+function keyboardSection(title: string, map: KeyMap): PrimerSection {
+  const rows: [string, string][] = [];
+  for (const action of BINDABLE_ACTIONS) {
+    const codes = map[action];
+    if (codes.length === 0) continue;
+    rows.push([codes.map(keyLabel).join(' / '), ACTION_LABELS[action]]);
+  }
+  return { title, rows };
+}
+
+/** The HUD layer the off-screen arrows live in. Present in index.html. */
+function requireArrowLayer(): HTMLElement {
+  const element = document.getElementById('hud-arrows');
+  if (!element) throw new Error('missing #hud-arrows');
+  return element;
+}
 
 /** The link a host shares. Same page, plus the code as a query parameter. */
 function inviteLinkFor(code: string): string {

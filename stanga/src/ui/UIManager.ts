@@ -12,8 +12,20 @@ import {
 } from '../config/GameConfig';
 import type { GameSettings } from '../core/Settings';
 import { formatClock } from '../game/MatchRules';
-import type { MatchOutcome, MatchState, PlayerState, TeamId } from '../game/MatchState';
-import { QUICK_CHAT, QUICK_CHAT_IDS, type OnlineMode, type QuickChatId } from '../net/protocol';
+import type {
+  MatchOutcome,
+  MatchState,
+  PlayerState,
+  PlayerStats,
+  TeamId,
+} from '../game/MatchState';
+import {
+  QUICK_CHAT,
+  QUICK_CHAT_IDS,
+  isQuickChatId,
+  type OnlineMode,
+  type QuickChatId,
+} from '../net/protocol';
 import {
   ACTION_LABELS,
   BINDABLE_ACTIONS,
@@ -79,6 +91,13 @@ export interface OnlinePlayerView {
   roundTripMs: number | null;
 }
 
+/** One row of the end-of-match table. */
+export interface ResultStatsRow {
+  name: string;
+  team: TeamId;
+  stats: PlayerStats;
+}
+
 export interface OnlineRoomView {
   /** Already-localized line describing what the room is waiting for. */
   status: string;
@@ -96,6 +115,8 @@ export interface OnlineRoomView {
   canReady: boolean;
   canSwitchTeam: boolean;
   canShuffle: boolean;
+  /** Host of a private room with a friend in it and a seat still free. */
+  canFindOpponents: boolean;
   readyLabel: string;
 }
 
@@ -125,6 +146,8 @@ export interface UICallbacks {
   onOnlineLeave: () => void;
   onOnlineTeamSwitch: (team: TeamId) => void;
   onOnlineShuffleTeams: () => void;
+  /** Ask the server to throw this private room open to matchmaking. */
+  onOnlineFindOpponents: () => void;
   onOnlineSurrender: () => void;
   onOnlineQuickChat: (id: QuickChatId) => void;
   onPrimerDismissed: () => void;
@@ -546,6 +569,40 @@ export class UIManager {
     }, 1400);
   }
 
+  /**
+   * One line per player on the result screen.
+   *
+   * Offline it comes from the local simulation; online the very same numbers
+   * arrive from the server, so the two clients never show different tallies.
+   */
+  showResultStats(rows: readonly ResultStatsRow[]): void {
+    const table = requireElement('result-stats');
+    const body = requireElement('result-stats-body');
+    body.replaceChildren();
+    table.classList.toggle('is-hidden', rows.length === 0);
+    if (rows.length === 0) return;
+
+    for (const row of rows) {
+      const tr = document.createElement('tr');
+      tr.className = row.team === 'home' ? 'is-home' : 'is-away';
+      const cells = [
+        row.name,
+        row.stats.points,
+        row.stats.ownGoals > 0 ? `${row.stats.goals} (${row.stats.ownGoals}-)` : row.stats.goals,
+        row.stats.assists,
+        row.stats.passes,
+        row.stats.juggles,
+        row.stats.violations,
+      ];
+      for (const value of cells) {
+        const cell = document.createElement('td');
+        cell.textContent = String(value);
+        tr.append(cell);
+      }
+      body.append(tr);
+    }
+  }
+
   showResult(
     outcome: MatchOutcome,
     home: number,
@@ -586,6 +643,27 @@ export class UIManager {
   setPauseMode(online: boolean): void {
     requireElement('pause-title').textContent = online ? 'תפריט — המשחק ממשיך לרוץ' : 'המשחק מושהה';
     requireElement('btn-pause-restart').classList.toggle('is-hidden', online);
+    // Surrender exists only online, and the server still decides whether a
+    // vote counts — this button asks, it does not concede.
+    requireElement('btn-pause-surrender').classList.toggle('is-hidden', !online);
+  }
+
+  /** The key list on the pause screen, built from the bindings in force. */
+  renderPauseKeys(rows: readonly [string, string][]): void {
+    const list = requireElement('pause-keys');
+    list.replaceChildren();
+    for (const [keys, action] of rows) {
+      const item = document.createElement('li');
+      const kbd = document.createElement('kbd');
+      kbd.textContent = keys;
+      item.append(kbd, document.createTextNode(` ${action}`));
+      list.append(item);
+    }
+  }
+
+  /** The in-match quick-chat row. 2×2 online only; nobody else has a partner. */
+  setQuickChatVisible(visible: boolean): void {
+    requireElement('hud-quickchat').classList.toggle('is-hidden', !visible);
   }
 
   renderLobby(slots: readonly LobbySlotView[], canStart: boolean, notice: string | null): void {
@@ -898,6 +976,10 @@ export class UIManager {
       this.callbacks.onInteraction();
       this.callbacks.onRestart();
     });
+    this.onClick('btn-pause-surrender', () => {
+      this.callbacks.onInteraction();
+      this.callbacks.onOnlineSurrender();
+    });
     this.onClick('btn-pause-menu', () => {
       this.callbacks.onInteraction();
       this.callbacks.onExitToMenu();
@@ -977,13 +1059,29 @@ export class UIManager {
       this.callbacks.onInteraction();
       this.callbacks.onOnlineShuffleTeams();
     });
+    this.onClick('btn-online-open', () => {
+      this.callbacks.onInteraction();
+      this.callbacks.onOnlineFindOpponents();
+    });
     this.onClick('btn-online-surrender', () => {
       this.callbacks.onInteraction();
       this.callbacks.onOnlineSurrender();
     });
+    // The lobby chips are in the markup; the HUD row is built here from the
+    // same list of ids, so the two can never drift apart.
+    const hudChat = requireElement('hud-quickchat');
     for (const id of QUICK_CHAT_IDS) {
-      const button = document.querySelector<HTMLButtonElement>(`[data-quick-chat="${id}"]`);
-      button?.addEventListener('click', () => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'btn btn--ghost btn--chip';
+      chip.dataset.quickChat = id;
+      chip.textContent = QUICK_CHAT[id];
+      hudChat.append(chip);
+    }
+    for (const button of document.querySelectorAll<HTMLButtonElement>('[data-quick-chat]')) {
+      const id = button.dataset.quickChat;
+      if (!isQuickChatId(id)) continue;
+      button.addEventListener('click', () => {
         this.callbacks.onInteraction();
         this.callbacks.onOnlineQuickChat(id);
       });
@@ -1009,6 +1107,19 @@ export class UIManager {
   setOnlineName(name: string): void {
     const input = requireElement<HTMLInputElement>('online-name');
     if (document.activeElement !== input) input.value = name;
+  }
+
+  /**
+   * Titles the online screen for the mode that is about to be played, so the
+   * panel never says "1 על 1" over a four-player lobby.
+   */
+  setOnlineMode(mode: OnlineMode): void {
+    requireElement('online-title').textContent =
+      mode === 'twoVsTwo' ? 'אונליין — 2 נגד 2' : 'אונליין — 1 על 1';
+    requireElement('online-lead').textContent =
+      mode === 'twoVsTwo'
+        ? 'ארבעה שחקנים, שניים בכל קבוצה. חפשו משחק לבד, או פתחו חדר פרטי, הזמינו חבר לקבוצה שלכם ובקשו מהשרת יריבים.'
+        : 'שחקו מול חבר במכשיר אחר. חפשו יריב, או פתחו חדר פרטי ושלחו קישור.';
   }
 
   /** Shows the entry form (search / create / join) and hides the room panel. */
@@ -1073,6 +1184,7 @@ export class UIManager {
     this.pendingTeamSwitch = you?.team === 'home' ? 'away' : 'home';
 
     requireElement('btn-online-shuffle').classList.toggle('is-hidden', !view.canShuffle);
+    requireElement('btn-online-open').classList.toggle('is-hidden', !view.canFindOpponents);
     requireElement('online-quickchat').classList.toggle(
       'is-hidden',
       view.mode !== 'twoVsTwo' || view.seated < 2,
