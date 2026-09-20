@@ -1,4 +1,5 @@
 import type { TextureOrientation } from "./catalog";
+import type { DesignScene } from "./scene";
 
 /** Normalised polygon point — 0..1 relative to image width/height. */
 export interface NormPoint {
@@ -99,6 +100,9 @@ export interface RoomDesignSummary {
   createdAt: string;
   updatedAt: string;
   expiresAt: string | null;
+  /** How many objects and lights the design carries, for the listing cards. */
+  objectCount: number;
+  lightCount: number;
 }
 
 /** A surface as it was saved: mask, product and render settings. */
@@ -116,6 +120,12 @@ export interface RoomDesignRecord extends RoomDesignSummary {
   analysis: RoomAnalysis | null;
   /** Everything needed to reopen and keep editing the design. */
   surfaces: StoredRoomSurface[];
+  /**
+   * Objects, lighting and LED runs. Always present when a design is read —
+   * a row saved before the scene existed, or one whose scene will not parse,
+   * reads back as an empty scene so the cladding still opens.
+   */
+  scene: DesignScene;
   /**
    * Owner of a design saved before sign-up. Server-only: every ownership check
    * goes through requireDesignOwnership, and nothing ships it to the browser.

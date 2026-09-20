@@ -12,6 +12,7 @@ import { rateLimit } from "@/server/security/rate-limit";
 import { requireDesignOwnership } from "@/server/security/ownership";
 import { ImageRejected, sanitiseImageUpload } from "@/server/security/images";
 import { getStorage, removeStoredImage } from "@/server/storage";
+import { normaliseScene, sceneSchema } from "@/server/design/scene";
 import { log } from "@/server/observability/logger";
 import type { RoomDesignRecord } from "@/types/design";
 
@@ -92,7 +93,41 @@ const saveSchema = z.object({
       areaSqm: z.number().min(0),
     }),
   ),
+  /*
+   * Optional, and omitting it means "leave the stored scene alone" rather
+   * than "there is no scene". The surfaces and the scene are edited by
+   * different parts of the designer, and a save from one must not be able to
+   * delete the other's work.
+   */
+  scene: sceneSchema.optional().nullable(),
 });
+
+/**
+ * Which product ids the catalogue will actually vouch for.
+ *
+ * Objects arrive from the browser carrying whatever `productId` the client
+ * put on them. That claim decides whether an item can be put in a basket with
+ * a price, so it is checked here against live, active products — the one
+ * place the decision is made, and the reason an illustration cannot be sold
+ * as a product by editing a request.
+ */
+async function sellableProductIds(scene: unknown): Promise<Set<string>> {
+  const claimed = new Set<string>();
+  const objects =
+    scene && typeof scene === "object" && "objects" in scene
+      ? (scene as { objects?: unknown }).objects
+      : null;
+  if (Array.isArray(objects)) {
+    for (const object of objects) {
+      const id = (object as { productId?: unknown })?.productId;
+      if (typeof id === "string" && id) claimed.add(id);
+    }
+  }
+  if (!claimed.size) return claimed;
+
+  const products = await getRepository().getProductsByIds([...claimed]);
+  return new Set(products.filter((product) => product.active).map((p) => p.id));
+}
 
 export type SaveDesignInput = z.input<typeof saveSchema>;
 
@@ -181,6 +216,9 @@ export async function saveDesignAction(
     estimatedPrice: roundTo(parsed.data.estimatedPrice, 2),
     analysis: parsed.data.analysis ?? null,
     surfaces: parsed.data.surfaces,
+    scene: parsed.data.scene
+      ? normaliseScene(parsed.data.scene, await sellableProductIds(parsed.data.scene))
+      : null,
     expiresAt: new Date(Date.now() + retentionDays * 86400000).toISOString(),
   });
 
@@ -269,6 +307,8 @@ export async function duplicateDesignAction(designId: string) {
     estimatedPrice: design.estimatedPrice,
     analysis: design.analysis,
     surfaces: design.surfaces,
+    // A copy is a copy: the furniture and the lighting come with it.
+    scene: design.scene,
     expiresAt: null,
   });
 

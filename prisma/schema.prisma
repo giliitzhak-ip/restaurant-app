@@ -282,16 +282,17 @@ model Product {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  category   Category        @relation(fields: [categoryId], references: [id])
-  collection Collection?     @relation(fields: [collectionId], references: [id])
-  images     ProductImage[]
-  texture    ProductTexture?
-  cartItems  CartItem[]
-  orderItems OrderItem[]
-  favorites  Favorite[]
-  reviews    Review[]
-  quotes     Quote[]
-  surfaces   RoomSurface[]
+  category           Category            @relation(fields: [categoryId], references: [id])
+  collection         Collection?         @relation(fields: [collectionId], references: [id])
+  images             ProductImage[]
+  texture            ProductTexture?
+  cartItems          CartItem[]
+  orderItems         OrderItem[]
+  favorites          Favorite[]
+  reviews            Review[]
+  quotes             Quote[]
+  surfaces           RoomSurface[]
+  designObjectAssets DesignObjectAsset[]
 
   @@index([categoryId])
   @@index([collectionId])
@@ -485,15 +486,15 @@ model Sequence {
 
 /// Who changed what in the admin panel.
 model AuditLog {
-  id        String   @id @default(cuid())
-  actorId   String?
+  id         String   @id @default(cuid())
+  actorId    String?
   actorEmail String?
-  action    String
-  entity    String
-  entityId  String?
-  detail    Json?
-  ip        String?
-  createdAt DateTime @default(now())
+  action     String
+  entity     String
+  entityId   String?
+  detail     Json?
+  ip         String?
+  createdAt  DateTime @default(now())
 
   @@index([entity, entityId])
   @@index([createdAt])
@@ -562,13 +563,23 @@ model RoomDesign {
   estimatedPrice   Float     @default(0)
   /// Raw provider output (masks, detected objects, quality metrics).
   analysis         Json?
+  /// Objects, lighting fixtures, LED paths, layer state and viewport.
+  ///
+  /// One document rather than a table per array: these are edited together,
+  /// read together and never queried independently, and a design is only ever
+  /// meaningful as a whole. `sceneVersion` is the schema version the document
+  /// was written with, so a reader can migrate an older one instead of
+  /// guessing.
+  scene            Json?
+  sceneVersion     Int       @default(0)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   /// Privacy by design: the retention job deletes images past this date.
   expiresAt        DateTime?
 
-  user      User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
   surfaces  RoomSurface[]
+  versions  RoomDesignVersion[]
   cartItems CartItem[]
   quotes    Quote[]
 
@@ -616,4 +627,94 @@ model NewsletterSignup {
   id        String   @id @default(cuid())
   email     String   @unique
   createdAt DateTime @default(now())
+}
+
+/// A kept version of a design.
+///
+/// Separate from the design itself so "keep this one and try something else"
+/// does not mean duplicating the whole row, and so a customer can go back to
+/// a layout after an hour of changes that Undo no longer reaches.
+model RoomDesignVersion {
+  id         String   @id @default(cuid())
+  designId   String
+  label      String?
+  /// Full snapshot: surfaces and scene as they were when it was kept.
+  snapshot   Json
+  previewUrl String?
+  createdAt  DateTime @default(now())
+
+  design RoomDesign @relation(fields: [designId], references: [id], onDelete: Cascade)
+
+  @@index([designId, createdAt])
+}
+
+/// How the object library is grouped in the "add items" drawer.
+///
+/// The twenty seeded keys are the ones behaviour keys off; a category added
+/// here is a grouping label, because how a thing snaps is a property of its
+/// assets rather than of its name.
+model DesignObjectCategory {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  name      String
+  sortOrder Int      @default(0)
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assets DesignObjectAsset[]
+
+  @@index([sortOrder])
+}
+
+/// One item in the object library.
+///
+/// There is deliberately no price column. A price typed onto a library asset
+/// is a price with nothing behind it, and would be wrong the first time the
+/// catalogue changed. An asset that is for sale carries `productId`, and the
+/// price, stock and name come from that product; everything else is drawn so
+/// the room can be pictured and is labelled for illustration only.
+model DesignObjectAsset {
+  id           String          @id @default(cuid())
+  categoryId   String
+  name         String
+  /// Transparent PNG or SVG. Never an image with a baked-in background.
+  assetUrl     String
+  /// Real-world size, which is what makes a 65" television look like one.
+  realWidthCm  Float
+  realHeightCm Float
+  snap         SceneSnapTarget @default(WALL)
+  soldOnSite   Boolean         @default(false)
+  productId    String?
+  sortOrder    Int             @default(0)
+  enabled      Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  category DesignObjectCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  product  Product?             @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([categoryId, sortOrder])
+  @@index([productId])
+}
+
+/// A named lighting arrangement the admin can offer as a starting point.
+model LightingPreset {
+  id         String   @id @default(cuid())
+  name       String
+  sortOrder  Int      @default(0)
+  enabled    Boolean  @default(true)
+  /// Fixtures and LED runs the preset drops in, without ids or positions.
+  definition Json
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([sortOrder])
+}
+
+enum SceneSnapTarget {
+  WALL
+  FLOOR
+  NICHE
+  FREE
 }

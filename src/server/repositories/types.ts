@@ -31,6 +31,12 @@ import type {
   RoomDesignRecord,
   StoredRoomSurface,
 } from "@/types/design";
+import type {
+  DesignObjectAsset,
+  DesignScene,
+  LightingPreset,
+  SceneSnapTarget,
+} from "@/types/scene";
 import type { CartRecord } from "@/server/commerce/pricing";
 
 export interface ProductFilter {
@@ -213,7 +219,48 @@ export interface DesignInput {
   estimatedPrice: number;
   analysis: RoomAnalysis | null;
   surfaces: StoredRoomSurface[];
+  /** Objects, lighting and LED runs. Null leaves what is already stored. */
+  scene: DesignScene | null;
   expiresAt: string | null;
+}
+
+export interface DesignObjectAssetInput {
+  id?: string;
+  categoryId: string;
+  name: string;
+  assetUrl: string;
+  realWidthCm: number;
+  realHeightCm: number;
+  snap: SceneSnapTarget;
+  soldOnSite: boolean;
+  productId: string | null;
+  sortOrder: number;
+  enabled: boolean;
+}
+
+export interface DesignObjectCategoryInput {
+  id?: string;
+  key: string;
+  name: string;
+  sortOrder: number;
+  enabled: boolean;
+}
+
+export interface DesignObjectCategoryRecord {
+  id: string;
+  key: string;
+  name: string;
+  sortOrder: number;
+  enabled: boolean;
+  assetCount: number;
+}
+
+export interface DesignVersionRecord {
+  id: string;
+  designId: string;
+  label: string | null;
+  previewUrl: string | null;
+  createdAt: string;
 }
 
 export interface AdminStats {
@@ -299,6 +346,37 @@ export interface Repository {
   /** Privacy: drops the stored image while keeping the product selection. */
   deleteDesignImage(id: string): Promise<void>;
   claimGuestDesigns(guestToken: string, userId: string): Promise<number>;
+  /** Keeps a snapshot the customer can come back to after Undo runs out. */
+  saveDesignVersion(input: {
+    designId: string;
+    label: string | null;
+    previewUrl: string | null;
+    snapshot: unknown;
+  }): Promise<DesignVersionRecord>;
+  listDesignVersions(designId: string): Promise<DesignVersionRecord[]>;
+  getDesignVersion(
+    id: string,
+  ): Promise<(DesignVersionRecord & { snapshot: unknown }) | null>;
+  deleteDesignVersion(id: string): Promise<void>;
+
+  /* the object library */
+  listDesignObjectCategories(options?: {
+    includeDisabled?: boolean;
+  }): Promise<DesignObjectCategoryRecord[]>;
+  listDesignObjectAssets(options?: {
+    includeDisabled?: boolean;
+  }): Promise<DesignObjectAsset[]>;
+  saveDesignObjectCategory(
+    input: DesignObjectCategoryInput,
+  ): Promise<DesignObjectCategoryRecord>;
+  deleteDesignObjectCategory(id: string): Promise<void>;
+  saveDesignObjectAsset(input: DesignObjectAssetInput): Promise<DesignObjectAsset>;
+  deleteDesignObjectAsset(id: string): Promise<void>;
+  listLightingPresets(options?: {
+    includeDisabled?: boolean;
+  }): Promise<LightingPreset[]>;
+  saveLightingPreset(input: LightingPreset): Promise<LightingPreset>;
+  deleteLightingPreset(id: string): Promise<void>;
   /** Returns the deleted count and the image URLs, so files can be removed too. */
   purgeExpiredDesigns(
     now?: Date,

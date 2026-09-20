@@ -10,6 +10,11 @@ import {
   availabilityFor,
   pricePerSqmFor,
 } from "@/data/build-catalog";
+import {
+  libraryAssets,
+  libraryCategories,
+  objectAssetUrl,
+} from "@/data/object-library";
 import { createId } from "@/lib/utils";
 import { canTransition } from "@/server/commerce/order-flow";
 import { timingSafeEqualString } from "@/server/security/tokens";
@@ -34,10 +39,17 @@ import type {
   User,
 } from "@/types/commerce";
 import type { RoomDesignRecord } from "@/types/design";
+import {
+  emptyScene,
+  type DesignObjectAsset,
+  type LightingPreset,
+} from "@/types/scene";
 import { buildFacets, matchesFilter, sortProducts } from "./filter";
 import type {
   AdminStats,
   CatalogFacets,
+  DesignObjectCategoryRecord,
+  DesignVersionRecord,
   CreateOrderResult,
   DesignInput,
   OrderTransitionInput,
@@ -60,6 +72,10 @@ interface MemoryStore {
   quotes: Quote[];
   designs: RoomDesignRecord[];
   designSurfaces: Map<string, DesignInput["surfaces"]>;
+  designVersions: (DesignVersionRecord & { snapshot: unknown })[];
+  objectCategories: DesignObjectCategoryRecord[];
+  objectAssets: DesignObjectAsset[];
+  lightingPresets: LightingPreset[];
   users: (User & { passwordHash: string })[];
   addresses: Address[];
   favorites: Map<string, Set<string>>;
@@ -111,6 +127,10 @@ function createStore(): MemoryStore {
     quotes: [],
     designs: [],
     designSurfaces: new Map(),
+    designVersions: [],
+    objectCategories: seedObjectCategories(),
+    objectAssets: seedObjectAssets(),
+    lightingPresets: seedLightingPresets(),
     users: demoAccounts.map((account, index) => ({
       id: `usr_${index + 1}`,
       email: account.email,
@@ -190,6 +210,57 @@ function productFromInput(input: ProductInput, id: string, createdAt: string): P
   };
 }
 
+/**
+ * The library, seeded from the same list the SVG generator draws from, so a
+ * seeded row can never point at artwork nobody produced.
+ *
+ * Nothing is marked as sold. These are illustrations; an administrator links
+ * one to a catalogue product when there is a real product behind it, and only
+ * then does it stop saying "for illustration only".
+ */
+function seedObjectCategories(): DesignObjectCategoryRecord[] {
+  return libraryCategories.map((category) => ({
+    id: `doc-${category.key.toLowerCase()}`,
+    key: category.key,
+    name: category.name,
+    sortOrder: category.sortOrder,
+    enabled: true,
+    assetCount: 0,
+  }));
+}
+
+function seedObjectAssets(): DesignObjectAsset[] {
+  const names = new Map(libraryCategories.map((c) => [c.key, c.name]));
+  return libraryAssets.map((asset) => ({
+    id: `doa-${asset.slug}`,
+    category: asset.category,
+    categoryName: names.get(asset.category) ?? asset.category,
+    name: asset.name,
+    assetUrl: objectAssetUrl(asset.slug),
+    realWidthCm: asset.widthCm,
+    realHeightCm: asset.heightCm,
+    snap: asset.snap,
+    soldOnSite: false,
+    productId: null,
+    productSlug: null,
+    price: null,
+    sortOrder: asset.sortOrder,
+    enabled: true,
+  }));
+}
+
+function seedLightingPresets(): LightingPreset[] {
+  return [];
+}
+
+/** A version row without its payload, which is what listings show. */
+function stripSnapshot(
+  version: DesignVersionRecord & { snapshot: unknown },
+): DesignVersionRecord {
+  const { snapshot: _snapshot, ...rest } = version;
+  return rest;
+}
+
 function designFrom(input: DesignInput, id: string, createdAt: string): RoomDesignRecord {
   const floor = input.surfaces.find((s) => s.kind === "FLOOR" && s.productId);
   const wall = input.surfaces.find((s) => s.kind === "WALL" && s.productId);
@@ -214,6 +285,11 @@ function designFrom(input: DesignInput, id: string, createdAt: string): RoomDesi
     expiresAt: input.expiresAt,
     analysis: input.analysis,
     surfaces: clone(input.surfaces),
+    scene: clone(input.scene ?? emptyScene()),
+    objectCount: (input.scene?.objects ?? []).length,
+    lightCount:
+      (input.scene?.lightingFixtures ?? []).length +
+      (input.scene?.ledPaths ?? []).length,
   };
 }
 
@@ -615,7 +691,12 @@ export const memoryRepository: Repository = {
       existingIndex === -1
         ? new Date().toISOString()
         : store.designs[existingIndex]!.createdAt;
-    const record = designFrom(input, id, createdAt);
+    const kept = existingIndex === -1 ? null : store.designs[existingIndex]!.scene;
+    const record = designFrom(
+      { ...input, scene: input.scene ?? kept },
+      id,
+      createdAt,
+    );
     store.designSurfaces.set(id, clone(input.surfaces));
     if (existingIndex === -1) store.designs.unshift(record);
     else store.designs[existingIndex] = record;
@@ -659,6 +740,155 @@ export const memoryRepository: Repository = {
     }
   },
 
+  async saveDesignVersion({ designId, label, previewUrl, snapshot }) {
+    const record = {
+      id: createId("dsv"),
+      designId,
+      label,
+      previewUrl,
+      createdAt: new Date().toISOString(),
+      snapshot: clone(snapshot),
+    };
+    store.designVersions.unshift(record);
+    return clone(stripSnapshot(record));
+  },
+
+  async listDesignVersions(designId) {
+    return clone(
+      store.designVersions
+        .filter((version) => version.designId === designId)
+        .map(stripSnapshot),
+    );
+  },
+
+  async getDesignVersion(id) {
+    return clone(store.designVersions.find((version) => version.id === id) ?? null);
+  },
+
+  async deleteDesignVersion(id) {
+    store.designVersions = store.designVersions.filter((version) => version.id !== id);
+  },
+
+  /* ----------------------------- object library ---------------------------- */
+
+  async listDesignObjectCategories({ includeDisabled = false } = {}) {
+    return clone(
+      store.objectCategories
+        .filter((category) => includeDisabled || category.enabled)
+        .map((category) => ({
+          ...category,
+          assetCount: store.objectAssets.filter(
+            (asset) => asset.category === category.key,
+          ).length,
+        }))
+        .sort((a, b) => a.sortOrder - b.sortOrder),
+    );
+  },
+
+  async listDesignObjectAssets({ includeDisabled = false } = {}) {
+    const categories = new Map(
+      store.objectCategories.map((category) => [category.key, category]),
+    );
+    return clone(
+      store.objectAssets
+        .filter((asset) => {
+          if (!includeDisabled && !asset.enabled) return false;
+          const category = categories.get(asset.category);
+          return includeDisabled || (category?.enabled ?? false);
+        })
+        .map((asset) => {
+          /*
+           * Price and slug come from the catalogue every time they are read,
+           * never from the library row. An asset marked as sold whose product
+           * has since gone loses the claim rather than keeping a dead price.
+           */
+          const product = asset.productId
+            ? (store.products.find((entry) => entry.id === asset.productId) ?? null)
+            : null;
+          return {
+            ...asset,
+            categoryName: categories.get(asset.category)?.name ?? asset.category,
+            soldOnSite: asset.soldOnSite && Boolean(product),
+            productId: product?.id ?? null,
+            productSlug: product?.slug ?? null,
+            price: product?.pricePerSqm ?? product?.pricePerUnit ?? null,
+          };
+        })
+        .sort((a, b) => a.sortOrder - b.sortOrder),
+    );
+  },
+
+  async saveDesignObjectCategory(input) {
+    const id = input.id ?? createId("doc");
+    const record: DesignObjectCategoryRecord = { ...input, id, assetCount: 0 };
+    const index = store.objectCategories.findIndex((entry) => entry.id === id);
+    if (index === -1) store.objectCategories.push(record);
+    else store.objectCategories[index] = record;
+    return clone(record);
+  },
+
+  async deleteDesignObjectCategory(id) {
+    const category = store.objectCategories.find((entry) => entry.id === id);
+    store.objectCategories = store.objectCategories.filter((entry) => entry.id !== id);
+    if (category) {
+      store.objectAssets = store.objectAssets.filter(
+        (asset) => asset.category !== category.key,
+      );
+    }
+  },
+
+  async saveDesignObjectAsset(input) {
+    const id = input.id ?? createId("doa");
+    const category = store.objectCategories.find(
+      (entry) => entry.id === input.categoryId,
+    );
+    const record: DesignObjectAsset = {
+      id,
+      category: category?.key ?? "CUSTOM",
+      categoryName: category?.name ?? "",
+      name: input.name,
+      assetUrl: input.assetUrl,
+      realWidthCm: input.realWidthCm,
+      realHeightCm: input.realHeightCm,
+      snap: input.snap,
+      soldOnSite: input.soldOnSite,
+      productId: input.productId,
+      productSlug: null,
+      price: null,
+      sortOrder: input.sortOrder,
+      enabled: input.enabled,
+    };
+    const index = store.objectAssets.findIndex((entry) => entry.id === id);
+    if (index === -1) store.objectAssets.push(record);
+    else store.objectAssets[index] = record;
+    return clone(record);
+  },
+
+  async deleteDesignObjectAsset(id) {
+    store.objectAssets = store.objectAssets.filter((asset) => asset.id !== id);
+  },
+
+  async listLightingPresets({ includeDisabled = false } = {}) {
+    return clone(
+      store.lightingPresets
+        .filter((preset) => includeDisabled || preset.enabled)
+        .sort((a, b) => a.sortOrder - b.sortOrder),
+    );
+  },
+
+  async saveLightingPreset(input) {
+    const id = input.id || createId("lpr");
+    const record = { ...input, id };
+    const index = store.lightingPresets.findIndex((entry) => entry.id === id);
+    if (index === -1) store.lightingPresets.push(record);
+    else store.lightingPresets[index] = record;
+    return clone(record);
+  },
+
+  async deleteLightingPreset(id) {
+    store.lightingPresets = store.lightingPresets.filter((preset) => preset.id !== id);
+  },
+
   async claimGuestDesigns(guestToken, userId) {
     let claimed = 0;
     for (const design of store.designs) {
@@ -679,6 +909,9 @@ export const memoryRepository: Repository = {
     const expiredIds = new Set(expired.map((design) => design.id));
     store.designs = store.designs.filter((design) => !expiredIds.has(design.id));
     for (const id of expiredIds) store.designSurfaces.delete(id);
+    store.designVersions = store.designVersions.filter(
+      (version) => !expiredIds.has(version.designId),
+    );
     return {
       removed: expired.length,
       imageUrls: expired

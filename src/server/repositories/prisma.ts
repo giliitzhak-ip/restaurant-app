@@ -1,6 +1,7 @@
 import { LOW_STOCK_AT, availabilityFor, pricePerSqmFor } from "@/data/build-catalog";
 import { Prisma } from "@/generated/prisma/client";
 import { getPrisma } from "@/server/db/prisma";
+import { readScene } from "@/server/design/scene";
 import { canTransition } from "@/server/commerce/order-flow";
 import { timingSafeEqualString } from "@/server/security/tokens";
 import {
@@ -23,7 +24,17 @@ import type {
   RoomSurfaceMask,
   TextureSettings,
 } from "@/types/design";
+import {
+  SCENE_SCHEMA_VERSION,
+  emptyScene,
+  type DesignObjectAsset,
+  type LightingPreset,
+} from "@/types/scene";
 import { buildFacets } from "./filter";
+import type {
+  DesignObjectCategoryRecord,
+  DesignVersionRecord,
+} from "./types";
 import type {
   CreateOrderResult,
   OrderTransitionInput,
@@ -291,9 +302,62 @@ function toQuote(
   };
 }
 
+function toDesignVersion(row: {
+  id: string;
+  designId: string;
+  label: string | null;
+  previewUrl: string | null;
+  createdAt: Date;
+}): DesignVersionRecord {
+  return {
+    id: row.id,
+    designId: row.designId,
+    label: row.label,
+    previewUrl: row.previewUrl,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+/**
+ * A preset's payload is authored in the admin panel and stored as JSON, so it
+ * is read back defensively: a definition that has lost its shape yields a
+ * preset with nothing in it rather than a crash on the lighting drawer.
+ */
+function toLightingPreset(row: {
+  id: string;
+  name: string;
+  sortOrder: number;
+  enabled: boolean;
+  definition: unknown;
+}): LightingPreset {
+  const definition =
+    row.definition && typeof row.definition === "object"
+      ? (row.definition as { fixtures?: unknown; paths?: unknown })
+      : {};
+  return {
+    id: row.id,
+    name: row.name,
+    sortOrder: row.sortOrder,
+    enabled: row.enabled,
+    fixtures: Array.isArray(definition.fixtures)
+      ? (definition.fixtures as LightingPreset["fixtures"])
+      : [],
+    paths: Array.isArray(definition.paths)
+      ? (definition.paths as LightingPreset["paths"])
+      : [],
+  };
+}
+
 function toDesign(row: DesignRow): RoomDesignRecord {
   const floor = row.surfaces.find((s) => s.kind === "FLOOR" && s.productId);
   const wall = row.surfaces.find((s) => s.kind === "WALL" && s.productId);
+  /*
+   * `readScene` never throws. A row written by an older build, or one whose
+   * scene has been corrupted, opens with an empty scene rather than an error
+   * page — the cladding is the part the customer chose, and losing the
+   * furniture should not cost them that too.
+   */
+  const scene = readScene(row.scene);
   return {
     id: row.id,
     name: row.name,
@@ -307,6 +371,9 @@ function toDesign(row: DesignRow): RoomDesignRecord {
     wallProductName: wall?.product?.name ?? null,
     estimatedAreaSqm: row.estimatedAreaSqm,
     estimatedPrice: row.estimatedPrice,
+    scene,
+    objectCount: scene.objects.length,
+    lightCount: scene.lightingFixtures.length + scene.ledPaths.length,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     expiresAt: row.expiresAt?.toISOString() ?? null,
@@ -1112,9 +1179,31 @@ export const prismaRepository: Repository = {
       expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
     };
 
+    /*
+     * A save that carries no scene leaves the stored one alone. The cladding
+     * and the furniture are edited by different parts of the app; a client
+     * that only knows about surfaces must not be able to delete a media wall
+     * by saving a floor.
+     */
+    const sceneFields = input.scene
+      ? {
+          scene: input.scene as unknown as Prisma.InputJsonValue,
+          sceneVersion: input.scene.schemaVersion,
+        }
+      : {};
+
     const design = input.id
-      ? await prisma.roomDesign.update({ where: { id: input.id }, data: header })
-      : await prisma.roomDesign.create({ data: header });
+      ? await prisma.roomDesign.update({
+          where: { id: input.id },
+          data: { ...header, ...sceneFields },
+        })
+      : await prisma.roomDesign.create({
+          data: {
+            ...header,
+            scene: (input.scene ?? emptyScene()) as unknown as Prisma.InputJsonValue,
+            sceneVersion: SCENE_SCHEMA_VERSION,
+          },
+        });
 
     await prisma.roomSurface.deleteMany({ where: { designId: design.id } });
     if (input.surfaces.length) {
@@ -1175,6 +1264,192 @@ export const prismaRepository: Repository = {
         analysis: Prisma.DbNull,
       },
     });
+  },
+
+  async saveDesignVersion({ designId, label, previewUrl, snapshot }) {
+    const row = await getPrisma().roomDesignVersion.create({
+      data: {
+        designId,
+        label,
+        previewUrl,
+        snapshot: snapshot as Prisma.InputJsonValue,
+      },
+    });
+    return toDesignVersion(row);
+  },
+
+  async listDesignVersions(designId) {
+    const rows = await getPrisma().roomDesignVersion.findMany({
+      where: { designId },
+      orderBy: { createdAt: "desc" },
+      // The payload is a whole scene each; a listing only needs the labels.
+      select: {
+        id: true,
+        designId: true,
+        label: true,
+        previewUrl: true,
+        createdAt: true,
+      },
+    });
+    return rows.map(toDesignVersion);
+  },
+
+  async getDesignVersion(id) {
+    const row = await getPrisma().roomDesignVersion.findUnique({ where: { id } });
+    return row ? { ...toDesignVersion(row), snapshot: row.snapshot } : null;
+  },
+
+  async deleteDesignVersion(id) {
+    await getPrisma().roomDesignVersion.delete({ where: { id } });
+  },
+
+  /* ----------------------------- object library ---------------------------- */
+
+  async listDesignObjectCategories({ includeDisabled = false } = {}) {
+    const rows = await getPrisma().designObjectCategory.findMany({
+      where: includeDisabled ? {} : { enabled: true },
+      orderBy: { sortOrder: "asc" },
+      include: { _count: { select: { assets: true } } },
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      key: row.key,
+      name: row.name,
+      sortOrder: row.sortOrder,
+      enabled: row.enabled,
+      assetCount: row._count.assets,
+    }));
+  },
+
+  async listDesignObjectAssets({ includeDisabled = false } = {}) {
+    const rows = await getPrisma().designObjectAsset.findMany({
+      where: includeDisabled
+        ? {}
+        : { enabled: true, category: { enabled: true } },
+      orderBy: [{ category: { sortOrder: "asc" } }, { sortOrder: "asc" }],
+      include: {
+        category: { select: { key: true, name: true } },
+        /*
+         * The price is read from the product on every read and is never
+         * stored on the library row. An asset marked as sold whose product
+         * has since been removed or deactivated loses the claim here rather
+         * than carrying a price with nothing behind it.
+         */
+        product: {
+          select: {
+            id: true,
+            slug: true,
+            active: true,
+            pricePerSqm: true,
+            pricePerUnit: true,
+          },
+        },
+      },
+    });
+    return rows.map((row) => {
+      const live = row.product?.active ? row.product : null;
+      return {
+        id: row.id,
+        category: row.category.key,
+        categoryName: row.category.name,
+        name: row.name,
+        assetUrl: row.assetUrl,
+        realWidthCm: row.realWidthCm,
+        realHeightCm: row.realHeightCm,
+        snap: row.snap,
+        soldOnSite: row.soldOnSite && Boolean(live),
+        productId: live?.id ?? null,
+        productSlug: live?.slug ?? null,
+        price: live ? (live.pricePerSqm ?? live.pricePerUnit) : null,
+        sortOrder: row.sortOrder,
+        enabled: row.enabled,
+      } satisfies DesignObjectAsset;
+    });
+  },
+
+  async saveDesignObjectCategory(input) {
+    const data = {
+      key: input.key,
+      name: input.name,
+      sortOrder: input.sortOrder,
+      enabled: input.enabled,
+    };
+    const row = input.id
+      ? await getPrisma().designObjectCategory.update({
+          where: { id: input.id },
+          data,
+          include: { _count: { select: { assets: true } } },
+        })
+      : await getPrisma().designObjectCategory.create({
+          data,
+          include: { _count: { select: { assets: true } } },
+        });
+    return {
+      id: row.id,
+      key: row.key,
+      name: row.name,
+      sortOrder: row.sortOrder,
+      enabled: row.enabled,
+      assetCount: row._count.assets,
+    } satisfies DesignObjectCategoryRecord;
+  },
+
+  async deleteDesignObjectCategory(id) {
+    await getPrisma().designObjectCategory.delete({ where: { id } });
+  },
+
+  async saveDesignObjectAsset(input) {
+    const data = {
+      categoryId: input.categoryId,
+      name: input.name,
+      assetUrl: input.assetUrl,
+      realWidthCm: input.realWidthCm,
+      realHeightCm: input.realHeightCm,
+      snap: input.snap,
+      soldOnSite: input.soldOnSite,
+      productId: input.productId,
+      sortOrder: input.sortOrder,
+      enabled: input.enabled,
+    };
+    const row = input.id
+      ? await getPrisma().designObjectAsset.update({ where: { id: input.id }, data })
+      : await getPrisma().designObjectAsset.create({ data });
+    const [asset] = await this.listDesignObjectAssets({ includeDisabled: true }).then(
+      (assets) => assets.filter((entry) => entry.id === row.id),
+    );
+    return asset!;
+  },
+
+  async deleteDesignObjectAsset(id) {
+    await getPrisma().designObjectAsset.delete({ where: { id } });
+  },
+
+  async listLightingPresets({ includeDisabled = false } = {}) {
+    const rows = await getPrisma().lightingPreset.findMany({
+      where: includeDisabled ? {} : { enabled: true },
+      orderBy: { sortOrder: "asc" },
+    });
+    return rows.map(toLightingPreset);
+  },
+
+  async saveLightingPreset(input) {
+    const data = {
+      name: input.name,
+      sortOrder: input.sortOrder,
+      enabled: input.enabled,
+      definition: {
+        fixtures: input.fixtures,
+        paths: input.paths,
+      } as unknown as Prisma.InputJsonValue,
+    };
+    const row = input.id
+      ? await getPrisma().lightingPreset.update({ where: { id: input.id }, data })
+      : await getPrisma().lightingPreset.create({ data });
+    return toLightingPreset(row);
+  },
+
+  async deleteLightingPreset(id) {
+    await getPrisma().lightingPreset.delete({ where: { id } });
   },
 
   async claimGuestDesigns(guestToken, userId) {
