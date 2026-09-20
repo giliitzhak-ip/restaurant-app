@@ -1,0 +1,833 @@
+<title>סימולטור יומן הדברה</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --brand: #16c956;
+    --brand-dark: #087a42;
+    --brand-soft: #e6f8ee;
+    --brand-ring: rgba(22, 201, 86, 0.28);
+    --bg: #f5f7f8;
+    --surface: #ffffff;
+    --text: #1b2520;
+    --text-muted: #66736c;
+    --danger: #ef4444;
+    --line: rgba(27, 37, 32, 0.1);
+    --shadow: 0 8px 24px rgba(20, 50, 35, 0.12);
+    --radius-lg: 28px;
+    --touch: 48px;
+    --page-bg: #eef1f2;
+    --page-text: #1b2520;
+    --page-muted: #66736c;
+    --page-card: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --page-bg: #101613;
+      --page-text: #e8f0ec;
+      --page-muted: #9aa8a1;
+      --page-card: #182220;
+    }
+  }
+  :root[data-theme="dark"] {
+    --page-bg: #101613;
+    --page-text: #e8f0ec;
+    --page-muted: #9aa8a1;
+    --page-card: #182220;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page-bg);
+    color: var(--page-text);
+    font-family: "Heebo", "Assistant", "Segoe UI", system-ui, -apple-system, sans-serif;
+    direction: rtl;
+    min-height: 100vh;
+  }
+  .page { padding: 24px 16px 48px; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+  .page-head { max-width: 560px; text-align: center; }
+  .page-head h1 { margin: 0 0 6px; font-size: 22px; font-weight: 700; letter-spacing: -0.2px; }
+  .page-head p { margin: 0; color: var(--page-muted); font-size: 14px; line-height: 1.6; }
+  .demo-note {
+    margin-top: 10px; display: inline-flex; gap: 8px; align-items: center;
+    background: rgba(239, 68, 68, 0.1); color: #b42318; border: 1px solid rgba(239, 68, 68, 0.28);
+    padding: 7px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
+  }
+
+  /* ---------- phone frame ---------- */
+  .phone {
+    width: min(390px, 100%);
+    height: min(844px, calc(100vh - 150px));
+    min-height: 600px;
+    background: #0d1512;
+    border-radius: 44px;
+    padding: 10px;
+    box-shadow: 0 30px 60px rgba(9, 30, 20, 0.35), 0 0 0 2px rgba(255,255,255,0.06) inset;
+    position: relative;
+  }
+  .screen {
+    position: relative;
+    width: 100%; height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    border-radius: 35px;
+    overflow: hidden;
+    isolation: isolate;
+  }
+  .notch {
+    position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+    width: 112px; height: 24px; background: #0d1512; border-radius: 0 0 16px 16px; z-index: 40;
+  }
+  .view {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    overflow-y: auto; overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    background: var(--bg);
+  }
+  .view.enter-forward { animation: enterFwd 240ms cubic-bezier(.22,.61,.36,1) both; }
+  .view.enter-back { animation: enterBack 240ms cubic-bezier(.22,.61,.36,1) both; }
+  .view.leave { animation: leaveOut 200ms ease both; pointer-events: none; }
+  @keyframes enterFwd { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: none; } }
+  @keyframes enterBack { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+  @keyframes leaveOut { from { opacity: 1; } to { opacity: 0; } }
+
+  /* ---------- home hero ---------- */
+  .hero {
+    background: linear-gradient(160deg, var(--brand) 0%, var(--brand-dark) 100%);
+    color: #fff;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    padding: 46px 20px 26px;
+    flex: none;
+    transition: padding 180ms ease;
+  }
+  .hero-top { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    width: 46px; height: 46px; border-radius: 16px; flex: none;
+    background: rgba(255,255,255,0.18); display: grid; place-items: center;
+    border: 1px solid rgba(255,255,255,0.3);
+  }
+  .home-org { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+  .home-org strong { font-size: 16px; font-weight: 700; }
+  .home-org span { font-size: 12px; opacity: 0.85; }
+  .sync-chip {
+    margin-inline-start: auto; display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,0.16); border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 999px; padding: 5px 10px; font-size: 11.5px; font-weight: 600; white-space: nowrap;
+  }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: #d7ffe8; }
+  .sync-chip[data-state="pending"] .sync-dot { background: #ffd66b; }
+  .sync-chip[data-state="offline"] .sync-dot { background: #ffb4a8; }
+  .greeting { margin-top: 22px; transition: opacity 160ms ease; }
+  .greeting h2 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.4px; }
+  .greeting p { margin: 4px 0 0; font-size: 14px; opacity: 0.9; }
+
+  .home-sticky {
+    position: absolute; top: 0; inset-inline: 0; z-index: 30;
+    background: linear-gradient(160deg, var(--brand) 0%, var(--brand-dark) 100%);
+    color: #fff; padding: 38px 18px 12px;
+    display: flex; align-items: center; gap: 10px;
+    opacity: 0; pointer-events: none; transition: opacity 180ms ease;
+    box-shadow: 0 6px 18px rgba(8, 60, 35, 0.22);
+  }
+  .home-sticky.show { opacity: 1; }
+  .home-sticky strong { font-size: 15px; }
+
+  /* ---------- grid ---------- */
+  .grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 14px 10px; padding: 22px 16px 10px;
+  }
+  @media (max-width: 330px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  .tile { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .circle {
+    position: relative; overflow: hidden;
+    width: 100%; max-width: 104px; aspect-ratio: 1;
+    min-width: var(--touch); min-height: var(--touch);
+    border: 0; border-radius: 50%; background: var(--surface);
+    color: var(--brand-dark); box-shadow: var(--shadow);
+    display: grid; place-items: center; cursor: pointer;
+    transition: transform 120ms ease, box-shadow 120ms ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .circle:focus-visible { outline: 3px solid var(--brand-dark); outline-offset: 3px; }
+  .circle.pressed { transform: scale(0.95); box-shadow: 0 3px 10px rgba(20, 50, 35, 0.14); }
+  .circle.pressed svg { transform: translateY(-3px); }
+  .circle svg { transition: transform 120ms ease; stroke: var(--brand); }
+  .circle.primary { box-shadow: var(--shadow), 0 0 0 4px var(--brand-ring); }
+  .tile-label { font-size: 13px; font-weight: 600; color: var(--text); text-align: center; }
+  .badge {
+    position: absolute; top: 12%; inset-inline-start: 12%;
+    min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px;
+    background: var(--danger); color: #fff; font-size: 12px; font-weight: 700;
+    display: grid; place-items: center; z-index: 2;
+  }
+  .ripple {
+    position: absolute; border-radius: 50%; transform: translate(-50%, -50%) scale(0);
+    background: rgba(22, 201, 86, 0.22); pointer-events: none;
+    animation: rip 420ms ease-out forwards;
+  }
+  @keyframes rip { to { transform: translate(-50%, -50%) scale(1); opacity: 0; } }
+  .fade-up { animation: fadeUp 260ms ease both; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+  /* ---------- inner screens ---------- */
+  .top-bar {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface); border-bottom: 1px solid var(--line);
+    padding: 38px 16px 12px; flex: none;
+  }
+  .top-bar h2 { margin: 0; font-size: 17px; font-weight: 700; }
+  .icon-btn {
+    width: var(--touch); height: 40px; border: 0; background: transparent; border-radius: 12px;
+    display: grid; place-items: center; cursor: pointer; color: var(--text);
+  }
+  .icon-btn:focus-visible { outline: 3px solid var(--brand-dark); outline-offset: 2px; }
+  .body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .card {
+    background: var(--surface); border-radius: 18px; padding: 14px; box-shadow: var(--shadow);
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .card-row { display: flex; align-items: center; gap: 10px; }
+  .card h3 { margin: 0; font-size: 15px; font-weight: 700; }
+  .card p { margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.55; }
+  .pill {
+    margin-inline-start: auto; font-size: 11.5px; font-weight: 700; border-radius: 999px;
+    padding: 4px 10px; background: var(--brand-soft); color: var(--brand-dark); white-space: nowrap;
+  }
+  .pill.warn { background: #fff3d6; color: #8a5a00; }
+  .pill.bad { background: #fee2e2; color: #b42318; }
+  .empty { text-align: center; color: var(--text-muted); font-size: 13.5px; padding: 30px 10px; }
+  .poison {
+    margin: 4px 16px 18px; padding: 10px 12px; border-radius: 14px;
+    background: #fff4f4; border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #8f1d1d; font-size: 12px; font-weight: 600; line-height: 1.5; text-align: center;
+  }
+  .search {
+    width: 100%; height: var(--touch); border-radius: 14px; border: 1px solid var(--line);
+    background: var(--surface); padding: 0 14px; font-size: 16px; font-family: inherit; color: var(--text);
+  }
+  .search:focus-visible { outline: 3px solid var(--brand-ring); border-color: var(--brand); }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field > label { font-size: 13px; font-weight: 600; }
+  .field.is-required > label::after { content: " *"; color: var(--danger); }
+  .field input, .field select, .field textarea {
+    min-height: var(--touch); border-radius: 14px; border: 1px solid var(--line);
+    background: var(--surface); padding: 10px 12px; font-size: 16px; font-family: inherit; color: var(--text);
+  }
+  .field input:focus-visible, .field select:focus-visible, .field textarea:focus-visible {
+    outline: 3px solid var(--brand-ring); border-color: var(--brand);
+  }
+  .btn {
+    min-height: var(--touch); border-radius: 16px; border: 0; cursor: pointer;
+    font-family: inherit; font-size: 15px; font-weight: 700; padding: 0 18px;
+    background: var(--brand); color: #05301c; transition: transform 120ms ease;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn.ghost { background: var(--surface); color: var(--brand-dark); box-shadow: var(--shadow); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn:focus-visible { outline: 3px solid var(--brand-dark); outline-offset: 2px; }
+  .row { display: flex; gap: 10px; }
+  .row > * { flex: 1; }
+  .stepper { display: flex; gap: 6px; padding: 12px 16px 0; }
+  .step-dot { flex: 1; height: 5px; border-radius: 999px; background: var(--line); }
+  .step-dot.done { background: var(--brand); }
+  .step-title { padding: 10px 16px 0; font-size: 12.5px; color: var(--text-muted); font-weight: 600; }
+  .sign-pad {
+    width: 100%; height: 150px; border-radius: 16px; border: 1px dashed var(--brand);
+    background: var(--surface); touch-action: none; display: block;
+  }
+  .problems { background: #fff4f4; border: 1px solid rgba(239,68,68,.3); border-radius: 16px; padding: 12px; }
+  .problems h4 { margin: 0 0 6px; font-size: 13.5px; color: #8f1d1d; }
+  .problems button {
+    display: block; width: 100%; text-align: start; background: none; border: 0; cursor: pointer;
+    font-family: inherit; font-size: 13px; color: #b42318; padding: 5px 0; text-decoration: underline;
+  }
+  .toast {
+    position: absolute; bottom: 18px; inset-inline: 22px; z-index: 50;
+    background: #10251b; color: #eafff2; border-radius: 14px; padding: 11px 14px;
+    font-size: 13.5px; font-weight: 600; text-align: center; box-shadow: var(--shadow);
+    animation: fadeUp 200ms ease both;
+  }
+  .skeleton { height: 64px; border-radius: 18px; background: linear-gradient(90deg, #e9edeb 25%, #f4f7f5 50%, #e9edeb 75%); background-size: 200% 100%; animation: sk 1.1s infinite; }
+  @keyframes sk { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+  .hint { font-size: 12px; color: var(--text-muted); line-height: 1.55; }
+  .legend { max-width: 560px; width: min(560px, 100%); background: var(--page-card); border-radius: 18px; padding: 14px 16px; font-size: 13px; line-height: 1.7; box-shadow: 0 6px 18px rgba(10,30,20,.08); }
+  .legend h3 { margin: 0 0 6px; font-size: 14px; }
+  .legend ul { margin: 0; padding-inline-start: 18px; color: var(--page-muted); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+  }
+</style>
+
+<div class="page">
+  <div class="page-head">
+    <h1>סימולטור יומן הדברה</h1>
+    <p>הדמיה אינטראקטיבית של מסך הבית החדש ושל מסכי האפליקציה — אפשר ללחוץ, לנווט, למלא יומן ולחתום.</p>
+    <div class="demo-note">נתוני הדגמה בלבד — אין כאן לקוחות אמיתיים ואין חיבור לבסיס נתונים</div>
+  </div>
+
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="screen" id="screen" dir="rtl" aria-label="מסך המכשיר"></div>
+  </div>
+
+  <div class="legend">
+    <h3>מה אפשר לבדוק כאן</h3>
+    <ul>
+      <li>לחיצה על עיגול: כיווץ 0.95, גל מהנקודה, הרמת האייקון ורטט קצר (במכשירים שתומכים).</li>
+      <li>גלילה במסך הבית: ה־hero מתכווץ, הברכה נמוגה וכותרת קטנה נדבקת למעלה.</li>
+      <li>מעברי מסך מותאמי RTL עם כיוון הפוך בחזרה, ושמירת מיקום גלילה לכל מסך.</li>
+      <li>אשף בן שישה שלבים עם בדיקת שדות חובה, רשימת חוסרים בעברית וקפיצה לשדה.</li>
+      <li>פאנל חתימה בקנבס, סיום יומן עם מספר סידורי, והודעת מרכז ההרעלות הקבועה.</li>
+      <li>מצב סנכרון מתחלף (מסונכרן / ממתין / לא מקוון) בשבב שבראש המסך.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var ICON = {
+    logo: '<path d="M12 2s6 5.2 6 10a6 6 0 0 1-12 0c0-4.8 6-10 6-10Z"/><path d="M12 12v8"/>',
+    newLog: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v5h5"/><path d="M12 18v-6"/><path d="M9 15h6"/>',
+    drafts: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h6"/><path d="M13 2v5h5"/><path d="m18.5 13.5 3 3L17 21h-3v-3Z"/>',
+    archive: '<rect x="2.5" y="3.5" width="19" height="5" rx="1.5"/><path d="M4.5 8.5V19a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8.5"/><path d="M10 12.5h4"/>',
+    clients: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/>',
+    stations: '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+    products: '<path d="M10 2v7.3L4.7 18.4A2 2 0 0 0 6.4 21.5h11.2a2 2 0 0 0 1.7-3.1L14 9.3V2"/><path d="M8.5 2h7"/><path d="M7.4 16h9.2"/>',
+    tasks: '<path d="m3 5 2 2 3-3"/><path d="m3 12 2 2 3-3"/><path d="m3 19 2 2 3-3"/><path d="M12 6h9"/><path d="M12 13h9"/><path d="M12 20h9"/>',
+    profile: '<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>',
+    settings: '<path d="M20 7h-8"/><path d="M6 7H4"/><path d="M20 17h-2"/><path d="M12 17H4"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/>',
+    back: '<path d="m9 6 6 6-6 6"/>',
+    refresh: '<path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/>'
+  };
+
+  function svg(name, size) {
+    return '<svg width="' + (size || 28) + '" height="' + (size || 28) + '" viewBox="0 0 24 24" fill="none" ' +
+      'stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      ICON[name] + '</svg>';
+  }
+
+  /* ---------- demo data (clearly fictional) ---------- */
+  var DEMO = {
+    org: "יצחק אחזקות והדברות",
+    user: "מדביר לדוגמה",
+    license: "מס' רישיון 0000-דמה",
+    drafts: [
+      { id: "d1", title: "טיוטה — מבנה מגורים לדוגמה", sub: "נשמר מקומית לפני 4 דקות · שלב 4 מתוך 6", state: "ממתין לסנכרון", cls: "warn" },
+      { id: "d2", title: "טיוטה — שטח פתוח לדוגמה", sub: "נשמר מקומית אתמול · שלב 2 מתוך 6", state: "נשמר מקומית", cls: "" },
+      { id: "d3", title: "טיוטה — ריסוס ערפול לדוגמה", sub: "נשמר מקומית לפני יומיים · שלב 6 מתוך 6", state: "חסרים שדות", cls: "bad" }
+    ],
+    archive: [
+      { id: "a1", title: "יומן 2026-0041 · לקוח הדגמה א'", sub: "הושלם 14.09.2026 10:24 · מבנה מגורים", state: "נעול", cls: "" },
+      { id: "a2", title: "יומן 2026-0040 · לקוח הדגמה ב'", sub: "הושלם 12.09.2026 08:05 · שטח פתוח", state: "נעול", cls: "" },
+      { id: "a3", title: "יומן 2026-0039 · לקוח הדגמה ג'", sub: "הושלם 09.09.2026 16:40 · איוד", state: "תיקון מקושר", cls: "warn" }
+    ],
+    clients: [
+      { id: "c1", title: "לקוח הדגמה א'", sub: "2 אתרים · עודכן 14.09.2026" },
+      { id: "c2", title: "לקוח הדגמה ב'", sub: "1 אתר · עודכן 12.09.2026" },
+      { id: "c3", title: "לקוח הדגמה ג' (אדם פרטי)", sub: "נייד חובה למזמין פרטי" }
+    ],
+    stations: [
+      { id: "s1", title: "תחנה 01 — מחסן לדוגמה", sub: "נבדקה 14.09.2026", state: "פעילה", cls: "" },
+      { id: "s2", title: "תחנה 02 — חצר לדוגמה", sub: "נבדקה 14.09.2026", state: "פיתיון נאכל", cls: "warn" },
+      { id: "s3", title: "תחנה 03 — גדר לדוגמה", sub: "נבדקה 07.09.2026", state: "פגומה", cls: "bad" }
+    ],
+    products: [
+      { id: "p1", title: "תכשיר לדוגמה 1", sub: "מקור: קובץ CSV מאומת · אומת 01.09.2026", state: "רשום", cls: "" },
+      { id: "p2", title: "תכשיר לדוגמה 2", sub: "מקור: קובץ CSV מאומת · אומת 01.09.2026", state: "מוכן לשימוש", cls: "" },
+      { id: "p3", title: "תכשיר לדוגמה 3", sub: "לא אומת מול מקור רשמי", state: "דורש אימות", cls: "bad" }
+    ],
+    tasks: [
+      { id: "t1", title: "ביקורת חוזרת — לקוח הדגמה א'", sub: "מועד יעד: היום", state: "פתוח", cls: "warn" },
+      { id: "t2", title: "ביקורת חוזרת — לקוח הדגמה ב'", sub: "מועד יעד: 24.09.2026", state: "פתוח", cls: "" }
+    ]
+  };
+
+  var SYNC_STATES = [
+    { key: "synced", label: "מסונכרן" },
+    { key: "pending", label: "ממתין לסנכרון (2)" },
+    { key: "offline", label: "לא מקוון" }
+  ];
+  var syncIndex = 0;
+
+  /* ---------- motion helpers ---------- */
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  window.matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", function (e) { reduced = e.matches; });
+
+  function vibrate() {
+    if (navigator.vibrate) { try { navigator.vibrate.call(navigator, [10]); } catch (e) {} }
+  }
+  function ripple(button, event) {
+    if (reduced) return;
+    var rect = button.getBoundingClientRect();
+    var span = document.createElement("span");
+    span.className = "ripple";
+    var size = Math.max(rect.width, rect.height) * 2.2;
+    span.style.width = span.style.height = size + "px";
+    span.style.left = ((event && event.clientX ? event.clientX - rect.left : rect.width / 2)) + "px";
+    span.style.top = ((event && event.clientY ? event.clientY - rect.top : rect.height / 2)) + "px";
+    button.appendChild(span);
+    setTimeout(function () { span.remove(); }, 430);
+  }
+
+  /* ---------- navigation ---------- */
+  var screen = document.getElementById("screen");
+  var stack = ["home"];
+  var scrollMemory = {};
+  var busy = false;
+
+  function currentKey() { return stack[stack.length - 1]; }
+
+  function render(key, direction) {
+    var previous = screen.querySelector(".view");
+    if (previous) {
+      scrollMemory[previous.dataset.key] = previous.scrollTop;
+      if (reduced) { previous.remove(); }
+      else {
+        previous.classList.add("leave");
+        setTimeout(function () { previous.remove(); }, 200);
+      }
+    }
+    var view = document.createElement("section");
+    view.className = "view" + (reduced ? "" : (direction === "back" ? " enter-back" : " enter-forward"));
+    view.dataset.key = key;
+    view.innerHTML = VIEWS[key] ? VIEWS[key]() : VIEWS.home();
+    screen.appendChild(view);
+    view.scrollTop = scrollMemory[key] || 0;
+    wire(view, key);
+    view.addEventListener("animationend", function () { view.classList.remove("enter-forward", "enter-back"); }, { once: true });
+  }
+
+  function go(key) {
+    if (busy || key === currentKey()) return;
+    busy = true;
+    setTimeout(function () {
+      stack.push(key);
+      render(key, "forward");
+      busy = false;
+    }, reduced ? 0 : 120);
+  }
+
+  function back() {
+    if (stack.length < 2) return;
+    stack.pop();
+    render(currentKey(), "back");
+  }
+
+  function toast(message) {
+    var old = screen.querySelector(".toast");
+    if (old) old.remove();
+    var node = document.createElement("div");
+    node.className = "toast";
+    node.setAttribute("role", "status");
+    node.textContent = message;
+    screen.appendChild(node);
+    setTimeout(function () { node.remove(); }, 2200);
+  }
+
+  /* ---------- shared markup ---------- */
+  function topBar(title, extra) {
+    return '<div class="top-bar">' +
+      '<button class="icon-btn" data-back aria-label="חזרה למסך הקודם">' + svg("back", 22) + '</button>' +
+      '<h2>' + title + '</h2>' + (extra || "") + '</div>';
+  }
+  function poison() {
+    return '<p class="poison">במקרה של חשד להרעלה ניתן לפנות למרכז הארצי להרעלות: 04-7771900</p>';
+  }
+  function listCard(item) {
+    return '<article class="card"><div class="card-row"><h3>' + item.title + '</h3>' +
+      (item.state ? '<span class="pill ' + (item.cls || "") + '">' + item.state + '</span>' : "") +
+      '</div><p>' + item.sub + '</p></article>';
+  }
+  function listView(title, items, emptyText, note) {
+    return topBar(title) + '<div class="body">' +
+      '<input class="search" type="search" placeholder="חיפוש…" aria-label="חיפוש ב' + title + '" />' +
+      (note ? '<p class="hint">' + note + '</p>' : "") +
+      (items.length ? items.map(listCard).join("") : '<p class="empty">' + emptyText + '</p>') +
+      '</div>' + poison();
+  }
+
+  function greetingForHour(hour) {
+    if (hour < 5) return "לילה טוב";
+    if (hour < 12) return "בוקר טוב";
+    if (hour < 17) return "צהריים טובים";
+    if (hour < 21) return "ערב טוב";
+    return "לילה טוב";
+  }
+
+  var TILES = [
+    { key: "newLog", label: "יומן חדש", icon: "newLog", primary: true },
+    { key: "drafts", label: "טיוטות", icon: "drafts", badge: function () { return DEMO.drafts.length; }, badgeLabel: "טיוטות פתוחות" },
+    { key: "archive", label: "ארכיון", icon: "archive" },
+    { key: "clients", label: "לקוחות", icon: "clients" },
+    { key: "stations", label: "תחנות האכלה", icon: "stations", badge: function () { return DEMO.stations.filter(function (s) { return s.cls; }).length; }, badgeLabel: "תחנות הדורשות טיפול" },
+    { key: "products", label: "תכשירים", icon: "products" },
+    { key: "tasks", label: "משימות", icon: "tasks", badge: function () { return DEMO.tasks.length; }, badgeLabel: "משימות פתוחות" },
+    { key: "profile", label: "פרופיל", icon: "profile" },
+    { key: "settings", label: "הגדרות", icon: "settings" }
+  ];
+
+  function tileMarkup(tile, index) {
+    var count = tile.badge ? tile.badge() : 0;
+    var aria = tile.label + (count > 0 ? ", " + count + " " + (tile.badgeLabel || "") : "");
+    return '<div class="tile fade-up" style="animation-delay:' + (index * 40) + 'ms">' +
+      '<button class="circle' + (tile.primary ? " primary" : "") + '" data-go="' + tile.key + '" aria-label="' + aria + '">' +
+      (count > 0 ? '<span class="badge">' + count + '</span>' : "") + svg(tile.icon, 30) + '</button>' +
+      '<span class="tile-label">' + tile.label + '</span></div>';
+  }
+
+  /* ---------- views ---------- */
+  var VIEWS = {
+    home: function () {
+      var sync = SYNC_STATES[syncIndex];
+      var hour = new Date().getHours();
+      return '<div class="home-sticky" id="sticky">' + svg("logo", 20) + '<strong>' + DEMO.org + '</strong>' +
+          '<span class="sync-chip" data-state="' + sync.key + '"><span class="sync-dot"></span>' + sync.label + '</span></div>' +
+        '<header class="hero" id="hero"><div class="hero-top">' +
+          '<span class="logo">' + svg("logo", 24) + '</span>' +
+          '<span class="home-org"><strong>' + DEMO.org + '</strong><span>' + DEMO.license + '</span></span>' +
+          '<button class="sync-chip" data-sync data-state="' + sync.key + '" aria-label="מצב סנכרון: ' + sync.label + '. לחיצה מדמה סנכרון">' +
+            '<span class="sync-dot"></span>' + sync.label + '</button>' +
+        '</div><div class="greeting" id="greeting"><h2>' + greetingForHour(hour) + ', ' + DEMO.user + '</h2>' +
+        '<p>מה תרצה לבצע היום?</p></div></header>' +
+        '<div class="grid">' + TILES.map(tileMarkup).join("") + '</div>' + poison();
+    },
+    drafts: function () { return listView("טיוטות", DEMO.drafts, "אין טיוטות פתוחות", "טיוטות נשמרות במכשיר ומסתנכרנות כשיש רשת."); },
+    archive: function () { return listView("ארכיון", DEMO.archive, "אין יומנים שהושלמו", "יומן שהושלם נעול. תיקון נוצר כגרסה מקושרת ששומרת את המקור."); },
+    clients: function () { return listView("לקוחות", DEMO.clients, "אין לקוחות", null); },
+    stations: function () { return listView("תחנות האכלה", DEMO.stations, "אין תחנות", null); },
+    products: function () { return listView("תכשירים", DEMO.products, "אין תכשירים", "התכשירים מיובאים ממקור מאומת בלבד, עם תאריך אימות ומקור."); },
+    tasks: function () { return listView("משימות", DEMO.tasks, "אין משימות פתוחות", "משימות נוצרות מיומנים שסומן בהם צורך בביקורת חוזרת."); },
+    profile: function () {
+      return topBar("פרופיל") + '<div class="body">' +
+        '<article class="card"><h3>' + DEMO.user + '</h3><p>' + DEMO.org + '<br />' + DEMO.license + '</p></article>' +
+        '<article class="card"><div class="card-row"><h3>רישיון הדברה</h3><span class="pill">בתוקף (הדגמה)</span></div>' +
+        '<p>תוקף לדוגמה: 31.12.2026 · סוג: הדברה תברואית</p></article>' +
+        '<article class="card"><h3>מדביר עוזר</h3><p>כשמשתתף עוזר, נדרשים שמו, חתימתו, אישור על קבלת הדרכה ועותק מהיומן.</p></article>' +
+        '</div>' + poison();
+    },
+    settings: function () {
+      return topBar("הגדרות") + '<div class="body">' +
+        '<article class="card"><div class="card-row"><h3>סנכרון</h3><span class="pill">' + SYNC_STATES[syncIndex].label + '</span></div>' +
+        '<p>טיוטות נשמרות ב־IndexedDB ונשלחות בתור פעולות עם מפתח ייחודי, כדי למנוע כפילויות.</p>' +
+        '<button class="btn ghost" data-sync>הרץ סנכרון עכשיו</button></article>' +
+        '<article class="card"><h3>שמירת מסמכים</h3><p>יומן שהושלם נשמר לפחות שלוש שנים. מחיקה אפשרית רק אחר כך, על ידי מנהל, עם תיעוד.</p></article>' +
+        '<article class="card"><h3>ייצוא</h3><p>ייצוא כל היומנים וקובצי ה־PDF מתוך המערכת.</p>' +
+        '<button class="btn ghost" data-toast="ייצוא הודגם בלבד — אין כאן נתונים אמיתיים">ייצוא נתונים</button></article>' +
+        '</div>' + poison();
+    },
+    newLog: function () {
+      return topBar("יומן חדש") +
+        '<div class="stepper" id="stepper"></div><p class="step-title" id="stepTitle"></p>' +
+        '<div class="body" id="wizardBody"></div>' + poison();
+    }
+  };
+
+  /* ---------- wizard ---------- */
+  var STEPS = [
+    "פרטי מדביר ומזמין",
+    "מקום הטיפול",
+    "ממצאי ניטור",
+    "מניעה ואזהרות מוקדמות",
+    "תכשירים ויישום",
+    "מסירה, אזהרות וחתימות"
+  ];
+  var wizard, signed;
+
+  function resetWizard() {
+    wizard = {
+      step: 0,
+      ordererName: "", ordererPhone: "", ordererType: "private",
+      place: "dwelling", address: "", apartment: "",
+      pest: "", findings: "",
+      prevention: "", warningsApproved: false,
+      product: "", batch: "", dosage: "", method: "",
+      recipient: "", followUp: false,
+      completed: false, serial: ""
+    };
+    signed = false;
+  }
+  resetWizard();
+
+  function field(id, label, value, required, type) {
+    return '<div class="field' + (required ? " is-required" : "") + '"><label for="' + id + '">' + label + '</label>' +
+      '<input id="' + id + '" data-model="' + id + '" type="' + (type || "text") + '" value="' + (value || "") + '" /></div>';
+  }
+  function select(id, label, value, options, required) {
+    return '<div class="field' + (required ? " is-required" : "") + '"><label for="' + id + '">' + label + '</label><select id="' + id + '" data-model="' + id + '">' +
+      options.map(function (o) {
+        return '<option value="' + o[0] + '"' + (value === o[0] ? " selected" : "") + '>' + o[1] + '</option>';
+      }).join("") + '</select></div>';
+  }
+
+  function stepMarkup() {
+    switch (wizard.step) {
+      case 0:
+        return '<article class="card"><h3>מדביר מבצע</h3><p>' + DEMO.user + ' · ' + DEMO.license + '</p></article>' +
+          select("ordererType", "סוג מזמין", wizard.ordererType, [["private", "אדם פרטי"], ["business", "עסק / מוסד"]], true) +
+          field("ordererName", "שם המזמין", wizard.ordererName, true) +
+          field("ordererPhone", "טלפון נייד של המזמין", wizard.ordererPhone, wizard.ordererType === "private", "tel") +
+          '<p class="hint">למזמין שהוא אדם פרטי, מספר נייד הוא שדה חובה.</p>';
+      case 1:
+        return select("place", "סוג מקום הטיפול", wizard.place, [["dwelling", "מבנה מגורים"], ["open", "שטח פתוח"], ["fog", "ריסוס בערפול"]], true) +
+          field("address", "כתובת מלאה", wizard.address, true) +
+          (wizard.place === "dwelling" ? field("apartment", "מספר דירה", wizard.apartment, true) : "") +
+          (wizard.place === "fog" ? '<p class="hint">בערפול נדרשת אזהרה לציבור לפני הביצוע ותיעוד אופן הפרסום.</p>' : "") +
+          '<article class="card"><div class="card-row"><h3>מיקום GPS</h3><span class="pill">נלכד בהדגמה</span></div><p>31.0000, 34.0000 (WGS84, ערך הדגמה)</p></article>';
+      case 2:
+        return select("pest", "מזיק שאותר", wizard.pest, [["", "בחר מזיק"], ["roach", "ג'וקים"], ["rodent", "מכרסמים"], ["ant", "נמלים"]], true) +
+          '<div class="field"><label for="findings">תיאור ממצאי הניטור</label><textarea id="findings" data-model="findings" rows="3">' + wizard.findings + '</textarea></div>' +
+          '<p class="hint">הממצאים נרשמים לפי הפירוט הנדרש בתוספת לנוהל, וחייבים להתאים לתכשירים שייבחרו.</p>';
+      case 3:
+        return '<div class="field"><label for="prevention">פעולות מניעה והנסיבות שהובילו לטיפול</label><textarea id="prevention" data-model="prevention" rows="3">' + wizard.prevention + '</textarea></div>' +
+          '<label class="card" style="flex-direction:row;align-items:center;gap:10px"><input type="checkbox" data-model="warningsApproved"' + (wizard.warningsApproved ? " checked" : "") + ' style="width:22px;height:22px" />' +
+          '<span style="font-size:13.5px;font-weight:600">אני מאשר שמסרתי את האזהרות שלפני הטיפול</span></label>' +
+          '<p class="hint">תבנית אזהרה היא הצעה בלבד — נדרש אישור מפורש של המדביר, ואין מילוי אוטומטי של זמן חזרה שאינו מבוסס תווית.</p>';
+      case 4:
+        return select("product", "תכשיר", wizard.product, [["", "בחר תכשיר"], ["p1", "תכשיר לדוגמה 1"], ["p2", "תכשיר לדוגמה 2 (מוכן לשימוש)"], ["p3", "תכשיר לדוגמה 3 (לא אומת)"]], true) +
+          field("batch", "מספר אצווה", wizard.batch, true) +
+          field("dosage", "מינון לשטח / נפח", wizard.dosage, true) +
+          select("method", "אופן היישום", wizard.method, [["", "בחר"], ["spray", "ריסוס"], ["bait", "פיתיון"], ["fog", "ערפול"], ["fum", "איוד"]], true) +
+          (wizard.product === "p3" ? '<p class="problems"><strong>שים לב:</strong> התכשיר אינו מאומת מול מקור רשמי. יש לאמת מול התווית לפני שימוש.</p>' : "") +
+          (wizard.product === "p2" ? '<p class="hint">לתכשיר מוכן לשימוש נגזר הריכוז מהתווית ואין צורך לרשום דילול.</p>' : "");
+      default:
+        return field("recipient", "שם מקבל היומן", wizard.recipient, true) +
+          '<label class="card" style="flex-direction:row;align-items:center;gap:10px"><input type="checkbox" data-model="followUp"' + (wizard.followUp ? " checked" : "") + ' style="width:22px;height:22px" />' +
+          '<span style="font-size:13.5px;font-weight:600">נדרשת ביקורת חוזרת</span></label>' +
+          '<div class="field is-required"><label for="sign">חתימת מקבל היומן</label>' +
+          '<canvas id="sign" class="sign-pad" width="640" height="300" aria-label="לוח חתימה — ציירו באמצעות מגע או עכבר"></canvas></div>' +
+          '<div class="row"><button class="btn ghost" data-clear-sign>ניקוי חתימה</button>' +
+          '<button class="btn" data-confirm-sign>אישור החתימה</button></div>' +
+          '<p class="hint" id="signState">' + (signed ? "החתימה אושרה." : "החתימה טרם אושרה.") + '</p>';
+    }
+  }
+
+  function problemsForStep() {
+    var problems = [];
+    function need(ok, id, text) { if (!ok) problems.push({ id: id, text: text }); }
+    if (wizard.step === 0) {
+      need(wizard.ordererName.trim().length > 1, "ordererName", "חסר שם המזמין");
+      if (wizard.ordererType === "private") {
+        need(/^0\d{1,2}-?\d{7}$/.test(wizard.ordererPhone.replace(/\s/g, "")), "ordererPhone", "נדרש מספר נייד תקין למזמין פרטי");
+      }
+    }
+    if (wizard.step === 1) {
+      need(wizard.address.trim().length > 3, "address", "חסרה כתובת מקום הטיפול");
+      if (wizard.place === "dwelling") need(wizard.apartment.trim() !== "", "apartment", "חסר מספר דירה למבנה מגורים");
+    }
+    if (wizard.step === 2) need(wizard.pest !== "", "pest", "לא נבחר מזיק");
+    if (wizard.step === 3) need(wizard.warningsApproved, "prevention", "לא אושרו האזהרות שלפני הטיפול");
+    if (wizard.step === 4) {
+      need(wizard.product !== "", "product", "לא נבחר תכשיר");
+      need(wizard.batch.trim() !== "", "batch", "חסר מספר אצווה");
+      need(wizard.dosage.trim() !== "", "dosage", "חסר מינון");
+      need(wizard.method !== "", "method", "לא נבחר אופן יישום");
+    }
+    if (wizard.step === 5) {
+      need(wizard.recipient.trim().length > 1, "recipient", "חסר שם מקבל היומן");
+      need(signed, "sign", "חסרה חתימה מאושרת");
+    }
+    return problems;
+  }
+
+  function renderWizard(view) {
+    var stepper = view.querySelector("#stepper");
+    var title = view.querySelector("#stepTitle");
+    var body = view.querySelector("#wizardBody");
+    if (!stepper || !body) return;
+
+    if (wizard.completed) {
+      stepper.innerHTML = "";
+      title.textContent = "היומן הושלם";
+      body.innerHTML = '<article class="card"><div class="card-row"><h3>יומן ' + wizard.serial + '</h3><span class="pill">נעול</span></div>' +
+        '<p>הושלם ' + new Date().toLocaleString("he-IL") + '<br />מקבל היומן: ' + wizard.recipient + '<br />' +
+        (wizard.followUp ? "נדרשת ביקורת חוזרת — נפתחה משימה." : "לא נדרשה ביקורת חוזרת.") + '</p></article>' +
+        '<article class="card"><h3>מה קורה בשלב הזה במערכת האמיתית</h3><p>הסיום הוא פעולת שרת אחת: בדיקת כל שדות החובה, הקצאת מספר סידורי רציף, שמירת תצלום של התוכן, חישוב חתימת מסמך, כתיבת אירוע ביקורת והפקת PDF. לאחר מכן היומן אינו ניתן לעריכה או למחיקה.</p></article>' +
+        '<div class="row"><button class="btn ghost" data-toast="בהדגמה אין קובץ להורדה">הורדת PDF</button>' +
+        '<button class="btn ghost" data-toast="בהדגמה אין שליחה בפועל">שיתוף</button></div>' +
+        '<button class="btn" data-new-log>יומן חדש</button>';
+      return;
+    }
+
+    stepper.innerHTML = STEPS.map(function (_, i) {
+      return '<span class="step-dot' + (i <= wizard.step ? " done" : "") + '"></span>';
+    }).join("");
+    title.textContent = "שלב " + (wizard.step + 1) + " מתוך 6 · " + STEPS[wizard.step];
+
+    var isLast = wizard.step === STEPS.length - 1;
+    body.innerHTML = '<div id="stepFields" style="display:flex;flex-direction:column;gap:12px">' + stepMarkup() + '</div>' +
+      '<div id="stepProblems"></div>' +
+      '<div class="row">' +
+      (wizard.step > 0 ? '<button class="btn ghost" data-step="-1">הקודם</button>' : "") +
+      '<button class="btn" data-step="1">' + (isLast ? "סיים ונעל יומן" : "המשך") + '</button></div>' +
+      '<p class="hint">נשמר אוטומטית בכל שינוי · טיוטה נשמרת מקומית גם ללא רשת.</p>';
+
+    if (wizard.step === STEPS.length - 1) setupSignature(view);
+  }
+
+  function setupSignature(view) {
+    var canvas = view.querySelector("#sign");
+    if (!canvas) return;
+    var ctx = canvas.getContext("2d");
+    ctx.lineWidth = 3.2;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "#11291f";
+    var drawing = false, ink = false;
+
+    function point(event) {
+      var rect = canvas.getBoundingClientRect();
+      return {
+        x: (event.clientX - rect.left) * (canvas.width / rect.width),
+        y: (event.clientY - rect.top) * (canvas.height / rect.height)
+      };
+    }
+    canvas.addEventListener("pointerdown", function (event) {
+      drawing = true; ink = true;
+      var p = point(event);
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x + 0.1, p.y + 0.1);
+      ctx.stroke();
+      try { canvas.setPointerCapture(event.pointerId); } catch (e) {}
+      event.preventDefault();
+    });
+    canvas.addEventListener("pointermove", function (event) {
+      if (!drawing) return;
+      var p = point(event);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+      event.preventDefault();
+    });
+    ["pointerup", "pointerleave", "pointercancel"].forEach(function (name) {
+      canvas.addEventListener(name, function () { drawing = false; });
+    });
+
+    view.querySelector("[data-clear-sign]").addEventListener("click", function () {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ink = false; signed = false;
+      view.querySelector("#signState").textContent = "החתימה טרם אושרה.";
+    });
+    view.querySelector("[data-confirm-sign]").addEventListener("click", function () {
+      if (!ink) { toast("אין חתימה לאשר"); return; }
+      signed = true;
+      view.querySelector("#signState").textContent = "החתימה אושרה.";
+      toast("החתימה אושרה");
+    });
+  }
+
+  function showProblems(view, problems) {
+    var host = view.querySelector("#stepProblems");
+    if (!host) return;
+    if (!problems.length) { host.innerHTML = ""; return; }
+    host.innerHTML = '<div class="problems"><h4>לא ניתן להמשיך — חסרים שדות חובה</h4>' +
+      problems.map(function (p) { return '<button type="button" data-jump="' + p.id + '">' + p.text + '</button>'; }).join("") + '</div>';
+  }
+
+  /* ---------- wiring ---------- */
+  function wire(view, key) {
+    view.querySelectorAll("[data-back]").forEach(function (node) {
+      node.addEventListener("click", back);
+    });
+    view.querySelectorAll("[data-toast]").forEach(function (node) {
+      node.addEventListener("click", function () { toast(node.dataset.toast); });
+    });
+    view.querySelectorAll("[data-sync]").forEach(function (node) {
+      node.addEventListener("click", function () {
+        syncIndex = (syncIndex + 1) % SYNC_STATES.length;
+        toast("מצב סנכרון: " + SYNC_STATES[syncIndex].label);
+        render(currentKey(), "forward");
+      });
+    });
+    view.querySelectorAll(".circle").forEach(function (button) {
+      button.addEventListener("pointerdown", function (event) {
+        button.classList.add("pressed");
+        ripple(button, event);
+        vibrate();
+      });
+      ["pointerup", "pointerleave", "pointercancel"].forEach(function (name) {
+        button.addEventListener(name, function () { button.classList.remove("pressed"); });
+      });
+      button.addEventListener("click", function () {
+        var target = button.dataset.go;
+        if (target === "newLog" && wizard.completed) resetWizard();
+        go(target);
+      });
+    });
+
+    if (key === "home") {
+      var hero = view.querySelector("#hero");
+      var greeting = view.querySelector("#greeting");
+      var sticky = view.querySelector("#sticky");
+      var ticking = false;
+      view.addEventListener("scroll", function () {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(function () {
+          var y = view.scrollTop;
+          var shrink = Math.min(y / 60, 1);
+          hero.style.paddingTop = (46 - 16 * shrink) + "px";
+          hero.style.paddingBottom = (26 - 8 * shrink) + "px";
+          greeting.style.opacity = String(1 - shrink);
+          sticky.classList.toggle("show", y > 44);
+          ticking = false;
+        });
+      }, { passive: true });
+    }
+
+    if (key === "newLog") {
+      renderWizard(view);
+      view.addEventListener("input", function (event) {
+        var target = event.target;
+        var name = target.dataset ? target.dataset.model : null;
+        if (!name) return;
+        wizard[name] = target.type === "checkbox" ? target.checked : target.value;
+      });
+      view.addEventListener("change", function (event) {
+        var target = event.target;
+        var name = target.dataset ? target.dataset.model : null;
+        if (!name) return;
+        wizard[name] = target.type === "checkbox" ? target.checked : target.value;
+        if (name === "place" || name === "ordererType" || name === "product") renderWizard(view);
+      });
+      view.addEventListener("click", function (event) {
+        var stepButton = event.target.closest("[data-step]");
+        if (stepButton) {
+          var delta = Number(stepButton.dataset.step);
+          if (delta < 0) { wizard.step -= 1; renderWizard(view); return; }
+          var problems = problemsForStep();
+          if (problems.length) { showProblems(view, problems); toast("חסרים שדות חובה"); return; }
+          if (wizard.step === STEPS.length - 1) {
+            wizard.completed = true;
+            wizard.serial = "2026-0042 (הדגמה)";
+            if (wizard.followUp) {
+              DEMO.tasks = DEMO.tasks.concat([{ id: "t" + Date.now(), title: "ביקורת חוזרת — " + wizard.recipient, sub: "נפתחה מיומן " + wizard.serial, state: "פתוח", cls: "warn" }]);
+            }
+            renderWizard(view);
+            toast("היומן הושלם ונעל");
+            return;
+          }
+          wizard.step += 1;
+          renderWizard(view);
+          return;
+        }
+        var jump = event.target.closest("[data-jump]");
+        if (jump) {
+          var node = view.querySelector("#" + jump.dataset.jump);
+          if (node) { node.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" }); node.focus({ preventScroll: true }); }
+          return;
+        }
+        if (event.target.closest("[data-new-log]")) {
+          resetWizard();
+          renderWizard(view);
+        }
+      });
+    }
+  }
+
+  render("home", "forward");
+})();
+</script>
