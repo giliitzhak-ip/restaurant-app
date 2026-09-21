@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import { prisma } from '@/lib/db'
 import type { Prisma } from '@/generated/prisma/client'
-import type { PaymentStatus } from '@/generated/prisma/enums'
+import type { OrderStatus, PaymentStatus, ShipmentStatus } from '@/generated/prisma/enums'
+import { ORDER_STATUS_LABELS, ORDER_TRANSITIONS } from './status'
 import { effectivePrice, vatFromGross } from '@/lib/money'
 import { getSetting } from '@/lib/settings'
 import { getPaymentProvider } from '@/lib/payments'
@@ -28,6 +29,10 @@ export interface PlaceOrderInput {
   couponCode?: string | null
   customerNote?: string | null
   marketingOptIn: boolean
+  /** Marks the order (and any customer it creates) as simulator output. */
+  isSimulated?: boolean
+  /** Set false to skip the confirmation email — used by the simulator. */
+  notify?: boolean
 }
 
 export class OutOfStockError extends Error {
@@ -107,6 +112,7 @@ export async function placeOrder(input: PlaceOrderInput) {
             isGuest: true,
             marketingOptIn: input.marketingOptIn,
             termsAcceptedAt: new Date(),
+            isSimulated: input.isSimulated ?? false,
           },
         })
       }
@@ -127,6 +133,7 @@ export async function placeOrder(input: PlaceOrderInput) {
           shippingAddress: input.shippingAddress as unknown as Prisma.InputJsonValue,
           invoiceDetails: (input.invoiceDetails ?? undefined) as Prisma.InputJsonValue | undefined,
           customerNote: input.customerNote ?? null,
+          isSimulated: input.isSimulated ?? false,
           items: { create: orderItems },
           events: { create: { type: 'CREATED', message: 'ההזמנה נוצרה' } },
         },
@@ -194,12 +201,14 @@ export async function placeOrder(input: PlaceOrderInput) {
     },
   })
 
-  await sendEmail({
-    to: order.email,
-    template: 'ORDER_CONFIRMATION',
-    subject: `הזמנה ${order.orderNumber} התקבלה`,
-    data: { orderNumber: order.orderNumber, total: order.grandTotal },
-  })
+  if (input.notify !== false) {
+    await sendEmail({
+      to: order.email,
+      template: 'ORDER_CONFIRMATION',
+      subject: `הזמנה ${order.orderNumber} התקבלה`,
+      data: { orderNumber: order.orderNumber, total: order.grandTotal },
+    })
+  }
 
   return { order, redirectUrl: payment.redirectUrl }
 }
@@ -274,4 +283,142 @@ export async function applyPaymentResult(params: {
   })
 
   return { applied: true }
+}
+
+export interface TransitionResult {
+  ok: boolean
+  error?: string
+}
+
+const EMAIL_FOR_STATUS: Partial<Record<OrderStatus, { template: 'PACKING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'; subject: string }>> = {
+  PACKING: { template: 'PACKING', subject: 'ההזמנה שלך נארזת' },
+  SHIPPED: { template: 'SHIPPED', subject: 'ההזמנה שלך נשלחה' },
+  DELIVERED: { template: 'DELIVERED', subject: 'ההזמנה שלך נמסרה' },
+  CANCELLED: { template: 'CANCELLED', subject: 'ההזמנה בוטלה' },
+}
+
+/**
+ * Moves an order to the next status, releasing a stock reservation when an
+ * unpaid order is cancelled and keeping the shipment in step. Single source of
+ * truth — the admin action and the operations simulator both go through here.
+ */
+export async function transitionOrder(
+  orderId: string,
+  target: OrderStatus,
+  options: { actorId?: string | null; notify?: boolean } = {},
+): Promise<TransitionResult> {
+  const order = await prisma.order.findUnique({ where: { id: orderId }, include: { items: true } })
+  if (!order) return { ok: false, error: 'ההזמנה לא נמצאה' }
+
+  if (!ORDER_TRANSITIONS[order.status]?.includes(target)) {
+    return { ok: false, error: 'מעבר סטטוס זה אינו מותר' }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.order.update({ where: { id: orderId }, data: { status: target } })
+    await tx.orderEvent.create({
+      data: {
+        orderId,
+        type: 'STATUS_CHANGE',
+        message: `סטטוס שונה ל-${ORDER_STATUS_LABELS[target]}`,
+        actorId: options.actorId ?? null,
+      },
+    })
+
+    // Cancelling before payment releases the reservation back to stock.
+    if (target === 'CANCELLED' && order.status === 'NEW') {
+      for (const item of order.items) {
+        if (!item.productId) continue
+        await tx.$executeRaw`
+          UPDATE "Inventory"
+          SET "reserved" = GREATEST(0, "reserved" - ${item.quantity}), "updatedAt" = NOW()
+          WHERE "productId" = ${item.productId}
+        `
+        await tx.inventoryMovement.create({
+          data: { productId: item.productId, type: 'RELEASE', quantity: item.quantity, reference: order.orderNumber },
+        })
+      }
+    }
+
+    const shipmentStatus = SHIPMENT_FOR_ORDER[target]
+    if (shipmentStatus) {
+      await tx.shipment.updateMany({ where: { orderId }, data: { status: shipmentStatus } })
+    }
+  })
+
+  if (options.notify !== false) {
+    const mail = EMAIL_FOR_STATUS[target]
+    if (mail) {
+      await sendEmail({
+        to: order.email,
+        template: mail.template,
+        subject: `${mail.subject} — ${order.orderNumber}`,
+        data: { orderNumber: order.orderNumber },
+      })
+    }
+  }
+
+  return { ok: true }
+}
+
+const SHIPMENT_FOR_ORDER: Partial<Record<OrderStatus, ShipmentStatus>> = {
+  READY_FOR_SHIPPING: 'READY',
+  SHIPPED: 'IN_TRANSIT',
+  DELIVERED: 'DELIVERED',
+  RETURNED: 'RETURNED',
+  CANCELLED: 'FAILED',
+}
+
+/**
+ * Issues a refund through the payment provider and records it. Shared by the
+ * admin action and the simulator so both follow the same rules.
+ */
+export async function refundOrder(
+  orderId: string,
+  amount: number,
+  reason: string,
+  actorId?: string | null,
+  options: { notify?: boolean } = {},
+): Promise<TransitionResult> {
+  const order = await prisma.order.findUnique({ where: { id: orderId }, include: { payments: true, refunds: true } })
+  if (!order) return { ok: false, error: 'ההזמנה לא נמצאה' }
+
+  const alreadyRefunded = order.refunds.reduce((sum, r) => sum + r.amount, 0)
+  if (amount <= 0 || alreadyRefunded + amount > order.grandTotal) {
+    return { ok: false, error: 'סכום הזיכוי אינו תקין' }
+  }
+
+  const payment = order.payments.find((p) => p.status === 'PAID' || p.status === 'PARTIALLY_REFUNDED')
+  if (!payment) return { ok: false, error: 'אין תשלום ששולם לזיכוי' }
+
+  const provider = getPaymentProvider()
+  const result = await provider.refundPayment(payment.providerRef ?? '', amount)
+  const total = alreadyRefunded + amount
+
+  await prisma.$transaction(async (tx) => {
+    await tx.refund.create({
+      data: { orderId, paymentId: payment.id, amount, reason, providerRef: result.providerRef, createdById: actorId ?? null },
+    })
+    await tx.payment.update({
+      where: { id: payment.id },
+      data: { status: total >= order.grandTotal ? 'REFUNDED' : 'PARTIALLY_REFUNDED' },
+    })
+    if (total >= order.grandTotal) {
+      await tx.order.update({ where: { id: orderId }, data: { status: 'REFUNDED' } })
+    }
+    await tx.orderEvent.create({
+      data: { orderId, type: 'REFUND', message: `זיכוי בסך ${(amount / 100).toFixed(2)} ₪`, actorId: actorId ?? null },
+    })
+  })
+
+  if (options.notify !== false) {
+    await sendEmail({
+      to: order.email,
+      template: 'REFUND',
+      subject: `זיכוי עבור הזמנה ${order.orderNumber}`,
+      data: { amount },
+    })
+  }
+
+  return { ok: true }
 }

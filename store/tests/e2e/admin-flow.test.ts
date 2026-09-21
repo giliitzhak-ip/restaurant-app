@@ -80,6 +80,15 @@ describe('admin pages with a valid session', () => {
     expect(await response.text()).toContain('ממתין לאימות')
   })
 
+  it('opens the simulator with its safety warnings', async () => {
+    const response = await fetch(`${BASE}/admin/simulator`, { headers: { cookie } })
+    expect(response.status).toBe(200)
+    const html = await response.text()
+    expect(html).toContain('סימולטור הזמנות ותפעול')
+    expect(html).toContain('הסימולטור כותב נתונים אמיתיים למסד')
+    expect(html).toContain('ENABLE_SIMULATOR')
+  })
+
   it('opens the media library and the bulk import page', async () => {
     expect((await fetch(`${BASE}/admin/media`, { headers: { cookie } })).status).toBe(200)
     const importPage = await fetch(`${BASE}/admin/media/import`, { headers: { cookie } })

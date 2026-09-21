@@ -1,27 +1,43 @@
 import Link from 'next/link'
-import { TrendingUp, Package, AlertTriangle, ShieldAlert, Images, Users } from 'lucide-react'
+import { TrendingUp, Package, AlertTriangle, ShieldAlert, Images, Users, FlaskConical } from 'lucide-react'
 import { prisma } from '@/lib/db'
+import type { Prisma } from '@/generated/prisma/client'
 import { requireAdminPage } from '@/lib/auth/guard'
+import { can } from '@/lib/auth/rbac'
 import { PageHeader } from '@/components/admin/page-header'
 import { Card, CardBody } from '@/components/ui/card'
 import { formatAgorot } from '@/lib/money'
 
-export default async function AdminDashboard({ searchParams }: { searchParams: Promise<{ denied?: string }> }) {
-  await requireAdminPage('dashboard.view')
-  const { denied } = await searchParams
+const REVENUE_STATUSES: Prisma.EnumOrderStatusFilter = {
+  in: ['PAID', 'PROCESSING', 'PACKING', 'READY_FOR_SHIPPING', 'SHIPPED', 'DELIVERED'],
+}
 
-  const [paidOrders, orderCount, productCount, publishedCount, awaitingRegulatory, lowStock, missingMedia, missingPrice, customers, demoCount] =
+export default async function AdminDashboard({
+  searchParams,
+}: {
+  searchParams: Promise<{ denied?: string; realOnly?: string }>
+}) {
+  const session = await requireAdminPage('dashboard.view')
+  const { denied, realOnly } = await searchParams
+
+  // The simulator writes real rows, so the dashboard can be read with or
+  // without them.
+  const excludeSimulated = realOnly === '1'
+  const orderScope: Prisma.OrderWhereInput = excludeSimulated ? { isSimulated: false } : {}
+
+  const [paidOrders, orderCount, productCount, publishedCount, awaitingRegulatory, lowStock, missingMedia, missingPrice, customers, demoCount, simulatedOrders] =
     await Promise.all([
-      prisma.order.aggregate({ _sum: { grandTotal: true }, where: { status: { in: ['PAID', 'PROCESSING', 'PACKING', 'READY_FOR_SHIPPING', 'SHIPPED', 'DELIVERED'] } } }),
-      prisma.order.count(),
+      prisma.order.aggregate({ _sum: { grandTotal: true }, where: { ...orderScope, status: REVENUE_STATUSES } }),
+      prisma.order.count({ where: orderScope }),
       prisma.product.count(),
       prisma.product.count({ where: { published: true } }),
       prisma.regulatoryRecord.count({ where: { status: { in: ['REQUIRES_VERIFICATION', 'EXPIRED'] } } }),
       prisma.inventory.count({ where: { onHand: { lte: 5 } } }),
       prisma.product.count({ where: { media: { none: {} } } }),
       prisma.product.count({ where: { price: null } }),
-      prisma.customer.count(),
+      prisma.customer.count({ where: excludeSimulated ? { isSimulated: false } : {} }),
       prisma.product.count({ where: { isDemoData: true } }),
+      prisma.order.count({ where: { isSimulated: true } }),
     ])
 
   const revenue = paidOrders._sum.grandTotal ?? 0
@@ -50,6 +66,21 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
       {denied && (
         <p role="alert" className="mb-5 rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
           אין לך הרשאה לגשת לאזור המבוקש.
+        </p>
+      )}
+
+      {simulatedOrders > 0 && (
+        <p className="mb-5 flex flex-wrap items-center gap-2 rounded-xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
+          <FlaskConical className="size-4 shrink-0" aria-hidden />
+          {excludeSimulated
+            ? `${simulatedOrders} הזמנות סימולציה אינן נכללות במספרים למטה.`
+            : `${simulatedOrders} מההזמנות נוצרו בסימולטור ונכללות במספרים למטה.`}
+          <Link href={excludeSimulated ? '/admin' : '/admin?realOnly=1'} className="underline">
+            {excludeSimulated ? 'הצגה כולל סימולציה' : 'הצגת נתונים אמיתיים בלבד'}
+          </Link>
+          {can(session.role, 'simulator.run') && (
+            <Link href="/admin/simulator" className="underline">לניהול הסימולטור</Link>
+          )}
         </p>
       )}
 

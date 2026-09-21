@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import {
   LayoutDashboard, Package, Images, Boxes, ShoppingCart, Users, Truck,
-  ShieldCheck, Ticket, FileText, Settings, Star, ScrollText, Leaf,
+  ShieldCheck, Ticket, FileText, Settings, Star, ScrollText, Leaf, FlaskConical,
 } from 'lucide-react'
 import type { AdminSession } from '@/lib/auth/session'
 import { can, ROLE_LABELS, type Permission } from '@/lib/auth/rbac'
@@ -42,6 +42,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
     items: [
       { href: '/admin/suppliers', label: 'ספקים', Icon: Truck, permission: 'suppliers.view' },
       { href: '/admin/content', label: 'תוכן', Icon: FileText, permission: 'content.manage' },
+      { href: '/admin/simulator', label: 'סימולטור', Icon: FlaskConical, permission: 'simulator.run' },
       { href: '/admin/audit', label: 'יומן פעולות', Icon: ScrollText, permission: 'audit.view' },
       { href: '/admin/settings', label: 'הגדרות', Icon: Settings, permission: 'settings.manage' },
     ],

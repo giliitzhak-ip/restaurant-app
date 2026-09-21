@@ -7,15 +7,22 @@ import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { formatAgorot } from '@/lib/money'
 import { formatDateHe } from '@/lib/utils'
+import { FlaskConical } from 'lucide-react'
 import { ORDER_STATUS_LABELS, ORDER_STATUS_TONE } from '@/lib/orders/status'
 import type { OrderStatus } from '@/generated/prisma/enums'
 
-export default async function AdminOrdersPage({ searchParams }: { searchParams: Promise<{ status?: string; q?: string }> }) {
+export default async function AdminOrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string; q?: string; simulated?: string }>
+}) {
   await requireAdminPage('orders.view')
-  const { status, q } = await searchParams
+  const { status, q, simulated } = await searchParams
 
   const where: Prisma.OrderWhereInput = {}
   if (status && status !== 'ALL') where.status = status as OrderStatus
+  if (simulated === '1') where.isSimulated = true
+  if (simulated === '0') where.isSimulated = false
   if (q) {
     where.OR = [
       { orderNumber: { contains: q, mode: 'insensitive' } },
@@ -31,9 +38,22 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
     include: { _count: { select: { items: true } } },
   })
 
+  const simulatedCount = await prisma.order.count({ where: { isSimulated: true } })
+
   return (
     <>
       <PageHeader title="הזמנות" description="מעקב, עדכון סטטוס והפקת תעודת משלוח." />
+
+      {simulatedCount > 0 && (
+        <p className="mb-4 flex flex-wrap items-center gap-2 rounded-xl bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
+          <FlaskConical className="size-4 shrink-0" aria-hidden />
+          {simulatedCount} מההזמנות נוצרו בסימולטור.
+          <Link href={`/admin/orders?simulated=${simulated === '1' ? '0' : '1'}`} className="font-semibold underline">
+            {simulated === '1' ? 'הצגת הזמנות אמיתיות בלבד' : 'הצגת הזמנות סימולציה בלבד'}
+          </Link>
+          <Link href="/admin/orders" className="font-semibold underline">הצגת הכול</Link>
+        </p>
+      )}
 
       <form className="mb-4 flex flex-wrap gap-2" role="search">
         <label htmlFor="order-search" className="sr-only">חיפוש הזמנה</label>
@@ -80,6 +100,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
                 <tr key={order.id}>
                   <td className="px-4 py-3">
                     <Link href={`/admin/orders/${order.id}`} className="font-medium text-ink-900 hover:text-brand-700">{order.orderNumber}</Link>
+                    {order.isSimulated && <span className="ms-1.5"><Badge tone="warning">סימולציה</Badge></span>}
                   </td>
                   <td className="px-4 py-3 text-xs text-ink-500">{formatDateHe(order.createdAt)}</td>
                   <td className="px-4 py-3 text-xs">{order.email}</td>

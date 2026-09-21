@@ -121,7 +121,7 @@ describe('admin access control over HTTP', () => {
   })
 
   it('protects every admin section', async () => {
-    for (const path of ['/admin/products', '/admin/media', '/admin/regulatory', '/admin/orders', '/admin/settings']) {
+    for (const path of ['/admin/products', '/admin/media', '/admin/regulatory', '/admin/orders', '/admin/settings', '/admin/simulator']) {
       const response = await fetch(`${BASE}${path}`, { redirect: 'manual' })
       expect([302, 307]).toContain(response.status)
     }

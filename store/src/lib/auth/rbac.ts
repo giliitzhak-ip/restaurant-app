@@ -26,6 +26,7 @@ export type Permission =
   | 'settings.manage'
   | 'users.manage'
   | 'audit.view'
+  | 'simulator.run'
 
 const ALL: Permission[] = [
   'dashboard.view', 'products.view', 'products.edit', 'products.publish',
@@ -33,7 +34,7 @@ const ALL: Permission[] = [
   'orders.view', 'orders.edit', 'customers.view', 'customers.edit',
   'suppliers.view', 'suppliers.edit', 'suppliers.import', 'promotions.manage',
   'reviews.moderate', 'content.manage', 'regulatory.view', 'regulatory.verify',
-  'settings.manage', 'users.manage', 'audit.view',
+  'settings.manage', 'users.manage', 'audit.view', 'simulator.run',
 ]
 
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
