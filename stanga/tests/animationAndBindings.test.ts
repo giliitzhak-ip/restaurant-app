@@ -39,6 +39,8 @@ function inputs(overrides: Partial<AnimatorInputs> = {}): AnimatorInputs {
     hasBall: false,
     kickTriggered: false,
     tackleTriggered: false,
+    juggleTriggered: false,
+    volleyTriggered: false,
     celebrating: false,
     defeated: false,
     ...overrides,
@@ -57,7 +59,15 @@ function run(
   for (let i = 0; i < steps; i += 1) {
     animator.update(
       state,
-      i === 0 ? input : { ...input, kickTriggered: false, tackleTriggered: false },
+      i === 0
+        ? input
+        : {
+            ...input,
+            kickTriggered: false,
+            tackleTriggered: false,
+            juggleTriggered: false,
+            volleyTriggered: false,
+          },
       STEP,
     );
     seen.push(animator.currentState);
@@ -269,6 +279,34 @@ describe('key bindings', () => {
 
   it('keeps the two split profiles free of shared keys', () => {
     expect(findConflicts(defaultLeftKeyMap(), defaultRightKeyMap())).toHaveLength(0);
+  });
+
+  it('plays a flick for a juggle and a different swing for a volley', () => {
+    // Both matter on screen: a chain carried through the air is the one way a
+    // player may advance with the ball, and it must not look like the strike
+    // that would end it.
+    const juggling = new PlayerAnimator();
+    juggling.update(player(), inputs({ juggleTriggered: true }), STEP);
+    expect(juggling.currentState).toBe('Juggle');
+
+    const volleying = new PlayerAnimator();
+    // The engine sets both flags on the same strike; the volley wins.
+    volleying.update(player(), inputs({ kickTriggered: true, volleyTriggered: true }), STEP);
+    expect(volleying.currentState).toBe('Volley');
+  });
+
+  it('hands a one-shot back to the movement states when it finishes', () => {
+    const animator = new PlayerAnimator();
+    animator.update(
+      player({ position: { x: 0, y: 0, z: 0 } }),
+      inputs({ juggleTriggered: true }),
+      STEP,
+    );
+    expect(animator.currentState).toBe('Juggle');
+    for (let i = 0; i < 40; i += 1) {
+      animator.update(player(), inputs({ speed: 4 }), STEP);
+    }
+    expect(animator.currentState).not.toBe('Juggle');
   });
 
   it('reports a key bound to two different actions', () => {

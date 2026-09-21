@@ -116,16 +116,29 @@ function playAgainstTheComputer(seconds: number) {
 
   headless.match.start();
   let distanceSum = 0;
+  let nearTicks = 0;
   const ticks = Math.round(seconds / DT);
   for (let tick = 0; tick < ticks; tick += 1) {
     session.collectCommands(tick, 0, DT);
     headless.step(DT, tick);
     const me = headless.match.state.players.find((player) => player.id === 'away-1');
-    if (me) distanceSum += horizontalDistance(me.position, headless.match.state.ball.position);
+    if (!me) continue;
+    const distance = horizontalDistance(me.position, headless.match.state.ball.position);
+    distanceSum += distance;
+    if (distance <= CONTESTING_METRES) nearTicks += 1;
   }
 
-  return { touches, kicks, meanDistance: distanceSum / ticks, state: headless.match.state };
+  return {
+    touches,
+    kicks,
+    meanDistance: distanceSum / ticks,
+    nearFraction: nearTicks / ticks,
+    state: headless.match.state,
+  };
 }
+
+/** Close enough to contest a ball, in metres: about twice the striking range. */
+const CONTESTING_METRES = 3;
 
 describe('the computer opponent', () => {
   it('contests the ball instead of watching the human have it', () => {
@@ -134,9 +147,18 @@ describe('the computer opponent', () => {
     // Before the fix this was one touch and no kicks in sixty seconds.
     expect(played.touches).toBeGreaterThanOrEqual(6);
     expect(played.kicks).toBeGreaterThanOrEqual(4);
-    // And it stayed nearly four metres away; a player who is in the game is
-    // within a couple of metres of the ball on average.
-    expect(played.meanDistance).toBeLessThan(3.5);
+    /*
+     * And it stayed nearly four metres away from a ball that barely moved.
+     *
+     * The measure here is the share of the match spent within contesting
+     * distance, not the mean — the mean is dominated by how far the ball
+     * travels, and once the ball got a real drag model and a real launch
+     * vector the scripted human started blasting it into corners, which sends
+     * the opponent on long sprints it is right to make. A mean bound would be
+     * measuring the ball's pace and calling it the opponent's effort.
+     */
+    expect(played.nearFraction).toBeGreaterThan(0.3);
+    expect(played.meanDistance).toBeLessThan(8);
   }, 60_000);
 
   it('goes for the ball even when the human is standing right on it', () => {

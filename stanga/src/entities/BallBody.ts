@@ -22,6 +22,8 @@ export class BallBody {
   readonly body: PhysicsBody;
   private readonly scratch = new Vector3();
   private readonly identity = Quaternion.Identity();
+  /** Last restitution written to the shape, so a tick that changes nothing costs nothing. */
+  private appliedRestitution = -1;
 
   constructor(
     scene: Scene,
@@ -108,6 +110,33 @@ export class BallBody {
   get spin(): number {
     this.body.getAngularVelocityToRef(this.scratch);
     return this.scratch.y;
+  }
+
+  /**
+   * How lively the next bounce is, given how fast the ball is travelling.
+   *
+   * A ball is not a steel bearing: the harder it arrives the more of the
+   * impact goes into squashing it, and the less comes back. A fixed
+   * restitution gives a hammered clearance the same bounce as a gently
+   * dropped ball, which is what made hard shots ping around the pitch. The
+   * angle of the bounce needs no help — Havok already applies restitution to
+   * the normal component alone, so a ball skidding in flat keeps its pace and
+   * one dropping in steeply comes back up.
+   */
+  applySpeedRestitution(): void {
+    const { ball } = GameConfig;
+    const speed = this.speed;
+    const softened =
+      ball.restitution *
+      (1 - ball.restitutionFalloff * Math.min(1, speed / ball.restitutionFullSpeed));
+    // Quantised, so a ball drifting through a speed does not rewrite the
+    // shape's material on every single tick.
+    const rounded = Math.round(softened * 100) / 100;
+    if (rounded === this.appliedRestitution) return;
+    this.appliedRestitution = rounded;
+    const shape = this.body.shape;
+    if (!shape) return;
+    shape.material = { ...shape.material, restitution: rounded };
   }
 
   /** Hard cap on speed so the ball can never outrun the collision substeps. */

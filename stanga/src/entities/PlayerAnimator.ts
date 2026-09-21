@@ -19,6 +19,10 @@ export type AnimationState =
   | 'ChargeKick'
   | 'Kick'
   | 'LobKick'
+  /** Struck out of the air: the body opens up and the leg comes across. */
+  | 'Volley'
+  /** A flick to keep the ball up, which is how a chain is carried forward. */
+  | 'Juggle'
   | 'Tackle'
   | 'Recover'
   | 'ScoreCelebration'
@@ -59,6 +63,8 @@ export function neutralPose(): Pose {
 const ONE_SHOT: Partial<Record<AnimationState, number>> = {
   Kick: GameConfig.animation.kickSeconds,
   LobKick: GameConfig.animation.kickSeconds,
+  Volley: GameConfig.animation.volleySeconds,
+  Juggle: GameConfig.animation.juggleSeconds,
   Tackle: GameConfig.animation.tackleSeconds,
   ScoreCelebration: GameConfig.animation.celebrationSeconds,
 };
@@ -72,6 +78,10 @@ export interface AnimatorInputs {
   kickTriggered: boolean;
   /** Set for one frame when a tackle is attempted. */
   tackleTriggered: boolean;
+  /** Set for one frame when the ball is flicked up to keep a chain alive. */
+  juggleTriggered: boolean;
+  /** Set for one frame when the strike was made on a ball in the air. */
+  volleyTriggered: boolean;
   /** Set while the celebration should play. */
   celebrating: boolean;
   /** Set while the defeat pose should play. */
@@ -149,7 +159,11 @@ export class PlayerAnimator {
       return this.state;
     }
 
+    // A volley outranks the ordinary kick it arrives with: both flags are set
+    // on the same strike, and the one that describes it better wins.
+    if (inputs.volleyTriggered) return 'Volley';
     if (inputs.kickTriggered) return player.lofted ? 'LobKick' : 'Kick';
+    if (inputs.juggleTriggered) return 'Juggle';
     if (inputs.tackleTriggered) return 'Tackle';
     if (player.stunTimer > 0) return 'Recover';
     if (player.charging || player.windUpTimer > 0) return 'ChargeKick';
@@ -243,6 +257,45 @@ export class PlayerAnimator {
         out.torsoYaw = 0.22 * swingThrough;
         out.bob = 0.04 * swingThrough;
         out.armsUp = 0;
+        break;
+      }
+      case 'Volley': {
+        /*
+         * A ball out of the air is met across the body, not swung through
+         * from behind: the hips open, the standing leg braces, the striking
+         * leg comes across and high, and the arms go out to hold the balance.
+         */
+        const t = clamp(this.stateTime / GameConfig.animation.volleySeconds, 0, 1);
+        const strike = Math.sin(Math.min(1, t * 1.5) * Math.PI * 0.8);
+        out.leftLeg = -0.3 * strike;
+        out.rightLeg = 1.25 * strike;
+        out.leftArm = 1.0 * strike;
+        out.rightArm = -0.9 * strike;
+        out.torsoPitch = -0.28 * strike;
+        out.torsoRoll = 0.34 * strike;
+        out.torsoYaw = 0.38 * strike;
+        out.bob = 0.07 * strike;
+        out.armsUp = 0.25 * strike;
+        break;
+      }
+      case 'Juggle': {
+        /*
+         * A flick, not a kick. The knee comes up under the ball, the body
+         * stays over it and the arms come out — which is what people actually
+         * do to keep a ball up, and what distinguishes it on screen from the
+         * strike that would end the chain.
+         */
+        const t = clamp(this.stateTime / GameConfig.animation.juggleSeconds, 0, 1);
+        const flick = Math.sin(t * Math.PI);
+        out.leftLeg = 0.1 * flick;
+        out.rightLeg = 0.85 * flick;
+        out.leftArm = 0.5 * flick - 0.1;
+        out.rightArm = 0.45 * flick - 0.1;
+        out.torsoPitch = 0.14 * flick;
+        out.torsoRoll = -0.1 * flick;
+        out.torsoYaw = 0.1 * flick;
+        out.bob = 0.06 * flick;
+        out.armsUp = 0.35 * flick;
         break;
       }
       case 'Tackle': {

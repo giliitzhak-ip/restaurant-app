@@ -219,6 +219,17 @@ export const GameConfig = {
     radius: 0.112,
     mass: 0.43,
     restitution: 0.62,
+    /**
+     * How much of that bounce a full-pace ball gives up.
+     *
+     * A ball is not a steel bearing: the harder it arrives, the more of the
+     * impact goes into squashing it and the less comes back. Without this a
+     * hammered clearance bounced exactly like a gently dropped ball and the
+     * pitch turned into a pinball table.
+     */
+    restitutionFalloff: 0.42,
+    /** Speed at which that falloff is fully applied, m/s. */
+    restitutionFullSpeed: 22,
     friction: 0.55,
     /**
      * Havok's own damping, now almost nothing.
@@ -612,6 +623,10 @@ export const GameConfig = {
   animation: {
     blendSeconds: 0.14,
     kickSeconds: 0.32,
+    /** A volley is quicker and sharper than a swing from behind the ball. */
+    volleySeconds: 0.28,
+    /** A flick to keep the ball up: shorter still, and it must not lock the legs. */
+    juggleSeconds: 0.24,
     tackleSeconds: 0.42,
     celebrationSeconds: 1.8,
     /** Strides per second at walking and at sprinting pace. */

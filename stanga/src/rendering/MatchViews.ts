@@ -96,6 +96,8 @@ export class MatchViews {
           hasBall: controlling === player.id,
           kickTriggered: triggers.kick,
           tackleTriggered: triggers.tackle,
+          juggleTriggered: triggers.juggle,
+          volleyTriggered: triggers.volley,
           celebrating: celebratingTeam === player.team,
           defeated: defeatedTeam === player.team,
         },

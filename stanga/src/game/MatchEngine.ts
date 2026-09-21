@@ -103,13 +103,15 @@ const BALL_ID = 'ball';
 const TOUCH_LOG_LENGTH = 4;
 
 /** One-shot animation cues the renderer consumes and clears. */
-export type AnimationTrigger = 'kick' | 'tackle' | 'pass' | 'juggle';
+export type AnimationTrigger = 'kick' | 'tackle' | 'pass' | 'juggle' | 'volley';
 
 export interface AnimationTriggers {
   kick: boolean;
   tackle: boolean;
   pass: boolean;
   juggle: boolean;
+  /** The strike was made on a ball in the air, which is a different swing. */
+  volley: boolean;
 }
 
 /**
@@ -313,6 +315,8 @@ export class MatchEngine {
     this.applyBallForces(dt);
 
     this.ballSpeedBeforeStep = this.ball.speed;
+    // How lively the next bounce is depends on how hard the ball arrives.
+    this.ball.applySpeedRestitution();
     // More substeps for a faster ball: at the speed cap a single 1/120s step
     // moves the ball further than the crossbar is thick, and it would tunnel.
     const collisions = this.world.step(dt, this.substepsFor(this.ballSpeedBeforeStep));
@@ -373,12 +377,15 @@ export class MatchEngine {
    */
   consumeAnimationTriggers(playerId: string): AnimationTriggers {
     const triggers = this.animationTriggers.get(playerId);
-    if (!triggers) return { kick: false, tackle: false, pass: false, juggle: false };
+    if (!triggers) {
+      return { kick: false, tackle: false, pass: false, juggle: false, volley: false };
+    }
     const consumed = { ...triggers };
     triggers.kick = false;
     triggers.tackle = false;
     triggers.pass = false;
     triggers.juggle = false;
+    triggers.volley = false;
     return consumed;
   }
 
@@ -462,6 +469,7 @@ export class MatchEngine {
       tackle: kind === 'tackle',
       pass: kind === 'pass',
       juggle: kind === 'juggle',
+      volley: kind === 'volley',
     });
   }
 
@@ -808,6 +816,9 @@ export class MatchEngine {
 
     this.statsFor(player.id).shots += 1;
     this.trigger(player.id, 'kick');
+    // A ball struck out of the air is a different swing, so the animation
+    // needs to know. It rides alongside the kick rather than replacing it.
+    if (resolved.profile === 'volley') this.trigger(player.id, 'volley');
     this.events.emit('kick', {
       playerId: player.id,
       team: player.team,
