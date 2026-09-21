@@ -20,12 +20,17 @@ const seed=JSON.stringify({counter:1000,pending:{},mine:[],photos:{},stations:{}
 
 let B;
 async function page(fn){
-  const p=await B.newPage({viewport:{width:430,height:950}});
+  /* הקשר נפרד לכל בדיקה, כדי שהאחסון יהיה מבודד.
+     הזריעה רק כשהמפתח חסר, כדי שרענון בתוך בדיקה לא ימחק את מה שנשמר. */
+  const ctx=await B.newContext({viewport:{width:430,height:950},hasTouch:true});
+  const p=await ctx.newPage();
   const errs=[];p.on('pageerror',e=>errs.push(e.message));
-  await p.addInitScript(s=>{localStorage.setItem('yp-reg-log-v2',s)},seed);
+  await p.addInitScript(s=>{
+    try{if(!localStorage.getItem('yp-reg-log-v2'))localStorage.setItem('yp-reg-log-v2',s)}catch(e){}
+  },seed);
   await p.goto(PAGE);
   await p.waitForFunction(()=>document.querySelector('#app')&&document.querySelector('#app').children.length>0);
-  try{await fn(p,errs)}finally{await p.close()}
+  try{await fn(p,errs)}finally{await ctx.close()}
   return errs;
 }
 const startJ=p=>p.evaluate(async pl=>{await A.newJ();cur.client.name='מסעדת הגפן';
@@ -248,7 +253,7 @@ await page(async p=>{
      await p.evaluate(()=>document.getElementById('pq').getAttribute('aria-activedescendant')),'sug-0');
   await p.press('#pq','Enter');
   await p.waitForTimeout(250);
-  eq('Enter בוחר את התוצאה',await p.evaluate(()=>cur.apps[0].pid),'dragon');
+  eq('Enter בוחר את התוצאה',await p.evaluate(()=>cur.apps[0].selectedMaterialId),'dragon');
   eq('הרשימה נסגרה',(await p.$$('.sugitem')).length,0);
   ok('החומר מוצג בשדה עם כפתור הסרה',!!(await p.$('.selchip'))&&!!(await p.$('.xbtn')));
   ok('מוצג שדה בחירת מזיק',(await p.textContent('#app')).includes('בחר מזיק'));
@@ -266,7 +271,7 @@ await page(async p=>{
   await startJ(p);
   await p.fill('#pq','דרגון');await p.waitForTimeout(320);
   await p.click('.sugitem');await p.waitForTimeout(250);
-  const r=await p.evaluate(()=>({pid:cur.apps[0].pid,active:cur.apps[0].active,
+  const r=await p.evaluate(()=>({pid:cur.apps[0].selectedMaterialId,active:cur.apps[0].active,
     reg:cur.apps[0].registrationNumber,pests:(labelOf(cur.apps[0])||{}).targetPests,
     re:reentryFor(cur).minutes,batch:cur.apps[0].batch,exp:cur.apps[0].pkgExpiry,
     used:cur.apps[0].amountUsed}));
@@ -274,14 +279,10 @@ await page(async p=>{
   ok('נטענו המזיקים המותרים',r.pests.includes('פשפש המיטה'));
   eq('נתוני ביצוע לא מולאו',[r.batch,r.exp,r.used],['','','']);
   await p.evaluate(()=>{cur.apps[0].pest='תיקנים';touch();
-    const a=cur.apps[0],old=labelOf(a);
-    ['pid','product','active','conc','registrationNumber','surface','dosageId','pest'].forEach(k=>a[k]='');
-    (old&&old.conditionalInstructions||[]).forEach(c=>{if(c.questionKey)delete a[c.questionKey]});
-    a.labelSnapshot=null;clearExecution(a);
-    delete cur.verify['product:'+a.id];vSync(cur);touch();render()});
+    clearMaterial(cur.apps[0],cur);touch();render()});
   await p.fill('#pq','פסטיון');await p.waitForTimeout(320);
   await p.click('.sugitem');await p.waitForTimeout(250);
-  const r2=await p.evaluate(()=>({pid:cur.apps[0].pid,active:cur.apps[0].active,
+  const r2=await p.evaluate(()=>({pid:cur.apps[0].selectedMaterialId,active:cur.apps[0].active,
     pest:cur.apps[0].pest,re:reentryFor(cur).minutes,
     groups:warningGroups(cur).map(g=>g.name),
     txt:document.getElementById('app').textContent}));
@@ -320,7 +321,171 @@ await page(async p=>{
   ok('מוצג "לא ניתן לשימוש – ממתין לאימות"',r.txt.includes('לא ניתן לשימוש'));
   const id=await p.evaluate(()=>PRODUCTS().find(x=>x.verificationStatus==='needs_review').id);
   await p.evaluate(i=>{A.pickProd({p:i,i:0})},id);
-  eq('גם קריאה ישירה אינה בוחרת אותו',await p.evaluate(()=>cur.apps[0].pid),'');
+  eq('גם קריאה ישירה אינה בוחרת אותו',await p.evaluate(()=>cur.apps[0].selectedMaterialId),'');
+});
+
+console.log('\n5ו. בחירת חומר מתוצאות החיפוש (רגרסיה לתקלה)');
+/* התקלה: ל-.sec היה overflow:hidden, והרשימה הממוקמת absolute נחתכה.
+   כל תוצאה מתחת לגבול הסקשן לא קיבלה את הלחיצה. */
+await page(async p=>{
+  await startJ(p);
+  await p.fill('#pq','דר');await p.waitForTimeout(320);
+  const hits=await p.evaluate(()=>[...document.querySelectorAll('.sugitem')].map((el,i)=>{
+    const r=el.getBoundingClientRect(),h=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
+    return {i,name:el.querySelector('b').textContent,inside:!!(h&&el.contains(h))};
+  }));
+  ok('כל תוצאה בחיפוש ניתנת ללחיצה, לא רק הראשונה',
+     hits.length>1&&hits.every(h=>h.inside),JSON.stringify(hits));
+  ok('הרשימה אינה נחתכת על ידי הסקשן',
+     await p.evaluate(()=>getComputedStyle(document.querySelector('.sec.openflow')).overflow==='visible'));
+  ok('כל תוצאה היא כפתור אמיתי',
+     await p.evaluate(()=>[...document.querySelectorAll('.sugitem')].every(e=>e.tagName==='BUTTON'&&e.type==='button')));
+  ok('לכל תוצאה מזהה ייחודי לפי מזהה החומר',
+     await p.evaluate(()=>{const ids=[...document.querySelectorAll('.sugitem')].map(e=>e.dataset.mid);
+       return ids.every(Boolean)&&new Set(ids).size===ids.length}));
+  ok('אין שכבה שחוסמת לחיצות',
+     await p.evaluate(()=>[...document.querySelectorAll('.sugitem')].every(e=>getComputedStyle(e).pointerEvents!=='none')));
+});
+
+/* 1-3: לחיצה על כל אחד מהחומרים המאומתים */
+for(const [q,name,id] of [['דרג','דרגון','dragon'],['דרק','דרקר 10.2','draker-10-2'],['פס','פסטיון פלוס פסטה','pastion-plus-pasta']]){
+  await page(async p=>{
+    await startJ(p);
+    await p.fill('#pq',q);await p.waitForTimeout(320);
+    await p.click(`.sugitem[data-mid="${id}"]`);
+    await p.waitForTimeout(300);
+    const r=await p.evaluate(()=>({id:cur.apps[0].selectedMaterialId,nm:cur.apps[0].selectedMaterialName,
+      det:!!cur.apps[0].materialDetails,txt:document.getElementById('app').textContent}));
+    eq(`הקלדת "${q}" ולחיצה על ${name} מכניסה אותו ליומן`,[r.id,r.nm],[id,name]);
+    ok('נטענה תבנית החומר',r.det&&r.txt.includes(name));
+  });
+}
+await page(async p=>{
+  await startJ(p);
+  await p.fill('#pq','דרק');await p.waitForTimeout(320);
+  await p.click('.sugitem[data-mid="draker-10-2"]');await p.waitForTimeout(300);
+  const t=await p.textContent('#app');
+  ok('תבנית דרקר: אזהרות וזמן כניסה',t.includes('חשוד כגורם לסרטן')&&t.includes('זמן כניסה מחדש'));
+  ok('תבנית דרקר: מזיקי התווית בלבד',
+     (await p.evaluate(()=>[...document.querySelectorAll('[data-a="setPest"]')].map(x=>x.dataset.val)))
+       .every(x=>['תיקנים','נמלים','חרקים זוחלים אחרים','זבובים','יתושים','חרקים מעופפים אחרים'].includes(x)));
+});
+await page(async p=>{
+  await startJ(p);
+  await p.fill('#pq','פס');await p.waitForTimeout(320);
+  await p.click('.sugitem[data-mid="pastion-plus-pasta"]');await p.waitForTimeout(300);
+  const chips=await p.evaluate(()=>[...document.querySelectorAll('[data-a="setPest"]')].map(x=>x.dataset.val));
+  eq('תבנית מכרסמים: עכברים וחולדות',chips,['עכברים','חולדות']);
+  await p.evaluate(()=>{A.setPest({i:0,val:'חולדות'})});
+  const t=await p.textContent('#app');
+  ok('מוצגים שדות תיבות האכלה',t.includes('תיבות האכלה שהוצבו'));
+  eq('אין זמן כניסה מחדש של ריסוס',await p.evaluate(()=>reentryFor(cur).minutes),0);
+});
+
+console.log('\n5ז. מגע, blur, מקלדת ושמירה');
+await page(async p=>{
+  await startJ(p);
+  await p.fill('#pq','דרג');await p.waitForTimeout(320);
+  /* מגע אמיתי */
+  const box=await p.evaluate(()=>{const r=document.querySelector('.sugitem').getBoundingClientRect();
+    return {x:r.left+r.width/2,y:r.top+r.height/2}});
+  await p.touchscreen.tap(box.x,box.y);
+  await p.waitForTimeout(300);
+  eq('לחיצה במגע בוחרת את החומר',await p.evaluate(()=>cur.apps[0].selectedMaterialId),'dragon');
+});
+await page(async p=>{
+  await startJ(p);
+  await p.fill('#pq','דרג');await p.waitForTimeout(320);
+  /* blur מיד לפני הלחיצה – pointerdown חייב לתפוס ראשון */
+  const r=await p.evaluate(()=>{
+    const el=document.querySelector('.sugitem');
+    let blurred=false;
+    document.getElementById('pq').addEventListener('blur',()=>{blurred=true});
+    el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,cancelable:true}));
+    return {picked:cur.apps[0].selectedMaterialId,blurred};
+  });
+  eq('blur אינו מבטל את הבחירה',r.picked,'dragon');
+});
+await page(async p=>{
+  await startJ(p);
+  await p.fill('#pq','דרג');await p.waitForTimeout(320);
+  await p.press('#pq','ArrowDown');
+  await p.press('#pq','Enter');
+  await p.waitForTimeout(300);
+  eq('Enter בוחר כמו לחיצה',await p.evaluate(()=>cur.apps[0].selectedMaterialId),'dragon');
+});
+await page(async p=>{
+  await startJ(p);
+  await p.fill('#pq','בל');await p.waitForTimeout(320);
+  await p.evaluate(()=>{const el=document.querySelector('.sugitem[data-mid="blokion-plus"]');
+    el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,cancelable:true}))});
+  await p.waitForTimeout(250);
+  eq('בלוקיון חסום אינו נכנס ליומן',await p.evaluate(()=>cur.apps[0].selectedMaterialId),'');
+  ok('מוצגת ההודעה המתאימה',
+     (await p.textContent('#app')).includes('לא ניתן לבחור בחומר זה עד לאימות תווית ורישום בתוקף'));
+});
+
+console.log('\n5ח. שמירה, רענון והחלפה');
+await page(async p=>{
+  await startJ(p);
+  const errs=await p.evaluate(()=>validate(cur).filter(e=>e.msg.includes('יש לבחור חומר מתוך תוצאות החיפוש')).length);
+  ok('שמירה חסומה כשלא נבחר חומר',errs>0);
+  /* טקסט חופשי בשדה אינו נחשב בחירה */
+  await p.fill('#pq','חומר שלא קיים');await p.waitForTimeout(320);
+  const r=await p.evaluate(()=>({id:cur.apps[0].selectedMaterialId,
+    blocked:validate(cur).filter(e=>e.msg.includes('יש לבחור חומר')).length}));
+  eq('טקסט חופשי אינו נשמר כחומר',r.id,'');
+  ok('השמירה עדיין חסומה',r.blocked>0);
+});
+await page(async p=>{
+  await startJ(p);
+  await p.fill('#pq','דרג');await p.waitForTimeout(320);
+  await p.click('.sugitem[data-mid="dragon"]');await p.waitForTimeout(300);
+  const jid=await p.evaluate(()=>cur.id);
+  const stored=await p.evaluate(()=>JSON.parse(localStorage.getItem('yp-reg-log-v2')));
+  const app=stored.journals[jid].apps[0];
+  eq('מזהה החומר נשמר באחסון ולא רק בזיכרון המסך',
+     [app.selectedMaterialId,app.selectedMaterialName],['dragon','דרגון']);
+  ok('נתוני התווית נשמרו עם היומן',!!app.materialDetails&&app.materialDetails.registrationNumber==='640');
+  /* רענון הדף */
+  await p.reload();
+  await p.waitForFunction(()=>document.querySelector('#app')&&document.querySelector('#app').children.length>0);
+  await p.evaluate(id=>{cur=S.journals[id];cur.step=3;view='wizard';render()},jid);
+  await p.waitForTimeout(200);
+  const after=await p.evaluate(()=>({id:cur.apps[0].selectedMaterialId,
+    nm:cur.apps[0].selectedMaterialName,chip:!!document.querySelector('.selchip'),
+    txt:document.getElementById('app').textContent}));
+  eq('לאחר רענון החומר עדיין מופיע',[after.id,after.nm],['dragon','דרגון']);
+  ok('החומר מוצג בשדה ולא נדרשת בחירה מחדש',after.chip&&after.txt.includes('דרגון'));
+});
+await page(async p=>{
+  await startJ(p);
+  await p.fill('#pq','דרג');await p.waitForTimeout(320);
+  await p.click('.sugitem[data-mid="dragon"]');await p.waitForTimeout(300);
+  await p.evaluate(()=>{A.setPest({i:0,val:'תיקנים'});cur.apps[0].batch='B1';
+    cur.apps[0].amountUsed='100';touch()});
+  await p.evaluate(()=>{clearMaterial(cur.apps[0],cur);touch();render()});
+  await p.fill('#pq','פס');await p.waitForTimeout(320);
+  await p.click('.sugitem[data-mid="pastion-plus-pasta"]');await p.waitForTimeout(300);
+  const r=await p.evaluate(()=>({id:cur.apps[0].selectedMaterialId,pest:cur.apps[0].pest,
+    batch:cur.apps[0].batch,used:cur.apps[0].amountUsed,
+    groups:warningGroups(cur).map(g=>g.name),txt:document.getElementById('app').textContent}));
+  eq('החלפת חומר טוענת רק את החדש',r.id,'pastion-plus-pasta');
+  eq('המזיק והכמויות של הקודם נמחקו',[r.pest,r.batch,r.used],['','','']);
+  eq('אין ערבוב אזהרות',r.groups,['פסטיון פלוס פסטה']);
+  ok('אזהרת דרגון נעלמה',!r.txt.includes('עלול להיות קטלני בבליעה'));
+});
+await page(async p=>{
+  await startJ(p);
+  await p.fill('#pq','דרג');await p.waitForTimeout(320);
+  await p.click('.sugitem[data-mid="dragon"]');await p.waitForTimeout(300);
+  await p.evaluate(()=>{A.setPest({i:0,val:'תיקנים'});touch()});
+  await p.evaluate(()=>{window.__ask=ask;ask=async()=>true});
+  await p.click('.xbtn');await p.waitForTimeout(300);
+  const r=await p.evaluate(()=>({id:cur.apps[0].selectedMaterialId,nm:cur.apps[0].selectedMaterialName,
+    det:cur.apps[0].materialDetails,pest:cur.apps[0].pest,input:!!document.getElementById('pq')}));
+  eq('X מנקה את החומר לגמרי',[r.id,r.nm,r.det,r.pest],['','',null,'']);
+  ok('שדה החיפוש חוזר למצב ריק',r.input);
 });
 
 console.log('\n6. בלוקיון חסום');
@@ -337,7 +502,7 @@ await page(async p=>{
   ok('מוצג עם מנעול ואינו ניתן לבחירה',r.locked&&r.noPick);
   ok('מוצג הכיתוב "לא ניתן לשימוש"',(await p.textContent('.sugitem')).includes('לא ניתן לשימוש'));
   await p.click('.sugitem',{force:true});await p.waitForTimeout(150);
-  eq('לחיצה עליו אינה בוחרת אותו',await p.evaluate(()=>cur.apps[0].pid),'');
+  eq('לחיצה עליו אינה בוחרת אותו',await p.evaluate(()=>cur.apps[0].selectedMaterialId),'');
   eq('תבנית בלוקיון חסומה',await p.evaluate(()=>tplState(tplById('t-blokion'))),'blocked');
   await p.evaluate(()=>{A.useTplHere({p:'t-blokion'})});
   eq('לא ניתן לטעון את תבנית בלוקיון',await p.evaluate(()=>cur.tplId||''),'');
@@ -386,7 +551,7 @@ await page(async p=>{
 await page(async p=>{
   await startJ(p);
   await p.evaluate(()=>{A.useTplHere({p:'t-pastion-rats'})});
-  const r=await p.evaluate(()=>({pid:cur.apps[0].pid,pest:cur.apps[0].pest,dos:cur.apps[0].dosageId,
+  const r=await p.evaluate(()=>({pid:cur.apps[0].selectedMaterialId,pest:cur.apps[0].pest,dos:cur.apps[0].dosageId,
     batch:cur.apps[0].batch,amount:cur.apps[0].amountUsed,tpl:cur.tplId}));
   eq('תבנית חולדות טוענת חומר ומזיק',[r.pid,r.pest],['pastion-plus-pasta','חולדות']);
   eq('התבנית אינה טוענת מינון',r.dos,'');
@@ -423,7 +588,7 @@ await page(async p=>{
     cur.client.name='מסעדת הגפן';cur.place=Object.assign(cur.place,pl);touch();
     applyClone(cur,S.journals[srcId],ALL_SECTIONS());
     const a=cur.apps[0];
-    return {pid:a.pid,dos:a.dosageId,batch:a.batch,exp:a.pkgExpiry,used:a.amountUsed,
+    return {pid:a.selectedMaterialId,dos:a.dosageId,batch:a.batch,exp:a.pkgExpiry,used:a.amountUsed,
       water:a.waterAmount,areas:a.areas,stations:(a.stations||[]).length,
       sig:cur.techSig,recv:cur.handover.receiverSig,
       pendingDose:(cur.verify['dose:'+a.id]||{}).state,

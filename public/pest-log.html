@@ -173,6 +173,8 @@ textarea{min-height:96px;resize:vertical}
 :root[data-theme="dark"] .pok{color:var(--leaf)}
 .pblock{color:var(--danger)}
 .preview{color:#7a6634;font-weight:600}
+/* הסקשן לא יחתוך את רשימת ההצעות */
+.sec.openflow{overflow:visible}
 .msearch{position:relative}
 .minp{width:100%;border:2px solid var(--line);background:var(--surface);border-radius:999px;
   padding:14px 20px;min-height:54px;font-size:16px}
@@ -199,6 +201,12 @@ textarea{min-height:96px;resize:vertical}
 .smain small{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
 mark.hl{background:transparent;color:var(--leaf);font-weight:800}
 .sugmore{margin:0;padding:8px 12px;font-size:12.5px;color:var(--muted);background:var(--mint-2)}
+.sugerr{margin:0;padding:8px 12px;font-size:13px;color:var(--danger);background:var(--danger-soft)}
+.sugbox.busy{padding:14px;text-align:center;color:var(--muted);font-size:14px}
+.sugrow{list-style:none}
+.sugitem{width:100%;text-align:right;border:0;border-bottom:1px solid var(--line);background:transparent;font:inherit;color:inherit}
+.sugitem:disabled{cursor:not-allowed}
+.selchip .ok{color:var(--leaf)}
 .selchip{display:flex;gap:10px;align-items:center;border:2px solid var(--leaf);background:var(--surface);
   border-radius:var(--r-lg);padding:12px 14px}
 .selchip.blocked{border-color:var(--danger)}
@@ -467,7 +475,8 @@ const PROFILE_DEFAULT={company:'יצחק אחזקות והדברות',vat:'55843
 const newFinding=()=>({id:uid(),pest:'',subtype:'',identification:'',stage:'',signs:'',location:'',level:''});
 const newApp=()=>({id:uid(),pest:'',product:'',active:'',conc:'',batch:'',dose:'',unit:'',unitOther:'',rtu:false,useConc:'',method:'',methodOther:'',fromDb:false,
   /* תכשיר מהמאגר המאומת + נתוני ביצוע שמוזנים ידנית בכל טיפול */
-  pid:'',registrationNumber:'',labelSnapshot:null,surface:'',dosageId:'',
+  selectedMaterialId:'',selectedMaterialName:'',materialDetails:null,
+  registrationNumber:'',surface:'',dosageId:'',
   pkgExpiry:'',amountUsed:'',waterAmount:'',areas:'',stations:[],nextCheck:''});
 const newAssistant=()=>({id:uid(),name:'',license:'',licenseType:'',phone:'',email:'',sig:null});
 function blankJournal(no,profile){
@@ -561,12 +570,16 @@ function validate(j){
   if(!j.apps.length)add(6,'apps','יש להוסיף לפחות תכשיר אחד');
   j.apps.forEach((a,i)=>{const n=`תכשיר ${i+1}: `;
     const lp=labelOf(a);
+    /* חסימת שמירה כשלא נבחר חומר מתוך תוצאות החיפוש.
+       הבדיקה היא על המזהה, לא על טקסט שהוקלד בשדה */
+    if(!a.selectedMaterialId&&!(a.materialDetails&&a.materialDetails.id)&&!a.product)
+      add(6,`apps.${i}.selectedMaterialId`,n+'יש לבחור חומר מתוך תוצאות החיפוש');
     if(lp){
       /* תכשיר מהמאגר המאומת: התווית מספקת את הנתונים הרשמיים,
          והמדביר מזין רק את נתוני הביצוע של הטיפול הזה */
-      const live=a.pid&&prodById(a.pid);
+      const live=a.selectedMaterialId&&prodById(a.selectedMaterialId);
       if(j.status!=='done'&&live&&prodBlocked(live))
-        add(6,`apps.${i}.pid`,n+`${live.nameHe} — ${prodBlockReason(live)}. לא ניתן לשמור יומן חדש עם תכשיר זה`);
+        add(6,`apps.${i}.selectedMaterialId`,n+`${live.nameHe} — ${prodBlockReason(live)}. לא ניתן לשמור יומן חדש עם תכשיר זה`);
       req(6,`apps.${i}.pest`,n+'המזיק שטופל');
       if(a.pest&&!(lp.targetPests||[]).includes(a.pest))
         add(6,`apps.${i}.pest`,n+`המזיק ${a.pest} אינו מופיע בתווית של ${lp.nameHe}`);
@@ -1047,7 +1060,9 @@ function batchesFor(product){if(!product)return [];return [...new Set(recentApps
 const appIsEmpty=a=>['pest','product','active','conc','batch','dose','unit','useConc','method'].every(k=>blankStr(a[k]));
 function addFromRecent(src){
   const n=Object.assign(newApp(),{product:src.product,active:src.active,conc:src.conc,unit:src.unit,unitOther:src.unitOther,rtu:!!src.rtu,useConc:src.rtu?'':src.useConc,method:src.method,methodOther:src.methodOther,dose:'',pest:'',fromDb:false,fromRecent:true,
-    pid:src.pid||'',registrationNumber:src.registrationNumber||'',labelSnapshot:src.labelSnapshot?clone(src.labelSnapshot):null,surface:src.surface||'',dosageId:src.dosageId||''});
+    selectedMaterialId:src.selectedMaterialId||'',selectedMaterialName:src.selectedMaterialName||'',
+    materialDetails:src.materialDetails?clone(src.materialDetails):null,
+    registrationNumber:src.registrationNumber||'',surface:src.surface||'',dosageId:src.dosageId||''});
   const empty=cur.apps.findIndex(appIsEmpty);if(empty>-1)cur.apps[empty]=n;else cur.apps.push(n);
   vMark(cur,'product:'+n.id);if(n.batch)vMark(cur,'batch:'+n.id);
   vSync(cur);
@@ -1920,8 +1935,9 @@ function applyClone(j,src,keys){
         if(K.has('pests'))n.pest=a.pest||'';
         if(K.has('active')){n.active=a.active||'';n.conc=a.conc||''}
         /* התכשיר והמינון שבתווית עוברים כהצעה; האצווה והכמויות לא */
-        n.pid=a.pid||'';n.registrationNumber=a.registrationNumber||'';
-        n.labelSnapshot=a.labelSnapshot?clone(a.labelSnapshot):null;
+        n.selectedMaterialId=a.selectedMaterialId||'';n.selectedMaterialName=a.selectedMaterialName||'';
+        n.registrationNumber=a.registrationNumber||'';
+        n.materialDetails=a.materialDetails?clone(a.materialDetails):null;
         n.surface=a.surface||'';
         if(K.has('dose')){n.dosageId=a.dosageId||'';n.dose=a.dose||'';n.unit=a.unit||'';n.unitOther=a.unitOther||''}
         if(K.has('useConc')){n.rtu=!!a.rtu;n.useConc=a.rtu?'':(a.useConc||'')}
@@ -2385,7 +2401,7 @@ function pendingConditionals(p,a){
 
 /* צילום נתוני התווית לתוך היומן, כדי שיומן היסטורי יישאר קריא
    גם אחרי שהמוצר ישתנה או ייחסם במאגר */
-function labelSnapshot(p){
+function materialDetailsOf(p){
   if(!p)return null;
   return {id:p.id,nameHe:p.nameHe,category:p.category,
     registrationNumber:p.registrationNumber,registrationExpiry:p.registrationExpiry,
@@ -2404,7 +2420,10 @@ function labelSnapshot(p){
     verificationNote:p.verificationNote,at:Date.now()};
 }
 /* התווית של יישום מסוים: מהמאגר כשהוא עדיין שם, אחרת מהצילום שביומן */
-const labelOf=a=>(a&&a.pid&&prodById(a.pid))||(a&&a.labelSnapshot)||null;
+/* מקור אמת אחד: selectedMaterialId. materialDetails הוא צילום התווית
+   שנשמר ביומן, כדי שיומן היסטורי יישאר קריא גם אם המאגר ישתנה */
+const labelOf=a=>(a&&a.selectedMaterialId&&prodById(a.selectedMaterialId))||(a&&a.materialDetails)||null;
+const materialIdOf=a=>(a&&a.selectedMaterialId)||((a&&a.materialDetails||{}).id)||'';
 
 /* זמן כניסה מחדש מצרפי – המחמיר ביותר מבין הערכים המספריים,
    בתוספת הוראות מיוחדות המוצגות בנפרד ומשויכות למוצר שלהן */
@@ -2430,7 +2449,7 @@ function warningGroups(j){
   (j.apps||[]).forEach(a=>{
     const p=labelOf(a);if(!p||seen.has(p.id))return;seen.add(p.id);
     out.push({id:p.id,name:p.nameHe,label:p,
-      conditionals:(j.apps||[]).filter(x=>(x.pid||((x.labelSnapshot||{}).id))===p.id)
+      conditionals:(j.apps||[]).filter(x=>materialIdOf(x)===p.id)
         .flatMap(x=>activeConditionals(p,x))});
   });
   return out;
@@ -2524,13 +2543,13 @@ function professionalView(j){
 /* ---- בחירת תכשיר והשדות התלויים בתווית, בתוך שלב התכשירים ---- */
 function catalogBox(a,i){
   const p=labelOf(a);
-  if(!p)return `<div class="sec"><div class="sech"><h3>בחירת חומר הדברה</h3></div><div class="secb">
+  if(!p)return `<div class="sec openflow"><div class="sech"><h3>בחירת חומר הדברה</h3></div><div class="secb">
     ${materialField(a,i)}
     ${blockedNote()}
    </div></div>`;
   const pests=p.targetPests||[];
   const pend=pendingConditionals(p,a);
-  return `<div class="sec"><div class="sech"><h3>${esc(p.nameHe)}</h3></div><div class="secb">
+  return `<div class="sec openflow"><div class="sech"><h3>${esc(p.nameHe)}</h3></div><div class="secb">
    ${materialField(a,i)}
    ${labelMeta(p)}
    ${prodBlocked(p)?`<div class="vwarn"><b>${esc(prodBlockReason(p))}</b><p>לא ניתן לשמור יומן חדש עם תכשיר זה. ביומנים היסטוריים הוא נשאר זמין לצפייה.</p></div>`:''}
@@ -2720,13 +2739,47 @@ function clearExecution(a){
   a.dose='';a.useConc='';
   return a;
 }
+/* בחירת חומר – עדכון אטומי אחד של מצב היומן.
+   זו הפונקציה היחידה שכותבת את שדות החומר, ולכן אין מקור נתונים מקביל. */
+function selectMaterial(material,{index=0,pest=null,dosageId=null,journal=null}={}){
+  const j=journal||cur;
+  if(!j)return {ok:false,reason:'אין יומן פתוח'};
+  if(!material)return {ok:false,reason:'החומר אינו קיים במאגר'};
+  if(!prodSelectable(material))
+    return {ok:false,reason:'לא ניתן לבחור בחומר זה עד לאימות תווית ורישום בתוקף'};
+  const a=j.apps[index]||(j.apps[index]=newApp());
+  clearMaterial(a,j);
+  applyProduct(a,material,{pest,dosageId});
+  a.selectedMaterialName=material.nameHe;
+  vMark(j,'product:'+a.id);vOkMark(j,'product:'+a.id,'changed');
+  audit(j,'material','נבחר חומר: '+material.nameHe+
+    (material.registrationNumber?' · רישום '+material.registrationNumber:''));
+  j.updatedAt=Date.now();
+  S.journals[j.id]=j;
+  vSync(j);
+  saveLocal();          /* כתיבה מיידית למכשיר */
+  queuePush(j,0);       /* ודחיפה לענן, לא רק למצב המסך */
+  return {ok:true,material};
+}
+/* ניקוי מלא של החומר הקודם, כדי שלא יתערבבו אזהרות, מינונים או מזיקים */
+function clearMaterial(a,j){
+  const old=labelOf(a);
+  ['selectedMaterialId','selectedMaterialName','product','active','conc',
+   'registrationNumber','surface','dosageId','pest'].forEach(k=>a[k]='');
+  (old&&old.conditionalInstructions||[]).forEach(c=>{if(c.questionKey)delete a[c.questionKey]});
+  a.materialDetails=null;
+  clearExecution(a);
+  if(j&&j.verify){delete j.verify['product:'+a.id];delete j.verify['dose:'+a.id];vSync(j)}
+  return a;
+}
 function applyProduct(a,p,{pest=null,dosageId=null}={}){
-  a.pid=p.id;
+  a.selectedMaterialId=p.id;
+  a.selectedMaterialName=p.nameHe;
   a.product=p.nameHe;
   a.active=ingNames(p);
   a.conc=ingPct(p);
   a.registrationNumber=p.registrationNumber;
-  a.labelSnapshot=labelSnapshot(p);
+  a.materialDetails=materialDetailsOf(p);
   a.rtu=false;
   a.method=(p.dosages||[]).some(d=>d.method==='bait_station')?'תחנות האכלה':'ריסוס';
   a.methodOther='';
@@ -2751,20 +2804,32 @@ Object.assign(A,{
     saveLocal();pushProdRequests();
     if(cur)audit(cur,'product-request','בקשה להוספת חומר: '+q);
     toast('הבקשה נשמרה לבדיקה. החומר לא נוסף לשימוש.')},
-  pickProd:d=>{const p=prodById(d.p);if(!p||!prodSelectable(p))return;
+  pickProd:d=>{
+    if(sugState.busy)return;                 /* מונע לחיצה כפולה */
+    const p=prodById(d.p);
     const i=(d.i!=null?+d.i:sugState.idx)||0;
-    closeSug();
-    applyProduct(cur.apps[i],p);
-    vMark(cur,'product:'+cur.apps[i].id);vOkMark(cur,'product:'+cur.apps[i].id,'changed');
-    touch();render();toast(`${p.nameHe} נבחר · נתוני התווית נטענו`)},
+    if(!p||!prodSelectable(p)){
+      sugState.error=p?'לא ניתן לבחור בחומר זה עד לאימות תווית ורישום בתוקף'
+                      :'החומר אינו קיים במאגר';
+      renderSug();toast(sugState.error);return;
+    }
+    sugState.busy=true;sugState.error='';
+    const box=document.getElementById('sugWrap');
+    if(box)box.innerHTML='<div class="sugbox busy"><span class="spin"></span> טוען את נתוני החומר…</div>';
+    const res=selectMaterial(p,{index:i});
+    sugState.busy=false;
+    if(!res.ok){                              /* לא משאירים בחירה חלקית */
+      clearMaterial(cur.apps[i],cur);
+      sugState.error=res.reason;renderSug();touch();render();
+      info(res.reason+'\n\nניתן לנסות שוב או לבחור חומר אחר.','בחירת החומר נכשלה');
+      return;
+    }
+    closeSug();render();
+    toast('החומר נוסף ליומן');
+    focusPestField(i);},
   clearProd:async d=>{if(!await ask('להחליף חומר? האזהרות, המזיק ונתוני הביצוע של החומר הנוכחי יימחקו.',{ok:'החלפה',danger:true}))return;
-    const i=+d.i||0,a=cur.apps[i],old=labelOf(a);
-    /* ניקוי מלא כדי שלא יתערבבו אזהרות או מינונים בין שני חומרים */
-    ['pid','product','active','conc','registrationNumber','surface','dosageId','pest'].forEach(k=>a[k]='');
-    (old&&old.conditionalInstructions||[]).forEach(c=>{if(c.questionKey)delete a[c.questionKey]});
-    a.labelSnapshot=null;clearExecution(a);
-    delete cur.verify['product:'+a.id];delete cur.verify['dose:'+a.id];
-    vSync(cur);closeSug();touch();render()},
+    const i=+d.i||0,a=cur.apps[i];
+    clearMaterial(a,cur);closeSug();touch();render();toast('החומר הוסר מהיומן')},
   setPest:d=>{const i=+d.i,a=cur.apps[i],p=labelOf(a);
     if(!p||!(p.targetPests||[]).includes(d.val))return;
     a.pest=a.pest===d.val?'':d.val;
@@ -2799,7 +2864,7 @@ Object.assign(A,{
     c.siteTemplate={name:c.name,contact:c.role||'',siteType:'',areas:'',stationLocs:'',
       checkPoints:'',entry:'',gear:'',notes:'',frequency:(c.regular||{}).freq||'',
       address:(c.places||[])[0]?placeText(c.places[0]):'',
-      pid:(last&&last.apps||[]).map(a=>a.pid).filter(Boolean)[0]||'',
+      pid:(last&&last.apps||[]).map(a=>a.selectedMaterialId).filter(Boolean)[0]||'',
       pests:(last&&last.findings||[]).map(f=>f.pest).filter(Boolean).join(', '),
       warranty:(last&&last.warranty||{}).period||'',at:Date.now()};
     c.updatedAt=Date.now();saveLocal();pushClient(c);render();toast('התבנית נשמרה')},
@@ -2816,7 +2881,7 @@ Object.assign(A,{
   ctplLast:async d=>{const c=S.clients[d.p];if(!c)return;
     const last=journalsForSite(c.name,(c.places||[])[0]||{},null,true)[0];
     if(!last)return info('אין ליומן קודם שהושלם עבור הלקוח הזה.','טעינה מיומן אחרון');
-    const bad=(last.apps||[]).map(a=>a.pid&&prodById(a.pid)).filter(Boolean).filter(prodBlocked);
+    const bad=(last.apps||[]).map(a=>a.selectedMaterialId&&prodById(a.selectedMaterialId)).filter(Boolean).filter(prodBlocked);
     if(bad.length)return info(bad.map(p=>`${p.nameHe} — ${prodBlockReason(p)}`).join('\n')+'\n\nלא ניתן לטעון יומן שמבוסס על תכשיר חסום או שרישומו פג.','טעינה חסומה');
     await A.newJ();if(!cur)return;
     applyClientTpl(cur,c);
@@ -2928,11 +2993,14 @@ function hiName(name,q){
 
 /* ---- שדה בחירת חומר ההדברה: חיפוש עם השלמה אוטומטית ---- */
 const SUG_MAX=8;
-const sugState={q:'',list:[],active:-1,idx:0,timer:null};
+const sugState={q:'',list:[],active:-1,idx:0,timer:null,busy:false,error:''};
 function sugItem(p,q,i,active){
   const sel=prodSelectable(p),st=prodState(p);
-  return `<li id="sug-${i}" role="option" aria-selected="${active?'true':'false'}"
-    class="sugitem ${st}${active?' active':''}" ${sel?`data-a="pickProd" data-p="${p.id}"`:'aria-disabled="true"'}>
+  /* כפתור אמיתי, עם מזהה ייחודי לפי מזהה החומר */
+  return `<li role="presentation" class="sugrow"><button type="button" id="sug-${i}"
+    data-mid="${esc(p.id)}" role="option" aria-selected="${active?'true':'false'}"
+    class="sugitem ${st}${active?' active':''}"
+    ${sel?`data-a="pickProd" data-p="${esc(p.id)}"`:'disabled aria-disabled="true"'}>
     <span class="sicon">${sel?ic(catIcon(p.category),20):ic('lock',20)}</span>
     <span class="smain">
       <b>${hiName(p.nameHe,q)}</b>
@@ -2941,22 +3009,37 @@ function sugItem(p,q,i,active){
       ${sel
         ? `<small class="pok">${ic('check',12)} ${esc(p.statusLabel||'')} · רישום ${esc(p.registrationNumber)} · בתוקף עד ${esc(p.registrationExpiry)}</small>`
         : `<small class="pblock">${ic('warn',12)} לא ניתן לשימוש – ממתין לאימות</small>`}
-    </span></li>`;
+    </span></button></li>`;
 }
 function sugHTML(){
   const q=sugState.q;
   if(!sq(q))return '';
   const list=sugState.list,shown=list.slice(0,SUG_MAX);
-  if(!list.length)return `<div class="sugbox empty"><p>לא נמצא חומר מתאים. בדוק את האיות או פנה למנהל המערכת.</p>
+  const err=sugState.error?`<p class="sugerr">${ic('warn',13)} ${esc(sugState.error)}</p>`:'';
+  if(!list.length)return `<div class="sugbox empty">${err}<p>לא נמצא חומר מתאים. בדוק את האיות או פנה למנהל המערכת.</p>
     <button type="button" class="btn sm ghost" data-a="reqProd">בקשה להוספת חומר</button></div>`;
-  return `<div class="sugbox"><ul id="sugList" role="listbox" aria-label="תוצאות חיפוש חומר">
+  return `<div class="sugbox">${err}<ul id="sugList" role="listbox" aria-label="תוצאות חיפוש חומר">
     ${shown.map((p,i)=>sugItem(p,q,i,i===sugState.active)).join('')}</ul>
     ${list.length>shown.length?`<p class="sugmore">נמצאו תוצאות נוספות – המשך להקליד</p>`:''}</div>`;
+}
+function placeSug(){
+  const box=document.getElementById('sugWrap'),inp=document.getElementById('pq');
+  const pane=box&&box.firstElementChild;
+  if(!box||!inp||!pane)return;
+  /* מיקום מול החלון ולא מול ההורה, כי ל-.sec יש overflow:hidden
+     שחתך את הרשימה ובלע את הלחיצות על התוצאות שמתחת לגבול שלו */
+  const r=inp.getBoundingClientRect();
+  pane.style.position='fixed';
+  pane.style.top=Math.round(r.bottom+6)+'px';
+  pane.style.right=Math.round(window.innerWidth-r.right)+'px';
+  pane.style.width=Math.round(r.width)+'px';
+  pane.style.maxHeight=Math.max(160,Math.round(window.innerHeight-r.bottom-24))+'px';
 }
 function renderSug(){
   const box=document.getElementById('sugWrap');
   if(!box)return;
   box.innerHTML=sugHTML();
+  placeSug();
   const inp=document.getElementById('pq');
   if(inp){
     inp.setAttribute('aria-expanded',String(!!sugState.list.length&&!!sq(sugState.q)));
@@ -2977,8 +3060,18 @@ function sugSearch(q,idx){
 }
 function closeSug(){
   clearTimeout(sugState.timer);
-  sugState.q='';sugState.list=[];sugState.active=-1;
+  sugState.q='';sugState.list=[];sugState.active=-1;sugState.error='';
   const box=document.getElementById('sugWrap');if(box)box.innerHTML='';
+}
+/* מעבר אוטומטי וגלילה עדינה לשדה בחירת המזיק */
+function focusPestField(i){
+  requestAnimationFrame(()=>{
+    const el=document.querySelector(`[data-fw="apps.${i}.pest"]`);
+    if(!el)return;
+    const box=el.closest('.field')||el;
+    box.scrollIntoView({block:'center',behavior:'smooth'});
+    box.classList.add('flash');setTimeout(()=>box.classList.remove('flash'),1500);
+  });
 }
 function materialField(a,i){
   const p=labelOf(a);
@@ -2989,7 +3082,7 @@ function materialField(a,i){
         <small>${esc([CAT_HE[p.category],p.formulation,ingText(p)].filter(Boolean).join(' · '))}</small></span>
       <button type="button" class="xbtn" data-a="clearProd" data-i="${i}" aria-label="הסרת החומר">✕</button>
     </div></div>`;
-  return `<div class="field${ec(`apps.${i}.pid`)}"><span class="flabel req">חומר הדברה</span>
+  return `<div class="field${ec(`apps.${i}.selectedMaterialId`)}"><span class="flabel req">חומר הדברה</span>
     <div class="msearch" id="sugWrap-outer">
       <input class="minp" id="pq" type="search" autocomplete="off" role="combobox"
         aria-expanded="false" aria-controls="sugList" aria-autocomplete="list"
@@ -2999,6 +3092,20 @@ function materialField(a,i){
     <p class="hint">החיפוש עובד בעברית ובאנגלית, לפי שם החומר או החומר הפעיל.</p></div>`;
 }
 
+/* הבחירה מתבצעת ב-pointerdown עם preventDefault, כדי ש-blur של שדה
+   החיפוש לא יבטל את הלחיצה לפני שהיא מגיעה ל-click. עובד גם במגע. */
+document.addEventListener('pointerdown',e=>{
+  const el=e.target.closest&&e.target.closest('.sugitem');
+  if(!el)return;
+  e.preventDefault();
+  if(el.disabled||el.getAttribute('aria-disabled')==='true'){
+    sugState.error='לא ניתן לבחור בחומר זה עד לאימות תווית ורישום בתוקף';
+    renderSug();toast(sugState.error);return;
+  }
+  A.pickProd({p:el.dataset.mid,i:sugState.idx});
+},true);
+window.addEventListener('resize',()=>{if(sugState.list.length)placeSug()});
+window.addEventListener('scroll',()=>{if(sugState.list.length)placeSug()},true);
 document.addEventListener('keydown',e=>{
   const t=e.target;
   if(!t||t.id!=='pq')return;
@@ -3013,8 +3120,8 @@ document.addEventListener('keydown',e=>{
     e.preventDefault();return}
 });
 document.addEventListener('click',e=>{
-  /* לחיצה מחוץ לשדה סוגרת את ההצעות */
-  if(sugState.list.length&&!e.target.closest('.msearch'))closeSug();
+  /* לחיצה מחוץ לשדה ומחוץ לרשימה סוגרת את ההצעות */
+  if(sugState.list.length&&!e.target.closest('.msearch')&&!e.target.closest('.sugbox'))closeSug();
 },true);
 document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(!el)return;if(el.tagName==='A')return;e.preventDefault();const f=A[el.dataset.a];f&&f(el.dataset,e,el)});
 document.addEventListener('input',e=>{
