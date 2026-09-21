@@ -33,11 +33,30 @@ const startJ=p=>p.evaluate(async pl=>{await A.newJ();cur.client.name='מסעדת
 
 (async()=>{
 B=await chromium.launch({executablePath:EXE,args:['--no-sandbox']});
+const PRODUCTS_LEN=SEED.products.length;
 
 console.log('\n1. תקינות קובץ הנתונים');
 const byId=id=>SEED.products.find(p=>p.id===id);
-eq('ארבעה מוצרים בלבד',SEED.products.map(p=>p.id).sort(),
+eq('ארבעת התכשירים מהרשימה שנמסרה קיימים',
+   SEED.products.filter(p=>!p.id.startsWith('reg-')).map(p=>p.id).sort(),
    ['blokion-plus','dragon','draker-10-2','pastion-plus-pasta']);
+ok('הרשימה המלאה נטענה',SEED.products.length>=150,'got '+SEED.products.length);
+eq('שלושה מאומתים מתווית',SEED.products.filter(p=>p.verificationStatus==='verified').length,3);
+eq('אחד חסום',SEED.products.filter(p=>p.verificationStatus==='blocked').length,1);
+ok('השאר מסומנים כלא מאומתים',
+   SEED.products.filter(p=>p.verificationStatus==='needs_review').length===SEED.products.length-4);
+ok('לתכשיר לא מאומת אין אזהרות, מינונים או זמן כניסה',
+   SEED.products.filter(p=>p.verificationStatus==='needs_review').every(p=>
+     !p.warningsHuman.length&&!p.warningsAnimals.length&&!p.warningsEnvironment.length&&
+     !p.dosages.length&&!p.applicationRestrictions.length&&!p.reentry.text&&!p.reentry.minutes));
+ok('לתכשיר לא מאומת אין מספר רישום או קישור לתווית',
+   SEED.products.filter(p=>p.verificationStatus==='needs_review').every(p=>
+     !p.registrationNumber&&!p.registrationExpiry&&!p.officialLabelUrl));
+ok('לכל תכשיר לא מאומת יש מזיקי מטרה',
+   SEED.products.filter(p=>p.verificationStatus==='needs_review').every(p=>p.targetPests.length>0));
+ok('כל תכשיר לא מאומת נושא הסבר על מקור הנתונים',
+   SEED.products.filter(p=>p.verificationStatus==='needs_review').every(p=>
+     p.statusLabel.includes('לא אומת')&&p.verificationNote.includes('לא אומת')));
 eq('דרגון – רישום וחומר פעיל',[byId('dragon').registrationNumber,byId('dragon').registrationExpiry,
    byId('dragon').activeIngredients[0].name,byId('dragon').activeIngredients[0].percent],['640','2030','Bifenthrin','9.6%']);
 eq('דרקר – שלושה חומרים פעילים',byId('draker-10-2').activeIngredients.map(x=>x.name+' '+x.percent),
@@ -46,7 +65,7 @@ eq('פסטיון – ברודיפקום 0.005% וחומר מר',[byId('pastion-p
    byId('pastion-plus-pasta').activeIngredients[1].name],['0.005%','Denatonium Benzoate']);
 ok('כל קישורי התוויות הם כתובות תקינות',
    SEED.products.filter(p=>p.officialLabelUrl).every(p=>/^https:\/\/\S+\.pdf$/.test(p.officialLabelUrl)),
-   SEED.products.map(p=>p.officialLabelUrl).join(' '));
+   SEED.products.filter(p=>p.officialLabelUrl).map(p=>p.officialLabelUrl).join(' '));
 const bl=byId('blokion-plus');
 eq('בלוקיון – חסום ולא ניתן לבחירה',[bl.verificationStatus,bl.isSelectable,bl.statusLabel],
    ['blocked',false,'ממתין לאימות תווית ורישום בתוקף']);
@@ -77,7 +96,8 @@ await page(async p=>{
     drakerPests:prodById('draker-10-2').targetPests,
     pastionPests:prodById('pastion-plus-pasta').targetPests,
     anyDos:PRODUCTS().reduce((n,x)=>n+(x.dosages||[]).length,0),
-    anyRes:PRODUCTS().reduce((n,x)=>n+(x.applicationRestrictions||[]).length,0)
+    anyRes:PRODUCTS().reduce((n,x)=>n+(x.applicationRestrictions||[]).length,0),
+    total:PRODUCTS().length
   }));
   ok('דרגון – תיקנים, פשפש המיטה וחרקים זוחלים',
      r.dragonPests.includes('תיקנים')&&r.dragonPests.includes('פשפש המיטה'));
@@ -85,6 +105,7 @@ await page(async p=>{
   eq('פסטיון – עכברים וחולדות בלבד',r.pastionPests,['עכברים','חולדות']);
   eq('אין מינונים בזיכרון האפליקציה',r.anyDos,0);
   eq('אין מגבלות ריסוס בזיכרון האפליקציה',r.anyRes,0);
+  ok('כל הרשימה זמינה באפליקציה',r.total>=150,'got '+r.total);
 });
 
 console.log('\n3. אין מינונים ומגבלות ריסוס במסך');
@@ -143,9 +164,52 @@ await page(async p=>{
   ok('מוצגות תיבות האכלה',(await p.textContent('#app')).includes('תיבות האכלה שהוצבו'));
 });
 
+console.log('\n5א. חיפוש ברשימה המלאה');
+await page(async p=>{
+  await startJ(p);
+  ok('תיבת חיפוש קיימת',!!(await p.$('#pq')));
+  const cards=(await p.$$('.pcard')).length;
+  ok('לא כל 151 מוצגים בבת אחת',cards<60,'cards='+cards);
+  const okc=(await p.$$('.pcard.ok')).length;
+  ok('שלושת המאומתים מוצגים תמיד',okc===3,'ok='+okc);
+  await p.evaluate(()=>{A._pq='סנו';render()});
+  const hits=await p.evaluate(()=>{
+    const shown=[...document.querySelectorAll('.pcard')].map(el=>el.dataset.p);
+    return shown.filter(id=>{const x=prodById(id);
+      if(!x||x.verificationStatus==='verified')return false;/* המאומתים מוצגים תמיד */
+      const q='סנו';
+      return !(x.nameHe.includes(q)||(x.manufacturer||'').includes(q)||
+               ingText(x).includes(q)||(x.targetPests||[]).join(' ').includes(q));
+    });
+  });
+  eq('כל תוצאה תואמת לחיפוש (שם, חומר פעיל, מזיק או בעל רישום)',hits,[]);
+  const cnt=await p.evaluate(()=>document.querySelectorAll('.pcard').length);
+  ok('החיפוש מצמצם את הרשימה',cnt>0&&cnt<SEED.products.length,'cards='+cnt);
+  await p.evaluate(()=>{A._pq='fipronil';render()});
+  const n2=await p.evaluate(()=>document.querySelectorAll('.pcard .pmain b').length);
+  ok('חיפוש לפי חומר פעיל עובד',n2>0);
+  await p.evaluate(()=>{A._pq='';A._pcat='rodents';render()});
+  const c2=(await p.$$('.pcard')).length;
+  ok('סינון לפי קטגוריה עובד',c2>0&&c2<40,'cards='+c2);
+});
+await page(async p=>{
+  await startJ(p);
+  const id=await p.evaluate(()=>PRODUCTS().find(x=>x.verificationStatus==='needs_review').id);
+  await p.evaluate(i=>{A.pickProd({p:i,i:0})},id);
+  const r=await p.evaluate(()=>({pid:cur.apps[0].pid,prod:cur.apps[0].product,
+    pests:(labelOf(cur.apps[0])||{}).targetPests||[]}));
+  ok('אפשר לבחור תכשיר מהרשימה',r.pid===id&&!!r.prod);
+  ok('רשימת המזיקים נטענת מהרשימה',r.pests.length>0);
+  const t=await p.textContent('#app');
+  ok('מוצגת אזהרה שהתכשיר לא אומת',t.includes('לא אומת מול תווית'));
+  ok('מוצג שאין אזהרות שמורות',t.includes('לא נשמרו במערכת אזהרות לתכשיר הזה'));
+  eq('אין זמן כניסה מחדש',await p.evaluate(()=>reentryFor(cur).minutes),0);
+});
+
 console.log('\n6. בלוקיון חסום');
 await page(async p=>{
   await startJ(p);
+  await p.evaluate(()=>{A._pq='בלוקיון';render()});
   const r=await p.evaluate(()=>({blocked:prodBlocked(prodById('blokion-plus')),
     reason:prodBlockReason(prodById('blokion-plus')),
     disabled:!!document.querySelector('[data-p="blokion-plus"][disabled]')}));

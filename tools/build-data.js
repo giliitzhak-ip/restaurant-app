@@ -14,7 +14,7 @@ const REQUIRED=['id','nameHe','category','formulation','registrationNumber','reg
  'verificationStatus','isSelectable','lastVerifiedAt','labelSha256'];
 const STATUSES=['verified','needs_review','blocked'];
 const REENTRY=['numeric','label_condition','not_applicable_by_label',''];
-const CATEGORIES=['crawling_insects','rodents'];
+const CATEGORIES=['crawling_insects','rodents','flying_insects','other'];
 
 function lint(data){
   const err=[];
@@ -44,16 +44,30 @@ function lint(data){
        .forEach(k=>{if((p[k]||[]).length)err.push(at('מוצר חסום מכיל תוכן בשדה '+k))});
       if((p.reentry||{}).text)err.push(at('מוצר חסום מכיל reentry.text'));
       if(p.registrationNumber||p.registrationExpiry)err.push(at('מוצר חסום מכיל פרטי רישום'));
-    }else{
-      if(!p.officialLabelUrl)err.push(at('מוצר פעיל ללא קישור לתווית'));
-      if(!p.registrationNumber)err.push(at('מוצר פעיל ללא מספר רישום'));
-      if(!p.registrationExpiry)err.push(at('מוצר פעיל ללא תוקף רישום'));
-      if(!(p.activeIngredients||[]).length)err.push(at('מוצר פעיל ללא חומר פעיל'));
-      if(!(p.targetPests||[]).length)err.push(at('מוצר פעיל ללא מזיקי מטרה'));
-      if(!(p.reentry||{}).type)err.push(at('מוצר פעיל ללא reentry.type'));
-      if(!p.lastVerifiedAt)err.push(at('מוצר פעיל ללא lastVerifiedAt'));
+    }else if(p.verificationStatus==='verified'){
+      /* מוצר שמוצג כמאומת מתווית חייב לשאת את כל פרטי המקור */
+      if(!p.officialLabelUrl)err.push(at('מוצר מאומת ללא קישור לתווית'));
+      if(!p.registrationNumber)err.push(at('מוצר מאומת ללא מספר רישום'));
+      if(!p.registrationExpiry)err.push(at('מוצר מאומת ללא תוקף רישום'));
+      if(!(p.activeIngredients||[]).length)err.push(at('מוצר מאומת ללא חומר פעיל'));
+      if(!(p.targetPests||[]).length)err.push(at('מוצר מאומת ללא מזיקי מטרה'));
+      if(!(p.reentry||{}).type)err.push(at('מוצר מאומת ללא reentry.type'));
+      if(!p.lastVerifiedAt)err.push(at('מוצר מאומת ללא lastVerifiedAt'));
       if(!p.labelSha256&&!p.verificationNote)
         err.push(at('אין labelSha256 ואין verificationNote המסביר את מקור הנתונים'));
+    }else{
+      /* מוצר מהרשימה המובנית: מותר בלי פרטי תווית, אך אסור שיציג תוכן תווית
+         שלא אומת – אחרת הוא ייראה כאילו נבדק */
+      if(!(p.targetPests||[]).length)err.push(at('מוצר ברשימה ללא מזיקי מטרה'));
+      if(!p.statusLabel)err.push(at('מוצר לא מאומת ללא statusLabel'));
+      if(!p.verificationNote)err.push(at('מוצר לא מאומת ללא הסבר על מקור הנתונים'));
+      if(p.officialLabelUrl)err.push(at('מוצר לא מאומת עם קישור לתווית'));
+      if(p.registrationNumber||p.registrationExpiry)err.push(at('מוצר לא מאומת עם פרטי רישום'));
+      ['warningsHuman','warningsAnimals','warningsEnvironment','customerInstructionsBefore',
+       'customerInstructionsAfter','professionalPpe','firstAid','conditionalInstructions']
+       .forEach(k=>{if((p[k]||[]).length)err.push(at('מוצר לא מאומת מכיל תוכן תווית בשדה '+k))});
+      if((p.reentry||{}).text||(p.reentry||{}).minutes)
+        err.push(at('מוצר לא מאומת מכיל זמן כניסה מחדש'));
     }
     /* מינונים ומגבלות ריסוס אינם נשמרים במערכת – אם חזרו, יש לאמת אותם מול התווית */
     if((p.dosages||[]).length)err.push(at('מינונים אינם נשמרים במערכת'));
