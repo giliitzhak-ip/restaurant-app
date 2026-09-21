@@ -125,6 +125,10 @@ ul.ul{margin:6px 0 0;padding-inline-start:20px;font-size:13.5px;color:var(--mute
 .dbtn b{font-size:13px;font-weight:600;line-height:1.2;text-align:center}
 .dbtn small{font-size:11px;color:var(--muted);line-height:1.2;text-align:center}
 .dcirc .badge{position:absolute;top:-2px;inset-inline-end:-2px}
+.dcirc,.newj,.tile,.cday{transition:transform .12s ease,box-shadow .12s ease}
+.dbtn:active .dcirc{transform:scale(.93)}
+.newj:active,.tile:active,.cday:active{transform:scale(.97)}
+@media(prefers-reduced-motion:reduce){.dcirc,.newj,.tile,.cday{transition:none}}
 /* ---- מסלול עבודה ---- */
 .rnav{display:flex;align-items:center;gap:8px}
 .rhead{display:flex;align-items:center;gap:8px}
@@ -2564,7 +2568,7 @@ function preloadSheet(){
       ${copy.map(r=>`<tr class="${r.b&&r.b!==r.a?'changed hot':'new'}">
         <td>${esc(r.n)}${r.v?`<br><small class="opt">${esc(r.v)}</small>`:''}</td>
         <td>${cell(r.a)}</td>
-        <td>${r.b?cell(r.b)+'<br><small class="opt">יידרס</small>':'—'}</td></tr>`).join('')}
+        <td>${r.b?cell(r.b)+(r.b===r.a?'<br><small class="opt">זהה</small>':'<br><small class="opt">יידרס</small>'):'—'}</td></tr>`).join('')}
      </table>`:'<p class="hint">אין בקבוצות שנבחרו מידע להעתקה.</p>'}
     ${blank.length?`<p class="achead" style="border-radius:8px;margin-top:12px">נבחר אך ריק ביומן המקור (${blank.length})</p>
       <p class="hint">${esc(blank.map(r=>r.n).join(', '))} – יישארו כפי שהם ביומן הנוכחי.</p>`:''}
