@@ -855,12 +855,25 @@ for(const w of [320,375,430]){
     const over=await p.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
     ok(`אין גלילה אופקית ב-${v} ברוחב ${w}`,over<=1,'עודף '+over+'px');
   }
-  await p.evaluate(()=>go('home'));
-  const small=await p.evaluate(()=>[...document.querySelectorAll('button,a')]
-    .filter(el=>el.offsetParent!==null)
-    .map(el=>{const r=el.getBoundingClientRect();return {t:(el.textContent||'').trim().slice(0,18),w:Math.round(r.width),h:Math.round(r.height)}})
+  /* אזורי לחיצה: כל המסכים וכל שלבי האשף.
+     תאי לוח השנה אינם נכללים – שבע עמודות ברוחב 320 אינן מאפשרות 44px, והגובה 44. */
+  const scan=()=>p.evaluate(()=>[...document.querySelectorAll('button,a')]
+    .filter(el=>el.offsetParent!==null&&!el.classList.contains('cday'))
+    .map(el=>{const r=el.getBoundingClientRect(),pad=el.classList.contains('sw')?7:0;
+      return {t:(el.textContent||el.getAttribute('aria-label')||'').trim().slice(0,18),c:el.className,
+              w:Math.round(r.width+2*pad),h:Math.round(r.height+2*pad)}})
     .filter(x=>x.w>0&&x.h>0&&(x.w<44||x.h<44)));
-  ok(`אזורי לחיצה 44px במסך הבית ברוחב ${w}`,small.length===0,JSON.stringify(small));
+  const tiny=[];
+  for(const v of ['home','route','tasks','calendar','materials','clients','archive','templates','profile']){
+    await p.evaluate(x=>go(x),v);await p.waitForTimeout(80);
+    (await scan()).forEach(x=>tiny.push(v+': '+x.t+' '+x.w+'x'+x.h));
+  }
+  await p.evaluate(async()=>{await A.newJ()});
+  for(let i=0;i<8;i++){
+    await p.evaluate(x=>{cur.step=x;showErr=true;render()},i);await p.waitForTimeout(80);
+    (await scan()).forEach(x=>tiny.push('שלב '+(i+1)+': '+x.t+' '+x.w+'x'+x.h));
+  }
+  ok(`אזורי לחיצה 44px בכל המסכים ברוחב ${w}`,tiny.length===0,tiny.slice(0,6).join(' | '));
   ok(`אין שגיאות JavaScript ברוחב ${w}`,errs.length===0,errs.join(' | '));
   await ctx.close();
 }

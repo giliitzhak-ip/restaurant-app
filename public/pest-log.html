@@ -25,7 +25,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 :focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 
-.hero{background:var(--forest);color:#fff;padding:22px 20px 64px;border-radius:0 0 32px 32px}
+.hero{background:var(--forest);color:#fff;padding:calc(22px + env(safe-area-inset-top)) 20px 64px;border-radius:0 0 32px 32px}
 .brandrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .brand{display:flex;align-items:center;gap:12px}
 .mark{width:48px;height:48px;border-radius:14px;background:var(--gold);color:var(--forest);display:grid;place-items:center;font-weight:800;font-size:26px;flex:none}
@@ -42,20 +42,20 @@ button,input,select,textarea{font:inherit;color:inherit}
 .block{padding:22px 16px 0}
 .block h2{font-size:17px;margin:0 0 10px}
 
-.top{position:sticky;top:0;z-index:20;background:var(--forest);color:#fff;padding:10px 12px}
+.top{position:sticky;top:0;z-index:20;background:var(--forest);color:#fff;padding:calc(10px + env(safe-area-inset-top)) 12px 10px}
 .toprow{display:flex;align-items:center;gap:8px;min-height:40px}
 .top h1{flex:1;margin:0;font-size:18px;font-weight:700;text-align:center}
 .top .sub{text-align:center;font-size:13px;color:#cfe3d5;margin-top:-2px}
-.iconbtn{width:42px;height:42px;border-radius:50%;border:0;background:transparent;color:#fff;display:grid;place-items:center;cursor:pointer;flex:none}
+.iconbtn{width:44px;height:44px;border-radius:50%;border:0;background:transparent;color:#fff;display:grid;place-items:center;cursor:pointer;flex:none}
 .progress{height:4px;background:rgba(255,255,255,.2);border-radius:2px;margin-top:8px;overflow:hidden}
 .progress i{display:block;height:100%;background:var(--gold);transition:width .3s}
 .stepper{display:flex;gap:6px;overflow-x:auto;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--line);scrollbar-width:none}
 .stepper::-webkit-scrollbar{display:none}
-.st{flex:none;border:1px solid var(--line);background:transparent;border-radius:999px;padding:6px 12px 6px 8px;font-size:13px;display:flex;gap:6px;align-items:center;cursor:pointer;color:var(--muted)}
+.st{flex:none;min-height:44px;border:1px solid var(--line);background:transparent;border-radius:999px;padding:6px 12px 6px 8px;font-size:13px;display:flex;gap:6px;align-items:center;cursor:pointer;color:var(--muted)}
 .st b{width:22px;height:22px;border-radius:50%;background:var(--mint);color:var(--forest-2);display:grid;place-items:center;font-size:12px}
 .st.on{border-color:var(--forest-2);color:var(--ink);font-weight:600}.st.on b{background:var(--forest-2);color:#fff}
 .st.bad b{background:var(--danger);color:#fff}
-.page{padding:16px}
+.page{padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
 
 .sec{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);margin-bottom:14px;overflow:hidden}
 .sech{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 14px;background:var(--mint-2);border-bottom:1px solid var(--line)}
@@ -76,7 +76,7 @@ textarea{min-height:96px;resize:vertical}
 .flash{animation:flash 1.4s ease}
 @keyframes flash{0%,60%{box-shadow:0 0 0 4px var(--gold)}100%{box-shadow:0 0 0 0 transparent}}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
-.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:9px 14px;font-size:14px;cursor:pointer;min-height:40px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:9px 14px;font-size:14px;cursor:pointer;min-height:44px}
 .chip.on{background:var(--forest-2);border-color:var(--forest-2);color:#fff}
 .chips.err .chip{border-color:var(--danger)}
 .seg{display:flex;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
@@ -92,6 +92,7 @@ textarea{min-height:96px;resize:vertical}
 .toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0}
 .toggle span{font-weight:500}
 .sw{width:52px;height:30px;border-radius:15px;background:var(--line);border:0;position:relative;cursor:pointer;flex:none}
+.sw::after{content:'';position:absolute;inset:-7px -2px}/* אזור לחיצה 44px בלי לשנות את המראה */
 .sw::after{content:"";position:absolute;top:3px;right:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:right .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
 .sw[aria-checked="true"]{background:var(--leaf)}.sw[aria-checked="true"]::after{right:25px}
 .check{display:flex;gap:10px;align-items:flex-start;padding:10px 0;cursor:pointer}
@@ -103,12 +104,12 @@ textarea{min-height:96px;resize:vertical}
 .btn{border:0;border-radius:var(--r-md);padding:13px 18px;font-weight:600;cursor:pointer;background:var(--forest-2);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;text-decoration:none}
 .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
 .btn.gold{background:var(--gold);color:var(--forest)}
-.btn.sm{padding:8px 12px;font-size:14px;min-height:40px;border-radius:var(--r-sm)}
+.btn.sm{padding:8px 12px;font-size:14px;min-height:44px;border-radius:var(--r-sm)}
 .btn.w{width:100%}
 .btn:disabled{opacity:.45;cursor:not-allowed}
-.link{border:0;background:transparent;color:var(--forest-2);font-weight:600;cursor:pointer;padding:6px 4px;font-size:14px}
+.link{border:0;background:transparent;color:var(--forest-2);font-weight:600;cursor:pointer;padding:11px 4px;font-size:14px;min-height:44px}
 :root[data-theme="dark"] .link{color:var(--leaf)}
-.del{border:0;background:transparent;color:var(--danger);font-size:14px;cursor:pointer;padding:8px}
+.del{border:0;background:transparent;color:var(--danger);font-size:14px;cursor:pointer;padding:11px 8px;min-height:44px;min-width:44px}
 .hint{font-size:13px;color:var(--muted);margin:8px 0 0}
 .note{background:var(--gold-soft);border-radius:var(--r-md);padding:10px 12px;font-size:14px;margin-top:12px}
 ul.ul{margin:6px 0 0;padding-inline-start:20px;font-size:13.5px;color:var(--muted);line-height:1.8}
@@ -128,7 +129,8 @@ ul.ul{margin:6px 0 0;padding-inline-start:20px;font-size:13.5px;color:var(--mute
 .rnav{display:flex;align-items:center;gap:8px}
 .rhead{display:flex;align-items:center;gap:8px}
 .rhead h3{flex:1;margin:0}
-.grip{border:0;background:transparent;color:var(--muted);cursor:grab;touch-action:none;padding:2px;display:grid;place-items:center;flex:none}
+.jumpbtn{min-height:44px;padding:10px 0;text-align:right}
+.grip{border:0;background:transparent;color:var(--muted);cursor:grab;touch-action:none;width:44px;height:44px;padding:2px;display:grid;place-items:center;flex:none}
 .rstop.dragging{opacity:.75;box-shadow:0 10px 26px rgba(20,50,30,.28)}
 .rmeta{display:flex;flex-wrap:wrap;gap:10px;font-size:13.5px;color:var(--muted)}
 .rmeta span{display:inline-flex;align-items:center;gap:4px}
@@ -155,7 +157,7 @@ em.dj{background:var(--forest-2)}em.ds{background:var(--gold)}em.dt{background:#
 .card h4{margin:0;font-size:16px}
 .card p{margin:2px 0 0;font-size:14px;color:var(--muted)}
 .acts{display:flex;gap:8px;flex:none}
-.round{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--forest-2);display:grid;place-items:center;cursor:pointer;flex:none;text-decoration:none}
+.round{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--forest-2);display:grid;place-items:center;cursor:pointer;flex:none;text-decoration:none}
 :root[data-theme="dark"] .round{color:var(--leaf)}
 .tag{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;background:var(--mint);color:var(--forest-2);font-weight:600}
 .tag.draft{background:var(--gold-soft);color:#7a6634}
@@ -322,7 +324,7 @@ mark.hl{background:transparent;color:var(--leaf);font-weight:800}
 .trow{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
 .trow::-webkit-scrollbar{display:none}
 .tmini{flex:none;display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--bg);
-  border-radius:999px;padding:8px 14px;font-size:13.5px;cursor:pointer;color:var(--forest-2);min-height:42px}
+  border-radius:999px;padding:8px 14px;font-size:13.5px;cursor:pointer;color:var(--forest-2);min-height:44px}
 :root[data-theme="dark"] .tmini{color:var(--leaf)}
 .tmini.choice{border-color:var(--gold)}
 .ttag{display:inline-block;font-size:11.5px;background:var(--mint);color:var(--forest-2);border-radius:6px;padding:2px 8px;margin-right:6px}
@@ -1138,7 +1140,7 @@ function renderLib(){
   const qi=document.getElementById('fqi');
   if(qi)qi.oninput=e=>{A._fq=e.target.value;const pos=e.target.selectionStart;renderLib();const n=document.getElementById('fqi');n.focus();try{n.setSelectionRange(pos,pos)}catch(_){}};
 }
-const tplBtn=(k,path)=>`<button type="button" data-a="openLib" data-k="${k}" data-path="${path}" style="border:1px solid var(--forest-2);color:var(--forest-2);background:transparent;border-radius:999px;padding:4px 12px;font-size:13px;cursor:pointer">הוסף מתבנית</button>`;
+const tplBtn=(k,path)=>`<button type="button" data-a="openLib" data-k="${k}" data-path="${path}" style="border:1px solid var(--forest-2);color:var(--forest-2);background:transparent;border-radius:999px;padding:4px 12px;font-size:13px;cursor:pointer;min-height:44px">הוסף מתבנית</button>`;
 function acRender(q){
   const box=document.getElementById('acList');if(!box)return;
   const n=norm(q),digits=String(q||'').replace(/\D/g,'');
@@ -1285,7 +1287,7 @@ function w5(){
   ${verifyPanel()}
   ${photoBox('general','תיעוד כללי','תמונות נוספות מהטיפול, לפי הצורך.')}
   <div class="sec" id="audit"><div class="sech"><h3>בדיקת תקינות היומן</h3><span class="tag ${errs.length?'draft':''}">${errs.length?errs.length+' חסרים':'תקין'}</span></div><div class="secb">
-    <ul class="audit">${GROUPS.map((g,gi)=>{const ge=errs.filter(e=>e.g===gi);return `<li><div class="ah"><span class="ok ${ge.length?'no':''}" aria-hidden="true">${ge.length?'!':'✓'}</span>${g.name}${ge.length?` <span class="opt">(${ge.length})</span>`:''}</div>${ge.length?`<ul>${ge.map(e=>`<li><button data-a="jump" data-path="${e.path}" data-i="${e.step}">${esc(e.msg)}</button></li>`).join('')}</ul>`:''}</li>`}).join('')}</ul>
+    <ul class="audit">${GROUPS.map((g,gi)=>{const ge=errs.filter(e=>e.g===gi);return `<li><div class="ah"><span class="ok ${ge.length?'no':''}" aria-hidden="true">${ge.length?'!':'✓'}</span>${g.name}${ge.length?` <span class="opt">(${ge.length})</span>`:''}</div>${ge.length?`<ul>${ge.map(e=>`<li><button class="jumpbtn" data-a="jump" data-path="${e.path}" data-i="${e.step}">${esc(e.msg)}</button></li>`).join('')}</ul>`:''}</li>`}).join('')}</ul>
     <p class="hint">לחיצה על פריט חסר מעבירה ישירות לשדה.</p>
   </div></div>
   <div style="display:flex;justify-content:space-between;align-items:center"><button class="link" data-a="preview">${ic('eye',16)} תצוגה מקדימה של היומן</button><button class="del" data-a="delJ" data-p="${cur.id}">מחיקת טיוטה</button></div>`;
@@ -2525,7 +2527,7 @@ function verifyPanel(){
   return `<div class="sec" id="verify"><div class="sech"><h3>אימות פרטים שהועתקו</h3><span class="tag ${pend.length?'draft':''}">${all.length-pend.length}/${all.length}</span></div><div class="secb">
    <div class="vbar" aria-hidden="true"><i style="width:${pct}%"></i></div>
    <p class="hint">${pend.length?`נותרו ${pend.length} פרטים לאימות. לא ניתן לסיים את היומן עד שכולם יאומתו.`:'כל הפרטים שהועתקו אומתו בטיפול הנוכחי.'}</p>
-   ${pend.length?`<ul class="audit">${pend.map(([k])=>`<li><div class="ah"><span class="ok no" aria-hidden="true">!</span>${esc(vLabel(k))}</div><ul><li><button data-a="jump" data-path="verify:${k}" data-i="${vStep(k)}">מעבר לשדה</button></li></ul></li>`).join('')}</ul>`:''}
+   ${pend.length?`<ul class="audit">${pend.map(([k])=>`<li><div class="ah"><span class="ok no" aria-hidden="true">!</span>${esc(vLabel(k))}</div><ul><li><button class="jumpbtn" data-a="jump" data-path="verify:${k}" data-i="${vStep(k)}">מעבר לשדה</button></li></ul></li>`).join('')}</ul>`:''}
    ${bulk.length?`<button class="btn w sm gold" data-a="vOkBulk">אשר את כל הפרטים המוצגים (${bulk.length})</button>
      <p class="hint">אצווה, מינון, ממצאים ואזהרות דורשים אישור נפרד ואינם נכללים באישור המרוכז.</p>`:''}
    <div class="two" style="margin-top:10px"><button class="btn ghost sm" data-a="compare">${ic('hist',16)} השוואה ליומן הקודם</button><button class="btn ghost sm" data-a="clearClone">ביטול הטעינה</button></div>
