@@ -1,0 +1,129 @@
+@import "tailwindcss";
+
+/*
+ * Design system — single source of truth for colour, type, spacing and radius.
+ * Change a token here and the whole storefront follows.
+ */
+@theme {
+  --font-sans: "Assistant", "Heebo", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Brand: deep botanical green with a warm sand accent — premium, not clinical */
+  --color-brand-50: #f0f7f3;
+  --color-brand-100: #d9ece1;
+  --color-brand-200: #b4d9c6;
+  --color-brand-300: #85bfa3;
+  --color-brand-400: #549f7e;
+  --color-brand-500: #35815f;
+  --color-brand-600: #24674b;
+  --color-brand-700: #1d523d;
+  --color-brand-800: #194232;
+  --color-brand-900: #16362a;
+
+  --color-sand-50: #fbf8f3;
+  --color-sand-100: #f4ece0;
+  --color-sand-200: #e8d8c2;
+  --color-sand-300: #d8bd9a;
+  --color-sand-400: #c69f71;
+  --color-sand-500: #b78655;
+
+  --color-ink-50: #f7f7f8;
+  --color-ink-100: #eeeef1;
+  --color-ink-200: #dcdce2;
+  --color-ink-400: #9a9aa6;
+  --color-ink-500: #71717f;
+  --color-ink-700: #3f3f4a;
+  --color-ink-900: #1b1b21;
+
+  --radius-card: 1rem;
+  --radius-pill: 999px;
+
+  --shadow-soft: 0 1px 2px rgb(16 24 40 / 0.04), 0 8px 24px -12px rgb(16 24 40 / 0.14);
+  --shadow-lift: 0 2px 6px rgb(16 24 40 / 0.06), 0 18px 40px -18px rgb(16 24 40 / 0.22);
+
+  --ease-premium: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root {
+  --background: #ffffff;
+  --surface: var(--color-ink-50);
+  --foreground: var(--color-ink-900);
+  --muted: var(--color-ink-500);
+  --border: var(--color-ink-200);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Visible, high-contrast focus for keyboard users on every interactive element */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-brand-600);
+  outline-offset: 2px;
+  border-radius: 0.375rem;
+}
+
+.skip-link {
+  position: absolute;
+  inset-inline-start: 1rem;
+  top: -4rem;
+  z-index: 100;
+  background: var(--color-brand-700);
+  color: white;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.5rem;
+  transition: top 160ms var(--ease-premium);
+}
+.skip-link:focus {
+  top: 1rem;
+}
+
+@keyframes shimmer {
+  100% { transform: translateX(-100%); }
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-ink-100);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(100%);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.65), transparent);
+  animation: shimmer 1.4s infinite;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+.animate-rise {
+  animation: rise 420ms var(--ease-premium) both;
+}
+
+/* Product imagery is never stretched */
+.product-image {
+  object-fit: contain;
+  background-color: #ffffff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
