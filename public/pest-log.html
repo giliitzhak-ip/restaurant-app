@@ -69,7 +69,8 @@ details.sec>summary::-webkit-details-marker{display:none}
 .opt{font-size:12px;color:var(--muted);font-weight:400}
 .inp,.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:var(--r-sm);padding:11px 12px;min-height:46px}
 textarea{min-height:96px;resize:vertical}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.two>*{min-width:0}
 .err .inp,.err input,.err select,.err textarea,input.err,textarea.err,select.err{border-color:var(--danger)!important;background:var(--danger-soft)!important}
 .errtxt{color:var(--danger);font-size:13px;margin-top:4px}
 .flash{animation:flash 1.4s ease}
@@ -160,7 +161,9 @@ em.dj{background:var(--forest-2)}em.ds{background:var(--gold)}em.dt{background:#
 .tag.draft{background:var(--gold-soft);color:#7a6634}
 .tag.gold{background:var(--gold);color:var(--forest)}
 .empty{text-align:center;padding:36px 20px;color:var(--muted)}
-.filters{display:grid;gap:8px;margin-bottom:12px}
+.filters{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin-bottom:12px}
+.filters input[type=date]{min-width:0;width:100%}
+.seg>*{min-width:0}
 
 /* טעינה מיומן אחרון */
 .prevcard{background:var(--surface);border:2px solid var(--gold);border-radius:var(--r-lg);padding:14px;margin:14px 0}
@@ -699,7 +702,20 @@ let S=loadLocal();
 let DB=null,SYNC='local',pushT={},saveT=null;
 function loadLocal(){try{const r=localStorage.getItem(LS);if(r){const d=JSON.parse(r);return Object.assign({journals:{},clients:{},profile:{...PROFILE_DEFAULT},counter:1000,pending:{},mine:[]},d,{profile:Object.assign({...PROFILE_DEFAULT},d.profile||{})})}}catch(e){}
   return {journals:{},clients:{},profile:{...PROFILE_DEFAULT},counter:1000,pending:{},mine:[]}}
-function saveLocal(){try{localStorage.setItem(LS,JSON.stringify(S));return true}catch(e){toast('האחסון המקומי מלא. ודאו חיבור לאינטרנט לסנכרון.');return false}}
+/* כשל שמירה: הקלט נשאר בזיכרון ולא אובד, ומוצעת שמירה חוזרת */
+let saveFailOpen=false;
+function saveLocal(){
+  try{localStorage.setItem(LS,JSON.stringify(S));return true}
+  catch(e){
+    if(!saveFailOpen){
+      saveFailOpen=true;
+      ask('השמירה במכשיר נכשלה – ייתכן שהאחסון מלא. מה שהזנתם נשמר בזיכרון ולא אבד. לנסות לשמור שוב?',
+          {title:'השמירה נכשלה',ok:'ניסיון חוזר',cancel:'לא עכשיו'})
+        .then(retry=>{saveFailOpen=false;if(retry)saveLocal()});
+    }
+    return false;
+  }
+}
 const saveLocalSoon=()=>{clearTimeout(saveT);saveT=setTimeout(saveLocal,300)};
 function setSync(s){SYNC=s;const el=$('#sync');if(el)el.textContent=syncLabel()}
 const syncLabel=()=>({local:'שמור במכשיר',saving:'שומר...',ok:'מסונכרן לענן',offline:'ממתין לחיבור'}[SYNC]);
@@ -3663,7 +3679,21 @@ document.addEventListener('click',e=>{
   /* לחיצה מחוץ לשדה ומחוץ לרשימה סוגרת את ההצעות */
   if(sugState.list.length&&!e.target.closest('.msearch')&&!e.target.closest('.sugbox'))closeSug();
 },true);
-document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(!el)return;if(el.tagName==='A')return;e.preventDefault();const f=A[el.dataset.a];f&&f(el.dataset,e,el)});
+/* פעולות שכותבות נתונים – לחיצה כפולה לא תיצור שמירה כפולה */
+const ONCE_ACTIONS=new Set(['complete','saveProfile','newJ','newForClient','secLoad','secLoadGo',
+  'rSave','rOpenJ','rPickClient','tkAdd','loadLastAllFields','loadLastApps','useTplHere']);
+let busyAction=null;
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-a]');if(!el)return;if(el.tagName==='A')return;
+  e.preventDefault();
+  const name=el.dataset.a,f=A[name];if(!f)return;
+  if(!ONCE_ACTIONS.has(name))return void f(el.dataset,e,el);
+  if(busyAction)return;                       /* לחיצה כפולה – מתעלמים */
+  busyAction=name;el.setAttribute('aria-busy','true');
+  Promise.resolve().then(()=>f(el.dataset,e,el))
+    .catch(err=>{console.error(err)})
+    .finally(()=>{busyAction=null;try{el.removeAttribute('aria-busy')}catch(_){}});
+});
 document.addEventListener('input',e=>{
   const t=e.target;
   if(t.id==='pq'){sugSearch(t.value,+t.dataset.sugidx||0);return}

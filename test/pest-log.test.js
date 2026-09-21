@@ -539,6 +539,35 @@ await withPage(FULL,async p=>{
   ok('נאמר שמינונים אינם נשמרים',sh.includes('מינונים ומגבלות ריסוס אינם נשמרים'));
 });
 
+console.log('\n18א. שמירה כפולה ותאימות לאחור');
+await withPage(FULL,async p=>{
+  /* לחיצה כפולה על "יומן חדש" לא תיצור שני יומנים */
+  const before=await p.evaluate(()=>Object.keys(S.journals).length);
+  await p.evaluate(()=>{const b=document.querySelector('[data-a="newJ"]');b.click();b.click();b.click()});
+  await p.waitForTimeout(500);
+  eq('לחיצה משולשת על יומן חדש יוצרת יומן אחד',
+     await p.evaluate(()=>Object.keys(S.journals).length),before+1);
+  /* לחיצה כפולה על הוספת עצירה */
+  await p.evaluate(()=>{A._rDate='2026-08-09';go('route')});
+  await p.click('[data-a="rAddClient"]');
+  await p.evaluate(()=>{const b=document.querySelector('[data-a="rPickClient"][data-p="c1"]');b.click();b.click()});
+  await p.waitForTimeout(300);
+  eq('לחיצה כפולה מוסיפה עצירה אחת',await p.evaluate(()=>stopsOf('2026-08-09').length),1);
+});
+await withPage(FULL,async p=>{
+  /* יומן ישן בלי השדות החדשים – נפתח, נערך ונשמר */
+  await p.evaluate(()=>{const j=clone(S.journals.j1);
+    j.id='old1';j.no=900;j.status='draft';j.step=0;
+    delete j.verify;delete j.spots;delete j.siteNotes;delete j.warnSrcProducts;
+    j.apps.forEach(a=>{delete a.selectedMaterialId;delete a.manualLabel;delete a.materialDetails;delete a.stations});
+    S.journals.old1=j;saveLocal();A.openJ({p:'old1'})});
+  ok('יומן ישן נפתח באשף',await p.evaluate(()=>view==='wizard'&&cur.id==='old1'));
+  const steps=await p.evaluate(()=>{const out=[];for(let i=0;i<STEPS.length;i++){cur.step=i;try{render();out.push('ok')}catch(e){out.push(String(e))}}return out});
+  ok('כל שמונת השלבים נטענים ביומן ישן',steps.every(x=>x==='ok'),steps.join(' | '));
+  ok('נשמר ללא קריסה',await p.evaluate(()=>{cur.siteNotes='הערה חדשה';touch();return S.journals.old1.siteNotes==='הערה חדשה'}));
+  ok('אין מחיקה של נתונים קיימים',await p.evaluate(()=>S.journals.j1&&S.journals.j0&&S.journals.j2?true:false));
+});
+
 console.log('\n19. רגרסיה – מסלולים קיימים');
 const errs=await withPage(FULL,async p=>{
   await p.evaluate(()=>go('archive'));

@@ -816,6 +816,70 @@ await page(async p=>{
   ok('מינון אינו חובה',!after.some(m=>m.includes('מינון והוראות שימוש')));
 });
 
+console.log('\n14. טיוטה, רוחבי אייפון ושגיאות ריצה');
+/* 13 – שמירת טיוטה ופתיחתה מחדש אחרי רענון */
+await page(async p=>{
+  await startJ(p);
+  await pick(p,'dragon');
+  await p.evaluate(()=>{const a=cur.apps[0];
+    a.batch='LOT-5512';a.pkgExpiry='2028-03-01';a.amountUsed='40 מ"ל';a.areas='מטבח';
+    cur.findings[0].pest='תיקן גרמני';cur.findings[0].signs='פעילות מאחורי המקרר';
+    touch()});
+  const jid=await p.evaluate(()=>cur.id);
+  await p.reload();
+  await p.waitForFunction(()=>document.querySelector('#app')&&document.querySelector('#app').children.length>0);
+  const stored=await p.evaluate(i=>{const j=S.journals[i];return j?{st:j.status,mid:j.apps[0].selectedMaterialId,
+    b:j.apps[0].batch,pest:j.findings[0].pest}:null},jid);
+  ok('הטיוטה נשמרה ונפתחת מחדש',!!stored&&stored.st==='draft',JSON.stringify(stored));
+  eq('החומר נשאר משויך לטיוטה',stored&&stored.mid,'dragon');
+  eq('נתוני הביצוע נשארו בטיוטה',stored&&stored.b,'LOT-5512');
+  await p.evaluate(i=>A.openJ({p:i}),jid);
+  const t=await p.textContent('#app');
+  ok('פתיחת הטיוטה מחזירה לאשף',await p.evaluate(()=>view==='wizard'));
+  ok('החומר מוצג בטיוטה שנפתחה',t.includes('דרגון'));
+});
+/* 14 – רוחבי אייפון 320 עד 430, כולל המסכים החדשים */
+for(const w of [320,375,430]){
+  const ctx=await B.newContext({viewport:{width:w,height:820},hasTouch:true});
+  const p=await ctx.newPage();
+  const errs=[];p.on('pageerror',e=>errs.push(e.message));
+  await p.addInitScript(x=>{try{if(!localStorage.getItem('yp-reg-log-v2'))localStorage.setItem('yp-reg-log-v2',x)}catch(e){}},seed);
+  await p.goto(PAGE);
+  await p.waitForFunction(()=>document.querySelector('#app')&&document.querySelector('#app').children.length>0);
+  await p.evaluate(()=>{const t=todayStr();
+    addStop(t,{clientId:'c1',name:'מסעדת הגפן',phone:'02-5551234',address:'הרצל 10, ירושלים',time:'08:30',duration:'45',focus:'מחסן אחורי'});
+    addTask({title:'להזמין דרקר',date:todayStr()})});
+  for(const v of ['home','route','tasks','calendar','materials','clients','archive','templates','profile']){
+    await p.evaluate(x=>go(x),v);
+    await p.waitForTimeout(90);
+    const over=await p.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
+    ok(`אין גלילה אופקית ב-${v} ברוחב ${w}`,over<=1,'עודף '+over+'px');
+  }
+  await p.evaluate(()=>go('home'));
+  const small=await p.evaluate(()=>[...document.querySelectorAll('button,a')]
+    .filter(el=>el.offsetParent!==null)
+    .map(el=>{const r=el.getBoundingClientRect();return {t:(el.textContent||'').trim().slice(0,18),w:Math.round(r.width),h:Math.round(r.height)}})
+    .filter(x=>x.w>0&&x.h>0&&(x.w<44||x.h<44)));
+  ok(`אזורי לחיצה 44px במסך הבית ברוחב ${w}`,small.length===0,JSON.stringify(small));
+  ok(`אין שגיאות JavaScript ברוחב ${w}`,errs.length===0,errs.join(' | '));
+  await ctx.close();
+}
+/* 15 – מעבר על כל המסכים בלי שגיאות ריצה */
+{
+  const errs=await page(async p=>{
+    const con=[];p.on('console',m=>{if(m.type()==='error')con.push(m.text())});
+    await p.evaluate(()=>{const t=todayStr();
+      addStop(t,{name:'בדיקה',address:'הרצל 1',time:'09:00'});addTask({title:'משימת בדיקה'})});
+    for(const v of ['home','route','tasks','calendar','materials','clients','archive','templates','profile']){
+      await p.evaluate(x=>go(x),v);await p.waitForTimeout(70);
+    }
+    await startJ(p);
+    for(let i=0;i<8;i++){await p.evaluate(x=>{cur.step=x;render()},i);await p.waitForTimeout(60)}
+    ok('אין שגיאות console במעבר על כל המסכים',con.length===0,con.join(' | '));
+  });
+  ok('אין שגיאות JavaScript במעבר על כל המסכים',errs.length===0,errs.join(' | '));
+}
+
 await B.close();
 console.log(`\n${pass} עברו, ${fail} נכשלו`);
 if(fail){console.log('נכשלו:\n - '+fails.join('\n - '));process.exit(1)}
