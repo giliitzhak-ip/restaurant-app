@@ -27,6 +27,7 @@ import { MatchSession, type MatchMode, type PlayerSlot } from '../game/MatchSess
 import { canPlayerTouch } from '../game/TouchRuleEngine';
 import {
   createPlayerStats,
+  opponentOf,
   type MatchState,
   type PlayerState,
   type TeamId,
@@ -61,6 +62,7 @@ import type { RoomStage } from '../net/schema';
 import { loadHavok } from '../physics/loadHavokBrowser';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
 import { AimIndicator } from '../rendering/AimIndicator';
+import { NetRipple } from '../rendering/NetRipple';
 import { Crowd } from '../rendering/Crowd';
 import { Environment } from '../rendering/Environment';
 import { PostProcessing } from '../rendering/PostProcessing';
@@ -83,8 +85,10 @@ import {
   connectErrorLabel,
   LOADING_STEPS,
   roomStageLabel,
+  SHOT_STYLE_LABELS,
   teamLabel,
 } from '../ui/labels';
+import { elevationFor } from '../game/ShotResolver';
 import { loadSettings, saveSettings, type GameSettings } from './Settings';
 import { SimulationLoop } from './SimulationLoop';
 
@@ -107,6 +111,7 @@ export class Game {
   private match!: MatchEngine;
   private views!: MatchViews;
   private arena!: ArenaHandles;
+  private readonly nets = new NetRipple();
   private soloCamera!: CameraRig;
   private sharedCamera!: SharedMatchCamera;
   private quality!: QualityManager;
@@ -264,6 +269,7 @@ export class Game {
 
     report(3, 0.62);
     this.quality = new QualityManager(this.engine, this.arena.sun, this.arena.shadowCasters);
+    for (const [team, handles] of this.arena.goals) this.nets.add(team, handles.netBack);
 
     report(4, 0.78);
     this.match = new MatchEngine(this.scene, this.world);
@@ -784,6 +790,10 @@ export class Game {
     const pad = new HumanTouchController(id, label, side);
     pad.mount(this.touchRoot);
     pad.setVisible(false);
+    pad.setSensitivity(this.settings.sensitivity);
+    // A pad created mid-match must come up the way the player set it, not the
+    // way the defaults left it.
+    pad.setMirrored(this.settings.mirrorTouchControls);
     this.touchPads.set(id, pad);
     return pad;
   }
@@ -1389,6 +1399,8 @@ export class Game {
       state.ball.velocity.z,
     );
     this.effects.update(dt, state.ball.position, ballSpeed);
+    this.nets.update(dt);
+    this.post.update(dt);
     this.crowd.update(dt);
 
     if (this.mode === 'localTwoPlayer') {
@@ -1396,7 +1408,11 @@ export class Game {
     } else {
       this.applyLookInput();
       const local = this.localPlayer();
-      if (local) this.soloCamera.update(local.position, state.ball.position, local.team, dt);
+      if (local) {
+        // The camera leans in while a shot loads, for whoever it is following.
+        this.soloCamera.setCharge(local.charging ? local.kickCharge : 0);
+        this.soloCamera.update(local.position, state.ball.position, local.team, dt);
+      }
     }
 
     // The aim indicator follows whichever human is charging; with two players
@@ -1404,7 +1420,7 @@ export class Game {
     const charging = state.players.find(
       (player) => this.isLocallyDriven(player.id) && player.charging,
     );
-    this.aimIndicator.update(charging, charging?.kickCharge ?? 0, charging?.lofted ?? false);
+    this.aimIndicator.update(charging, charging?.kickCharge ?? 0, state.ball);
 
     const humans = state.players.filter((player) => this.isLocallyDriven(player.id));
     this.updateAwareness(humans);
@@ -1426,11 +1442,29 @@ export class Game {
           state,
           humans.map((player) => player.kickCharge),
         );
+        const chain =
+          state.touch.aerialChainActive &&
+          state.touch.lastMeaningfulTouchPlayerId === this.localPlayerId;
         this.ui.setTouchState(
           state.phase === 'playing'
             ? {
                 canTouch: canPlayerTouch(state.touch, this.localPlayerId),
-                juggles: state.touch.aerialChainActive ? state.touch.aerialTouchCount : 0,
+                inAirChain: chain,
+                juggles: state.touch.aerialTouchCount,
+              }
+            : null,
+        );
+
+        const local = this.localPlayer();
+        this.ui.setAimState(
+          state.phase === 'playing' && local
+            ? {
+                elevation: elevationFor(
+                  local.chipRequested ? 'chip' : local.shotStyle,
+                  local.verticalAim,
+                ),
+                style: SHOT_STYLE_LABELS[local.chipRequested ? 'chip' : local.shotStyle],
+                volley: state.ball.position.y >= GameConfig.kick.volleyHeight,
               }
             : null,
         );
@@ -1463,7 +1497,11 @@ export class Game {
       this.ui.showCaption('kick');
       const player = this.match.state.players.find((entry) => entry.id === playerId);
       if (player) this.effects.spawnDust(player.position, power * 0.8, 0.9);
-      if (power > 0.7) this.sharedCamera.addShake(power * 0.35);
+      if (power > 0.7) {
+        this.sharedCamera.addShake(power * 0.35);
+        this.soloCamera.addShake(power * 0.35);
+        this.post.pulseSpeed((power - 0.7) / 0.3);
+      }
     });
 
     events.on('tackle', ({ playerId, success }) => {
@@ -1483,6 +1521,7 @@ export class Game {
       );
       this.ui.showCaption(kind);
       this.sharedCamera.addShake(intensity * 0.55);
+      this.soloCamera.addShake(intensity * 0.55);
 
       const mesh = this.arena.goals.get(goal)?.parts.get(part);
       if (mesh) this.effects.flashFrame(mesh);
@@ -1502,8 +1541,19 @@ export class Game {
       );
       this.celebratingTeam = record.team;
       this.defeatedTeam = null;
+      if (record.kind === 'goal') {
+        // The ball is inside the net at this point, which is exactly where the
+        // bulge belongs: the conceding team owns the net it went into.
+        const ball = this.match.state.ball;
+        this.nets.impact(
+          opponentOf(record.team),
+          ball.position,
+          Math.hypot(ball.velocity.x, ball.velocity.y, ball.velocity.z),
+        );
+      }
       this.sharedCamera.pulseZoom();
       this.sharedCamera.addShake(0.4);
+      this.soloCamera.addShake(0.4);
       const celebrant = this.match.state.players.find((entry) => entry.team === record.team);
       if (celebrant) {
         this.effects.celebrate(
@@ -1730,7 +1780,9 @@ export class Game {
     if (settings.musicVolume > 0 && this.phase === 'playing') this.audio.startMusic();
 
     this.sharedCamera.setShakeLevel(settings.cameraShake);
+    this.soloCamera.setShakeLevel(settings.cameraShake);
     this.sharedCamera.setReduceMotion(settings.accessibility.reduceCameraMotion);
+    this.soloCamera.setReduceMotion(settings.accessibility.reduceCameraMotion);
     this.effects.setReduceFlashes(settings.accessibility.reduceFlashes);
     this.effects.setQuality(settings.quality);
     // The lowest preset drops the rings: four extra transparent meshes is not
@@ -1754,7 +1806,10 @@ export class Game {
       if (controller instanceof HumanTouchController)
         controller.setSensitivity(settings.sensitivity);
     }
-    for (const pad of this.touchPads.values()) pad.setSensitivity(settings.sensitivity);
+    for (const pad of this.touchPads.values()) {
+      pad.setSensitivity(settings.sensitivity);
+      pad.setMirrored(settings.mirrorTouchControls);
+    }
 
     this.keyboard.own(ownedKeyCodes(settings));
 

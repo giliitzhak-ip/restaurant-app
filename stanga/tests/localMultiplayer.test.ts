@@ -5,7 +5,7 @@
  * controllers and the device rules without a browser or a physics world.
  */
 import { describe, expect, it, vi } from 'vitest';
-import { GameConfig } from '../src/config/GameConfig';
+import { GameConfig, type ShotStyle } from '../src/config/GameConfig';
 import { Rng } from '../src/core/Rng';
 import { AIController } from '../src/ai/AIController';
 import { MatchSession, hasDuplicateDevices, type PlayerSlot } from '../src/game/MatchSession';
@@ -52,6 +52,9 @@ class StubController implements PlayerController {
    */
   seenPlayerId: string | undefined;
   seenCameraYaw = 0;
+  /** What this stand-in device says about the next strike. */
+  style: ShotStyle = 'normal';
+  cycled = false;
   private readonly command: PlayerCommand;
 
   constructor(
@@ -69,6 +72,8 @@ class StubController implements PlayerController {
     this.command.tickId = tickId;
     this.command.moveX = this.move.x;
     this.command.moveY = this.move.y;
+    this.command.shotStyle = this.style;
+    this.command.styleCycle = this.cycled;
     return this.command;
   }
 
@@ -397,6 +402,53 @@ describe('composite controller, used only for solo play', () => {
 
     expect(command.moveX).toBeCloseTo(0.8);
     expect(command.moveY).toBeCloseTo(-0.2);
+  });
+
+  /*
+   * The shot style is a level, not an edge, and forgetting that broke it
+   * twice in this codebase.
+   *
+   * The first time, the simulation owned the flag and every controller
+   * overwrote it a tick later, so the flat/high control did nothing at all.
+   * The second time, the composite forwarded the style only on the tick the
+   * button was pressed, so the merged command was back to `normal` on the
+   * next tick and the simulation saw the player's choice for about a
+   * sixtieth of a second. It has to survive every tick until it changes.
+   */
+  it('keeps a selected shot style from one tick to the next', () => {
+    const idle = new StubController('a', 'a', { x: 0, y: 0 });
+    const holding = new StubController('b', 'b', { x: 0, y: 0 });
+    holding.style = 'lofted';
+    const composite = new CompositeController('solo', 'מקלדת ומגע', [idle, holding]);
+    const state = createMatchState();
+    const context = { cameraYaw: 0, player: undefined, state, dt: 1 / 60 };
+
+    // The tick the button was pressed, and three quiet ticks after it.
+    holding.cycled = true;
+    expect(composite.poll('home-1', 1, context).shotStyle).toBe('lofted');
+    holding.cycled = false;
+    for (let tick = 2; tick <= 4; tick += 1) {
+      expect(composite.poll('home-1', tick, context).shotStyle).toBe('lofted');
+    }
+  });
+
+  it('lets the device that just cycled win over one merely holding a style', () => {
+    const holding = new StubController('a', 'a', { x: 0, y: 0 });
+    holding.style = 'lofted';
+    const cycling = new StubController('b', 'b', { x: 0, y: 0 });
+    cycling.style = 'chip';
+    cycling.cycled = true;
+    const composite = new CompositeController('solo', 'מקלדת ומגע', [holding, cycling]);
+
+    const command = composite.poll('home-1', 1, {
+      cameraYaw: 0,
+      player: undefined,
+      state: createMatchState(),
+      dt: 1 / 60,
+    });
+
+    expect(command.shotStyle).toBe('chip');
+    expect(command.styleCycle).toBe(true);
   });
 });
 

@@ -37,6 +37,7 @@ export class CompositeController implements PlayerController {
     resetPlayerCommand(merged, tickId, this.sequence.next());
 
     // Every source is polled, so none of them accumulates stale edge state.
+    let styleClaimed = false;
     for (const source of this.sources) {
       const command = source.poll(playerId, tickId, context);
 
@@ -73,9 +74,22 @@ export class CompositeController implements PlayerController {
       merged.shootReleased ||= command.shootReleased;
       merged.tacklePressed ||= command.tacklePressed;
       merged.styleCycle ||= command.styleCycle;
-      // The last device to change the style owns it: merging two selections
-      // would give a player holding two controllers a shape neither picked.
-      if (command.styleCycle) merged.shotStyle = command.shotStyle;
+      /*
+       * The style is a level, not an edge.
+       *
+       * Forwarding it only on the tick the button was pressed looked right
+       * and did nothing: the merged command was reset to `normal` every other
+       * tick, so the simulation saw the new shape once and the default for the
+       * rest of the second. A device that just cycled wins outright; failing
+       * that, whichever device is holding a shape other than the default owns
+       * it, so it survives from tick to tick the way the player expects.
+       */
+      if (command.styleCycle) {
+        merged.shotStyle = command.shotStyle;
+        styleClaimed = true;
+      } else if (!styleClaimed && command.shotStyle !== 'normal') {
+        merged.shotStyle = command.shotStyle;
+      }
     }
 
     // Holding on one device while releasing on another is a release only if

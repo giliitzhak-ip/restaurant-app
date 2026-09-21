@@ -2208,3 +2208,102 @@ kbd {
     grid-template-columns: 1fr;
   }
 }
+
+/*
+ * The aim gauge: how high the next strike is set, in degrees, with the shape
+ * selected under it. It sits on the same side as the meters, above them, so a
+ * glance takes in power, height and shape together.
+ */
+.hud__aim {
+  position: absolute;
+  /* Directly under the power and stamina meters, which are pinned top-left in
+     physical terms — the HUD's layout does not follow the document's RTL. */
+  left: calc(0.9rem + var(--safe-left));
+  top: calc(9.4rem + var(--safe-top));
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-rows: auto auto auto;
+  align-items: center;
+  gap: 0.18rem 0.45rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.6rem;
+  background: rgba(12, 13, 15, 0.55);
+  pointer-events: none;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.hud__aim[hidden] {
+  display: none;
+}
+
+.hud__aim-gauge {
+  grid-row: 1 / span 3;
+  position: relative;
+  width: 0.34rem;
+  height: 3.1rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+
+/* Grows upward, because the thing it measures is height. */
+.hud__aim-fill {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 0%;
+  background: linear-gradient(to top, var(--accent), #57b8ff);
+  transition: height 90ms linear;
+}
+
+.hud__aim-angle {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.92rem;
+}
+
+.hud__aim-style {
+  opacity: 0.78;
+}
+
+/* Only lit while the ball is actually up and a volley is on. */
+.hud__aim-volley {
+  color: #57b8ff;
+  visibility: hidden;
+}
+
+.hud__aim.is-volley .hud__aim-volley {
+  visibility: visible;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud__aim-fill {
+    transition: none;
+  }
+}
+
+/*
+ * Mirrored pad: the stick moves to the right and the buttons to the left, for
+ * a player who holds the phone the other way round.
+ *
+ * The pad's layout is physical, not textual — its root is forced to `ltr` so
+ * the document's own right-to-left direction can never flip the controls by
+ * accident — so the mirror works in the same terms: `left` and `right`, not
+ * the logical properties. The button grid is the one exception: reversing its
+ * column order is exactly what `direction: rtl` means, and the labels are put
+ * back upright on the buttons themselves.
+ */
+.touch-pad.is-mirrored .touch-pad__stick-zone {
+  left: auto;
+  right: 0;
+}
+
+.touch-pad.is-mirrored .touch-pad__actions {
+  right: auto;
+  left: calc(1rem + var(--safe-left));
+  direction: rtl;
+}
+
+.touch-pad.is-mirrored .touch-pad__actions .touch-button {
+  direction: ltr;
+}

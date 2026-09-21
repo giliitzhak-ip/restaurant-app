@@ -61,6 +61,18 @@
           <span class="hud__touch-text" id="hud-touch-text"></span>
         </div>
 
+        <!--
+          How high the next strike is aimed, in degrees, with the shape
+          selected underneath it. A game where the ball can be lifted needs a
+          way to read the angle before the foot goes through it.
+        -->
+        <div class="hud__aim" id="hud-aim" hidden>
+          <div class="hud__aim-gauge"><span class="hud__aim-fill" id="hud-aim-fill"></span></div>
+          <span class="hud__aim-angle" id="hud-aim-angle">5°</span>
+          <span class="hud__aim-style" id="hud-aim-style">רגילה</span>
+          <span class="hud__aim-volley">וולה</span>
+        </div>
+
         <!-- Quick chat during play. Fixed phrases, and only in 2x2. -->
         <div class="hud__quickchat is-hidden" id="hud-quickchat"></div>
 
@@ -624,6 +636,14 @@
             >
               <span class="toggle__track"><span class="toggle__thumb"></span></span>
               <span class="toggle__state" id="out-vibration">כבוי</span>
+            </button>
+          </div>
+
+          <div class="field field--row">
+            <span class="field__label">פקדי מגע הפוכים</span>
+            <button type="button" class="toggle" id="set-mirror" role="switch" aria-checked="false">
+              <span class="toggle__track"><span class="toggle__thumb"></span></span>
+              <span class="toggle__state" id="out-mirror">כבוי</span>
             </button>
           </div>
 

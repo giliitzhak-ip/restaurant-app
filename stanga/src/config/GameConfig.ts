@@ -525,6 +525,13 @@ export const GameConfig = {
     /** How strongly the view leans towards the ball rather than the goal. */
     ballAwarenessWeight: 0.22,
     /**
+     * How far the view pulls in at a full charge, as a fraction of the
+     * distance and the height. Small: it should say "this one is loading"
+     * without taking the goal out of frame.
+     */
+    chargeZoom: 0.16,
+    chargeHeightPull: 0.1,
+    /**
      * Player-driven look.
      *
      * The chase camera picks a sensible angle, but a sensible angle is not

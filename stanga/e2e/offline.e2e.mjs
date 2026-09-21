@@ -112,6 +112,63 @@ try {
   });
   check('the computer opponent plays', aiMoved >= 0);
 
+  /*
+   * The strike system, driven the way a person drives it.
+   *
+   * The unit tests prove the maths; this proves the keys are wired to it. A
+   * short tap must be a soft ball along the ground, a charge with the up arrow
+   * held must leave the foot climbing, and Q must actually change the shape.
+   */
+  console.log('the strike controls');
+
+  const styleBefore = await page.evaluate(() => window.__stanga.matchState().players[0].shotStyle);
+  await page.keyboard.press('KeyQ');
+  // This machine has no GPU and draws through SwiftShader at a frame or two a
+  // second, and the simulation is driven by the render loop: a key edge needs
+  // a generous wait here to be seen at all.
+  await page.waitForTimeout(2500);
+  const styleAfter = await page.evaluate(() => window.__stanga.matchState().players[0].shotStyle);
+  check(
+    'Q changes the shape of the next strike',
+    styleAfter !== styleBefore,
+    `${styleBefore} -> ${styleAfter}`,
+  );
+  // Back to the normal strike for the measurements below.
+  for (
+    let i = 0;
+    i < 4 &&
+    (await page.evaluate(() => window.__stanga.matchState().players[0].shotStyle)) !== 'normal';
+    i += 1
+  ) {
+    await page.keyboard.press('KeyQ');
+    await page.waitForTimeout(2500);
+  }
+
+  const aimBefore = await page.evaluate(() => window.__stanga.matchState().players[0].verticalAim);
+  await page.keyboard.down('Space');
+  await page.waitForTimeout(600);
+  await page.keyboard.press('ArrowUp');
+  await page.waitForTimeout(2500);
+  const aimAfter = await page.evaluate(() => window.__stanga.matchState().players[0].verticalAim);
+  check(
+    'the up arrow lifts the aim while the shot is charging',
+    aimAfter > aimBefore + 0.3,
+    `${aimBefore} -> ${aimAfter}`,
+  );
+
+  const charged = await page.evaluate(() => window.__stanga.matchState().players[0].kickCharge);
+  check('holding the shoot key builds the power meter', charged > 0.2, String(charged));
+
+  const gaugeShown = await page.evaluate(() => !document.getElementById('hud-aim').hidden);
+  check('the aim gauge is on screen', gaugeShown);
+
+  await page.keyboard.up('Space');
+  await page.waitForTimeout(600);
+  await page.keyboard.press('ArrowDown');
+  await page.waitForTimeout(2500);
+  const flattened = await page.evaluate(() => window.__stanga.matchState().players[0].verticalAim);
+  check('the down arrow flattens it again', flattened < aimAfter - 0.3, String(flattened));
+
   console.log('pause still stops an offline match');
   await page.keyboard.press('Escape');
   await page.waitForSelector('#screen-pause:not(.is-hidden)', { timeout: 15_000 });

@@ -223,6 +223,69 @@ describe('UI smoke', () => {
     expect(document.getElementById('out-vibration')?.textContent).toBe('פעיל');
   });
 
+  it('offers the mirrored touch layout and reports the change', () => {
+    // Which thumb wants the stick is a matter of how somebody holds a phone,
+    // and the game cannot work that out for them.
+    const callbacks = makeCallbacks();
+    const ui = new UIManager(callbacks, defaultSettings());
+    ui.showScreen('settings');
+
+    expect(document.getElementById('set-mirror')?.getAttribute('aria-checked')).toBe('false');
+    click('set-mirror');
+    expect(callbacks.onSettingsChanged.mock.calls.at(-1)?.[0]?.mirrorTouchControls).toBe(true);
+    expect(document.getElementById('set-mirror')?.getAttribute('aria-checked')).toBe('true');
+  });
+
+  /*
+   * The touch rule has four states and the badge has to say all four.
+   *
+   * It used to say two — "yours" and "spent" — which left the two that
+   * matter most unexplained: that an aerial chain is still running, and that
+   * the ball is simply waiting for the other side to play it.
+   */
+  it('says which of the four touch-rule states the player is in', () => {
+    const ui = new UIManager(makeCallbacks(), defaultSettings());
+    const badge = document.getElementById('hud-touch') as HTMLElement;
+    const text = document.getElementById('hud-touch-text') as HTMLElement;
+
+    ui.setTouchState({ canTouch: true, inAirChain: false, juggles: 0 });
+    expect(badge.hidden).toBe(false);
+    expect(text.textContent).toBe('נגיעה זמינה');
+
+    ui.setTouchState({ canTouch: true, inAirChain: true, juggles: 3 });
+    expect(text.textContent).toContain('שליטה באוויר');
+    expect(text.textContent).toContain('3');
+
+    ui.setTouchState({ canTouch: false, inAirChain: false, juggles: 0 });
+    expect(text.textContent).toBe('ממתין לנגיעת היריב');
+    expect(badge.classList.contains('is-spent')).toBe(true);
+
+    ui.setTouchState(null);
+    expect(badge.hidden).toBe(true);
+  });
+
+  it('shows the launch angle and the selected shape, and calls a volley', () => {
+    const ui = new UIManager(makeCallbacks(), defaultSettings());
+    const badge = document.getElementById('hud-aim') as HTMLElement;
+
+    ui.setAimState({ elevation: GameConfig.kick.minElevation, style: 'שטוחה', volley: false });
+    expect(badge.hidden).toBe(false);
+    expect(document.getElementById('hud-aim-angle')?.textContent).toBe('5°');
+    expect(document.getElementById('hud-aim-style')?.textContent).toBe('שטוחה');
+    expect(document.getElementById('hud-aim-fill')?.getAttribute('style')).toContain('height: 0%');
+    expect(badge.classList.contains('is-volley')).toBe(false);
+
+    ui.setAimState({ elevation: GameConfig.kick.maxElevation, style: 'מוגבהת', volley: true });
+    expect(document.getElementById('hud-aim-angle')?.textContent).toBe('50°');
+    expect(document.getElementById('hud-aim-fill')?.getAttribute('style')).toContain(
+      'height: 100%',
+    );
+    expect(badge.classList.contains('is-volley')).toBe(true);
+
+    ui.setAimState(null);
+    expect(badge.hidden).toBe(true);
+  });
+
   it('exposes every accessibility toggle and reports the change', () => {
     const callbacks = makeCallbacks();
     const ui = new UIManager(callbacks, defaultSettings());

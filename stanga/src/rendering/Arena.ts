@@ -36,7 +36,15 @@ import {
 export interface GoalHandles {
   readonly owner: TeamId;
   readonly parts: Map<GoalPart, Mesh>;
+  /**
+   * The back panel of the net, built with enough subdivisions to be pushed
+   * about. `NetRipple` deforms it when a ball arrives; nothing else touches it.
+   */
+  readonly netBack: Mesh;
 }
+
+/** How finely the back of each net is divided, per axis. */
+const NET_SUBDIVISIONS = 10;
 
 export interface ArenaHandles {
   readonly ground: Mesh;
@@ -87,6 +95,22 @@ export function buildArena(
 
   sun.shadowMinZ = 6;
   sun.shadowMaxZ = 70;
+
+  /*
+   * A fill from the opposite side, casting nothing.
+   *
+   * One key light and a hemispheric ambient give a body two tones: a lit side
+   * and a flat one. The shaded side of a player on a real pitch is not flat —
+   * it is picking up the sky and the bounce off pale concrete, and that second
+   * gradient is most of what makes a shape read as round. It is a quarter the
+   * strength of the sun and cool against its warmth, and it deliberately has
+   * no shadow map: a second set of shadows would be both wrong and expensive.
+   */
+  const fill = new DirectionalLight('fill', new Vector3(0.62, -0.55, -0.42), scene);
+  fill.position = new Vector3(-20, 15, 16);
+  fill.intensity = 0.78;
+  fill.diffuse = Color3.FromHexString('#b9d2ef');
+  fill.specular = Color3.FromHexString('#93b4dc');
 
   // ── Sky dome ────────────────────────────────────────────────────────────────
   const sky = MeshBuilder.CreateSphere('sky', { diameter: 260, segments: 16 }, scene);
@@ -239,13 +263,23 @@ export function buildArena(
 
     // Net: back panel, two sides and a roof. Purely visual except for the stopper.
     const netBackZ = goalZ + sign * goal.depth;
-    const netBack = MeshBuilder.CreatePlane(
+    // Subdivided, because it has to bulge: a flat quad cannot take a ball.
+    const netBack = MeshBuilder.CreateGround(
       `${owner}-netBack`,
-      { width: goal.width + goal.postRadius * 2, height: goal.height },
+      {
+        width: goal.width + goal.postRadius * 2,
+        height: goal.height,
+        subdivisionsX: NET_SUBDIVISIONS,
+        subdivisionsY: NET_SUBDIVISIONS,
+        updatable: true,
+      },
       scene,
     );
-    netBack.position.set(0, goal.height / 2, netBackZ);
+    // Built flat, then stood up: a ground gives the subdivisions a plane does
+    // not, and standing it up is one rotation.
+    netBack.rotation.x = -Math.PI / 2;
     netBack.rotation.y = sign > 0 ? Math.PI : 0;
+    netBack.position.set(0, goal.height / 2, netBackZ);
     netBack.material = netMaterial;
     netBack.isPickable = false;
 
@@ -261,6 +295,24 @@ export function buildArena(
       netSide.isPickable = false;
     }
 
+    // Back stays: the two struts that hold a real frame up, running from the
+    // top corners down to the foot of the net. Cheap, and they are the detail
+    // that stops the goal reading as three sticks and a curtain.
+    for (const side of [-1, 1]) {
+      const stayLength = Math.hypot(goal.depth, goal.height);
+      const stay = MeshBuilder.CreateCylinder(
+        `${owner}-stay${side}`,
+        { diameter: goal.postRadius * 1.4, height: stayLength, tessellation: 8 },
+        scene,
+      );
+      stay.position.set(side * postX, goal.height / 2, goalZ + (sign * goal.depth) / 2);
+      stay.rotation.x = Math.atan2(goal.depth, goal.height) * sign;
+      stay.material = frameMaterial;
+      stay.isPickable = false;
+      stay.receiveShadows = true;
+      shadowCasters.push(stay);
+    }
+
     const netRoof = MeshBuilder.CreateGround(
       `${owner}-netRoof`,
       { width: goal.width + goal.postRadius * 2, height: goal.depth },
@@ -270,7 +322,7 @@ export function buildArena(
     netRoof.material = netMaterial;
     netRoof.isPickable = false;
 
-    goals.set(owner, { owner, parts });
+    goals.set(owner, { owner, parts, netBack });
   }
 
   // ── Neighbourhood backdrop ──────────────────────────────────────────────────

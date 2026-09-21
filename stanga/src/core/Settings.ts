@@ -46,6 +46,12 @@ export interface GameSettings {
   sensitivity: number;
   quality: QualityLevel;
   vibration: boolean;
+  /**
+   * Puts the virtual stick on the right and the buttons on the left.
+   * Which thumb people want where is a matter of how they hold the phone,
+   * not something the game can work out for them.
+   */
+  mirrorTouchControls: boolean;
   difficulty: Difficulty;
   /** Gamepad and virtual-stick dead zone. */
   deadZone: number;
@@ -93,6 +99,7 @@ export function defaultSettings(): GameSettings {
     quality: 'medium',
     // Vibration support is unreliable across browsers, so it stays off unless asked for.
     vibration: false,
+    mirrorTouchControls: false,
     difficulty: 'normal',
     deadZone: GameConfig.input.deadZone,
     cameraShake: 'subtle',
@@ -169,6 +176,7 @@ export function sanitizeSettings(raw: unknown): GameSettings {
     ),
     quality: coerceEnum(source.quality, QUALITY_LEVELS, defaults.quality),
     vibration: coerceBool(source.vibration, defaults.vibration),
+    mirrorTouchControls: coerceBool(source.mirrorTouchControls, defaults.mirrorTouchControls),
     difficulty: coerceEnum(source.difficulty, DIFFICULTIES, defaults.difficulty),
     deadZone: coerceNumber(
       source.deadZone,

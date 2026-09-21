@@ -162,18 +162,8 @@ export function describeShot(
 }
 
 /**
- * The sideways acceleration spin puts on a moving ball, in m/s per second.
- *
- * Only the vertical component of the spin is modelled, which is the one that
- * bends a shot left or right; top and back spin would need the full vector and
- * would mostly be invisible on a pitch this size.
+ * The sideways acceleration spin puts on a moving ball, m/s^2.
+ * Lives with the rest of the flight model; re-exported here because the
+ * strike and the bend are one subject as far as callers are concerned.
  */
-export function magnusAcceleration(
-  spinRateY: number,
-  velocityX: number,
-  velocityZ: number,
-): { x: number; z: number } {
-  const coefficient = GameConfig.kick.magnusCoefficient * spinRateY;
-  // omega(0, w, 0) x v(vx, _, vz) = (w*vz, 0, -w*vx)
-  return { x: coefficient * velocityZ, z: -coefficient * velocityX };
-}
+export { magnusAcceleration } from './BallFlight';

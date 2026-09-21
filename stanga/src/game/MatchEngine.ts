@@ -44,7 +44,8 @@ import {
 } from './MatchState';
 import { findAssist } from './Attribution';
 import { ONE_VS_ONE_ROSTER, type MatchRoster } from './MatchRoster';
-import { magnusAcceleration, resolveShot, type ResolvedShot } from './ShotResolver';
+import { airDragFactor, magnusAcceleration, rollingFactor } from './BallFlight';
+import { resolveShot, type ResolvedShot } from './ShotResolver';
 import { TouchRuleEngine, type TouchOutcome } from './TouchRuleEngine';
 import { ScoringSystem } from './ScoringSystem';
 
@@ -410,7 +411,7 @@ export class MatchEngine {
     // Air is air whether the ball is flying or rolling: dv = -k |v| v dt, on
     // all three components, so the drag pulls against the actual direction of
     // travel rather than only along the floor.
-    const drag = Math.max(0, 1 - config.airDrag * speed * dt);
+    const drag = airDragFactor(speed, dt);
     let vx = velocity.x * drag;
     const vy = velocity.y * drag;
     let vz = velocity.z * drag;
@@ -428,7 +429,7 @@ export class MatchEngine {
       }
     } else {
       // Rolling resistance is the ground's alone, and it acts along the floor.
-      const roll = Math.max(0, 1 - config.rollingResistance * dt);
+      const roll = rollingFactor(dt);
       vx *= roll;
       vz *= roll;
     }

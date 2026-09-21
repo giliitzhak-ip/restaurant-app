@@ -21,6 +21,9 @@ export class PostProcessing {
   private ssao: SSAO2RenderingPipeline | null = null;
   private camera: Camera | null = null;
   private profile: QualityProfile | null = null;
+  /** 0..1 of a decaying speed pulse, from a hard strike. */
+  private speedPulse = 0;
+  private baseVignette = 1;
 
   constructor(private readonly scene: Scene) {}
 
@@ -29,6 +32,32 @@ export class PostProcessing {
     if (this.camera === camera) return;
     this.camera = camera;
     if (this.profile) this.apply(this.profile);
+  }
+
+  /**
+   * A hard shot just left somebody's foot.
+   *
+   * What this does is deliberately small: the vignette tightens for about a
+   * third of a second and lets go. Real motion blur would need a velocity
+   * buffer for an object that crosses the screen in three frames, and the
+   * camera itself barely moves, so a screen-space blur would render almost
+   * nothing. A rim that closes in for a moment reads as pace and costs a
+   * uniform. It is skipped entirely on the presets with no post chain.
+   *
+   * @param strength 0..1, normally the power of the strike
+   */
+  pulseSpeed(strength: number): void {
+    this.speedPulse = Math.max(this.speedPulse, Math.max(0, Math.min(1, strength)));
+  }
+
+  /** Decays the speed pulse. Cheap enough to call every frame, always. */
+  update(dt: number): void {
+    if (this.speedPulse <= 0) return;
+    this.speedPulse = Math.max(0, this.speedPulse - dt * SPEED_PULSE_DECAY);
+    const processing = this.pipeline?.imageProcessing;
+    if (processing) {
+      processing.vignetteWeight = this.baseVignette + this.speedPulse * SPEED_PULSE_VIGNETTE;
+    }
   }
 
   apply(profile: QualityProfile): void {
@@ -60,7 +89,7 @@ export class PostProcessing {
     const processing = pipeline.imageProcessing;
     processing.vignetteEnabled = true;
     // A hint of falloff at the corners, not a tunnel.
-    processing.vignetteWeight = 1;
+    processing.vignetteWeight = this.baseVignette;
     processing.vignetteColor = new Color4(0, 0, 0, 0);
     processing.vignetteCameraFov = 1.2;
 
@@ -87,3 +116,9 @@ export class PostProcessing {
     this.ssao = null;
   }
 }
+
+/** How fast the speed pulse fades, in units per second. */
+const SPEED_PULSE_DECAY = 3.2;
+
+/** How much the vignette tightens at the peak of the pulse. */
+const SPEED_PULSE_VIGNETTE = 2.4;

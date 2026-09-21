@@ -1,6 +1,6 @@
 /** Hebrew UI strings. Code stays English; everything the player reads lives here. */
-import { GameConfig, type ScoreKind, type ShotStyle } from '../config/GameConfig';
-import { describeShot, elevationFor, styleProfile } from '../game/ShotResolver';
+import { type ScoreKind, type ShotStyle } from '../config/GameConfig';
+import { resolveShot } from '../game/ShotResolver';
 import type { MatchOutcome, ShotType, TeamId } from '../game/MatchState';
 
 export const SCORE_KIND_LABELS: Record<ScoreKind, string> = {
@@ -70,14 +70,22 @@ export function aimedShotType(player: {
   /** Where the ball is right now: above the volley height, this is a volley. */
   ballHeight: number;
 }): ShotType {
-  const style = player.chipRequested ? 'chip' : player.shotStyle;
-  return describeShot(
-    style,
-    elevationFor(style, player.verticalAim),
-    player.kickCharge,
-    player.spin * GameConfig.kick.maxSpinRate * styleProfile(style).spinScale,
-    player.ballHeight >= GameConfig.kick.volleyHeight,
-  );
+  /*
+   * Ask the resolver rather than re-deriving it.
+   *
+   * Working the profile out a second time here is how the HUD ends up
+   * disagreeing with the ball: the curled style puts a floor under the spin,
+   * and a copy of the rules that did not know about the floor announced a flat
+   * shot and then bent it. One answer, from the code that decides.
+   */
+  return resolveShot({
+    yaw: 0,
+    power: player.kickCharge,
+    verticalAim: player.verticalAim,
+    spin: player.spin,
+    style: player.chipRequested ? 'chip' : player.shotStyle,
+    ballHeight: player.ballHeight,
+  }).profile;
 }
 
 export function attackingGoalLabel(team: TeamId): string {

@@ -29,12 +29,12 @@ import {
 import {
   attackingGoalZ,
   defendingGoalZ,
-  type BallState,
   type MatchState,
   type PlayerState,
   type TeamId,
 } from '../game/MatchState';
 import { canPlayerTouch } from '../game/TouchRuleEngine';
+import { predictBall } from '../game/BallFlight';
 
 /**
  * The states of one-touch football.
@@ -76,54 +76,6 @@ interface ShotPlan {
   style: ShotStyle;
   /** How long the AI keeps charging before releasing. */
   chargeSeconds: number;
-}
-
-/**
- * Where the ball will be in `seconds`, given how it is moving now.
- *
- * The same drag and gravity the simulation uses, integrated forward in coarse
- * steps — coarse on purpose, because this is a guess about the future and
- * spending a hundred steps on it would buy nothing. Exported so the tests can
- * check the opponent is actually running at the right place.
- */
-export function predictBall(ball: BallState, seconds: number, steps = 6): Vec3 {
-  const { ball: config, physics } = GameConfig;
-  const dt = seconds / Math.max(1, steps);
-  let x = ball.position.x;
-  let y = ball.position.y;
-  let z = ball.position.z;
-  let vx = ball.velocity.x;
-  let vy = ball.velocity.y;
-  let vz = ball.velocity.z;
-
-  for (let i = 0; i < steps; i += 1) {
-    const speed = Math.hypot(vx, vy, vz);
-    const drag = Math.max(0, 1 - config.airDrag * speed * dt);
-    vx *= drag;
-    vy *= drag;
-    vz *= drag;
-    if (y > config.airborneHeight) {
-      vy += physics.gravity * dt;
-    } else {
-      const roll = Math.max(0, 1 - config.rollingResistance * dt);
-      vx *= roll;
-      vz *= roll;
-      if (vy < 0) vy = 0;
-    }
-    x += vx * dt;
-    y = Math.max(config.radius, y + vy * dt);
-    z += vz * dt;
-  }
-
-  // The pitch is walled; a prediction that leaves it would send the opponent
-  // running at the fence.
-  const halfWidth = GameConfig.field.width / 2 - config.radius;
-  const halfLength = GameConfig.field.length / 2 + GameConfig.goal.depth;
-  return {
-    x: clamp(x, -halfWidth, halfWidth),
-    y,
-    z: clamp(z, -halfLength, halfLength),
-  };
 }
 
 export class AIController implements PlayerController {

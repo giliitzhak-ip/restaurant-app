@@ -48,6 +48,14 @@ import {
   pointsLabel,
 } from './labels';
 
+/** Everything the touch-rule badge needs to say which of its four states it is in. */
+export interface TouchBadgeView {
+  canTouch: boolean;
+  /** An aerial chain is running: the ball has not come down since the touch. */
+  inAirChain: boolean;
+  juggles: number;
+}
+
 export type ScreenName =
   | 'loading'
   | 'menu'
@@ -197,6 +205,10 @@ export class UIManager {
   private readonly touchBadge: HTMLElement;
   private readonly touchDot: HTMLElement;
   private readonly touchText: HTMLElement;
+  private readonly aimBadge: HTMLElement;
+  private readonly aimFill: HTMLElement;
+  private readonly aimAngle: HTMLElement;
+  private readonly aimStyle: HTMLElement;
   private readonly chatFeed: HTMLElement;
   private readonly meters: {
     root: HTMLElement;
@@ -221,7 +233,7 @@ export class UIManager {
     HTMLElement
   >;
   private readonly toggles: Record<
-    'vibration' | 'contrast' | 'flashes' | 'motion' | 'captions' | 'quickChat',
+    'vibration' | 'mirror' | 'contrast' | 'flashes' | 'motion' | 'captions' | 'quickChat',
     { button: HTMLButtonElement; state: HTMLElement }
   >;
 
@@ -286,6 +298,10 @@ export class UIManager {
     this.touchBadge = requireElement('hud-touch');
     this.touchDot = requireElement('hud-touch-dot');
     this.touchText = requireElement('hud-touch-text');
+    this.aimBadge = requireElement('hud-aim');
+    this.aimFill = requireElement('hud-aim-fill');
+    this.aimAngle = requireElement('hud-aim-angle');
+    this.aimStyle = requireElement('hud-aim-style');
     this.chatFeed = requireElement('hud-chat');
 
     this.meters = [
@@ -329,6 +345,10 @@ export class UIManager {
       vibration: {
         button: requireElement<HTMLButtonElement>('set-vibration'),
         state: requireElement('out-vibration'),
+      },
+      mirror: {
+        button: requireElement<HTMLButtonElement>('set-mirror'),
+        state: requireElement('out-mirror'),
       },
       contrast: {
         button: requireElement<HTMLButtonElement>('set-contrast'),
@@ -529,20 +549,43 @@ export class UIManager {
    * `null` hides it entirely, which is what happens outside live play. The
    * juggle counter is what tells a player their aerial chain is still alive.
    */
-  setTouchState(view: { canTouch: boolean; juggles: number } | null): void {
+  setTouchState(view: TouchBadgeView | null): void {
     if (view === null) {
       this.touchBadge.hidden = true;
+      this.aimBadge.hidden = true;
       return;
     }
     this.touchBadge.hidden = false;
     this.touchBadge.classList.toggle('is-spent', !view.canTouch);
-    this.touchBadge.classList.toggle('is-juggling', view.juggles > 1);
-    this.touchText.textContent = view.canTouch
-      ? view.juggles > 1
-        ? `הקפצות · ${view.juggles}`
-        : 'הנגיעה שלך'
-      : 'הנגיעה נוצלה';
+    this.touchBadge.classList.toggle('is-juggling', view.inAirChain);
+    /*
+     * Four states, four sentences. The rule has four, and a badge that only
+     * said "yours" or "spent" left the two that matter most unexplained: that
+     * an aerial chain is still running, and that the ball is simply waiting
+     * for the other side to play it.
+     */
+    this.touchText.textContent = view.inAirChain
+      ? `שליטה באוויר · ${view.juggles}`
+      : view.canTouch
+        ? 'נגיעה זמינה'
+        : 'ממתין לנגיעת היריב';
     void this.touchDot;
+  }
+
+  /** The height the next strike is aimed at, and whether a volley is on. */
+  setAimState(view: { elevation: number; style: string; volley: boolean } | null): void {
+    if (view === null) {
+      this.aimBadge.hidden = true;
+      return;
+    }
+    const { kick } = GameConfig;
+    const share =
+      (view.elevation - kick.minElevation) / (kick.maxElevation - kick.minElevation || 1);
+    this.aimBadge.hidden = false;
+    this.aimFill.style.height = `${Math.round(Math.max(0, Math.min(1, share)) * 100)}%`;
+    this.aimAngle.textContent = `${Math.round((view.elevation * 180) / Math.PI)}°`;
+    this.aimStyle.textContent = view.style;
+    this.aimBadge.classList.toggle('is-volley', view.volley);
   }
 
   /** Announces a touch-rule call on the same banner a goal uses. */
@@ -636,6 +679,7 @@ export class UIManager {
 
   resetHud(): void {
     this.touchBadge.hidden = true;
+    this.aimBadge.hidden = true;
     this.eventBanner.classList.remove('is-violation');
     this.lastViolationTick = -1;
     this.lastClockText = '';
@@ -1026,6 +1070,10 @@ export class UIManager {
     this.toggles.vibration.button.addEventListener('click', () => {
       this.callbacks.onInteraction();
       update({ vibration: !this.settings.vibration });
+    });
+    this.toggles.mirror.button.addEventListener('click', () => {
+      this.callbacks.onInteraction();
+      update({ mirrorTouchControls: !this.settings.mirrorTouchControls });
     });
     this.toggles.contrast.button.addEventListener('click', () => {
       this.callbacks.onInteraction();
@@ -1475,6 +1523,7 @@ export class UIManager {
       settings.aimAssist <= 0 ? 'כבוי' : `${Math.round(settings.aimAssist * 100)}%`;
 
     setToggle(this.toggles.vibration, settings.vibration);
+    setToggle(this.toggles.mirror, settings.mirrorTouchControls);
     setToggle(this.toggles.contrast, settings.accessibility.highContrast);
     setToggle(this.toggles.flashes, settings.accessibility.reduceFlashes);
     setToggle(this.toggles.motion, settings.accessibility.reduceCameraMotion);

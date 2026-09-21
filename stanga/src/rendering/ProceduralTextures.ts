@@ -19,6 +19,17 @@ function createCanvasTexture(
   texture.update(false);
   texture.wrapU = Texture.WRAP_ADDRESSMODE;
   texture.wrapV = Texture.WRAP_ADDRESSMODE;
+  /*
+   * Anisotropic filtering, because almost everything here is seen at a
+   * grazing angle.
+   *
+   * A pitch is a floor, and a chase camera looks along it rather than down at
+   * it. Trilinear filtering picks a mip level from the worse of the two axes,
+   * so the far half of the pitch — and every painted line on it — is sampled
+   * from a blurred mip and reads as mush. Eight samples is the usual sweet
+   * spot: the hardware clamps it to whatever it supports.
+   */
+  texture.anisotropicFilteringLevel = 8;
   return texture;
 }
 
@@ -67,20 +78,39 @@ export function createAsphaltTexture(scene: Scene, size = 1024): DynamicTexture 
       ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
     }
 
-    // Hairline cracks.
-    ctx.strokeStyle = 'rgba(24,25,28,0.55)';
-    for (let i = 0; i < 18; i += 1) {
-      ctx.lineWidth = rng.range(0.6, 1.8);
-      ctx.beginPath();
+    /*
+     * Hairline cracks, which run rather than wander.
+     *
+     * This used to be a random walk: seven segments each jittered in both
+     * axes, which produces a scribble, not a crack. Tiled seven by eleven
+     * across the pitch, the same scribble then appeared seventy-seven times
+     * and the surface read as scattered graffiti. A crack has a direction it
+     * is going in and only wobbles about it, it thins out along its length,
+     * and there are fewer of them than you would think.
+     */
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 7; i += 1) {
+      const heading = rng.range(0, Math.PI * 2);
       let x = rng.next() * size;
       let y = rng.next() * size;
-      ctx.moveTo(x, y);
-      for (let segment = 0; segment < 7; segment += 1) {
-        x += rng.jitter(size * 0.07);
-        y += rng.jitter(size * 0.07);
-        ctx.lineTo(x, y);
+      const segments = 9;
+      const step = rng.range(size * 0.05, size * 0.11);
+      let angle = heading;
+      for (let segment = 0; segment < segments; segment += 1) {
+        // Fades out towards the far end, the way a crack peters into the grain.
+        const along = 1 - segment / segments;
+        ctx.strokeStyle = `rgba(28,29,33,${(0.34 * along).toFixed(3)})`;
+        ctx.lineWidth = rng.range(0.5, 1.1) * (0.45 + along * 0.55);
+        angle += rng.jitter(0.22);
+        const nextX = x + Math.cos(angle) * step;
+        const nextY = y + Math.sin(angle) * step;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(nextX, nextY);
+        ctx.stroke();
+        x = nextX;
+        y = nextY;
       }
-      ctx.stroke();
     }
   });
 }
@@ -131,11 +161,16 @@ export function createAsphaltRoughnessTexture(scene: Scene, size = 512): Dynamic
 }
 
 /** Painted street-pitch markings on a transparent layer laid over the asphalt. */
-export function createLineTexture(scene: Scene, aspect: number, size = 1024): DynamicTexture {
+export function createLineTexture(scene: Scene, aspect: number, size = 2048): DynamicTexture {
   return createCanvasTexture('pitchLines', size, scene, (ctx) => {
     ctx.clearRect(0, 0, size, size);
-    ctx.strokeStyle = 'rgba(236,238,241,0.72)';
-    ctx.lineWidth = size * 0.007;
+    // Paint on asphalt has a soft edge, not a hard one, but the edge still has
+    // to survive being stretched over a pitch twenty metres wide: hence the
+    // doubled resolution and the round joins.
+    ctx.strokeStyle = 'rgba(240,242,245,0.82)';
+    ctx.lineWidth = size * 0.0045;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
 
     const marginX = size * 0.05;
     const marginY = size * 0.05;
@@ -153,8 +188,8 @@ export function createLineTexture(scene: Scene, aspect: number, size = 1024): Dy
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.arc(size / 2, size / 2, size * 0.009, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(236,238,241,0.8)';
+    ctx.arc(size / 2, size / 2, size * 0.007, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(240,242,245,0.88)';
     ctx.fill();
 
     // Goal areas.
