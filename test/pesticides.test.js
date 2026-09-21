@@ -511,8 +511,12 @@ await page(async p=>{
   eq('בלוקיון נכנס ליומן',[after.id,after.nm],['blokion-plus','בלוקיון פלוס']);
   ok('לא מוצגת הודעת חסימה',!after.txt.includes('לא ניתן לבחור בחומר זה'));
   ok('מוצג תג מידע כתום',after.txt.includes('מידע יושלם בהמשך'));
-  ok('מוצגים תגי השלמת מידע',after.txt.includes('פרטי רישום לא הוזנו')&&
-     after.txt.includes('תווית טרם צורפה')&&after.txt.includes('תוקף לא ידוע'));
+  ok('המסך נקי מהודעות "אין לנו את זה"',
+     !after.txt.includes('לא נשמרו במערכת אזהרות')&&
+     !after.txt.includes('לא הוזנו נתונים מהתווית')&&
+     !after.txt.includes('פרטי רישום לא הוזנו'),after.txt.slice(0,200));
+  ok('מוצגים שדות ריקים למילוי',after.txt.includes('אזהרות והנחיות ללקוח')&&
+     after.txt.includes('זמן כניסה מחדש')&&after.txt.includes('הזנה ידנית'));
 });
 await page(async p=>{
   await startJ(p);
@@ -712,8 +716,9 @@ const errs=await page(async p=>{
   ok('שתי התצוגות קיימות',txt.includes('הנחיות ללקוח')&&txt.includes('מידע מקצועי למדביר'));
   ok('ציוד מגן אינו מוצג כדרישה מהלקוח',
      await p.evaluate(()=>{const c=customerView(cur);return !/ציוד מגן אישי/.test(c)}));
-  ok('ציוד מגן מופיע רק בתצוגה המקצועית',
-     await p.evaluate(()=>/ציוד מגן אישי/.test(professionalView(cur))));
+  ok('התצוגה המקצועית מציגה את פרטי הרישום',
+     await p.evaluate(()=>{const v=professionalView(cur);
+       return /640/.test(v)&&/569/.test(v)&&/מידע מקצועי למדביר/.test(v)}));
   const re=await p.evaluate(()=>reentryFor(cur));
   eq('שני זמנים מספריים',re.numeric.length,2);
   eq('הוחל הזמן המחמיר',re.minutes,60);
@@ -729,6 +734,86 @@ await page(async p=>{
   ok('מסך התבניות RTL',await p.evaluate(()=>getComputedStyle(document.querySelector('.tgrid')).direction==='rtl'));
   const overflow=await p.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1);
   ok('אין גלילה אופקית בנייד',overflow);
+});
+
+console.log('\n13. מילוי ידני ושימוש חוזר');
+await page(async p=>{
+  await startJ(p);
+  await p.fill('#pq','מאסטר פליי');await p.waitForTimeout(320);
+  await p.click('.sugitem');await p.waitForTimeout(300);
+  const t=await p.textContent('#app');
+  ok('אין ערימת הודעות על מידע חסר',
+     !t.includes('לא נשמרו במערכת אזהרות')&&!t.includes('לא הוזנו נתונים מהתווית')&&
+     !t.includes('מינונים ומגבלות ריסוס אינם נשמרים במערכת. יש לקחת'),t.slice(0,160));
+  ok('מוצגים שדות ריקים למילוי',t.includes('אזהרות והנחיות ללקוח')&&
+     t.includes('זמן כניסה מחדש')&&t.includes('מינון והוראות שימוש'));
+  eq('השדות ריקים',await p.evaluate(()=>{const m=cur.apps[0].manualLabel||{};
+    return [m.warnings||'',m.reentry||'',m.dosage||'']}),['','','']);
+  ok('אין כפתור טעינה כשאין יומן קודם',!(await p.$('[data-a="loadManual"]')));
+  ok('אין תצוגה מקצועית ריקה',!t.includes('מידע מקצועי למדביר'));
+});
+await page(async p=>{
+  /* ממלאים פעם אחת ומסיימים יומן */
+  const first=await p.evaluate(async pl=>{
+    await A.newJ();
+    cur.client.name='מסעדת הגפן';cur.place=Object.assign(cur.place,pl);
+    const m=PRODUCTS().find(x=>x.nameHe==='מאסטר פליי');
+    selectMaterial(m,{index:0});
+    const a=cur.apps[0];
+    a.pest='זבובים בוגרים';
+    a.manualLabel={warnings:'לאוורר את המקום.\nלהרחיק ילדים עד להתייבשות.',
+      reentry:'שעה לאחר הריסוס',dosage:'לפי התווית, 30 מ"ל ל-10 ליטר'};
+    a.batch='MF-77';a.pkgExpiry='2027-05-01';a.amountUsed='30 מ"ל';
+    a.waterAmount='10 ליטר';a.areas='מטבח ומחסן';
+    cur.findings[0].pest='זבובים בוגרים';cur.findings[0].signs='x';
+    cur.findings[0].level='נמוכה';cur.findings[0].identification='x';cur.findings[0].location='מטבח';
+    cur.status='done';cur.completedAt=Date.now();cur.techSig='s';
+    cur.handover={delivered:true,receiverName:'דנה',receiverSig:'s'};
+    S.journals[cur.id]=cur;saveLocal();
+    return {id:cur.id,no:cur.no};
+  },PLACE);
+  /* יומן חדש עם אותו חומר */
+  await p.evaluate(async pl=>{
+    await A.newJ();cur.client.name='מסעדת הגפן';
+    cur.place=Object.assign(cur.place,pl);cur.step=3;
+    selectMaterial(PRODUCTS().find(x=>x.nameHe==='מאסטר פליי'),{index:0});
+    render();
+  },PLACE);
+  await p.waitForTimeout(250);
+  ok('מוצע לטעון מהיומן הקודם',!!(await p.$('[data-a="loadManual"]')));
+  ok('הכפתור מציין את מספר היומן',
+     (await p.textContent('[data-a="loadManual"]')).includes('#'+first.no));
+  eq('לפני הטעינה השדות ריקים',
+     await p.evaluate(()=>(cur.apps[0].manualLabel||{}).warnings||''),'');
+  await p.click('[data-a="loadManual"]');await p.waitForTimeout(300);
+  const m=await p.evaluate(()=>cur.apps[0].manualLabel);
+  ok('האזהרות נטענו',m.warnings.includes('לאוורר את המקום'),JSON.stringify(m));
+  eq('זמן הכניסה נטען',m.reentry,'שעה לאחר הריסוס');
+  ok('המינון נטען',m.dosage.includes('30 מ"ל'));
+  const r=await p.evaluate(()=>({batch:cur.apps[0].batch,used:cur.apps[0].amountUsed,
+    areas:cur.apps[0].areas,txt:document.getElementById('app').textContent,
+    re:reentryFor(cur)}));
+  eq('נתוני הביצוע לא נטענו',[r.batch,r.used,r.areas],['','','']);
+  ok('האזהרות מוצגות בהנחיות ללקוח תחת שם החומר',
+     r.txt.includes('אזהרות והנחיות שנמסרו ללקוח')&&r.txt.includes('לאוורר את המקום'));
+  ok('זמן הכניסה הידני נכלל בחישוב',
+     r.re.special.some(x=>x.product==='מאסטר פליי'&&x.text==='שעה לאחר הריסוס'),
+     JSON.stringify(r.re));
+});
+await page(async p=>{
+  await startJ(p);
+  await p.evaluate(()=>{selectMaterial(PRODUCTS().find(x=>x.nameHe==='מאסטר פליי'),{index:0});
+    cur.apps[0].pest='זבובים בוגרים';touch();render()});
+  const errs=await p.evaluate(()=>validate(cur).map(e=>e.msg));
+  ok('נדרשות אזהרות וזמן כניסה למילוי ידני',
+     errs.some(m=>m.includes('אזהרות והנחיות ללקוח'))&&errs.some(m=>m.includes('זמן כניסה מחדש')),
+     errs.join(' | '));
+  await p.evaluate(()=>{cur.apps[0].manualLabel={warnings:'א',reentry:'ב',dosage:''};touch()});
+  const after=await p.evaluate(()=>validate(cur).map(e=>e.msg));
+  ok('לאחר מילוי אין יותר דרישה',
+     !after.some(m=>m.includes('אזהרות והנחיות ללקוח'))&&!after.some(m=>m.includes('זמן כניסה מחדש')),
+     after.join(' | '));
+  ok('מינון אינו חובה',!after.some(m=>m.includes('מינון והוראות שימוש')));
 });
 
 await B.close();

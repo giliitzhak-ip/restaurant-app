@@ -182,6 +182,7 @@ textarea{min-height:96px;resize:vertical}
   padding:2px 8px;font-size:11.5px;font-weight:600}
 .mwarn{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--danger);
   font-weight:600;margin:6px 0 0}
+.lmini{margin:8px 0 0;font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .selchip.info{border-color:var(--gold)}
 .sugitem.info .sicon{background:var(--gold-soft);color:#7a6634}
 .pcard.info{border-color:var(--gold)}
@@ -492,6 +493,8 @@ const newFinding=()=>({id:uid(),pest:'',subtype:'',identification:'',stage:'',si
 const newApp=()=>({id:uid(),pest:'',product:'',active:'',conc:'',batch:'',dose:'',unit:'',unitOther:'',rtu:false,useConc:'',method:'',methodOther:'',fromDb:false,
   /* תכשיר מהמאגר המאומת + נתוני ביצוע שמוזנים ידנית בכל טיפול */
   selectedMaterialId:'',selectedMaterialName:'',materialDetails:null,
+  /* פרטי תווית שהמדביר מזין בעצמו לחומר שאין לו נתונים במערכת */
+  manualLabel:{warnings:'',reentry:'',dosage:''},
   registrationNumber:'',surface:'',dosageId:'',
   pkgExpiry:'',amountUsed:'',waterAmount:'',areas:'',stations:[],nextCheck:''});
 const newAssistant=()=>({id:uid(),name:'',license:'',licenseType:'',phone:'',email:'',sig:null});
@@ -578,11 +581,9 @@ function validate(j){
   req(4,'prevention','פעולות מניעה ו/או טיפול שבוצעו או הומלצו');
   req(4,'circumstances','הנסיבות שבהן הוחלט לנקוט בהדברה');
   // 5 warn before
-  /* האזהרות הרשמיות מגיעות מהתווית רק כשהן קיימות בה.
-     לחומר שטרם הוזנו לו אזהרות, המדביר ממלא אותן ידנית. */
-  const hasLabelWarnings=p=>!!p&&((p.warningsHuman||[]).length||(p.warningsAnimals||[]).length
-    ||(p.warningsEnvironment||[]).length||(p.customerInstructionsAfter||[]).length);
-  const labelWarn=j.apps.length&&j.apps.every(a=>hasLabelWarnings(labelOf(a)));
+  /* האזהרות מגיעות מהתווית כשהיא במערכת, ואחרת מהשדות שהמדביר מילא
+     ליד החומר עצמו. בשני המקרים אין צורך בשדות האזהרה הכלליים. */
+  const labelWarn=j.apps.length&&j.apps.every(a=>!!labelOf(a));
   (labelWarn?[['nature','טיב ההדברה']]
    :[['nature','טיב ההדברה'],['product','שם התכשיר'],['active','החומר הפעיל'],['riskHuman','סיכונים לאדם'],['riskAnimals','סיכונים לבעלי חיים'],['reentry','זמן כניסה לאחר ההדברה']])
    .forEach(([k,m])=>req(5,'warnBefore.'+k,'לפני ההדברה: '+m));
@@ -597,6 +598,12 @@ function validate(j){
     if(lp){
       /* תכשיר מהמאגר המאומת: התווית מספקת את הנתונים הרשמיים,
          והמדביר מזין רק את נתוני הביצוע של הטיפול הזה */
+      /* לחומר שאין לו נתוני תווית במערכת – האזהרות וזמן הכניסה
+         נדרשים מהשדות שהמדביר מילא ליד החומר */
+      if(!hasLabelData(lp)){
+        req(6,`apps.${i}.manualLabel.warnings`,n+'אזהרות והנחיות ללקוח');
+        req(6,`apps.${i}.manualLabel.reentry`,n+'זמן כניסה מחדש');
+      }
       req(6,`apps.${i}.pest`,n+'המזיק שטופל');
       /* מגבילים למזיקי התווית רק כשהוזנו כאלה. אחרת המזיק מוזן ידנית. */
       if(a.pest&&(lp.targetPests||[]).length&&!lp.targetPests.includes(a.pest))
@@ -918,7 +925,7 @@ function w3(){
   ${(()=>{const L=lastForClient(cur.client.name,cur.client.phone,cur.id);return L?`<button class="btn gold w" style="margin-bottom:10px" data-a="loadLastApps" data-p="${L.id}">${ic('hist',18)} טעינת תכשירים ואצוות מיומן #${L.no} של ${esc(L.client.name)}</button>`:''})()}
   ${recentApps().length?`<button class="btn ghost w" style="margin-bottom:14px" data-a="loadRecent">${ic('hist',18)} טעינת תכשירים ואצוות מיומנים אחרונים</button>`:''}
   ${cur.apps.map((a,i)=>labelOf(a)||!a.product?`<div class="appblock">${cur.apps.length>1?`<div class="sech" style="border-radius:var(--r-lg) var(--r-lg) 0 0"><h3>תכשיר ${i+1}</h3><button class="del" data-a="rm" data-k="apps" data-i="${i}">הסר</button></div>`:''}
-    ${catalogBox(a,i)}${labelOf(a)?executionBox(a,i):''}</div>`
+    ${catalogBox(a,i)}${labelOf(a)?manualLabelBox(a,i)+executionBox(a,i):''}</div>`
    :`<div class="sec"><div class="sech"><h3>תכשיר ${i+1}${a.product?': '+esc(a.product):''}</h3>${cur.apps.length>1?`<button class="del" data-a="rm" data-k="apps" data-i="${i}">הסר</button>`:''}</div><div class="secb">
     ${fInput('שם המזיק',`apps.${i}.pest`)}
     ${pests.length?`<div class="chips" style="margin-top:8px">${pests.map(p=>`<button type="button" class="chip ${a.pest===p?'on':''}" data-a="setv" data-f="apps.${i}.pest" data-val="${esc(p)}">${esc(p)}</button>`).join('')}</div>`:''}
@@ -1223,7 +1230,12 @@ function docHTML(j){
     ${re.special.map(x=>`<p><b>${esc(x.product)}:</b> ${esc(x.text)}</p>`).join('')}
     ${re.conditional.length?`<p><b>הוראות מיוחדות:</b> ${re.conditional.map(x=>esc(x.product)+' – '+esc(x.text)).join(' | ')}</p>`:''}
     ${g.map(x=>{const p=x.label;const L=(t,arr)=>(arr||[]).length?`<p style="margin:2px 0"><b>${t}:</b> ${arr.map(esc).join(' ')}</p>`:'';
-      return `<div class="avoid" style="margin-top:6px"><p style="margin:4px 0 2px"><b>${esc(p.nameHe)}</b> · רישום ${esc(p.registrationNumber)} · תוקף ${esc(p.registrationExpiry)} · ${esc(p.statusLabel||'')}${p.lastVerifiedAt?' · אומת '+fmtD(p.lastVerifiedAt):''}</p>
+      const man=(j.apps||[]).filter(y=>materialIdOf(y)===p.id).map(manualOf);
+      return `<div class="avoid" style="margin-top:6px"><p style="margin:4px 0 2px"><b>${esc(p.nameHe)}</b>${p.registrationNumber?' · רישום '+esc(p.registrationNumber):''}${p.registrationExpiry?' · תוקף '+esc(p.registrationExpiry):''}${p.lastVerifiedAt?' · אומת '+fmtD(p.lastVerifiedAt):''}</p>
+      ${man.map(m=>[m.warnings&&`<p class="pre" style="margin:2px 0"><b>אזהרות והנחיות ללקוח:</b> ${esc(m.warnings)}</p>`,
+                    m.reentry&&`<p style="margin:2px 0"><b>זמן כניסה מחדש:</b> ${esc(m.reentry)}</p>`,
+                    m.dosage&&`<p class="pre" style="margin:2px 0"><b>מינון והוראות שימוש:</b> ${esc(m.dosage)}</p>`]
+                   .filter(Boolean).join('')).join('')}
       ${L('לפני הטיפול',p.customerInstructionsBefore)}${L('בסיום הטיפול',p.customerInstructionsAfter)}
       ${L('אזהרות לאדם',p.warningsHuman)}${L('אזהרות לבעלי חיים',p.warningsAnimals)}${L('אזהרות לסביבה',p.warningsEnvironment)}
       ${x.conditionals.length?L('הוראה מיוחדת לטיפול הזה',x.conditionals.map(c=>c.text)):''}
@@ -1956,6 +1968,8 @@ function applyClone(j,src,keys){
         n.selectedMaterialId=a.selectedMaterialId||'';n.selectedMaterialName=a.selectedMaterialName||'';
         n.registrationNumber=a.registrationNumber||'';
         n.materialDetails=a.materialDetails?clone(a.materialDetails):null;
+        /* פרטי התווית שהוזנו ידנית נחשבים מידע על החומר, לא נתוני ביצוע */
+        n.manualLabel=clone(manualOf(a));
         n.surface=a.surface||'';
         if(K.has('dose')){n.dosageId=a.dosageId||'';n.dose=a.dose||'';n.unit=a.unit||'';n.unitOther=a.unitOther||''}
         if(K.has('useConc')){n.rtu=!!a.rtu;n.useConc=a.rtu?'':(a.useConc||'')}
@@ -2460,11 +2474,15 @@ function reentryFor(j){
   (j.apps||[]).forEach(a=>{
     const p=labelOf(a);if(!p)return;
     const r=p.reentry||{};
+    const man=String(manualOf(a).reentry||'').trim();
     if(r.type==='numeric'&&r.minutes>0){
       out.numeric.push({product:p.nameHe,minutes:r.minutes,text:r.text});
       out.minutes=Math.max(out.minutes,r.minutes);
     }else if(r.type&&r.text){
       out.special.push({product:p.nameHe,text:r.text});
+    }else if(man){
+      /* זמן כניסה שהמדביר הזין בעצמו לחומר שאין לו נתונים במערכת */
+      out.special.push({product:p.nameHe,text:man});
     }
     activeConditionals(p,a).forEach(c=>out.conditional.push({product:p.nameHe,text:c.text}));
   });
@@ -2499,25 +2517,58 @@ function prodCard(p,{action='pickProd',idx=null,compact=false}={}){
       ${exp?`<small class="pwarn">${ic('warn',13)} ${esc(expiryWarning(p))}</small>`:''}
     </span></button>`;
 }
-/* פרטי האימות והקישור לתווית */
+/* פרטי הרישום והקישור לתווית – שורה אחת שקטה, בלי הצפה של הודעות */
 function labelMeta(p,{full=true}={}){
   if(!p)return '';
+  if(!prodVerifiedFlag(p)){
+    /* לחומר שטרם הוזנו לו פרטי תווית לא מציגים ערימת הודעות,
+       אלא שורת מידע קצרה בלבד. השדות למילוי מופיעים למטה. */
+    const bits=[p.formulation&&('סוג: '+p.formulation),p.manufacturer&&('בעל רישום: '+p.manufacturer)]
+      .filter(Boolean).join(' · ');
+    return `<p class="lmini">${bits?esc(bits):''}${bits?' · ':''}<span class="mtag">מידע יושלם בהמשך</span></p>`;
+  }
   const exp=regExpired(p);
-  const notices=materialNotices(p);
   return `<div class="lmeta">
-    <div class="lrow"><b>${esc(p.nameHe)}</b>
-      ${p.officialLabelUrl?`<a class="btn sm ghost" href="${esc(p.officialLabelUrl)}" target="_blank" rel="noopener">${ic('pdf',15)} צפייה בתווית המקורית</a>`:'<span class="opt">אין קישור לתווית במערכת</span>'}</div>
-    ${notices.length?`<p class="mtags">${notices.map(t=>`<span class="mtag">${esc(t)}</span>`).join('')}</p>`:''}
-    ${regExpired(p)?`<p class="mwarn">${ic('warn',14)} ${esc(expiryWarning(p))}
+    <div class="lrow"><b>${ic('check',14)} ${esc(p.statusLabel||'')}</b>
+      ${p.officialLabelUrl?`<a class="btn sm ghost" href="${esc(p.officialLabelUrl)}" target="_blank" rel="noopener">${ic('pdf',15)} צפייה בתווית המקורית</a>`:''}</div>
+    <p>מספר רישום ${esc(p.registrationNumber)} · תוקף ${esc(p.registrationExpiry)}${p.lastVerifiedAt?' · אומת '+fmtD(p.lastVerifiedAt):''}</p>
+    ${exp?`<p class="mwarn">${ic('warn',14)} ${esc(expiryWarning(p))}
       ${cur&&!(cur.expiryAck||{})[p.id]?`<button type="button" class="btn sm ghost" data-a="ackExpiry" data-p="${p.id}">קראתי והבנתי</button>`:'<span class="opt">✓ אושר</span>'}</p>`:''}
-    ${prodVerifiedFlag(p)
-      ?`<p>${ic('check',14)} ${esc(p.statusLabel||'')} · אומת בתאריך ${esc(fmtD(p.lastVerifiedAt)||p.lastVerifiedAt||'—')}</p>
-        <p>מספר רישום ${esc(p.registrationNumber)} · תוקף הרישום בתווית: ${esc(p.registrationExpiry)}${exp?' — התוקף חלף':''}</p>`
-      :`<p class="pinfo">${esc(p.statusLabel||'')}</p>
-        ${p.formulation?`<p>סוג התכשיר: ${esc(p.formulation)}</p>`:''}
-        ${p.manufacturer?`<p>בעל הרישום לפי הרשימה: ${esc(p.manufacturer)}</p>`:''}`}
-    ${full&&p.verificationNote?`<p class="opt">${esc(p.verificationNote)}</p>`:''}
   </div>`;
+}
+/* ---- פרטי תווית שהמדביר מזין בעצמו, לחומר שאין לו נתונים במערכת ---- */
+const MANUAL_FIELDS=[
+  ['warnings','אזהרות והנחיות ללקוח','מה נמסר ללקוח: סיכונים, הנחיות לפני ובסיום הטיפול',1],
+  ['reentry','זמן כניסה מחדש','למשל: שעה לאחר הריסוס ולאחר אוורור',0],
+  ['dosage','מינון והוראות שימוש','המינון שבוצע והוראות התווית',1]
+];
+const manualOf=a=>(a&&a.manualLabel)||{};
+const hasLabelData=p=>!!p&&((p.warningsHuman||[]).length||(p.warningsAnimals||[]).length
+  ||(p.warningsEnvironment||[]).length||(p.customerInstructionsAfter||[]).length);
+const manualFilled=a=>{const m=manualOf(a);return !!(String(m.warnings||'').trim()||String(m.reentry||'').trim())};
+/* היומן האחרון שבו מולאו פרטים ידנית לאותו חומר */
+function lastManualFor(mid,exceptId){
+  if(!mid)return null;
+  const hit=journals().filter(x=>x.id!==exceptId&&x.status==='done')
+    .sort((a,b)=>(b.completedAt||0)-(a.completedAt||0))
+    .map(x=>({j:x,a:(x.apps||[]).find(y=>materialIdOf(y)===mid&&manualFilled(y))}))
+    .find(x=>!!x.a);
+  return hit||null;
+}
+function manualLabelBox(a,i){
+  const p=labelOf(a);
+  if(!p||hasLabelData(p))return '';
+  const m=manualOf(a),prev=lastManualFor(materialIdOf(a),cur&&cur.id);
+  return `<div class="sec"><div class="sech"><h3>פרטי התווית של ${esc(p.nameHe)}</h3>
+     <span class="tag draft">הזנה ידנית</span></div><div class="secb">
+   ${prev?`<button class="btn gold w sm" style="margin-top:10px" data-a="loadManual" data-i="${i}" data-p="${prev.j.id}">
+      ${ic('hist',16)} טעינה מיומן #${prev.j.no} (${fmtD(prev.j.date)})</button>`:''}
+   ${MANUAL_FIELDS.map(([k,label,ph,area])=>`<label class="field${ec(`apps.${i}.manualLabel.${k}`)}">
+     <span class="${k==='dosage'?'':'req'}">${label}</span>
+     ${area?`<textarea data-f="apps.${i}.manualLabel.${k}" placeholder="${esc(ph)}">${esc(m[k]||'')}</textarea>`
+           :`<input data-f="apps.${i}.manualLabel.${k}" value="${esc(m[k]||'')}" placeholder="${esc(ph)}">`}</label>`).join('')}
+   <p class="hint">מה שתמלא כאן יישמר, ובטיפול הבא באותו חומר אפשר יהיה לטעון אותו בלחיצה.</p>
+  </div></div>`;
 }
 const listBox=(title,arr,cls)=>(arr||[]).length
   ?`<div class="wbox ${cls||''}"><b>${esc(title)}</b><ul>${arr.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:'';
@@ -2535,12 +2586,12 @@ function customerView(j){
    ${re.conditional.length?`<div class="reentry warn"><b>הוראות מיוחדות נוספות</b>
      <ul>${re.conditional.map(x=>`<li>${esc(x.product)}: ${esc(x.text)}</li>`).join('')}</ul></div>`:''}
    ${groups.map(g=>{const p=g.label;
-     const none=!(p.warningsHuman||[]).length&&!(p.warningsAnimals||[]).length&&
-                !(p.warningsEnvironment||[]).length&&!(p.customerInstructionsAfter||[]).length;
+     /* מה שהמדביר הזין ידנית לחומר הזה מוצג ככל אזהרה אחרת, תחת שם החומר */
+     const man=(j.apps||[]).filter(x=>materialIdOf(x)===p.id).map(manualOf)
+       .map(m=>String(m.warnings||'').trim()).filter(Boolean);
      return `<div class="pgroup">
      <div class="pgh">${esc(p.nameHe)}</div>
-     ${none?`<div class="wbox danger"><b>לא נשמרו במערכת אזהרות לתכשיר הזה</b>
-        <ul><li>${esc(p.statusLabel||'לא אומת מול תווית')}. יש למסור ללקוח את האזהרות, ההנחיות וזמן הכניסה מחדש מהתווית העדכנית של המוצר.</li></ul></div>`:''}
+     ${man.length?listBox('אזהרות והנחיות שנמסרו ללקוח',man.join('\n').split('\n').map(x=>x.trim()).filter(Boolean),'danger'):''}
      ${listBox('לפני הטיפול',p.customerInstructionsBefore)}
      ${listBox('בסיום הטיפול',p.customerInstructionsAfter)}
      ${listBox('אזהרות לאדם',p.warningsHuman,'danger')}
@@ -2553,19 +2604,19 @@ function customerView(j){
 }
 /* ---- תצוגה 2: מידע מקצועי למדביר ---- */
 function professionalView(j){
-  const groups=warningGroups(j);
+  /* רק חומרים שיש להם מידע מקצועי אמיתי להציג. אחרת אין מה להראות
+     ואין טעם להציף את המסך בהודעות "לא הוזנו נתונים". */
+  const groups=warningGroups(j).filter(g=>{const p=g.label;
+    return prodVerifiedFlag(p)||(p.professionalPpe||[]).length||(p.firstAid||[]).length;});
   if(!groups.length)return '';
   return `<div class="sec"><div class="sech"><h3>${ic('book',18)} מידע מקצועי למדביר</h3></div><div class="secb">
    ${groups.map(g=>{const p=g.label;return `<div class="pgroup pro">
      <div class="pgh">${esc(p.nameHe)}</div>
      ${labelMeta(p)}
-     ${emptyNote('מינונים ומגבלות ריסוס אינם נשמרים במערכת. יש לקחת אותם מהתווית העדכנית של המוצר.')}
-     ${(p.professionalPpe||[]).length?listBox('ציוד מגן אישי',p.professionalPpe)
-       :emptyNote('ציוד מגן אישי: לא הוזנו נתונים מהתווית. יש לפעול לפי התווית ולפי תנאי הרישיון.')}
-     ${(p.firstAid||[]).length?listBox('עזרה ראשונה',p.firstAid)
-       :emptyNote('עזרה ראשונה: לא הוזנו נתונים מהתווית. יש לפעול לפי התווית.')}
+     ${listBox('ציוד מגן אישי',p.professionalPpe)}
+     ${listBox('עזרה ראשונה',p.firstAid)}
     </div>`}).join('')}
-   <div class="note">המידע מבוסס על התוויות שנבדקו ונרשמו במערכת. אין בו אישור גורף לעמידה בחוק. חובה לפעול לפי התווית העדכנית של המוצר ולפי תנאי רישיון המדביר.</div>
+   <div class="note">המידע מבוסס על התוויות שנרשמו במערכת. מינונים ומגבלות ריסוס אינם נשמרים כאן. חובה לפעול לפי התווית העדכנית של המוצר ולפי תנאי רישיון המדביר.</div>
   </div></div>`;
 }
 
@@ -2820,6 +2871,14 @@ function syncDose(a){
   a.dose=d.text;a.unit=a.unit||'אחר';a.unitOther=a.unitOther||'לפי התווית';
 }
 Object.assign(A,{
+  /* טעינת פרטי התווית שהמדביר מילא בטיפול קודם באותו חומר */
+  loadManual:d=>{const i=+d.i||0,a=cur.apps[i],src=S.journals[d.p];
+    if(!a||!src)return;
+    const from=(src.apps||[]).find(x=>materialIdOf(x)===materialIdOf(a)&&manualFilled(x));
+    if(!from)return;
+    a.manualLabel=clone(manualOf(from));
+    audit(cur,'manual-label','פרטי התווית נטענו מיומן #'+src.no+' · '+(a.selectedMaterialName||''));
+    touch();render();toast(`נטען מיומן #${src.no}`)},
   /* אישור קריאה על תוקף רישום ישן – מידע בלבד, אינו חוסם דבר */
   ackExpiry:d=>{if(!cur)return;
     cur.expiryAck=cur.expiryAck||{};cur.expiryAck[d.p]=Date.now();
