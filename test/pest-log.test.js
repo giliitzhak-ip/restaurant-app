@@ -432,7 +432,114 @@ await withPage(FULL,async p=>{
   ok('ביטול בתצוגה המקדימה אינו טוען דבר',r.n===0&&!r.src,JSON.stringify(r));
 });
 
-console.log('\n13. רגרסיה – מסלולים קיימים');
+console.log('\n15. מסך הבית');
+await withPage(FULL,async p=>{
+  const t=await p.textContent('#app');
+  ['יומנים','לקוחות','מסלול עבודה','תבניות','משימות','לוח שנה','חומרים','פרופיל','יומן חדש']
+    .forEach(n=>ok('כפתור בית: '+n,t.includes(n)));
+  await p.click('[data-a="go"][data-v="route"]');
+  ok('כפתור מסלול עבודה פותח את המסלול',(await p.textContent('#app')).includes('תאריך המסלול'));
+  await p.click('[data-a="go"][data-v="home"]');
+  await p.click('[data-a="go"][data-v="tasks"]');
+  ok('כפתור משימות פותח את המשימות',(await p.textContent('#app')).includes('משימה חדשה'));
+  await p.click('[data-a="go"][data-v="home"]');
+  await p.click('[data-a="go"][data-v="calendar"]');
+  ok('כפתור לוח שנה פותח את הלוח',(await p.textContent('#app')).includes('לוח שנה'));
+  await p.click('[data-a="go"][data-v="home"]');
+  await p.click('[data-a="go"][data-v="materials"]');
+  ok('כפתור חומרים פותח את המאגר',(await p.textContent('#app')).includes('חומרים במאגר'));
+});
+
+console.log('\n16. מסלול עבודה');
+await withPage(FULL,async p=>{
+  await p.evaluate(()=>{A._rDate='2026-08-04';
+    addStop('2026-08-04',{clientId:'c1',name:'מסעדת הגפן',phone:'02-5551234',address:'הרצל 10',time:'08:30',duration:'45',focus:'לבדוק מחסן'});
+    addStop('2026-08-04',{name:'בית ספר רמות',address:'הרב פרנק 3',time:'10:30'});
+    addStop('2026-08-04',{name:'דירה פרטית',address:'בן יהודה 5',time:'13:00'});
+    go('route')});
+  const t=await p.textContent('#app');
+  ok('רשימת לקוחות מסודרת לפי הסדר',/1\. מסעדת הגפן[\s\S]*2\. בית ספר רמות[\s\S]*3\. דירה פרטית/.test(t));
+  ok('מוצגים שעה, כתובת ומשך',t.includes('08:30')&&t.includes('הרצל 10')&&t.includes("45 דק'"));
+  ok('מוצגים דגשים לטיפול',t.includes('לבדוק מחסן'));
+  ok('כל הסטטוסים זמינים',['ממתין','בדרך','בטיפול','הושלם','נדחה'].every(x=>t.includes(x)));
+  ok('יש כפתור ניווט',t.includes('ניווט'));
+  ok('יש כפתור פתיחת יומן',t.includes('פתיחת יומן'));
+  /* סדר – חיצים */
+  const ids=await p.evaluate(()=>stopsOf('2026-08-04').map(x=>x.name));
+  await p.click(`[data-a="rDown"][data-p="${await p.evaluate(()=>stopsOf('2026-08-04')[0].id)}"]`);
+  const after=await p.evaluate(()=>stopsOf('2026-08-04').map(x=>x.name));
+  eq('שינוי סדר בחיצים',after[0],ids[1]);
+  eq('הפריט שהוזז ירד למקום השני',after[1],ids[0]);
+  /* הסדר נשמר באחסון המקומי */
+  const keep=await p.evaluate(()=>Object.values(JSON.parse(localStorage.getItem('yp-reg-log-v2')).stops)
+    .filter(x=>!x.removed&&x.date==='2026-08-04').sort((a,b)=>a.order-b.order).map(x=>x.name));
+  eq('הסדר נשמר באחסון המקומי',keep.join('|'),after.join('|'));
+  /* סטטוס */
+  await p.evaluate(()=>{A._rDate='2026-08-04';go('route')});
+  const sid=await p.evaluate(()=>stopsOf('2026-08-04')[0].id);
+  await p.click(`[data-a="rStatus"][data-p="${sid}"][data-val="בטיפול"]`);
+  eq('עדכון סטטוס נשמר',await p.evaluate(i=>S.stops[i].status,sid),'בטיפול');
+  /* פתיחת יומן מהמסלול */
+  const gid=await p.evaluate(()=>stopsOf('2026-08-04').find(x=>x.name==='מסעדת הגפן').id);
+  await p.click(`[data-a="rOpenJ"][data-p="${gid}"]`);
+  const r=await p.evaluate(i=>({v:view,name:cur&&cur.client.name,jid:S.stops[i].journalId,st:S.stops[i].status}),gid);
+  ok('פתיחת יומן מהמסלול פותחת אשף עם הלקוח',r.v==='wizard'&&r.name==='מסעדת הגפן',JSON.stringify(r));
+  ok('היומן נקשר לעצירה והסטטוס עודכן',!!r.jid&&r.st==='בטיפול',JSON.stringify(r));
+  /* טיפול קודם */
+  await p.evaluate(()=>{A._rDate='2026-08-04';go('route')});
+  ok('מוצג הטיפול הקודם של הלקוח',(await p.textContent('#app')).includes('טיפול קודם: #1002')||
+     (await p.textContent('#app')).includes('טיפול קודם: #1001'));
+});
+await withPage(FULL,async p=>{
+  /* הוספה מרשימת הלקוחות */
+  await p.evaluate(()=>{A._rDate='2026-08-05';go('route')});
+  await p.click('[data-a="rAddClient"]');
+  await p.click('[data-a="rPickClient"][data-p="c1"]');
+  const st=await p.evaluate(()=>stopsOf('2026-08-05')[0]);
+  ok('עצירה מלקוח שמור מביאה שם, טלפון וכתובת',
+     st.name==='מסעדת הגפן'&&!!st.phone&&!!st.address,JSON.stringify(st));
+  /* עריכה */
+  await p.click(`[data-a="rEdit"][data-p="${st.id}"]`);
+  await p.fill('#stTime','07:15');
+  await p.fill('#stFocus','להביא תחנות חדשות');
+  await p.click(`[data-a="rSave"][data-p="${st.id}"]`);
+  const up=await p.evaluate(i=>S.stops[i],st.id);
+  ok('עריכת עצירה נשמרת',up.time==='07:15'&&up.focus==='להביא תחנות חדשות',JSON.stringify(up));
+  ok('המסלול מוצג ללא שגיאה',(await p.textContent('#app')).includes('07:15'));
+});
+
+console.log('\n17. משימות ולוח שנה');
+await withPage(FULL,async p=>{
+  await p.evaluate(()=>go('tasks'));
+  await p.fill('#tkNew','להזמין דרקר');
+  await p.fill('#tkDate','2026-08-04');
+  await p.click('[data-a="tkAdd"]');
+  const t1=await p.evaluate(()=>tasksAll()[0]);
+  ok('משימה נוספת ונשמרת',t1.title==='להזמין דרקר'&&t1.date==='2026-08-04',JSON.stringify(t1));
+  await p.click(`[data-a="tkTog"][data-p="${t1.id}"]`);
+  eq('סימון משימה כבוצעה',await p.evaluate(i=>S.tasks[i].done,t1.id),true);
+  eq('המשימה נשמרה באחסון המקומי',
+     await p.evaluate(i=>!!JSON.parse(localStorage.getItem('yp-reg-log-v2')).tasks[i],t1.id),true);
+  await p.evaluate(()=>{A._calM='2026-08';go('calendar')});
+  await p.click('[data-a="calD"][data-val="2026-08-04"]');
+  ok('לוח השנה מציג את היום שנבחר',(await p.textContent('#app')).includes('04/08/2026'));
+});
+
+console.log('\n18. מאגר החומרים');
+await withPage(FULL,async p=>{
+  await p.evaluate(()=>go('materials'));
+  ok('מוצג מספר החומרים במאגר',(await p.textContent('#app')).includes('151 חומרים במאגר'));
+  await p.fill('#mq','דרקר');
+  await p.waitForTimeout(150);
+  const t=await p.textContent('#app');
+  ok('חיפוש מחזיר את החומר',t.includes('דרקר 10.2'));
+  await p.click('[data-a="mInfo"][data-p="draker-10-2"]');
+  const sh=await p.textContent('.sheet');
+  ok('כרטיס החומר נפתח',sh.includes('דרקר 10.2')&&sh.includes('Cypermethrin'));
+  ok('נאמר שמינונים אינם נשמרים',sh.includes('מינונים ומגבלות ריסוס אינם נשמרים'));
+});
+
+console.log('\n19. רגרסיה – מסלולים קיימים');
 const errs=await withPage(FULL,async p=>{
   await p.evaluate(()=>go('archive'));
   ok('הארכיון נטען',(await p.textContent('#app')).includes('יומני הדברה'));

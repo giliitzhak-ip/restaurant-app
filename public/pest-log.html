@@ -111,6 +111,40 @@ textarea{min-height:96px;resize:vertical}
 .hint{font-size:13px;color:var(--muted);margin:8px 0 0}
 .note{background:var(--gold-soft);border-radius:var(--r-md);padding:10px 12px;font-size:14px;margin-top:12px}
 ul.ul{margin:6px 0 0;padding-inline-start:20px;font-size:13.5px;color:var(--muted);line-height:1.8}
+/* ---- מסך הבית: כפתורים עגולים ---- */
+.newj{margin:-40px 16px 0;width:calc(100% - 32px);border:0;border-radius:var(--r-lg);background:var(--forest);color:#fff;box-shadow:0 10px 24px rgba(20,50,30,.22);padding:16px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:right}
+.newj b{display:block;font-size:17px}
+.newj small{opacity:.85;font-size:13px}
+.dial{display:grid;grid-template-columns:repeat(4,1fr);gap:10px 6px;padding:18px 12px 0}
+@media(max-width:360px){.dial{grid-template-columns:repeat(3,1fr)}}
+.dbtn{border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;color:var(--leaf);padding:0}
+.dcirc{width:58px;height:58px;border-radius:50%;background:var(--surface);box-shadow:0 5px 14px rgba(20,50,30,.13);display:grid;place-items:center;color:var(--forest-2);position:relative}
+:root[data-theme="dark"] .dcirc{color:var(--leaf)}
+.dbtn b{font-size:13px;font-weight:600;line-height:1.2;text-align:center}
+.dbtn small{font-size:11px;color:var(--muted);line-height:1.2;text-align:center}
+.dcirc .badge{position:absolute;top:-2px;inset-inline-end:-2px}
+/* ---- מסלול עבודה ---- */
+.rnav{display:flex;align-items:center;gap:8px}
+.rhead{display:flex;align-items:center;gap:8px}
+.rhead h3{flex:1;margin:0}
+.grip{border:0;background:transparent;color:var(--muted);cursor:grab;touch-action:none;padding:2px;display:grid;place-items:center;flex:none}
+.rstop.dragging{opacity:.75;box-shadow:0 10px 26px rgba(20,50,30,.28)}
+.rmeta{display:flex;flex-wrap:wrap;gap:10px;font-size:13.5px;color:var(--muted)}
+.rmeta span{display:inline-flex;align-items:center;gap:4px}
+.racts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
+.rstop.st-3{opacity:.72}
+.rstop.st-4{opacity:.6}
+/* ---- משימות ולוח שנה ---- */
+.doneRow h4{text-decoration:line-through;color:var(--muted)}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:10px}
+.cdow{text-align:center;font-size:11px;color:var(--muted)}
+.cday{border:1px solid var(--line);background:var(--surface);border-radius:10px;min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;color:inherit;padding:2px}
+.cday b{font-size:13px;font-weight:600}
+.cday i{display:flex;gap:2px;min-height:6px}
+.cday.today{border-color:var(--gold)}
+.cday.on{background:var(--gold-soft);border-color:var(--gold)}
+em.dj,em.ds,em.dt{width:5px;height:5px;border-radius:50%;display:inline-block}
+em.dj{background:var(--forest-2)}em.ds{background:var(--gold)}em.dt{background:#c2410c}
 .dbtag{display:inline-block;font-size:12px;background:var(--gold-soft);color:#7a6634;border-radius:6px;padding:2px 8px;margin-top:6px}
 .footer{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom));z-index:30}
 .footer .in{max-width:568px;margin:0 auto;display:flex;gap:10px}.footer .btn{flex:1}
@@ -482,7 +516,12 @@ const I={
  warn:'<path d="M12 3l9 16H3z"/><path d="M12 9v5M12 17h.01"/>',
  bug:'<rect x="8" y="7" width="8" height="12" rx="4"/><path d="M8 11H4M8 15H4M16 11h4M16 15h4M10 7l-2-3M14 7l2-3"/>',
  mouse:'<circle cx="9" cy="12" r="5"/><circle cx="16" cy="8" r="3"/><path d="M14 14c3 0 6 1 7 3"/>',
- flask:'<path d="M10 3v6L4 19a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3l-6-10V3"/><path d="M9 3h6"/>'
+ flask:'<path d="M10 3v6L4 19a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3l-6-10V3"/><path d="M9 3h6"/>',
+ route:'<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 6H15a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h6.5"/>',
+ task:'<path d="M9 5h10M9 12h10M9 19h10"/><path d="M3.5 5l1.4 1.4L7.5 3.8M3.5 12l1.4 1.4L7.5 10.8M3.5 19l1.4 1.4L7.5 17.8"/>',
+ cal:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+ clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+ grip:'<path d="M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01" stroke-width="2.6"/>'
 };
 const ic=(n,s=22)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]}</svg>`;
 
@@ -685,6 +724,8 @@ async function initCloud(){
     try{const ss=await DB.collection('pest_stations').get();ss.docs.forEach(x=>{const r=x.data();if(r)S.stations[x.id]=clone(r)})}catch(e){}
     try{const wt=await DB.collection('data/users/me').doc('pest_war_templates').get();if(wt.exists&&wt.data()&&Array.isArray(wt.data().list)){const seen=new Set();S.warTpls=[...clone(wt.data().list),...S.warTpls].filter(t=>!seen.has(t.id)&&seen.add(t.id))}}catch(e){}
     try{const ae=await DB.collection('data/users/me').doc('pest_audit').get();if(ae.exists&&ae.data()&&Array.isArray(ae.data().events)){const seen=new Set();S.auditEvents=[...clone(ae.data().events),...S.auditEvents].filter(e=>{const k=e.at+'|'+e.jid+'|'+e.ev;return !seen.has(k)&&seen.add(k)}).sort((a,b)=>b.at-a.at).slice(0,400)}}catch(e){}
+    try{const rt=await DB.collection('data/users/me').doc('pest_route').get();if(rt.exists&&rt.data()&&rt.data().stops){const r=clone(rt.data().stops);Object.keys(r).forEach(k=>{const l=S.stops[k];if(!l||(r[k].at||0)>=(l.at||0))S.stops[k]=r[k]})}}catch(e){}
+    try{const tk=await DB.collection('data/users/me').doc('pest_tasks').get();if(tk.exists&&tk.data()&&tk.data().tasks){const r=clone(tk.data().tasks);Object.keys(r).forEach(k=>{const l=S.tasks[k];if(!l||(r[k].at||0)>=(l.at||0))S.tasks[k]=r[k]})}}catch(e){}
     try{const ps=await DB.collection('pest_photos').get();ps.docs.forEach(x=>{const r=x.data();if(r)S.photos[x.id]=clone(r)})}catch(e){}
     const cs=await DB.collection('pest_clients').get();cs.docs.forEach(d=>{const r=d.data();if(r)S.clients[d.id]=clone(r)});
     try{const pr=await DB.collection('data/users/me').doc('pest_profile').get();if(pr.exists&&pr.data()){const r=pr.data();if(!S.profile.name||r.name)S.profile=Object.assign({...PROFILE_DEFAULT},clone(r))}else if(S.profile.name)pushProfile()}catch(e){}
@@ -707,6 +748,8 @@ if(!S.photos)S.photos={};
 if(!S.stations)S.stations={};
 if(!S.auditEvents)S.auditEvents=[];
 if(!S.findTpl)S.findTpl=[];
+if(!S.stops)S.stops={};   /* מסלול העבודה – עצירה לכל לקוח ביום */
+if(!S.tasks)S.tasks={};   /* משימות פתוחות */
 if(!S.circTpl)S.circTpl=[];
 ['prevTpl','natureTpl','natureAfterTpl','warnTpl','warTpl'].forEach(k=>{if(!S[k])S[k]=[]});
 const LIBS={
@@ -733,6 +776,37 @@ function learnTemplates(j){
   if(added){saveLocal();pushTpl()}
   return added;
 }
+async function pushRoute(){if(!DB)return;try{await DB.collection('data/users/me').doc('pest_route').set({stops:clone(S.stops),updatedAt:Date.now()})}catch(e){}}
+async function pushTasks(){if(!DB)return;try{await DB.collection('data/users/me').doc('pest_tasks').set({tasks:clone(S.tasks),updatedAt:Date.now()})}catch(e){}}
+const saveRoute=()=>{saveLocal();pushRoute()};
+const saveTasks=()=>{saveLocal();pushTasks()};
+const ROUTE_STATES=['ממתין','בדרך','בטיפול','הושלם','נדחה'];
+const todayStr=()=>new Date().toISOString().slice(0,10);
+const stopsOf=date=>Object.values(S.stops).filter(x=>!x.removed&&x.date===date)
+  .sort((a,b)=>(a.order||0)-(b.order||0)||(a.at||0)-(b.at||0));
+function addStop(date,o){
+  const list=stopsOf(date);
+  const st=Object.assign({id:uid(),date,order:list.length?Math.max(...list.map(x=>x.order||0))+1:0,
+    clientId:'',name:'',phone:'',address:'',time:'',duration:'',status:'ממתין',
+    focus:'',notes:'',journalId:'',at:Date.now()},o||{});
+  S.stops[st.id]=st;saveRoute();return st;
+}
+function reorderStops(date,ids){
+  ids.forEach((id,i)=>{const st=S.stops[id];if(st&&st.date===date)st.order=i});
+  saveRoute();
+}
+function moveStop(id,dir){
+  const st=S.stops[id];if(!st)return;
+  const list=stopsOf(st.date),i=list.findIndex(x=>x.id===id),j=i+dir;
+  if(i<0||j<0||j>=list.length)return;
+  const ids=list.map(x=>x.id);ids.splice(j,0,ids.splice(i,1)[0]);
+  reorderStops(st.date,ids);
+}
+const tasksAll=()=>Object.values(S.tasks).filter(t=>!t.removed)
+  .sort((a,b)=>(a.done?1:0)-(b.done?1:0)||String(a.date||'9999').localeCompare(String(b.date||'9999'))||(b.at||0)-(a.at||0));
+function addTask(o){const t=Object.assign({id:uid(),title:'',date:'',client:'',note:'',done:false,at:Date.now()},o||{});
+  S.tasks[t.id]=t;saveTasks();return t}
+
 async function pushTpl(){if(!DB)return;try{const o={updatedAt:Date.now()};TPL_STORES.forEach(k=>o[k]=clone(S[k]));o.list=clone(S.findTpl);o.circ=clone(S.circTpl);await DB.collection('data/users/me').doc('pest_find_templates').set(o)}catch(e){}}
 const photosOf=(jid,kind)=>Object.values(S.photos).filter(p=>p.jid===jid&&(!kind||p.kind===kind)).sort((a,b)=>a.at-b.at);
 const siteKey=j=>norm(j.client?j.client.name:'')+'|'+norm(placeText(j.place||{}));
@@ -782,17 +856,32 @@ function profileComplete(){const p=S.profile;return ['name','license','phone','e
 
 function vHome(){
   const all=journals(),drafts=all.filter(j=>j.status==='draft');
+  const todayStops=stopsOf(todayStr()).filter(x=>x.status!=='הושלם').length;
+  const openTasks=tasksAll().filter(t=>!t.done).length;
   return `<section class="hero"><div class="brandrow"><div class="brand"><div class="mark">י</div><div><div class="bname">${esc(S.profile.company)}</div><div class="bsub">יומן ביצוע הדברה</div></div></div><span class="sync" id="sync">${syncLabel()}</span></div>
   <p class="hello">שלום${S.profile.name?', '+esc(S.profile.name.split(' ')[0]):''}</p></section>
-  <nav class="grid" aria-label="ניווט ראשי">
-   <button class="tile primary" data-a="newJ">${ic('plus',28)}<b>יומן חדש</b><small>מתחילים הדברה</small></button>
-   <button class="tile" data-a="go" data-v="archive">${ic('book',28)}<b>יומני הדברה</b><small>${all.filter(j=>j.status==='done').length} הושלמו</small></button>
-   <button class="tile" data-a="go" data-v="archive" data-p="draft">${ic('edit',28)}<b>טיוטות</b><small>ממשיכים מאיפה שעצרתם</small>${drafts.length?`<i class="badge">${drafts.length}</i>`:''}</button>
-   <button class="tile" data-a="go" data-v="templates">${ic('flask',28)}<b>תבניות טיפול</b><small>${TREATMENTS.length} תבניות</small></button>
-   <button class="tile" data-a="go" data-v="clients">${ic('users',28)}<b>לקוחות</b><small>${Object.keys(S.clients).length} שמורים</small></button>
-   <button class="tile" data-a="go" data-v="profile">${ic('user',28)}<b>פרופיל מדביר</b><small>${profileComplete()?'מלא':'יש להשלים'}</small>${profileComplete()?'':'<i class="badge">!</i>'}</button>
+  <button class="newj" data-a="newJ">${ic('plus',26)}<span><b>יומן חדש</b><small>מתחילים הדברה</small></span></button>
+  <nav class="dial" aria-label="ניווט ראשי">
+   ${[
+     ['archive','book','יומנים',`${all.filter(j=>j.status==='done').length} הושלמו`,drafts.length],
+     ['clients','users','לקוחות',`${Object.keys(S.clients).length} שמורים`,0],
+     ['route','route','מסלול עבודה',todayStops?`${todayStops} היום`:'ריק היום',0],
+     ['templates','flask','תבניות',`${TREATMENTS.length}`,0],
+     ['tasks','task','משימות',openTasks?`${openTasks} פתוחות`:'אין פתוחות',openTasks],
+     ['calendar','cal','לוח שנה',fmtD(todayStr()),0],
+     ['materials','bug','חומרים',`${PRODUCTS().length}`,0],
+     ['profile','user','פרופיל',profileComplete()?'מלא':'להשלמה',profileComplete()?0:'!']
+   ].map(([v,icn,t,sub,badge])=>`<button class="dbtn" data-a="go" data-v="${v}">
+     <span class="dcirc">${ic(icn,26)}${badge?`<i class="badge">${badge}</i>`:''}</span>
+     <b>${t}</b><small>${esc(sub)}</small></button>`).join('')}
   </nav>
+  ${drafts.length?`<div class="block"><button class="link" data-a="go" data-v="archive" data-p="draft">${drafts.length} טיוטות ממתינות – להמשיך מאיפה שעצרתם</button></div>`:''}
   ${profileComplete()?'':`<div class="block"><div class="note">כדאי למלא פעם אחת את פרטי המדביר בפרופיל. הם יוכנסו אוטומטית לכל יומן. <button class="link" data-a="go" data-v="profile">למילוי</button></div></div>`}
+  ${todayStops?`<section class="block"><h2>המסלול של היום</h2>
+   ${stopsOf(todayStr()).slice(0,3).map((st,i)=>`<button class="card" data-a="rGo" data-val="${todayStr()}"><div class="main">
+     <h4>${i+1}. ${esc(st.name||'עצירה')}</h4><p>${esc([st.time,st.address].filter(Boolean).join(' · ')||'ללא שעה וכתובת')}</p>
+     <p><span class="tag ${st.status==='הושלם'?'':'draft'}">${esc(st.status)}</span></p></div></button>`).join('')}
+  </section>`:''}
   <section class="block"><h2>אחרונים</h2>${all.slice(0,4).map(jCard).join('')||'<div class="empty">עוד אין יומנים.</div>'}</section>`;
 }
 function jCard(j){
@@ -1417,13 +1506,222 @@ function vProfile(){
   <div class="footer"><div class="in"><button class="btn gold" data-a="saveProfile">${ic('check',20)} שמירת פרופיל</button></div></div>`;
 }
 
+/* ---- מסלול עבודה ---- */
+function routeDate(){if(!A._rDate)A._rDate=todayStr();return A._rDate}
+function stopClient(st){
+  return (st.clientId&&S.clients[st.clientId])||S.clients[findClientId(st.name,st.phone)]||null;
+}
+function stopPrev(st){
+  const c=stopClient(st);
+  return lastForClient(st.name||(c&&c.name)||'',st.phone||(c&&c.phone)||'',st.journalId||null);
+}
+function vRoute(){
+  const d=routeDate(),list=stopsOf(d);
+  const done=list.filter(x=>x.status==='הושלם').length;
+  const shift=n=>{const t=new Date(d+'T12:00:00');t.setDate(t.getDate()+n);return t.toISOString().slice(0,10)};
+  return `${topbar('מסלול עבודה','home')}
+  <main class="page">
+   <div class="sec"><div class="secb">
+    <div class="rnav">
+     <button class="round" data-a="rDate" data-val="${shift(-1)}" aria-label="יום קודם" style="transform:scaleX(-1)">${ic('back',18)}</button>
+     <label class="field" style="margin:0;flex:1"><span>תאריך המסלול</span><input type="date" id="rDateInp" value="${d}"></label>
+     <button class="round" data-a="rDate" data-val="${shift(1)}" aria-label="יום הבא">${ic('back',18)}</button>
+    </div>
+    <p class="hint" style="margin:8px 0 0">${list.length?`${list.length} עצירות · ${done} הושלמו`:'אין עדיין עצירות ליום הזה.'}${d===todayStr()?' · היום':''}</p>
+   </div></div>
+
+   <div id="rlist">
+   ${list.map((st,i)=>{
+     const c=stopClient(st),prev=stopPrev(st);
+     const addr=st.address||(c&&c.places&&c.places[0]?placeText(c.places[0]):'');
+     const j=st.journalId&&S.journals[st.journalId];
+     return `<div class="sec rstop st-${ROUTE_STATES.indexOf(st.status)}" data-id="${st.id}">
+      <div class="sech rhead">
+       <button class="grip" data-grip="${st.id}" aria-label="גרירה לשינוי סדר">${ic('grip',20)}</button>
+       <h3>${i+1}. ${esc(st.name||'עצירה ללא שם')}</h3>
+       <span class="tag ${st.status==='הושלם'?'':'draft'}">${esc(st.status)}</span>
+      </div>
+      <div class="secb">
+       <div class="rmeta">
+        ${st.time?`<span>${ic('clock',16)} ${esc(st.time)}${st.duration?` · ${esc(st.duration)} דק'`:''}</span>`:''}
+        ${addr?`<span>${ic('pin',16)} ${esc(addr)}</span>`:''}
+        ${st.phone?`<span>${ic('phone',16)} ${esc(st.phone)}</span>`:''}
+       </div>
+       ${st.focus?`<div class="note" style="margin-top:8px"><b>דגשים:</b> ${esc(st.focus)}</div>`:''}
+       ${prev?`<p class="hint" style="margin:8px 0 0">טיפול קודם: #${prev.no} · ${fmtD(prev.date)}${(prev.findings||[]).some(f=>f.pest)?' · '+esc(prev.findings.map(f=>f.pest).filter(Boolean).join(', ')):''}${(prev.apps||[]).some(a=>a.product)?' · '+esc(prev.apps.map(a=>a.product).filter(Boolean).join(', ')):''}</p>`:'<p class="hint" style="margin:8px 0 0">אין טיפול קודם רשום ללקוח הזה.</p>'}
+       ${st.notes?`<p class="hint" style="margin:6px 0 0">${esc(st.notes)}</p>`:''}
+       <div class="chips" style="margin-top:10px">${ROUTE_STATES.map(x=>`<button class="chip ${st.status===x?'on':''}" data-a="rStatus" data-p="${st.id}" data-val="${x}">${x}</button>`).join('')}</div>
+       <div class="racts">
+        <button class="btn sm" data-a="rOpenJ" data-p="${st.id}">${ic(j?'book':'plus',18)} ${j?(j.status==='done'?'צפייה ביומן':'המשך היומן'):'פתיחת יומן'}</button>
+        ${addr?`<a class="btn sm ghost" target="_blank" rel="noopener" href="https://waze.com/ul?q=${encodeURIComponent(addr)}">${ic('nav',18)} ניווט</a>`:''}
+        ${st.phone?`<a class="btn sm ghost" href="tel:${esc(st.phone)}">${ic('phone',18)} חיוג</a>`:''}
+        <button class="btn sm ghost" data-a="rEdit" data-p="${st.id}">${ic('edit',18)} עריכה</button>
+        <button class="round" data-a="rUp" data-p="${st.id}" aria-label="העלאה בסדר" style="transform:rotate(90deg)">${ic('back',18)}</button>
+        <button class="round" data-a="rDown" data-p="${st.id}" aria-label="הורדה בסדר" style="transform:rotate(-90deg)">${ic('back',18)}</button>
+       </div>
+      </div>
+     </div>`}).join('')||'<div class="empty">הוסיפו את הלקוחות של היום ותקבלו מסלול מסודר עם כתובות, שעות ודגשים.</div>'}
+   </div>
+   <div class="stack" style="margin-top:12px">
+    <button class="btn gold" data-a="rAdd">${ic('plus',18)} הוספת עצירה</button>
+    <button class="btn ghost" data-a="rAddClient">${ic('users',18)} הוספה מרשימת הלקוחות</button>
+   </div>
+   <p class="hint">הסדר נשמר אוטומטית. גוררים בידית שמשמאל לכותרת, או משתמשים בחיצים.</p>
+  </main>`;
+}
+function initRouteDrag(){
+  const list=document.getElementById('rlist');if(!list)return;
+  list.querySelectorAll('.grip').forEach(g=>{
+    g.onpointerdown=e=>{
+      e.preventDefault();
+      const row=g.closest('.rstop');if(!row)return;
+      row.classList.add('dragging');
+      try{g.setPointerCapture(e.pointerId)}catch(_){}
+      const move=ev=>{
+        const el=document.elementFromPoint(ev.clientX,ev.clientY);
+        const over=el&&el.closest?el.closest('.rstop'):null;
+        if(over&&over!==row&&over.parentElement===list){
+          const r=over.getBoundingClientRect();
+          list.insertBefore(row,ev.clientY>r.top+r.height/2?over.nextSibling:over);
+        }
+      };
+      const end=()=>{
+        g.onpointermove=null;g.onpointerup=null;g.onpointercancel=null;
+        row.classList.remove('dragging');
+        reorderStops(routeDate(),[...list.querySelectorAll('.rstop')].map(x=>x.dataset.id));
+        render();
+      };
+      g.onpointermove=move;g.onpointerup=end;g.onpointercancel=end;
+    };
+  });
+}
+function stopSheet(id){
+  const st=id?S.stops[id]:null;
+  const v=k=>esc(st?st[k]:(k==='status'?'ממתין':''));
+  sheet(`<h3>${st?'עריכת עצירה':'עצירה חדשה'}</h3>
+   <label class="field"><span class="req">שם הלקוח או האתר</span><input class="inp" id="stName" value="${v('name')}" placeholder="מסעדת הגפן"></label>
+   <label class="field"><span>כתובת</span><input class="inp" id="stAddr" value="${v('address')}" placeholder="הרצל 10, ירושלים"></label>
+   <label class="field"><span>טלפון</span><input class="inp" id="stPhone" type="tel" value="${v('phone')}"></label>
+   <div class="two">
+    <label class="field"><span>שעה</span><input class="inp" id="stTime" type="time" value="${v('time')}"></label>
+    <label class="field"><span>משך (דקות)</span><input class="inp" id="stDur" type="number" inputmode="numeric" min="0" value="${v('duration')}"></label>
+   </div>
+   <label class="field"><span>דגשים לטיפול</span><textarea class="inp" id="stFocus" placeholder="מה חשוב לבדוק או לזכור באתר הזה">${v('focus')}</textarea></label>
+   <label class="field"><span>הערות</span><textarea class="inp" id="stNotes">${v('notes')}</textarea></label>
+   <div class="stack" style="margin-top:12px">
+    <button class="btn gold" data-a="rSave" data-p="${st?st.id:''}">שמירה</button>
+    ${st?`<button class="btn ghost del" data-a="rDel" data-p="${st.id}">מחיקת העצירה</button>`:''}
+    <button class="btn ghost" data-a="closeSheet">ביטול</button>
+   </div>`);
+}
+function routeClientSheet(){
+  const list=Object.values(S.clients).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  sheet(`<h3>הוספה מרשימת הלקוחות</h3>
+   <p class="hint" style="margin:0">הכתובת והטלפון יילקחו מכרטיס הלקוח.</p>
+   <div style="max-height:56vh;overflow:auto;margin-top:10px">
+   ${list.map(c=>`<button class="pick" data-a="rPickClient" data-p="${c.id}"><div class="main">
+     <b>${esc(c.name)}</b><small>${esc((c.places&&c.places[0])?placeText(c.places[0]):'ללא כתובת')}${c.phone?' · '+esc(c.phone):''}</small>
+    </div><span class="plusb" aria-hidden="true">${ic('plus',18)}</span></button>`).join('')
+    ||'<p class="hint">אין עדיין לקוחות שמורים.</p>'}
+   </div>
+   <button class="btn ghost w" style="margin-top:12px" data-a="closeSheet">סגירה</button>`);
+}
+
+/* ---- משימות ---- */
+function vTasks(){
+  const list=tasksAll(),open=list.filter(t=>!t.done);
+  return `${topbar('משימות','home')}
+  <main class="page">
+   <div class="sec"><div class="secb">
+    <label class="field" style="margin:0"><span>משימה חדשה</span><input class="inp" id="tkNew" placeholder="למשל: להזמין דרקר, להתקשר למסעדת הגפן"></label>
+    <div class="two" style="margin-top:8px">
+     <label class="field" style="margin:0"><span>לביצוע עד</span><input class="inp" id="tkDate" type="date"></label>
+     <label class="field" style="margin:0"><span>לקוח (לא חובה)</span><input class="inp" id="tkClient"></label>
+    </div>
+    <button class="btn gold w" style="margin-top:10px" data-a="tkAdd">${ic('plus',18)} הוספה</button>
+   </div></div>
+   <p class="hint" style="margin:0 0 10px">${open.length} משימות פתוחות מתוך ${list.length}</p>
+   ${list.map(t=>`<div class="card${t.done?' doneRow':''}" style="cursor:default">
+     <button class="round" data-a="tkTog" data-p="${t.id}" aria-label="${t.done?'החזרה לפתוחה':'סימון כבוצעה'}">${t.done?ic('check',18):''}</button>
+     <div class="main"><h4>${esc(t.title)}</h4>
+      <p>${t.date?fmtD(t.date):'ללא תאריך יעד'}${t.client?' · '+esc(t.client):''}</p>
+      ${t.note?`<p>${esc(t.note)}</p>`:''}</div>
+     <div class="acts"><button class="del" data-a="tkDel" data-p="${t.id}" aria-label="מחיקה">${ic('trash',18)}</button></div>
+    </div>`).join('')||'<div class="empty">אין עדיין משימות.</div>'}
+  </main>`;
+}
+
+/* ---- לוח שנה ---- */
+function vCal(){
+  const base=A._calM||todayStr().slice(0,7);
+  const [y,m]=base.split('-').map(Number);
+  const first=new Date(Date.UTC(y,m-1,1)),days=new Date(Date.UTC(y,m,0)).getUTCDate();
+  const pad=first.getUTCDay();
+  const shiftM=n=>{const t=new Date(Date.UTC(y,m-1+n,1));return t.toISOString().slice(0,7)};
+  const dayKey=i=>`${base}-${String(i).padStart(2,'0')}`;
+  const byDay={};
+  journals().forEach(j=>{if(j.date&&j.date.startsWith(base))(byDay[j.date]=byDay[j.date]||{j:0,s:0,t:0}).j++});
+  Object.values(S.stops).forEach(x=>{if(!x.removed&&x.date&&x.date.startsWith(base))(byDay[x.date]=byDay[x.date]||{j:0,s:0,t:0}).s++});
+  Object.values(S.tasks).forEach(t=>{if(!t.removed&&!t.done&&t.date&&t.date.startsWith(base))(byDay[t.date]=byDay[t.date]||{j:0,s:0,t:0}).t++});
+  const sel=A._calD||'';
+  const selJ=sel?journals().filter(j=>j.date===sel):[];
+  const selS=sel?stopsOf(sel):[];
+  const selT=sel?tasksAll().filter(t=>t.date===sel):[];
+  const MON=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+  return `${topbar('לוח שנה','home')}
+  <main class="page">
+   <div class="sec"><div class="secb">
+    <div class="rnav">
+     <button class="round" data-a="calM" data-val="${shiftM(-1)}" aria-label="חודש קודם" style="transform:scaleX(-1)">${ic('back',18)}</button>
+     <b style="flex:1;text-align:center">${MON[m-1]} ${y}</b>
+     <button class="round" data-a="calM" data-val="${shiftM(1)}" aria-label="חודש הבא">${ic('back',18)}</button>
+    </div>
+    <div class="cal">
+     ${['א','ב','ג','ד','ה','ו','ש'].map(d=>`<span class="cdow">${d}</span>`).join('')}
+     ${Array.from({length:pad},()=>'<span></span>').join('')}
+     ${Array.from({length:days},(_,k)=>{const i=k+1,key=dayKey(i),b=byDay[key];
+       return `<button class="cday${key===todayStr()?' today':''}${key===sel?' on':''}" data-a="calD" data-val="${key}">
+        <b>${i}</b><i>${b?`${b.j?`<em class="dj"></em>`:''}${b.s?`<em class="ds"></em>`:''}${b.t?`<em class="dt"></em>`:''}`:''}</i></button>`}).join('')}
+    </div>
+    <p class="hint" style="margin:8px 0 0"><em class="dj"></em> יומנים · <em class="ds"></em> מסלול · <em class="dt"></em> משימות</p>
+   </div></div>
+   ${sel?`<h3 style="font-size:16px;margin:16px 0 8px">${fmtD(sel)}</h3>
+     ${selS.length?`<p class="hint" style="margin:0 0 6px">מסלול העבודה (${selS.length})</p>
+       ${selS.map(x=>`<button class="pick" data-a="rGo" data-val="${sel}"><div class="main"><b>${esc(x.name||'עצירה')}</b><small>${esc(x.time||'')} ${esc(x.status)}</small></div></button>`).join('')}`:''}
+     ${selJ.length?`<p class="hint" style="margin:10px 0 6px">יומנים (${selJ.length})</p>${selJ.map(jCard).join('')}`:''}
+     ${selT.length?`<p class="hint" style="margin:10px 0 6px">משימות (${selT.length})</p>${selT.map(t=>`<div class="card" style="cursor:default"><div class="main"><h4>${esc(t.title)}</h4><p>${t.done?'בוצעה':'פתוחה'}${t.client?' · '+esc(t.client):''}</p></div></div>`).join('')}`:''}
+     ${!selS.length&&!selJ.length&&!selT.length?'<div class="empty">אין פעילות ביום הזה.</div>':''}`
+    :'<p class="hint">בוחרים יום כדי לראות את היומנים, המסלול והמשימות שלו.</p>'}
+  </main>`;
+}
+
+/* ---- מאגר החומרים ---- */
+function vMaterials(){
+  const q=String(A._mq||'').trim();
+  const all=PRODUCTS();
+  const list=q?searchProducts(q).slice(0,60):all.slice(0,40);
+  const ver=all.filter(p=>p.verificationStatus==='verified').length;
+  return `${topbar('חומרי הדברה','home')}
+  <main class="page">
+   <input class="inp" type="search" id="mq" value="${esc(q)}" placeholder="חיפוש לפי שם, חומר פעיל, מזיק או מספר רישום" aria-label="חיפוש חומר" style="margin-bottom:10px">
+   <p class="hint" style="margin:0 0 10px">${all.length} חומרים במאגר · ${ver} עם פרטי תווית שהוזנו · ${q?`${list.length} תוצאות`:'מוצגים הראשונים'}</p>
+   ${list.map(p=>`<div class="card" style="cursor:default"><button class="main" style="border:0;background:transparent;text-align:right;padding:0" data-a="mInfo" data-p="${esc(p.id)}">
+     <h4>${esc(p.nameHe)}</h4>
+     <p>${esc((p.activeIngredients||[]).map(a=>[a.name,a.percent].filter(Boolean).join(' ')).join(', ')||'חומר פעיל לא הוזן')}</p>
+     <p>${esc([materialTag(p),p.registrationNumber?'רישום '+p.registrationNumber:'',CAT_HE[p.category]||''].filter(Boolean).join(' · '))}</p>
+    </button></div>`).join('')||'<div class="empty">לא נמצאו חומרים לחיפוש הזה.</div>'}
+   <p class="hint">כל חומר במאגר ניתן לבחירה ולשמירה ביומן. מינונים ומגבלות אינם נשמרים כאן – לוקחים אותם מהתווית העדכנית בכל טיפול.</p>
+  </main>`;
+}
+
 /* =========================================================
    8. RENDER
    ========================================================= */
 function render(){
-  const map={home:vHome,preview:vPreview,clients:vClients,client:vClient,wizard:vWizard,journal:vJournal,archive:vArchive,profile:vProfile,templates:vTemplates};
+  const map={home:vHome,preview:vPreview,clients:vClients,client:vClient,wizard:vWizard,journal:vJournal,archive:vArchive,profile:vProfile,templates:vTemplates,route:vRoute,tasks:vTasks,calendar:vCal,materials:vMaterials};
   $('#app').innerHTML=(map[view]||vHome)();
   if(view==='wizard')initSigs();
+  if(view==='route')initRouteDrag();
   const pq=document.getElementById('pq');
   if(pq&&A._pqFocus){pq.focus();try{pq.setSelectionRange(pq.value.length,pq.value.length)}catch(_){}A._pqFocus=false}
   const on=document.querySelector('.st.on');on&&on.scrollIntoView({inline:'center',block:'nearest'});
@@ -1569,6 +1867,59 @@ const A={
     t.split('\n').map(x=>x.trim()).filter(Boolean).forEach(x=>{if(!cfg.lib().includes(x)&&!S[cfg.store].includes(x))S[cfg.store].unshift(x)});
     saveLocal();pushTpl();renderLib();toast('נשמר בתבניות שלי')},
   fDelTpl:async d=>{if(!await ask('למחוק את התבנית?',{ok:'מחיקה',danger:true}))return;const cfg=LIBS[A._lk];S[cfg.store]=S[cfg.store].filter(x=>x!==d.t);saveLocal();pushTpl();renderLib()},
+  /* ---- מסלול עבודה ---- */
+  rDate:d=>{A._rDate=d.val;render()},
+  rAdd:()=>stopSheet(null),
+  rEdit:d=>stopSheet(d.p),
+  rAddClient:()=>routeClientSheet(),
+  rGo:d=>{A._rDate=d.val||todayStr();go('route')},
+  rPickClient:d=>{const c=S.clients[d.p];if(!c)return;
+    addStop(routeDate(),{clientId:c.id,name:c.name,phone:c.phone||'',
+      address:(c.places&&c.places[0])?placeText(c.places[0]):''});
+    closeSheet();render();toast('נוספה עצירה: '+c.name)},
+  rSave:d=>{
+    const g=i=>{const e=document.getElementById(i);return e?String(e.value||'').trim():''};
+    const name=g('stName');
+    if(!name){toast('צריך שם ללקוח או לאתר');return}
+    const o={name,address:g('stAddr'),phone:g('stPhone'),time:g('stTime'),
+      duration:g('stDur'),focus:g('stFocus'),notes:g('stNotes')};
+    if(d.p&&S.stops[d.p]){Object.assign(S.stops[d.p],o,{at:Date.now()});saveRoute()}
+    else addStop(routeDate(),o);
+    closeSheet();render()},
+  rDel:async d=>{const st=S.stops[d.p];if(!st)return;
+    if(!await ask('למחוק את העצירה מהמסלול? היומן, אם נפתח, יישאר בארכיון.',{ok:'מחיקה',danger:true}))return;
+    st.removed=true;st.at=Date.now();saveRoute();closeSheet();render()},
+  rStatus:d=>{const st=S.stops[d.p];if(!st)return;st.status=d.val;st.at=Date.now();saveRoute();render()},
+  rUp:d=>{moveStop(d.p,-1);render()},
+  rDown:d=>{moveStop(d.p,1);render()},
+  rOpenJ:async d=>{const st=S.stops[d.p];if(!st)return;
+    const ex=st.journalId&&S.journals[st.journalId];
+    if(ex){A.openJ({p:ex.id});return}
+    const c=stopClient(st);
+    await A.newJ();
+    if(!cur)return;
+    cur.client.name=st.name||(c?c.name:'');
+    cur.client.phone=st.phone||(c?c.phone:'')||'';
+    if(c){if(c.role){cur.client.role=c.role;cur.client.roleOther=c.roleOther||''}
+      if(c.places&&c.places[0])cur.place=Object.assign(cur.place,clone(c.places[0]))}
+    if(st.time)cur.time=st.time;
+    st.journalId=cur.id;if(st.status==='ממתין'||st.status==='בדרך')st.status='בטיפול';
+    st.at=Date.now();saveRoute();touch();render()},
+
+  /* ---- משימות ---- */
+  tkAdd:()=>{const g=i=>{const e=document.getElementById(i);return e?String(e.value||'').trim():''};
+    const title=g('tkNew');if(!title){toast('צריך לכתוב את המשימה');return}
+    addTask({title,date:g('tkDate'),client:g('tkClient')});render()},
+  tkTog:d=>{const t=S.tasks[d.p];if(!t)return;t.done=!t.done;t.at=Date.now();saveTasks();render()},
+  tkDel:async d=>{const t=S.tasks[d.p];if(!t)return;
+    if(!await ask('למחוק את המשימה?',{ok:'מחיקה',danger:true}))return;
+    t.removed=true;t.at=Date.now();saveTasks();render()},
+
+  /* ---- לוח שנה וחומרים ---- */
+  calM:d=>{A._calM=d.val;render()},
+  calD:d=>{A._calD=A._calD===d.val?'':d.val;render()},
+  mInfo:d=>{const p=prodById(d.p);if(p)materialSheet(p)},
+
   newForClient:async d=>{const c=S.clients[d.p];
     const open=openDraftForSite(c.name,(c.places||[])[0]||{},null);
     if(open&&!await ask(`קיימת כבר טיוטה פתוחה (#${open.no}) לאותו לקוח ואתר. ליצור יומן חדש בכל זאת?`,{ok:'יומן חדש',cancel:'המשך בטיוטה',title:'טיוטה פתוחה'})){
@@ -2488,6 +2839,31 @@ const prodBlocked=()=>false;
 /* ירוק = אומת מתווית, כתום = מידע חלקי. אף מצב אינו משבית לחיצה */
 const prodState=p=>(p&&p.verificationStatus==='verified')?'ok':'info';
 const CAT_HE={crawling_insects:'חרקים זוחלים',rodents:'מכרסמים',flying_insects:'חרקים מעופפים',other:'אחר'};
+/* כרטיס חומר לקריאה בלבד – מה שהוזן מהתווית, ומה שעוד חסר */
+function materialSheet(p){
+  if(!p)return;
+  const L=(t,arr)=>(arr||[]).length?`<p style="margin:6px 0 0"><b>${esc(t)}:</b></p><ul class="ul">${arr.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:'';
+  const notices=materialNotices(p);
+  sheet(`<h3>${esc(p.nameHe)}</h3>
+   <p class="hint" style="margin:0">${esc(CAT_HE[p.category]||'אחר')}${p.registrationNumber?' · מספר רישום '+esc(p.registrationNumber):''}${p.registrationExpiry?' · תוקף '+esc(p.registrationExpiry):''}</p>
+   <div style="max-height:56vh;overflow:auto;margin-top:10px">
+    <p style="margin:0"><b>חומר פעיל:</b> ${esc(ingText(p)||'לא הוזן')}</p>
+    ${(p.targetPests||[]).length?`<p style="margin:6px 0 0"><b>מזיקי מטרה לפי התווית:</b> ${esc(p.targetPests.join(', '))}</p>`:''}
+    ${p.reentry&&p.reentry.text?`<p style="margin:6px 0 0"><b>זמן כניסה מחדש:</b> ${esc(p.reentry.text)}</p>`:''}
+    ${L('אזהרות לאדם',p.warningsHuman)}
+    ${L('אזהרות לבעלי חיים',p.warningsAnimals)}
+    ${L('אזהרות לסביבה',p.warningsEnvironment)}
+    ${L('הנחיות ללקוח לפני הטיפול',p.customerInstructionsBefore)}
+    ${L('הנחיות ללקוח בסיום',p.customerInstructionsAfter)}
+    ${L('ציוד מגן אישי',p.professionalPpe)}
+    ${L('עזרה ראשונה',p.firstAid)}
+    ${notices.length?`<div class="note" style="margin-top:10px"><b>עוד לא הוזן לחומר הזה:</b> ${esc(notices.join(' · '))}. אפשר לבחור אותו ביומן ולהזין את פרטי התווית ידנית.</div>`:''}
+    ${p.verificationNote?`<p class="hint" style="margin:8px 0 0">${esc(p.verificationNote)}</p>`:''}
+    ${p.officialLabelUrl?`<p class="hint" style="margin:6px 0 0">תווית: ${esc(p.officialLabelUrl)}</p>`:''}
+   </div>
+   <div class="note">מינונים ומגבלות ריסוס אינם נשמרים במערכת. בכל טיפול לוקחים אותם מהתווית העדכנית של המוצר.</div>
+   <button class="btn ghost w" style="margin-top:12px" data-a="closeSheet">סגירה</button>`);
+}
 const catIcon=c=>c==='rodents'?'mouse':'bug';
 const prodVerified=p=>!!p&&p.verificationStatus==='verified';
 const ingText=p=>(p.activeIngredients||[]).map(x=>[x.name,x.percent].filter(Boolean).join(' ')).join(', ');
@@ -3291,6 +3667,9 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(!
 document.addEventListener('input',e=>{
   const t=e.target;
   if(t.id==='pq'){sugSearch(t.value,+t.dataset.sugidx||0);return}
+  if(t.id==='mq'){A._mq=t.value;const pos=t.selectionStart;render();
+    const n=document.getElementById('mq');if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(_){}}return}
+  if(t.id==='rDateInp'){A._rDate=t.value||todayStr();render();return}
   if(t.dataset.stx&&cur){const[i,k,f]=t.dataset.stx.split(':');
     const a=cur.apps[+i],st=a&&(a.stations||[])[+k];
     if(st){st[f]=f==='fixed'?t.checked:t.value;touch()}return}
