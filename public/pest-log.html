@@ -110,6 +110,7 @@ textarea{min-height:96px;resize:vertical}
 .del{border:0;background:transparent;color:var(--danger);font-size:14px;cursor:pointer;padding:8px}
 .hint{font-size:13px;color:var(--muted);margin:8px 0 0}
 .note{background:var(--gold-soft);border-radius:var(--r-md);padding:10px 12px;font-size:14px;margin-top:12px}
+ul.ul{margin:6px 0 0;padding-inline-start:20px;font-size:13.5px;color:var(--muted);line-height:1.8}
 .dbtag{display:inline-block;font-size:12px;background:var(--gold-soft);color:#7a6634;border-radius:6px;padding:2px 8px;margin-top:6px}
 .footer{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom));z-index:30}
 .footer .in{max-width:568px;margin:0 auto;display:flex;gap:10px}.footer .btn{flex:1}
@@ -1924,6 +1925,41 @@ const COPY_SECTIONS=[
 const ALL_SECTIONS=()=>COPY_SECTIONS.flatMap(g=>g.items.map(i=>i.k));
 const defaultSections=()=>COPY_SECTIONS.flatMap(g=>g.items.filter(i=>i.def).map(i=>i.k));
 const sectionName=k=>{for(const g of COPY_SECTIONS){const i=g.items.find(x=>x.k===k);if(i)return i.n}return k};
+const sectionNote=k=>{for(const g of COPY_SECTIONS){const i=g.items.find(x=>x.k===k);if(i)return i.v||''}return ''};
+/* תצוגה מקדימה: מה מחזיקה כל קבוצת מידע ביומן נתון */
+const SEC_VAL={
+  client      :j=>[j.client.name,j.client.phone].filter(Boolean).join(' · '),
+  contact     :j=>(j.client.role==='אחר'?j.client.roleOther:j.client.role)||'',
+  address     :j=>placeText(j.place),
+  placeKind   :j=>({home:'בית/דירה',building:'מבנה',open:'שטח פתוח'})[(j.place||{}).kind]||'',
+  siteNotes   :j=>[j.siteNotes,j.access].filter(Boolean).join(' · '),
+  pests       :j=>(j.findings||[]).map(f=>f.pest).filter(Boolean).join(', '),
+  spots       :j=>(j.spots||[]).map(x=>x.name).filter(Boolean).join(', '),
+  findings    :j=>(j.findings||[]).map(f=>[f.signs,f.level].filter(Boolean).join(' · ')).filter(Boolean).join(' | '),
+  prevention  :j=>j.prevention||'',
+  circumstances:j=>j.circumstances||'',
+  stations    :j=>{const n=stationsOf(siteKey(j)).length;return n?n+' תחנות האכלה':''},
+  product     :j=>(j.apps||[]).map(a=>a.product).filter(Boolean).join(', '),
+  active      :j=>(j.apps||[]).map(a=>[a.active,a.conc].filter(Boolean).join(' ')).filter(Boolean).join(', '),
+  dose        :j=>(j.apps||[]).map(a=>[a.dose,a.unit==='אחר'?a.unitOther:a.unit].filter(Boolean).join(' ')).filter(Boolean).join(', '),
+  useConc     :j=>(j.apps||[]).map(a=>a.rtu?'מוכן לשימוש':a.useConc).filter(Boolean).join(', '),
+  method      :j=>(j.apps||[]).map(a=>a.method==='אחר'?a.methodOther:a.method).filter(Boolean).join(', '),
+  riskHuman   :j=>(j.warnBefore||{}).riskHuman||'',
+  riskAnimals :j=>(j.warnBefore||{}).riskAnimals||'',
+  reentry     :j=>(j.warnBefore||{}).reentry||'',
+  warnBefore  :j=>[(j.warnBefore||{}).nature,(j.warnBefore||{}).other].filter(Boolean).join(' · '),
+  warnAfter   :j=>[j.warnAfter,j.natureAfter].filter(Boolean).join(' · '),
+  warPeriod   :j=>(j.warranty||{}).period||'',
+  warText     :j=>(j.warranty||{}).note||'',
+  warCond     :j=>(j.warranty||{}).cond||'',
+  supplementary:j=>j.needSupplementary?(j.supplementary||'נדרש'):''
+};
+const secVal=(k,j)=>{try{return String((SEC_VAL[k]?SEC_VAL[k](j):'')||'').trim()}catch(e){return ''}};
+/* פרטים שלעולם אינם מועתקים – מוצגים למשתמש לפני הטעינה */
+const NEVER_COPIED=['תאריך ושעת הטיפול','מספר היומן','נ"צ ומיקום GPS',
+ 'מספרי אצווה ותאריכי תפוגה','הכמות שנרקחה והכמות ששימשה בפועל',
+ 'חתימות המדביר והלקוח','אישור מסירת היומן','תמונות',
+ 'תוצאות מוקדי בדיקה ותחנות האכלה','תאריך סיום האחריות (מחושב מחדש למועד הטיפול)'];
 
 function applyClone(j,src,keys){
   const K=new Set(keys||[]);
@@ -2140,6 +2176,40 @@ function spotsBox(){
 }
 
 /* ---- UI: "בחירת פרטים להעתקה" ---- */
+/* ---- UI: מסך השוואה לפני הטעינה ---- */
+function preloadSheet(){
+  const p=S.journals[A._clSrc];if(!p)return;
+  const keys=[...(A._clSel||[])];
+  if(!keys.length){toast('לא נבחרו פרטים');return sectionSheet()}
+  const rows=keys.map(k=>({k,n:sectionName(k),v:sectionNote(k),a:secVal(k,p),b:secVal(k,cur)}));
+  const copy=rows.filter(r=>r.a),blank=rows.filter(r=>!r.a);
+  const over=copy.filter(r=>r.b&&r.b!==r.a);
+  const needV=copy.filter(r=>r.v).length;
+  const cell=t=>{t=String(t||'');return esc(t.length>90?t.slice(0,90)+'…':t)};
+  sheet(`<h3>מה ייטען מיומן #${p.no}</h3>
+   <p class="hint" style="margin:0">${fmtD(p.date)} · ${esc(p.client.name)} · זו תצוגה מקדימה, עדיין לא נטען דבר.</p>
+   <div style="max-height:52vh;overflow:auto;margin-top:10px">
+    <p class="achead" style="border-radius:8px">ייועתק ליומן הנוכחי (${copy.length})</p>
+    ${copy.length?`<table class="cmp">
+      <tr><th>פרט</th><th>מיומן #${p.no}</th><th>ביומן הנוכחי</th></tr>
+      ${copy.map(r=>`<tr class="${r.b&&r.b!==r.a?'changed hot':'new'}">
+        <td>${esc(r.n)}${r.v?`<br><small class="opt">${esc(r.v)}</small>`:''}</td>
+        <td>${cell(r.a)}</td>
+        <td>${r.b?cell(r.b)+'<br><small class="opt">יידרס</small>':'—'}</td></tr>`).join('')}
+     </table>`:'<p class="hint">אין בקבוצות שנבחרו מידע להעתקה.</p>'}
+    ${blank.length?`<p class="achead" style="border-radius:8px;margin-top:12px">נבחר אך ריק ביומן המקור (${blank.length})</p>
+      <p class="hint">${esc(blank.map(r=>r.n).join(', '))} – יישארו כפי שהם ביומן הנוכחי.</p>`:''}
+    <p class="achead" style="border-radius:8px;margin-top:12px">לא ייועתק בשום מקרה</p>
+    <ul class="ul">${NEVER_COPIED.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>
+   </div>
+   <div class="note">${over.length?`${over.length} פרטים שכבר הוזנו ביומן הנוכחי יידרסו. `:''}${needV?`${needV} פרטים ייטענו במצב "נדרש אימות" ולא ייחשבו כמתועדים עד שתאשרו אותם.`:'אין פרטים הדורשים אימות מיוחד.'}</div>
+   <div class="stack" style="margin-top:12px">
+    <button class="btn gold" data-a="secLoadGo">אישור וטעינה</button>
+    <button class="btn ghost" data-a="secBack">חזרה לבחירת הפרטים</button>
+    <button class="btn ghost" data-a="closeSheet">ביטול</button>
+   </div>`);
+}
+
 function sectionSheet(){
   const p=S.journals[A._clSrc];if(!p)return;
   const sel=A._clSel;
@@ -2153,7 +2223,7 @@ function sectionSheet(){
    </div>
    <div class="note">תאריך, שעה, מספר יומן, נ"צ, חתימות, תמונות, אישור המסירה ותוצאות הביקור הקודם לעולם אינם מועתקים.</div>
    <div class="stack" style="margin-top:12px">
-    <button class="btn gold" data-a="secLoad">טען את הפרטים שנבחרו (${sel.size})</button>
+    <button class="btn gold" data-a="secLoad">המשך לתצוגה מקדימה (${sel.size})</button>
     <button class="btn ghost" data-a="closeSheet">ביטול</button>
    </div>`);
 }
@@ -2286,6 +2356,10 @@ Object.assign(A,{
   secNone:()=>{A._clSel=new Set();sectionSheet()},
   secDef:()=>{A._clSel=new Set(defaultSections());sectionSheet()},
   secLoad:()=>{const p=S.journals[A._clSrc];if(!p)return closeSheet();
+    if(!A._clSel.size){toast('לא נבחרו פרטים');return}
+    preloadSheet()},
+  secBack:()=>sectionSheet(),
+  secLoadGo:()=>{const p=S.journals[A._clSrc];if(!p)return closeSheet();
     if(!A._clSel.size){toast('לא נבחרו פרטים');return}
     applyClone(cur,p,[...A._clSel]);touch();closeSheet();render();window.scrollTo(0,0);
     const pend=vPending(cur).length;

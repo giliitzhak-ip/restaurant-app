@@ -189,6 +189,7 @@ await withPage(FULL,async p=>{
   await p.click('[data-a="secDef"]');
   await p.evaluate(()=>{A._clSel=new Set(['product','dose']);sectionSheet()});
   await p.click('[data-a="secLoad"]');
+  await p.click('[data-a="secLoadGo"]');
   const r=await p.evaluate(()=>({b:cur.apps[0].batch,p:cur.apps[0].product,
     keys:Object.keys(cur.verify),sections:cur.copied_sections}));
   ok('נטענו רק השדות שנבחרו',r.p==='סופר ג\'ל');
@@ -200,6 +201,7 @@ await withPage(FULL,async p=>{
   await startJournal(p,PLACE_A);
   await p.evaluate(()=>{A._clSrc='j1';A._clSel=new Set(['product','active']);sectionSheet()});
   await p.click('[data-a="secLoad"]');
+  await p.click('[data-a="secLoadGo"]');
   const r=await p.evaluate(()=>({b:cur.apps[0].batch,p:cur.apps[0].product,
     hasBatchKey:Object.keys(cur.verify).some(k=>k.startsWith('batch:'))}));
   ok('העתקת תכשיר ללא אצווה',r.p==='סופר ג\'ל'&&r.b===''&&!r.hasBatchKey);
@@ -210,6 +212,7 @@ await withPage(FULL,async p=>{
   await startJournal(p,PLACE_A);
   await p.evaluate(()=>{A._clSrc='j1';A._clSel=new Set(ALL_SECTIONS());sectionSheet()});
   await p.click('[data-a="secLoad"]');
+  await p.click('[data-a="secLoadGo"]');
   await p.evaluate(()=>{cur.step=4;render()});
   const id=await p.evaluate(()=>cur.apps[0].id);
   const ex=await p.evaluate(()=>({b:cur.apps[0].batch,e:cur.apps[0].pkgExpiry,
@@ -240,6 +243,7 @@ await withPage(FULL,async p=>{
   await startJournal(p,PLACE_A);
   await p.evaluate(()=>{A._clSrc='j1';A._clSel=new Set(ALL_SECTIONS());sectionSheet()});
   await p.click('[data-a="secLoad"]');
+  await p.click('[data-a="secLoadGo"]');
   await p.evaluate(()=>{cur.step=7;render()});
   const r=await p.evaluate(()=>{
     const pend=Object.keys(cur.verify).filter(k=>cur.verify[k].state==='pending');
@@ -264,6 +268,7 @@ await withPage(FULL,async p=>{
   await startJournal(p,PLACE_A);
   await p.evaluate(()=>{A._clSrc='j1';A._clSel=new Set(ALL_SECTIONS());sectionSheet()});
   await p.click('[data-a="secLoad"]');
+  await p.click('[data-a="secLoadGo"]');
   const r=await p.evaluate(()=>{
     /* להשלים את כל שאר השדות כדי שרק האימות ייחסום */
     cur.findings[0].signs='נמצאו תיקנים';cur.findings[0].level='בינונית';
@@ -286,6 +291,7 @@ await withPage(FULL,async p=>{
   await p.evaluate(()=>{cur.date='2026-09-20';touch()});
   await p.evaluate(()=>{A._clSrc='j1';A._clSel=new Set(ALL_SECTIONS());sectionSheet()});
   await p.click('[data-a="secLoad"]');
+  await p.click('[data-a="secLoadGo"]');
   const w=await p.evaluate(()=>cur.warranty);
   eq('תקופת האחריות הועתקה',[w.kind,w.amount],['months',3]);
   eq('תאריך הסיום חושב מחדש ממועד הטיפול',w.end,'2026-12-20');
@@ -315,6 +321,7 @@ await withPage(FULL,async p=>{
   await p.click('[data-a="prevPick"][data-p="j0"]');
   await p.evaluate(()=>{A._clSel=new Set(ALL_SECTIONS());sectionSheet()});
   await p.click('[data-a="secLoad"]');
+  await p.click('[data-a="secLoadGo"]');
   const r=await p.evaluate(()=>({no:cur.cloned_from_no,pest:cur.findings[0].pest,
     b:cur.apps[0].batch,prod:cur.apps[0].product}));
   eq('נטען מיומן ישן שנבחר ידנית',[r.no,r.pest,r.prod],[999,'נמלים',"פרו-ג'ל"]);
@@ -389,6 +396,40 @@ await withPage(FULL,async p=>{
   await p.evaluate(()=>{cur.apps[0].product='תכשיר שלא קיים';cur.step=4;touch();render()});
   ok('מוצגת אזהרה על תכשיר שלא ניתן לאמת',
      (await p.textContent('#app')).includes('לא ניתן לאמת את התכשיר'));
+});
+
+console.log('\n14. מסך השוואה לפני הטעינה');
+await withPage(FULL,async p=>{
+  await startJournal(p,PLACE_A);
+  await p.evaluate(()=>{cur.prevention='הוזן ידנית לפני הטעינה';A._clSrc='j1';
+    A._clSel=new Set(['product','dose','prevention','reentry']);sectionSheet()});
+  await p.click('[data-a="secLoad"]');
+  const t=await p.textContent('.sheet');
+  ok('מוצגת תצוגה מקדימה לפני הטעינה',t.includes('מה ייטען מיומן'));
+  ok('נאמר שעדיין לא נטען דבר',t.includes('עדיין לא נטען דבר'));
+  ok('מוצג מה ייועתק',t.includes('ייועתק ליומן הנוכחי'));
+  ok('מוצג מה לא ייועתק בשום מקרה',t.includes('לא ייועתק בשום מקרה'));
+  ok('מספרי אצווה מסומנים כלא מועתקים',t.includes('מספרי אצווה ותאריכי תפוגה'));
+  ok('חתימות מסומנות כלא מועתקות',t.includes('חתימות המדביר והלקוח'));
+  ok('מוזהר על דריסת ערך קיים',t.includes('יידרס'));
+  ok('מוזכר שיידרשו אימותים',t.includes('נדרש אימות'));
+  const before=await p.evaluate(()=>({pr:cur.prevention,ap:cur.apps.map(a=>a.product).join(','),src:cur.source_pest_log_id}));
+  ok('התצוגה המקדימה אינה מבצעת טעינה',before.pr==='הוזן ידנית לפני הטעינה'&&!before.src,JSON.stringify(before));
+  await p.click('[data-a="secBack"]');
+  ok('אפשר לחזור לבחירת הפרטים',(await p.textContent('.sheet')).includes('בחירת פרטים להעתקה'));
+  await p.click('[data-a="secLoad"]');
+  await p.click('[data-a="secLoadGo"]');
+  const after=await p.evaluate(()=>({pr:cur.prevention,p:cur.apps[0].product,b:cur.apps[0].batch,src:cur.source_pest_log_id}));
+  ok('לאחר האישור הטעינה בוצעה',after.p==='סופר ג\'ל'&&after.src==='j1',JSON.stringify(after));
+  ok('נתוני הביצוע עדיין לא הועתקו',after.b==='');
+});
+await withPage(FULL,async p=>{
+  await startJournal(p,PLACE_A);
+  await p.evaluate(()=>{A._clSrc='j1';A._clSel=new Set(['product']);sectionSheet()});
+  await p.click('[data-a="secLoad"]');
+  await p.click('[data-a="closeSheet"]');
+  const r=await p.evaluate(()=>({n:cur.apps.filter(a=>a.product).length,src:cur.source_pest_log_id}));
+  ok('ביטול בתצוגה המקדימה אינו טוען דבר',r.n===0&&!r.src,JSON.stringify(r));
 });
 
 console.log('\n13. רגרסיה – מסלולים קיימים');
