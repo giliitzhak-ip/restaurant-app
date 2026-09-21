@@ -15,7 +15,7 @@ export default function TermsPage() {
     <LegalPage
       title="תקנון ותנאי שימוש"
       href={routes.terms}
-      updated="ספטמבר 2026"
+      document="terms"
       intro={`האתר מופעל על ידי ${brand.legal.companyName} (ח.פ. ${brand.legal.companyId}). ביצוע הזמנה באתר מהווה הסכמה לתנאים שלהלן.`}
       sections={[
         {

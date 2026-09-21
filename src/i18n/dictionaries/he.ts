@@ -383,6 +383,14 @@ export const he = {
      */
     lightingDisclaimer:
       "ההדמיה נועדה להמחשה. גוון החומר והתאורה בפועל עשויים להשתנות בהתאם למסך, למוצר ולתנאי החלל.",
+    /*
+     * The strongest of the three, and the one that is always on screen rather
+     * than only beside a price. It names every dimension in which the picture
+     * can differ from the room — including measurement, which is the one that
+     * costs real money when someone orders from a render.
+     */
+    measurementDisclaimer:
+      "ההדמיה מיועדת להמחשה בלבד. צבעים, מרקמים, פרופורציות, תאורה ומידות עשויים להיות שונים מהתוצאה בפועל. יש לבצע מדידה ובדיקה מקצועית לפני הזמנה או התקנה.",
     illustrationOnly: "להמחשה בלבד",
     uploadTooLarge: "הקובץ גדול מדי. נסו תמונה קטנה יותר.",
     uploadWrongType: "אפשר להעלות JPG, PNG או WebP בלבד.",

@@ -62,6 +62,8 @@ import { CanvasStage } from "./canvas-stage";
 import { ControlsPanel } from "./controls-panel";
 import { CustomObjectDialog } from "./custom-object-dialog";
 import { LayersPanel } from "./layers-panel";
+import { AccessibleEditor } from "./accessible-editor";
+import { DesignSummary, surfaceLabel } from "./design-summary";
 import { LightingDrawer } from "./lighting-drawer";
 import { ObjectLibraryDrawer } from "./object-library-drawer";
 import { ProductDrawer } from "./product-drawer";
@@ -550,8 +552,27 @@ export function DesignerShell({
       />
     ),
     layers: (
-      <div className="flex h-full flex-col">
+      <div className="flex h-full flex-col overflow-y-auto">
         <LayersPanel controller={scene} />
+        {/*
+          * The keyboard path and the text alternative live beside the layer
+          * list, because that is where someone who cannot use the canvas
+          * selects an item in the first place.
+          */}
+        <div className="mt-5 border-t border-studio-line pt-4">
+          <AccessibleEditor controller={scene} frame={frame} />
+        </div>
+        <div className="mt-5 border-t border-studio-line pt-4">
+          <DesignSummary
+            scene={scene.scene}
+            frame={frame}
+            surfaces={controller.selectedProducts.map(({ surface, swatch }) => ({
+              label: surfaceLabel(surface.mask.kind),
+              productName: swatch.name,
+              areaSqm: surface.areaSqm,
+            }))}
+          />
+        </div>
         <div className="mt-5 border-t border-studio-line pt-4">
           <h3 className="mb-2 text-[0.6875rem] tracking-[0.18em] text-studio-ink/50">
             רשימת העיצוב
@@ -612,8 +633,19 @@ export function DesignerShell({
       </header>
 
       {controller.step === "upload" ? (
-        <div className="flex flex-1 items-center justify-center">
+        <div className="flex flex-1 flex-col items-center justify-center gap-5 px-4">
           <UploadPanel onImage={controller.loadImage} error={controller.error} />
+          {/*
+            * Stated before the photo is uploaded, not only after.
+            *
+            * This is the screen where someone decides whether to photograph
+            * their living room and hand it to us, and whether to trust what
+            * comes back enough to order from it. A caveat that only appears
+            * once they are already invested is not a caveat.
+            */}
+          <p className="max-w-prose text-center text-[0.6875rem] leading-relaxed text-studio-ink/55">
+            {t.designer.measurementDisclaimer}
+          </p>
         </div>
       ) : null}
 
@@ -834,7 +866,16 @@ export function DesignerShell({
             * toolbar above it was going to be wrong at some width — and was:
             * at 375 the summary covered the tools completely.
             */}
-          <div className="fixed inset-x-0 bottom-0 z-30 flex flex-col border-t border-studio-line bg-studio/95 backdrop-blur-md">
+          {/*
+            * `bottom` follows the consent banner rather than the viewport
+            * edge. Both are fixed, so padding the body does not separate them
+            * — without this the banner covers the toolbar and the save button
+            * cannot be clicked until the visitor answers it.
+            */}
+          <div
+            className="fixed inset-x-0 z-30 flex flex-col border-t border-studio-line bg-studio/95 backdrop-blur-md"
+            style={{ bottom: "var(--consent-banner-height, 0px)" }}
+          >
           <nav
             aria-label="כלי העיצוב"
             className="order-1 border-b border-studio-line px-2 py-1 lg:hidden"
@@ -911,11 +952,16 @@ export function DesignerShell({
                 Stated next to the price, not buried in a policy page: this is
                 the moment someone decides to buy 40 m² from a picture.
               */}
-              {hasSelection ? (
-                <p className="w-full max-w-prose text-[0.6875rem] leading-relaxed text-studio-ink/55 lg:order-last">
-                  {t.designer.renderDisclaimer}
-                </p>
-              ) : null}
+              {/*
+                * Always on screen, not only once something is selected: the
+                * measurement caveat matters most to someone still deciding,
+                * and a disclaimer that appears after the decision is made is
+                * not a disclaimer.
+                */}
+              <p className="w-full max-w-prose text-[0.6875rem] leading-relaxed text-studio-ink/55 lg:order-last">
+                {t.designer.measurementDisclaimer}
+                {hasSelection ? ` ${t.designer.renderDisclaimer}` : ""}
+              </p>
 
               <div className="ms-auto flex flex-wrap items-center gap-2">
                 {controller.selectedProducts.map(({ swatch }) => (

@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { Clock, Mail, MapPin, Phone } from "lucide-react";
 import { brand } from "@/config/brand";
+import { legalFacts } from "@/config/legal";
+import { LegalFactValue } from "@/features/legal/legal-page";
+import { PrivacySettingsLink } from "@/components/consent/cookie-banner";
 import { footerNav } from "@/config/site";
 import { t } from "@/i18n";
 import { BrandMark } from "@/components/layout/brand-mark";
@@ -78,10 +81,20 @@ export function SiteFooter() {
           </div>
           <div className="sm:text-end">
             <p className="text-xs text-muted">
-              © {new Date().getFullYear()} {brand.legal.companyName} · {t.footer.rights}
+              © {new Date().getFullYear()} <LegalFactValue value={legalFacts.companyLegalName.value} />{" "}
+              · {t.footer.rights}
             </p>
             <p className="num mt-1 text-xs text-muted-soft">
-              ח.פ. {brand.legal.companyId}
+              {legalFacts.companyIdKind.value ?? "ח.פ./ע.מ."}{" "}
+              <LegalFactValue value={legalFacts.companyId.value} />
+            </p>
+            {/*
+              * Consent has to be as easy to withdraw as it was to give, so the
+              * entry point lives here permanently rather than only in the
+              * first-visit banner.
+              */}
+            <p className="mt-2 text-xs">
+              <PrivacySettingsLink className="link-quiet underline" />
             </p>
           </div>
         </div>

@@ -42,6 +42,16 @@ export const RATE_LIMITS = {
   roomAnalysis: { limit: 30, windowSec: 600 },
   upload: { limit: 20, windowSec: 600 },
   designWrite: { limit: 60, windowSec: 600 },
+  /*
+   * Generous: a visitor toggling categories in the settings panel is a normal
+   * thing to do several times in a minute, and a limiter that blocks someone
+   * from *withdrawing* consent would be worse than the abuse it prevents.
+   */
+  consent: { limit: 40, windowSec: 600 },
+  /* A cancellation is a legal notice. Enough to retry, not enough to flood. */
+  cancellation: { limit: 5, windowSec: 3600 },
+  dataRequest: { limit: 5, windowSec: 3600 },
+  unsubscribe: { limit: 20, windowSec: 3600 },
 } as const satisfies Record<string, RateLimitRule>;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;

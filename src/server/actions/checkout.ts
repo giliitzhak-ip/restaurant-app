@@ -13,6 +13,8 @@ import { getRepository } from "@/server/repositories";
 import { rateLimit } from "@/server/security/rate-limit";
 import { createPublicToken } from "@/server/security/tokens";
 import { log } from "@/server/observability/logger";
+import { legalDocuments } from "@/config/legal";
+import { MARKETING_CONSENT_TEXT } from "@/lib/consent";
 
 export type { CheckoutInput };
 
@@ -33,6 +35,55 @@ export type CheckoutResult =
 /** Confirmation URL. The token is what authorises a guest to read the order. */
 function confirmationUrl(number: string, token: string) {
   return `${siteUrl}${routes.order(number)}?token=${encodeURIComponent(token)}`;
+}
+
+/**
+ * Writes the checkout consents. Never throws into the checkout path.
+ */
+async function recordCheckoutConsents(input: {
+  orderId: string;
+  email: string;
+  userId: string | null;
+  marketingOptIn: boolean;
+}) {
+  const repository = getRepository();
+  try {
+    await repository.recordConsent({
+      kind: "PURCHASE_TERMS",
+      source: "CHECKOUT",
+      granted: true,
+      documentVersion: `terms:${legalDocuments.terms.version}+privacy:${legalDocuments.privacy.version}`,
+      orderId: input.orderId,
+      email: input.email,
+      userId: input.userId,
+    });
+  } catch (error) {
+    log.error("checkout.terms_consent_failed", { orderId: input.orderId, error: String(error) });
+  }
+
+  // No row at all when the box was left unticked. An absent consent and a
+  // recorded refusal are different things, and only the former is true here.
+  if (!input.marketingOptIn) return;
+
+  try {
+    await repository.recordConsent({
+      kind: "MARKETING",
+      source: "CHECKOUT",
+      granted: true,
+      documentVersion: legalDocuments.privacy.version,
+      orderId: input.orderId,
+      email: input.email,
+      userId: input.userId,
+    });
+    await repository.addNewsletterSignup({
+      email: input.email,
+      source: "CHECKOUT",
+      consentText: MARKETING_CONSENT_TEXT,
+      documentVersion: legalDocuments.privacy.version,
+    });
+  } catch (error) {
+    log.error("checkout.marketing_consent_failed", { orderId: input.orderId, error: String(error) });
+  }
 }
 
 /**
@@ -157,6 +208,26 @@ export async function placeOrderAction(input: CheckoutInput): Promise<CheckoutRe
   if (created.duplicate) {
     return { ok: true, orderNumber: order.number, token };
   }
+
+  /*
+   * Record the consents against the order.
+   *
+   * Two separate rows, because they are two separate decisions: accepting the
+   * terms of sale (a condition of buying) and agreeing to marketing (never a
+   * condition of anything). Each carries the version of the document that was
+   * actually on screen, so "which text did this customer agree to" is
+   * answerable a year from now, after the terms have been revised twice.
+   *
+   * Failure here does not fail the order. The customer has paid or is about
+   * to; losing the sale because an audit row would not write is the wrong
+   * trade, and the failure is logged loudly instead.
+   */
+  await recordCheckoutConsents({
+    orderId: order.id,
+    email: data.email,
+    userId: user?.id ?? null,
+    marketingOptIn: data.marketingOptIn === true,
+  });
 
   await repository.recordPaymentEvent({
     orderId: order.id,

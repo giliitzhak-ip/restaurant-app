@@ -1,7 +1,6 @@
 import { mkdir, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { createId } from "@/lib/utils";
-import type { StorageDriver } from "./types";
+import { objectKeySuffix, type StorageDriver } from "./types";
 
 const extensions: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -20,7 +19,7 @@ export const localStorageDriver: StorageDriver = {
   async save({ data, contentType, keyHint }) {
     const folder = new Date().toISOString().slice(0, 7);
     const extension = extensions[contentType] ?? "bin";
-    const name = `${keyHint}-${createId("f").slice(2)}.${extension}`;
+    const name = `${keyHint}-${objectKeySuffix()}.${extension}`;
     const key = `${folder}/${name}`;
     const directory = join(process.cwd(), "public", "uploads", folder);
     await mkdir(directory, { recursive: true });

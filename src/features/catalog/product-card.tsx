@@ -121,12 +121,24 @@ export function ProductCard({
           * never leave this row stuck open over the photo. Touch reaches the
           * same two actions through the row under the price.
           */}
+        {/*
+          * `min-w-0` on the children below, and the reason is worth keeping.
+          *
+          * These buttons carry `whitespace-nowrap`, and a flex item defaults
+          * to `min-width: auto` — which means `flex-1` cannot shrink them
+          * below their text. At exactly 768px, where this row first appears
+          * and the grid columns are at their narrowest, two of them plus the
+          * gap were wider than the card: the first button rendered outside
+          * its own container and, on the left-most card, past the edge of the
+          * viewport. The page scrolled sideways by 1px on every route that
+          * shows a product grid.
+          */}
         <div className="absolute inset-x-2.5 bottom-2.5 hidden gap-2 opacity-0 transition-opacity duration-[var(--dur-quick)] ease-[var(--ease-out-soft)] group-hover:opacity-100 group-focus-within:opacity-100 md:flex">
           {canVisualise ? (
             <Button
               asChild
               size="sm"
-              className="flex-1 bg-ink/92 text-xs backdrop-blur-sm"
+              className="min-w-0 flex-1 bg-ink/92 text-xs backdrop-blur-sm"
             >
               <Link
                 href={routes.designerWithProduct(
@@ -144,7 +156,7 @@ export function ProductCard({
             variant="secondary"
             size="sm"
             onClick={() => setQuickView(true)}
-            className="bg-surface/92 text-xs backdrop-blur-sm hover:bg-surface"
+            className="min-w-0 shrink bg-surface/92 text-xs backdrop-blur-sm hover:bg-surface"
           >
             <Eye />
             {t.catalog.quickView}

@@ -23,6 +23,16 @@ export const checkoutSchema = z
     notes: z.string().trim().max(1000).optional(),
     terms: z.literal(true, { message: "יש לאשר את התקנון" }),
     /**
+     * Marketing opt-in.
+     *
+     * Deliberately a separate, optional boolean that defaults to `false` — not
+     * folded into `terms`, and not defaulted to `true`. Accepting the terms of
+     * sale is a condition of buying; agreeing to be marketed to is not, and
+     * bundling the two makes neither consent valid. A purchase never depends
+     * on this field's value.
+     */
+    marketingOptIn: z.boolean().default(false),
+    /**
      * Per-submission nonce. The form mints one when it mounts and keeps it for
      * retries, so a double-clicked button or a flaky connection resolves to a
      * single order instead of two charges.

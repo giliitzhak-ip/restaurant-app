@@ -1,6 +1,5 @@
-import { createId } from "@/lib/utils";
 import { fetchWithTimeout } from "@/server/http/fetch-with-timeout";
-import type { StorageDriver } from "./types";
+import { objectKeySuffix, type StorageDriver } from "./types";
 
 /**
  * Bucket driver for any storage that exposes a signed upload endpoint
@@ -22,7 +21,7 @@ export const remoteStorageDriver: StorageDriver = {
       );
     }
 
-    const key = `${new Date().toISOString().slice(0, 7)}/${keyHint}-${createId("f").slice(2)}`;
+    const key = `${new Date().toISOString().slice(0, 7)}/${keyHint}-${objectKeySuffix()}`;
     // A bucket that stops answering must not hold a request worker open.
     const response = await fetchWithTimeout(
       `${endpoint}?key=${encodeURIComponent(key)}`,

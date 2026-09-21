@@ -74,7 +74,9 @@ export function StickyBuyBar({
   return (
     <div
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 backdrop-blur-md md:hidden",
+        // Sits above the consent banner rather than under it; see the note in
+        // components/consent/cookie-banner.tsx.
+        "fixed inset-x-0 bottom-[var(--consent-banner-height,0px)] z-40 border-t border-line bg-surface/95 backdrop-blur-md md:hidden",
         "transition-transform duration-[var(--dur-enter)] ease-[var(--ease-out-soft)]",
         "pb-[env(safe-area-inset-bottom,0px)]",
         showing ? "translate-y-0" : "translate-y-full",

@@ -445,9 +445,11 @@ model Order {
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
-  user         User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
-  items        OrderItem[]
-  transactions PaymentTransaction[]
+  user          User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items         OrderItem[]
+  transactions  PaymentTransaction[]
+  consents      ConsentRecord[]
+  cancellations CancellationRequest[]
 
   @@index([userId])
   @@index([status])
@@ -623,10 +625,28 @@ model Coupon {
   updatedAt   DateTime   @updatedAt
 }
 
+/// A marketing subscription.
+///
+/// `confirmedAt` is separate from `createdAt` on purpose: a submitted form is a
+/// request to subscribe, and only a confirmed one is an opt-in we will mail. An
+/// address on MarketingSuppression is never written here at all.
 model NewsletterSignup {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  createdAt DateTime @default(now())
+  id               String    @id @default(cuid())
+  email            String    @unique
+  /// Where the address came from — footer form, checkout, account settings.
+  source           String    @default("FOOTER")
+  /// The exact wording shown next to the checkbox when they opted in.
+  consentText      String?
+  /// Version of the privacy policy in force at the time.
+  documentVersion  String?
+  ipPrefix         String?
+  /// Unguessable. The only thing needed to unsubscribe from a link in a mail.
+  unsubscribeToken String    @unique
+  confirmedAt      DateTime?
+  unsubscribedAt   DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([confirmedAt])
 }
 
 /// A kept version of a design.
@@ -717,4 +737,173 @@ enum SceneSnapTarget {
   FLOOR
   NICHE
   FREE
+}
+
+// ---------------------------------------------------------------------------
+// Consent, cancellations and data-subject requests
+//
+// Added by the compliance pass. Three things drive the shapes here:
+//
+//  - a consent is worthless without the *text it was given to*, so every
+//    record carries the document version and the exact timestamp;
+//  - a cancellation is a customer's legal notice, not a status flag, so it is
+//    its own append-only record with an audit trail rather than a boolean on
+//    the order;
+//  - a suppression is stronger than an absent subscription: it survives a
+//    re-subscribe attempt, which is what stops "unsubscribe, then get added
+//    back by the next import".
+// ---------------------------------------------------------------------------
+
+enum ConsentKind {
+  /// Cookie / tracking categories chosen in the banner or settings panel.
+  COOKIES
+  /// Terms + privacy acceptance at checkout.
+  PURCHASE_TERMS
+  /// Optional marketing opt-in. Never bundled with PURCHASE_TERMS.
+  MARKETING
+}
+
+enum ConsentSource {
+  COOKIE_BANNER
+  PRIVACY_SETTINGS
+  CHECKOUT
+  NEWSLETTER_FORM
+  ACCOUNT_SETTINGS
+  UNSUBSCRIBE_LINK
+}
+
+/// Append-only. A consent is never updated in place — withdrawing writes a new
+/// row with `granted = false`, so the history stays readable.
+model ConsentRecord {
+  id              String        @id @default(cuid())
+  kind            ConsentKind
+  source          ConsentSource
+  /// True for a grant, false for a withdrawal.
+  granted         Boolean
+  /// Which subject: a user id when signed in, otherwise the guest cookie id.
+  userId          String?
+  /// Lower-cased. Present for marketing and checkout consents.
+  email           String?
+  subjectKey      String?
+  /// Version string of the document or category set consented to.
+  documentVersion String
+  /// For COOKIES: which categories were accepted.
+  categories      Json?
+  /// Truncated to a /24 (IPv4) or /48 (IPv6) before storage — enough to show
+  /// a consent came from a real session, not enough to be a tracking id.
+  ipPrefix        String?
+  /// Hashed, never the raw string.
+  userAgentHash   String?
+  orderId         String?
+  createdAt       DateTime      @default(now())
+
+  order Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([kind, createdAt])
+  @@index([email])
+  @@index([subjectKey])
+  @@index([orderId])
+}
+
+/// Addresses that must not be mailed, whatever else happens.
+///
+/// Checked before every send and before every signup write, so an unsubscribe
+/// survives a later re-import or a re-subscribe by a third party.
+model MarketingSuppression {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  reason    String
+  createdAt DateTime @default(now())
+}
+
+enum CancellationStatus {
+  RECEIVED
+  IN_REVIEW
+  APPROVED
+  PARTIALLY_APPROVED
+  DECLINED
+  WITHDRAWN
+}
+
+/// A customer's cancellation / return notice.
+///
+/// Deliberately separate from Order.status: receiving a notice is a fact about
+/// the customer's action and is recorded even if the request is later declined.
+/// Nothing here cancels an order automatically, and nothing here decides that a
+/// made-to-measure item is non-cancellable — that is a human call, recorded in
+/// `decisionNote` with who made it.
+model CancellationRequest {
+  id            String             @id @default(cuid())
+  /// Short human reference given to the customer ("CR-2026-0041").
+  reference     String             @unique
+  orderId       String?
+  /// As typed by the customer, so a mistyped number is still traceable.
+  orderNumber   String
+  customerName  String
+  email         String
+  phone         String
+  /// Which lines, as {orderItemId?, productName, quantity}. Empty = whole order.
+  items         Json
+  /// Optional by law and by the form. Never required to submit.
+  reason        String?
+  /// Uploaded evidence, if any. Private storage, signed URLs only.
+  attachmentKey String?
+  status        CancellationStatus @default(RECEIVED)
+  /// Filled by staff. Includes the legal basis when a request is declined.
+  decisionNote  String?
+  handledById   String?
+  handledAt     DateTime?
+  ipPrefix      String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  order Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([orderNumber])
+  @@index([email])
+}
+
+enum DataRequestKind {
+  ACCESS
+  RECTIFY
+  DELETE
+  EXPORT
+}
+
+enum DataRequestStatus {
+  RECEIVED
+  IDENTITY_PENDING
+  IN_PROGRESS
+  COMPLETED
+  REFUSED_RETENTION_REQUIRED
+  REJECTED
+}
+
+/// A subject's access / correction / deletion request.
+///
+/// `REFUSED_RETENTION_REQUIRED` is a real outcome, not a failure: tax,
+/// accounting, fraud-prevention and litigation-hold obligations can require
+/// keeping data the subject asked to delete. When that happens the reason is
+/// recorded and access is narrowed instead.
+model DataRequest {
+  id             String            @id @default(cuid())
+  reference      String            @unique
+  kind           DataRequestKind
+  status         DataRequestStatus @default(RECEIVED)
+  userId         String?
+  email          String
+  /// What the subject asked for, in their words.
+  detail         String?
+  /// How identity was verified, and by whom. Never the documents themselves.
+  identityNote   String?
+  /// Why data was kept, when it was.
+  retentionBasis String?
+  handledById    String?
+  handledAt      DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([status, createdAt])
+  @@index([email])
 }

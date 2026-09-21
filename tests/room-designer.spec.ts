@@ -191,7 +191,16 @@ test.describe("lighting", () => {
     await addObject(page, "NICHE");
     await addFixture(page, "LED_IN_NICHE");
     await openTool(page, "layers");
-    await expect(page.getByText("פס LED בנישה")).toBeVisible();
+    /*
+     * Scoped to the layer list. The same fixture name now also appears in the
+     * accessible editor's heading and in the written design summary, both of
+     * which share this panel — that breadth is the point of them, so the
+     * assertion names where it expects to find the row rather than asking the
+     * whole panel.
+     */
+    await expect(
+      page.getByRole("button", { name: "פס LED בנישה", exact: true }),
+    ).toBeVisible();
     await closeTool(page);
   });
 

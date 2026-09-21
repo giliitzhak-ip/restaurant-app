@@ -429,7 +429,146 @@ export interface Repository {
   >;
 
   /* marketing */
-  addNewsletterSignup(email: string): Promise<void>;
+  addNewsletterSignup(input: NewsletterSignupInput): Promise<{ ok: boolean; suppressed: boolean }>;
+  /** Resolves the token from an unsubscribe link and suppresses the address. */
+  unsubscribeByToken(token: string): Promise<{ ok: boolean; email: string | null }>;
+  suppressMarketing(email: string, reason: string): Promise<void>;
+  isMarketingSuppressed(email: string): Promise<boolean>;
+
+  /* consent */
+  recordConsent(input: ConsentInput): Promise<void>;
+  listConsentsForOrder(orderId: string): Promise<ConsentRecordView[]>;
+
+  /* cancellations */
+  createCancellationRequest(
+    input: CancellationRequestInput,
+  ): Promise<{ reference: string }>;
+  listCancellationRequests(limit?: number): Promise<CancellationRequestView[]>;
+  updateCancellationStatus(input: {
+    id: string;
+    status: CancellationStatusValue;
+    decisionNote: string | null;
+    handledById: string | null;
+  }): Promise<boolean>;
+
+  /* data subject requests */
+  createDataRequest(input: DataRequestInput): Promise<{ reference: string }>;
+  listDataRequests(limit?: number): Promise<DataRequestView[]>;
+}
+
+/* -------------------------------------------------------------------------
+ * Compliance records
+ * ---------------------------------------------------------------------- */
+
+export type ConsentKindValue = "COOKIES" | "PURCHASE_TERMS" | "MARKETING";
+export type ConsentSourceValue =
+  | "COOKIE_BANNER"
+  | "PRIVACY_SETTINGS"
+  | "CHECKOUT"
+  | "NEWSLETTER_FORM"
+  | "ACCOUNT_SETTINGS"
+  | "UNSUBSCRIBE_LINK";
+
+export interface ConsentInput {
+  kind: ConsentKindValue;
+  source: ConsentSourceValue;
+  granted: boolean;
+  documentVersion: string;
+  userId?: string | null;
+  email?: string | null;
+  subjectKey?: string | null;
+  categories?: Record<string, boolean> | null;
+  ipPrefix?: string | null;
+  userAgentHash?: string | null;
+  orderId?: string | null;
+}
+
+export interface ConsentRecordView {
+  id: string;
+  kind: ConsentKindValue;
+  source: ConsentSourceValue;
+  granted: boolean;
+  documentVersion: string;
+  categories: Record<string, boolean> | null;
+  createdAt: string;
+}
+
+export interface NewsletterSignupInput {
+  email: string;
+  source: string;
+  /** The exact wording shown beside the checkbox. */
+  consentText: string;
+  documentVersion: string;
+  ipPrefix?: string | null;
+}
+
+export type CancellationStatusValue =
+  | "RECEIVED"
+  | "IN_REVIEW"
+  | "APPROVED"
+  | "PARTIALLY_APPROVED"
+  | "DECLINED"
+  | "WITHDRAWN";
+
+export interface CancellationItemInput {
+  orderItemId?: string | null;
+  productName: string;
+  quantity: number;
+}
+
+export interface CancellationRequestInput {
+  orderNumber: string;
+  orderId: string | null;
+  customerName: string;
+  email: string;
+  phone: string;
+  items: CancellationItemInput[];
+  reason: string | null;
+  attachmentKey: string | null;
+  ipPrefix: string | null;
+}
+
+export interface CancellationRequestView {
+  id: string;
+  reference: string;
+  orderNumber: string;
+  customerName: string;
+  email: string;
+  phone: string;
+  items: CancellationItemInput[];
+  reason: string | null;
+  attachmentKey: string | null;
+  status: CancellationStatusValue;
+  decisionNote: string | null;
+  handledAt: string | null;
+  createdAt: string;
+}
+
+export type DataRequestKindValue = "ACCESS" | "RECTIFY" | "DELETE" | "EXPORT";
+export type DataRequestStatusValue =
+  | "RECEIVED"
+  | "IDENTITY_PENDING"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "REFUSED_RETENTION_REQUIRED"
+  | "REJECTED";
+
+export interface DataRequestInput {
+  kind: DataRequestKindValue;
+  email: string;
+  userId: string | null;
+  detail: string | null;
+}
+
+export interface DataRequestView {
+  id: string;
+  reference: string;
+  kind: DataRequestKindValue;
+  status: DataRequestStatusValue;
+  email: string;
+  detail: string | null;
+  retentionBasis: string | null;
+  createdAt: string;
 }
 
 export interface CatalogFacets {

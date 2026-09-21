@@ -3,7 +3,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { getPrisma } from "@/server/db/prisma";
 import { readScene } from "@/server/design/scene";
 import { canTransition } from "@/server/commerce/order-flow";
-import { timingSafeEqualString } from "@/server/security/tokens";
+import { createPublicToken, timingSafeEqualString } from "@/server/security/tokens";
 import {
   generateOrderNumber,
   generateQuoteNumber,
@@ -31,7 +31,28 @@ import {
   type LightingPreset,
 } from "@/types/scene";
 import { buildFacets } from "./filter";
+
+/**
+ * Allocates the next value of a named counter.
+ *
+ * Shares the `Sequence` table with order and quote numbering, so a
+ * cancellation reference is gapless and unguessable-by-increment in the same
+ * way an order number is. Not wrapped in a caller-supplied transaction: these
+ * references are handed to a customer as a receipt, so a gap from a failed
+ * insert is preferable to two customers holding the same reference.
+ */
+async function nextSequence(name: string): Promise<number> {
+  const counter = await getPrisma().sequence.upsert({
+    where: { name },
+    create: { name, value: 1 },
+    update: { value: { increment: 1 } },
+  });
+  return counter.value;
+}
 import type {
+  CancellationRequestView,
+  ConsentRecordView,
+  DataRequestView,
   DesignObjectCategoryRecord,
   DesignVersionRecord,
 } from "./types";
@@ -1612,13 +1633,200 @@ export const prismaRepository: Repository = {
     return rows.map((row) => ({ ...toDesign(row), guestToken: null }));
   },
 
-  async addNewsletterSignup(email) {
-    const normalised = email.trim().toLowerCase();
-    await getPrisma().newsletterSignup.upsert({
-      where: { email: normalised },
-      create: { email: normalised },
-      update: {},
+  async addNewsletterSignup(input) {
+    const email = input.email.trim().toLowerCase();
+    const db = getPrisma();
+    /*
+     * Suppression wins. An address that unsubscribed is not re-added by a
+     * later form submission, an import, or anyone else typing it in — that is
+     * the whole point of keeping suppression separate from "has no row here".
+     */
+    const suppressed = await db.marketingSuppression.findUnique({ where: { email } });
+    if (suppressed) return { ok: true, suppressed: true };
+
+    await db.newsletterSignup.upsert({
+      where: { email },
+      create: {
+        email,
+        source: input.source,
+        consentText: input.consentText,
+        documentVersion: input.documentVersion,
+        ipPrefix: input.ipPrefix ?? null,
+        unsubscribeToken: createPublicToken(),
+        confirmedAt: new Date(),
+      },
+      update: {
+        source: input.source,
+        consentText: input.consentText,
+        documentVersion: input.documentVersion,
+        confirmedAt: new Date(),
+        unsubscribedAt: null,
+      },
     });
+    return { ok: true, suppressed: false };
+  },
+
+  async unsubscribeByToken(token) {
+    const db = getPrisma();
+    const row = await db.newsletterSignup.findUnique({ where: { unsubscribeToken: token } });
+    if (!row) return { ok: false, email: null };
+    await db.$transaction([
+      db.newsletterSignup.update({
+        where: { id: row.id },
+        data: { unsubscribedAt: new Date() },
+      }),
+      db.marketingSuppression.upsert({
+        where: { email: row.email },
+        create: { email: row.email, reason: "unsubscribe-link" },
+        update: {},
+      }),
+    ]);
+    return { ok: true, email: row.email };
+  },
+
+  async suppressMarketing(email, reason) {
+    const normalised = email.trim().toLowerCase();
+    const db = getPrisma();
+    await db.marketingSuppression.upsert({
+      where: { email: normalised },
+      create: { email: normalised, reason },
+      update: { reason },
+    });
+    await db.newsletterSignup.updateMany({
+      where: { email: normalised, unsubscribedAt: null },
+      data: { unsubscribedAt: new Date() },
+    });
+  },
+
+  async isMarketingSuppressed(email) {
+    const row = await getPrisma().marketingSuppression.findUnique({
+      where: { email: email.trim().toLowerCase() },
+    });
+    return Boolean(row);
+  },
+
+  async recordConsent(input) {
+    await getPrisma().consentRecord.create({
+      data: {
+        kind: input.kind,
+        source: input.source,
+        granted: input.granted,
+        documentVersion: input.documentVersion,
+        userId: input.userId ?? null,
+        email: input.email?.trim().toLowerCase() ?? null,
+        subjectKey: input.subjectKey ?? null,
+        categories: input.categories ?? undefined,
+        ipPrefix: input.ipPrefix ?? null,
+        userAgentHash: input.userAgentHash ?? null,
+        orderId: input.orderId ?? null,
+      },
+    });
+  },
+
+  async listConsentsForOrder(orderId) {
+    const rows = await getPrisma().consentRecord.findMany({
+      where: { orderId },
+      orderBy: { createdAt: "asc" },
+    });
+    return rows.map((row): ConsentRecordView => ({
+      id: row.id,
+      kind: row.kind,
+      source: row.source,
+      granted: row.granted,
+      documentVersion: row.documentVersion,
+      categories: (row.categories as Record<string, boolean> | null) ?? null,
+      createdAt: row.createdAt.toISOString(),
+    }));
+  },
+
+  async createCancellationRequest(input) {
+    const db = getPrisma();
+    const year = new Date().getFullYear();
+    const seq = await nextSequence(`cancellation-${year}`);
+    const reference = `CR-${year}-${String(seq).padStart(4, "0")}`;
+    await db.cancellationRequest.create({
+      data: {
+        reference,
+        orderId: input.orderId,
+        orderNumber: input.orderNumber,
+        customerName: input.customerName,
+        email: input.email.trim().toLowerCase(),
+        phone: input.phone,
+        items: input.items as unknown as Prisma.InputJsonValue,
+        reason: input.reason,
+        attachmentKey: input.attachmentKey,
+        ipPrefix: input.ipPrefix,
+      },
+    });
+    return { reference };
+  },
+
+  async listCancellationRequests(limit = 100) {
+    const rows = await getPrisma().cancellationRequest.findMany({
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
+    return rows.map((row): CancellationRequestView => ({
+      id: row.id,
+      reference: row.reference,
+      orderNumber: row.orderNumber,
+      customerName: row.customerName,
+      email: row.email,
+      phone: row.phone,
+      items: (row.items as unknown as CancellationRequestView["items"]) ?? [],
+      reason: row.reason,
+      attachmentKey: row.attachmentKey,
+      status: row.status,
+      decisionNote: row.decisionNote,
+      handledAt: row.handledAt?.toISOString() ?? null,
+      createdAt: row.createdAt.toISOString(),
+    }));
+  },
+
+  async updateCancellationStatus(input) {
+    const result = await getPrisma().cancellationRequest.updateMany({
+      where: { id: input.id },
+      data: {
+        status: input.status,
+        decisionNote: input.decisionNote,
+        handledById: input.handledById,
+        handledAt: new Date(),
+      },
+    });
+    return result.count > 0;
+  },
+
+  async createDataRequest(input) {
+    const year = new Date().getFullYear();
+    const seq = await nextSequence(`data-request-${year}`);
+    const reference = `DR-${year}-${String(seq).padStart(4, "0")}`;
+    await getPrisma().dataRequest.create({
+      data: {
+        reference,
+        kind: input.kind,
+        email: input.email.trim().toLowerCase(),
+        userId: input.userId,
+        detail: input.detail,
+      },
+    });
+    return { reference };
+  },
+
+  async listDataRequests(limit = 100) {
+    const rows = await getPrisma().dataRequest.findMany({
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
+    return rows.map((row): DataRequestView => ({
+      id: row.id,
+      reference: row.reference,
+      kind: row.kind,
+      status: row.status,
+      email: row.email,
+      detail: row.detail,
+      retentionBasis: row.retentionBasis,
+      createdAt: row.createdAt.toISOString(),
+    }));
   },
 
   async recordAuditEvent(input) {

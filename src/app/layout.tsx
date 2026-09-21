@@ -7,6 +7,8 @@ import { AppProviders } from "@/components/providers";
 import { getCart } from "@/server/cart/cart-service";
 import { getSessionUser } from "@/server/auth/session";
 import { getRepository } from "@/server/repositories";
+import { cookies } from "next/headers";
+import { CONSENT_COOKIE, parseConsent } from "@/lib/consent";
 import "./globals.css";
 
 const sans = Assistant({
@@ -55,8 +57,14 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [cart, user] = await Promise.all([getCart(), getSessionUser()]);
+  const [cart, user, jar] = await Promise.all([getCart(), getSessionUser(), cookies()]);
   const favorites = user ? await getRepository().listFavorites(user.id) : [];
+  /*
+   * Read here rather than in the client so a returning visitor's choice is
+   * known at first paint. A banner that flashes on for someone who already
+   * answered is its own kind of nagging.
+   */
+  const consent = parseConsent(jar.get(CONSENT_COOKIE)?.value);
 
   return (
     <html
@@ -74,7 +82,7 @@ export default async function RootLayout({
         >
           {t.common.skipToContent}
         </a>
-        <AppProviders cart={cart} user={user} favorites={favorites}>
+        <AppProviders cart={cart} user={user} favorites={favorites} consent={consent}>
           {children}
         </AppProviders>
       </body>

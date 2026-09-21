@@ -15,11 +15,16 @@
   /* Ink */
   --color-ink: #16130f;
   --color-ink-soft: #3b352e;
-  --color-muted: #776f65;
-  /* 4.5:1 on --color-canvas. The lighter tone this used to be measured 2.8:1,
-     which is below AA for body text — and it is used for placeholders, facet
-     counts and unit labels, all of which people actually need to read. */
-  --color-muted-soft: #776f65;
+  /* Secondary text.
+     Measured against every light surface it is actually used on, not just the
+     page background: canvas 5.69, surface 6.25, surface-2 5.26, surface-3
+     4.72. The previous value cleared AA on --color-canvas (4.51) and quietly
+     failed everywhere else — 4.16 inside a card and 3.74 on the darkest
+     surface — which is where most muted text in this UI lives. */
+  --color-muted: #685f56;
+  /* Same colour. Kept as a separate token so a future softer tone has a name
+     to live in, but it must satisfy the same floor. */
+  --color-muted-soft: #685f56;
 
   /* Lines */
   --color-line: #e4ddd4;
@@ -38,7 +43,10 @@
 
   /* Semantic */
   --color-success: #3f6b4f;
-  --color-warning: #9a6b1f;
+  /* 4.66:1 on its own 15% tint, 5.13:1 on canvas. The previous value cleared
+     AA on the page background but not on the tinted panel the warning
+     actually appears in, which measured 3.87. */
+  --color-warning: #845a18;
   --color-danger: #a33a2e;
 
   /* Studio (room designer) — deliberately dark so the photo leads */
@@ -206,6 +214,28 @@
 /* ------------------------------------------------------------------ *
  * Base
  * ------------------------------------------------------------------ */
+/* ------------------------------------------------------------------ *
+ * `sr-only` without the overflow
+ *
+ * Tailwind's `sr-only` still carries `margin: -1px`, a leftover from the
+ * old `clip: rect(...)` technique. The hiding is done by
+ * `clip-path: inset(50%)` now, so the margin does no work — but on an
+ * absolutely-positioned box with no inset it pushes that 1px box one pixel
+ * past the inline-start edge of the containing block. In an RTL document
+ * that edge is the right-hand side of the viewport, so the page gained a
+ * real 1px horizontal scroll: caught by the 768px layout test, on every
+ * route, from the skip link alone.
+ *
+ * Zeroing the margin here fixes every `sr-only` element at once rather than
+ * patching call sites, and changes nothing about how a screen reader
+ * announces them.
+ * ------------------------------------------------------------------ */
+@layer utilities {
+  .sr-only {
+    margin: 0;
+  }
+}
+
 @layer base {
   * {
     border-color: var(--color-line);

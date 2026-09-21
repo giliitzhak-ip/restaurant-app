@@ -8,6 +8,7 @@
  */
 export async function register() {
   const { assertProductionEnv, collectEnvProblems, isProduction } = await import("@/config/env");
+  const { assertLegalFactsForProduction } = await import("@/config/legal");
 
   if (!isProduction) {
     // Development gets a nudge, not a crash.
@@ -19,4 +20,11 @@ export async function register() {
   }
 
   assertProductionEnv();
+
+  /*
+   * Outstanding legal facts warn rather than throw. A missing company ID is a
+   * legal exposure, not a security hole, and a site that refuses to boot over
+   * one helps nobody — but it must be impossible to miss in the deploy log.
+   */
+  assertLegalFactsForProduction(true);
 }

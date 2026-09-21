@@ -13,6 +13,7 @@ import { formatArea, formatPrice } from "@/lib/format";
 import { track } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { MARKETING_CONSENT_TEXT } from "@/lib/consent";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field, FormMessage } from "@/components/ui/label";
 import { Input, Textarea } from "@/components/ui/input";
@@ -51,6 +52,8 @@ export function CheckoutForm({
       floor: "",
       notes: "",
       terms: false as unknown as true,
+      // Never pre-ticked. The default is the absence of consent.
+      marketingOptIn: false,
     },
   });
 
@@ -62,6 +65,7 @@ export function CheckoutForm({
    */
   const fulfilment = useWatch({ control: form.control, name: "fulfilment" });
   const termsAccepted = useWatch({ control: form.control, name: "terms" });
+  const marketingOptIn = useWatch({ control: form.control, name: "marketingOptIn" });
   const contact = useWatch({
     control: form.control,
     name: ["fullName", "email", "phone"],
@@ -409,11 +413,37 @@ export function CheckoutForm({
                 <Link href={routes.privacy} className="link-quiet underline">
                   פרטיות
                 </Link>
+                {" · "}
+                <Link href={routes.shipping} className="link-quiet underline">
+                  ביטולים והחזרות
+                </Link>
               </span>
             </label>
             <FormMessage tone="error">
               {form.formState.errors.terms?.message}
             </FormMessage>
+
+            {/*
+              * Marketing, kept apart from the terms.
+              *
+              * A separate control, unticked, optional, and worded so it is
+              * obvious the purchase does not depend on it. Bundling this into
+              * the terms checkbox would make both consents worthless: nobody
+              * could tell which one the tick referred to.
+              */}
+            <label className="flex min-h-11 cursor-pointer items-start gap-2.5 py-1 text-xs leading-relaxed text-ink-soft">
+              <Checkbox
+                checked={marketingOptIn === true}
+                onCheckedChange={(checked) =>
+                  form.setValue("marketingOptIn", checked === true)
+                }
+                className="mt-0.5"
+              />
+              <span>
+                {MARKETING_CONSENT_TEXT}{" "}
+                <span className="text-muted">אינו תנאי לביצוע ההזמנה.</span>
+              </span>
+            </label>
 
             {/*
               * `loading` rather than a label swap: "מעבד…" is narrower than

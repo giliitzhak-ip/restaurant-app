@@ -1,5 +1,3 @@
-import { brand } from "./brand";
-
 export const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "https://example.com";
 
@@ -27,7 +25,18 @@ export const routes = {
   contact: "/contact",
   privacy: "/privacy",
   terms: "/terms",
-  shipping: "/shipping-returns",
+  /**
+   * The legal centre. `/shipping-returns` still resolves — it is a permanent
+   * redirect to the canonical path below, so links already in the wild and
+   * anything indexed keep working.
+   */
+  shipping: "/shipping-and-returns",
+  accessibility: "/accessibility",
+  cookies: "/cookies",
+  warranty: "/warranty",
+  cancelOrder: "/cancel-order",
+  privacySettings: "/cookies#settings",
+  dataRequest: "/account/privacy",
   login: "/login",
   register: "/register",
   account: {
@@ -121,11 +130,32 @@ export const footerNav: { title: string; items: NavItem[] }[] = [
     ],
   },
   {
-    title: "מידע",
+    title: "מידע ומדיניות",
     items: [
+      { label: "תקנון ותנאי רכישה", href: routes.terms },
       { label: "מדיניות פרטיות", href: routes.privacy },
-      { label: "תקנון", href: routes.terms },
-      { label: brand.contact.phone, href: brand.contact.phoneHref },
+      { label: "הצהרת נגישות", href: routes.accessibility },
+      { label: "מדיניות Cookie", href: routes.cookies },
+      { label: "אחריות והתקנה", href: routes.warranty },
+      { label: "ביטול עסקה", href: routes.cancelOrder },
     ],
   },
+];
+
+/**
+ * The legal centre, as one list.
+ *
+ * The footer renders it, and so does the "המסמכים שלנו" block at the foot of
+ * every legal page — a reader who lands on the cancellation policy from a
+ * search result should be one click from the terms it refers to.
+ */
+export const legalNav: NavItem[] = [
+  { label: "תקנון ותנאי רכישה", href: routes.terms },
+  { label: "מדיניות פרטיות", href: routes.privacy },
+  { label: "הצהרת נגישות", href: routes.accessibility },
+  { label: "משלוחים, החזרות וביטולים", href: routes.shipping },
+  { label: "ביטול עסקה — טופס מקוון", href: routes.cancelOrder },
+  { label: "אחריות, התקנה ותחזוקה", href: routes.warranty },
+  { label: "מדיניות Cookie", href: routes.cookies },
+  { label: "פרטי העסק ויצירת קשר", href: routes.contact },
 ];

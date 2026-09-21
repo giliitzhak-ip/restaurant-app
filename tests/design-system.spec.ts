@@ -133,11 +133,66 @@ test.describe("layout", () => {
   for (const path of ["/", "/catalog", "/cart", "/checkout", "/quote", "/login"]) {
     test(`${path} does not scroll sideways`, async ({ page }) => {
       await page.goto(path);
-      const overflow = await page.evaluate(
-        () =>
-          document.documentElement.scrollWidth - document.documentElement.clientWidth,
-      );
-      expect(overflow, `${overflow}px of horizontal overflow`).toBeLessThanOrEqual(0);
+      // Wait for hydration: two genuine overflows on this page only appeared
+      // after the client took over, so measuring at first paint missed them.
+      await page.waitForLoadState("networkidle");
+
+      const result = await page.evaluate(() => {
+        const root = document.documentElement;
+        const viewport = root.clientWidth;
+        /*
+         * Two measurements, because they catch different things.
+         *
+         * `scrollWidth` is the symptom a person feels — the page slides
+         * sideways — but it rounds up, so a layout that lands on a fractional
+         * pixel reports 1 even when nothing is out of place. That made this
+         * assertion flap.
+         *
+         * The element scan is the cause. It names every box that actually
+         * crosses an edge, which is the property worth asserting and the one
+         * that tells you where to look when it fails.
+         */
+        /*
+         * A box inside its own horizontal scroller is allowed to be wider
+         * than the screen — that is what a carousel and a wide table are.
+         * What is not allowed is the *page* sliding, so anything with a
+         * clipping or scrolling ancestor is skipped.
+         */
+        const clipped = (element: HTMLElement) => {
+          for (let node = element.parentElement; node; node = node.parentElement) {
+            const overflowX = getComputedStyle(node).overflowX;
+            if (overflowX === "auto" || overflowX === "scroll" || overflowX === "hidden") {
+              return true;
+            }
+          }
+          return false;
+        };
+
+        const offenders: string[] = [];
+        for (const element of document.querySelectorAll<HTMLElement>("*")) {
+          const box = element.getBoundingClientRect();
+          if (!box.width || !box.height) continue;
+          if (clipped(element)) continue;
+          if (box.right > viewport + 1 || box.left < -1) {
+            const name = `${element.tagName.toLowerCase()}.${String(element.className || "")
+              .split(" ")
+              .slice(0, 2)
+              .join(".")}`;
+            offenders.push(`${name} [${box.left.toFixed(1)}…${box.right.toFixed(1)}]`);
+          }
+        }
+        return { overflow: root.scrollWidth - viewport, offenders: offenders.slice(0, 5) };
+      });
+
+      expect(
+        result.offenders,
+        `elements crossing the viewport edge on ${path}`,
+      ).toEqual([]);
+      // 1px of tolerance for sub-pixel rounding; anything more is real.
+      expect(
+        result.overflow,
+        `${result.overflow}px of horizontal overflow on ${path}`,
+      ).toBeLessThanOrEqual(1);
     });
   }
 });

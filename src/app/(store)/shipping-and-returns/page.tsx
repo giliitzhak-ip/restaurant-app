@@ -15,7 +15,7 @@ export default function ShippingPage() {
     <LegalPage
       title="משלוחים והחזרות"
       href={routes.shipping}
-      updated="ספטמבר 2026"
+      document="shipping"
       intro="הכל על אספקה, איסוף והחזרות — במקום אחד, בלי אותיות קטנות."
       sections={[
         {

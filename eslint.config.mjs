@@ -15,6 +15,14 @@ const eslintConfig = [
       "public/**",
       "next-env.d.ts",
       "src/generated/**",
+      /*
+       * Playwright's own output. Both are gitignored, but eslint's flat
+       * config does not read .gitignore — so a developer who had just run the
+       * e2e suite got 3,000 lint problems from trace viewer bundles that are
+       * not this project's code.
+       */
+      "playwright-report/**",
+      "test-results/**",
     ],
   },
   ...next,

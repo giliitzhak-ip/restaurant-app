@@ -58,6 +58,9 @@ import type {
   ProductPage,
   ProductQuery,
   QuoteInput,
+  CancellationRequestView,
+  ConsentRecordView,
+  DataRequestView,
   Repository,
 } from "./types";
 
@@ -79,7 +82,11 @@ interface MemoryStore {
   users: (User & { passwordHash: string })[];
   addresses: Address[];
   favorites: Map<string, Set<string>>;
-  newsletter: Set<string>;
+  newsletter: Map<string, { token: string; unsubscribedAt: string | null }>;
+  suppressions: Map<string, string>;
+  consents: ConsentRecordView[];
+  cancellations: CancellationRequestView[];
+  dataRequests: DataRequestView[];
   paymentEvents: PaymentEvent[];
   audit: {
     id: string;
@@ -142,7 +149,11 @@ function createStore(): MemoryStore {
     })),
     addresses: [],
     favorites: new Map(),
-    newsletter: new Set(),
+    newsletter: new Map(),
+    suppressions: new Map(),
+    consents: [],
+    cancellations: [],
+    dataRequests: [],
     paymentEvents: [],
     audit: [],
     sequences: new Map(),
@@ -1011,8 +1022,121 @@ export const memoryRepository: Repository = {
     return clone(store.designs);
   },
 
-  async addNewsletterSignup(email) {
-    store.newsletter.add(email.trim().toLowerCase());
+  async addNewsletterSignup(input) {
+    const email = input.email.trim().toLowerCase();
+    /*
+     * Suppression wins over a signup, always. Otherwise "unsubscribe, then
+     * re-submit the footer form by accident" quietly puts the address back on
+     * the list — which is exactly the behaviour the suppression list exists to
+     * prevent.
+     */
+    if (store.suppressions.has(email)) return { ok: true, suppressed: true };
+    const existing = store.newsletter.get(email);
+    store.newsletter.set(email, {
+      token: existing?.token ?? createId("unsub"),
+      unsubscribedAt: null,
+    });
+    return { ok: true, suppressed: false };
+  },
+
+  async unsubscribeByToken(token) {
+    for (const [email, row] of store.newsletter) {
+      if (!timingSafeEqualString(row.token, token)) continue;
+      store.newsletter.set(email, { ...row, unsubscribedAt: new Date().toISOString() });
+      store.suppressions.set(email, "unsubscribe-link");
+      return { ok: true, email };
+    }
+    return { ok: false, email: null };
+  },
+
+  async suppressMarketing(email, reason) {
+    const normalised = email.trim().toLowerCase();
+    store.suppressions.set(normalised, reason);
+    const row = store.newsletter.get(normalised);
+    if (row) {
+      store.newsletter.set(normalised, {
+        ...row,
+        unsubscribedAt: new Date().toISOString(),
+      });
+    }
+  },
+
+  async isMarketingSuppressed(email) {
+    return store.suppressions.has(email.trim().toLowerCase());
+  },
+
+  async recordConsent(input) {
+    store.consents.unshift({
+      id: createId("cns"),
+      kind: input.kind,
+      source: input.source,
+      granted: input.granted,
+      documentVersion: input.documentVersion,
+      categories: input.categories ?? null,
+      createdAt: new Date().toISOString(),
+    });
+  },
+
+  async listConsentsForOrder() {
+    // The memory driver keeps no order linkage; the Prisma driver is the one
+    // that has to answer this, and it does.
+    return [];
+  },
+
+  async createCancellationRequest(input) {
+    const reference = `CR-${new Date().getFullYear()}-${String(
+      store.cancellations.length + 1,
+    ).padStart(4, "0")}`;
+    store.cancellations.unshift({
+      id: createId("can"),
+      reference,
+      orderNumber: input.orderNumber,
+      customerName: input.customerName,
+      email: input.email,
+      phone: input.phone,
+      items: input.items,
+      reason: input.reason,
+      attachmentKey: input.attachmentKey,
+      status: "RECEIVED",
+      decisionNote: null,
+      handledAt: null,
+      createdAt: new Date().toISOString(),
+    });
+    return { reference };
+  },
+
+  async listCancellationRequests(limit = 100) {
+    return store.cancellations.slice(0, limit);
+  },
+
+  async updateCancellationStatus(input) {
+    const row = store.cancellations.find((item) => item.id === input.id);
+    if (!row) return false;
+    row.status = input.status;
+    row.decisionNote = input.decisionNote;
+    row.handledAt = new Date().toISOString();
+    return true;
+  },
+
+  async createDataRequest(input) {
+    const reference = `DR-${new Date().getFullYear()}-${String(
+      store.dataRequests.length + 1,
+    ).padStart(4, "0")}`;
+    store.dataRequests.unshift({
+      id: createId("dsr"),
+      reference,
+      kind: input.kind,
+      status: "RECEIVED",
+      email: input.email,
+      detail: input.detail,
+      retentionBasis: null,
+      createdAt: new Date().toISOString(),
+    });
+    return { reference };
+  },
+
+  async listDataRequests(limit = 100) {
+    return store.dataRequests.slice(0, limit);
   },
 
   async recordAuditEvent(input) {

@@ -15,7 +15,7 @@ export default function PrivacyPage() {
     <LegalPage
       title="מדיניות פרטיות"
       href={routes.privacy}
-      updated="ספטמבר 2026"
+      document="privacy"
       intro="המדיניות הזו מסבירה בשפה פשוטה אילו פרטים אנחנו אוספים, למה, כמה זמן הם נשמרים ואיך מוחקים אותם. הדגש המרכזי כאן הוא התמונות של הבית שלכם — כי זה המידע הרגיש ביותר שאתם משתפים איתנו."
       sections={[
         {
