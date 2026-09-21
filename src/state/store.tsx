@@ -71,6 +71,7 @@ interface StoreValue {
   addRouteStop: (routeId: ID, customerId: ID, siteId?: ID) => void;
   updateRouteStop: (id: ID, patch: Partial<RouteStop>) => void;
   moveRouteStop: (routeId: ID, stopId: ID, direction: -1 | 1) => void;
+  reorderRouteStops: (routeId: ID, orderedStopIds: ID[]) => void;
   removeRouteStop: (id: ID) => void;
   createTask: (draft: Omit<Task, 'id' | 'createdAt'>) => Task;
   updateTask: (id: ID, patch: Partial<Task>) => void;
@@ -729,6 +730,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  /** קובע סדר חדש לכל התחנות במסלול (גרירה או סדר מומלץ). */
+  const reorderRouteStops = useCallback<StoreValue['reorderRouteStops']>((routeId, orderedStopIds) => {
+    setState((s) => {
+      const positionById = new Map(orderedStopIds.map((id, i) => [id, i]));
+      return {
+        ...s,
+        routeStops: s.routeStops.map((st) =>
+          st.routeId === routeId && positionById.has(st.id)
+            ? { ...st, position: positionById.get(st.id)! }
+            : st,
+        ),
+      };
+    });
+  }, []);
+
   const removeRouteStop = useCallback<StoreValue['removeRouteStop']>((id) => {
     setState((s) => ({ ...s, routeStops: s.routeStops.filter((st) => st.id !== id) }));
   }, []);
@@ -767,7 +783,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       upsertBaitStation, removeBaitStation, saveSignature, addAttachment, removeAttachment,
       saveCustomerTemplate, updateTreatmentTemplate, duplicateTreatmentTemplate,
       archiveTreatmentTemplate, archiveCustomerTemplate,
-      createRoute, addRouteStop, updateRouteStop, moveRouteStop, removeRouteStop,
+      createRoute, addRouteStop, updateRouteStop, moveRouteStop, reorderRouteStops, removeRouteStop,
       createTask, updateTask, getFullJournal, labelFor, resetAll,
     }),
     [
@@ -780,7 +796,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       upsertBaitStation, removeBaitStation, saveSignature, addAttachment, removeAttachment,
       saveCustomerTemplate, updateTreatmentTemplate, duplicateTreatmentTemplate,
       archiveTreatmentTemplate, archiveCustomerTemplate,
-      createRoute, addRouteStop, updateRouteStop, moveRouteStop, removeRouteStop,
+      createRoute, addRouteStop, updateRouteStop, moveRouteStop, reorderRouteStops, removeRouteStop,
       createTask, updateTask, getFullJournal, labelFor, resetAll,
     ],
   );

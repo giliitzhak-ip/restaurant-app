@@ -74,23 +74,26 @@ const before = await stopTitles();
 check('נוספו 3 תחנות למסלול', before.length === 3, before.join(' | '));
 
 // שינוי סדר
-await page.locator('.card').filter({ hasText: '3. מפעל דגן' }).getByRole('button', { name: '↑ הקדם' }).click();
+await page.locator('.card').filter({ has: page.getByRole('heading', { name: '3. מפעל דגן', exact: true }) })
+  .first().getByRole('button', { name: '↑ הקדם' }).click();
 await page.waitForTimeout(300);
 const after = await stopTitles();
 check('בדיקה 11: סדר התחנות משתנה ונשמר', after[1].includes('מפעל דגן'), after.join(' | '));
 
 // סטטוס
-await page.locator('.card').filter({ hasText: '1. מסעדת הגפן' }).getByRole('button', { name: 'בטיפול' }).click();
+const stopCard = (title) =>
+  page.locator('.card').filter({ has: page.getByRole('heading', { name: title, exact: true }) }).first();
+await stopCard('1. מסעדת הגפן').getByRole('button', { name: 'בטיפול' }).click();
 await page.waitForTimeout(700);
 await page.reload({ waitUntil: 'networkidle' });
 await page.waitForTimeout(900);
 const orderAfterReload = await stopTitles();
 check('בדיקה 11: הסדר נשמר אחרי רענון', orderAfterReload[1].includes('מפעל דגן'), orderAfterReload.join(' | '));
 check('בדיקה 11: הסטטוס נשמר אחרי רענון',
-  (await page.locator('.card').filter({ hasText: '1. מסעדת הגפן' }).textContent()).includes('בטיפול'));
+  (await stopCard('1. מסעדת הגפן').textContent()).includes('בטיפול'));
 
 // ── טען מיומן אחרון
-await page.locator('.card').filter({ hasText: '1. מסעדת הגפן' }).getByRole('button', { name: 'פתח יומן ללקוח' }).click();
+await stopCard('1. מסעדת הגפן').getByRole('button', { name: 'פתח יומן ללקוח' }).click();
 await page.waitForTimeout(500);
 check('נפתח יומן מתוך המסלול', await page.getByRole('heading', { name: 'פרטי העבודה' }).isVisible());
 await page.getByRole('button', { name: /המשך לשלב 2/ }).click();
@@ -167,20 +170,8 @@ await page.waitForTimeout(300);
 check('תבנית לקוח מצהירה מה אינה שומרת',
   (await page.locator('.page').textContent()).includes('אינה שומרת'));
 
-// ── נגישות בסיסית
+// ── ניווט מקלדת (בדיקת התוויות המלאה נמצאת ב-accessibility.mjs)
 await page.goto(BASE, { waitUntil: 'networkidle' });
-const a11y = await page.evaluate(() => {
-  const inputs = [...document.querySelectorAll('input, select, textarea')];
-  const unlabeled = inputs.filter((el) => {
-    const id = el.getAttribute('id');
-    const hasLabel = id && document.querySelector(`label[for="${id}"]`);
-    return !hasLabel && !el.getAttribute('aria-label') && !el.closest('label');
-  });
-  return { total: inputs.length, unlabeled: unlabeled.length };
-});
-check('לכל שדה יש תווית', a11y.unlabeled === 0, JSON.stringify(a11y));
-
-// ניווט מקלדת
 await page.keyboard.press('Tab');
 const focused = await page.evaluate(() => document.activeElement?.tagName);
 check('ניווט במקלדת מגיע לאלמנט אינטראקטיבי', ['BUTTON', 'A', 'INPUT'].includes(focused), focused);

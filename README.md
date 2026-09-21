@@ -24,6 +24,7 @@ npm run dev       # Vite על פורט 5173, עם proxy ל-/api
 npm run verify    # typecheck + lint + בדיקות יחידה + build
 npm test          # בדיקות יחידה בלבד (Vitest)
 npm run e2e       # בדיקות קבלה בדפדפן (דורש: npm i -D playwright, ושהשרת פועל)
+                  # 69 בדיקות: זרימת יומן, חיפוש חומרים, מסלול, נגישות
 ```
 
 משתני סביבה: `PORT` (ברירת מחדל 3000), `DATA_DIR` (ברירת מחדל `./data`).

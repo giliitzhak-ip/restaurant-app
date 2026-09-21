@@ -1,8 +1,12 @@
 import { chromium, devices } from 'playwright';
+import { mkdirSync } from 'node:fs';
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:3000';
 /** אפשר להצביע על דפדפן מותקן מראש: CHROME_PATH=/path/to/chrome */
 const LAUNCH = process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {};
+/** צילומי המסך נשמרים בתיקייה שאינה נכנסת לגיט */
+const SHOTS = process.env.SHOTS_DIR ?? 'e2e/screenshots';
+mkdirSync(SHOTS, { recursive: true });
 const errors = [];
 const results = [];
 function check(name, pass, detail = '') {
@@ -204,7 +208,7 @@ check('בדיקה 13: המסמך מציג חומר ואצווה', docText.includ
 check('בדיקה 13: המסמך מציג מינון ואזהרות', docText.includes('לפי התווית') && docText.includes('זמן כניסה מחדש'));
 const sigImgs = await page.locator('.doc .sig-box img').count();
 check('בדיקה 13: המסמך מציג שתי חתימות', sigImgs === 2, `נמצאו ${sigImgs}`);
-await page.screenshot({ path: 'doc-mobile.png', fullPage: true });
+await page.screenshot({ path: SHOTS + '/doc-mobile.png', fullPage: true });
 
 // בדיקה 12 – שמירה אחרי רענון
 await page.goto(BASE + '/#/journals', { waitUntil: 'networkidle' });
@@ -216,7 +220,7 @@ check('בדיקה 12: הסטטוס נשמר כ"הושלם"', await page.getByTex
 // מסך בית אחרי רענון
 await page.goto(BASE, { waitUntil: 'networkidle' });
 await page.waitForTimeout(400);
-await page.screenshot({ path: 'home-mobile.png', fullPage: true });
+await page.screenshot({ path: SHOTS + '/home-mobile.png', fullPage: true });
 
 // שולחן עבודה
 const desktop = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: 'he-IL' });
@@ -232,13 +236,13 @@ await dpage.goto(BASE, { waitUntil: 'networkidle' });
 await dpage.waitForTimeout(400);
 check('בדיקה 14: תצוגת מחשב – ניווט עליון מוצג', await dpage.locator('.desktop-nav').isVisible());
 check('בדיקה 14: תצוגת מחשב – פס תחתון מוסתר', !(await dpage.locator('.bottom-nav').isVisible()));
-await dpage.screenshot({ path: 'home-desktop.png', fullPage: true });
+await dpage.screenshot({ path: SHOTS + '/home-desktop.png', fullPage: true });
 
 // מצב כהה
 await dpage.locator('.icon-btn').last().click();
 await dpage.waitForTimeout(400);
 check('מצב כהה נדלק', await dpage.evaluate(() => document.documentElement.dataset.theme) === 'dark');
-await dpage.screenshot({ path: 'home-dark.png', fullPage: true });
+await dpage.screenshot({ path: SHOTS + '/home-dark.png', fullPage: true });
 
 check('בדיקה 15: אין שגיאות console מקוד האפליקציה', errors.length === 0, errors.slice(0, 5).join(' | '));
 

@@ -598,3 +598,27 @@ input[type='search']::-webkit-search-decoration {
 }
 .check-line input { width: 20px; height: 20px; min-height: 20px; margin: 0; accent-color: var(--green-action); }
 .check-line:has(input:checked) { background: var(--green-light); border-color: var(--green-action); }
+
+/* גרירת תחנות במסלול */
+.drag-handle {
+  min-width: var(--tap); min-height: var(--tap);
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+  background: var(--surface-2); color: var(--muted);
+  font-size: 1.1rem; cursor: grab; user-select: none;
+  touch-action: none; /* מאפשר גרירה במגע בלי שהעמוד ייגלל */
+}
+.drag-handle:active { cursor: grabbing; border-color: var(--green-action); }
+.dragging { opacity: 0.55; }
+.dragging .card { border-color: var(--green-action); border-style: dashed; }
+
+/* רשימת סידור תחנות קומפקטית – גרירה נוחה גם בטלפון */
+.reorder-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.reorder-row {
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-2); min-height: var(--tap);
+  border: 1px solid var(--border); border-radius: var(--r-md);
+  background: var(--surface);
+}
+.reorder-row.dragging { border-color: var(--green-action); background: var(--green-light); }
+.reorder-row .grow { flex: 1; min-width: 0; }

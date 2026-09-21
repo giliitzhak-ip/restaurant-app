@@ -1,20 +1,23 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import { Card, EmptyState, Field, Notice, Tag } from '../components/ui';
 import { navigate } from '../router';
 import { STOP_STATUS_LABEL, formatDate, toDateInput } from '../lib/format';
 import { pestName } from '../data/pests';
+import { suggestedOrder } from '../lib/routeOrder';
 import type { StopStatus } from '../types';
 
 const STATUS_FLOW: StopStatus[] = ['pending', 'on_the_way', 'in_progress', 'done', 'postponed'];
 
 export function RouteScreen() {
   const {
-    state, createRoute, addRouteStop, updateRouteStop, moveRouteStop, removeRouteStop,
-    createJournal, updateJournal,
+    state, createRoute, addRouteStop, updateRouteStop, moveRouteStop, reorderRouteStops,
+    removeRouteStop, createJournal, updateJournal,
   } = useStore();
   const [date, setDate] = useState(() => toDateInput(new Date().toISOString()));
   const [pickCustomer, setPickCustomer] = useState('');
+  const [dragId, setDragId] = useState<string | null>(null);
+  const dragIdRef = useRef<string | null>(null);
 
   const route = useMemo(() => state.routes.find((r) => r.date === date), [state.routes, date]);
   const stops = useMemo(
@@ -24,6 +27,46 @@ export function RouteScreen() {
         : [],
     [state.routeStops, route],
   );
+
+  // עותק עדכני של התחנות לשימוש בתוך מטפלי הגרירה, בלי לקרוא ל-ref בזמן רינדור
+  const stopsRef = useRef(stops);
+  useEffect(() => {
+    stopsRef.current = stops;
+  }, [stops]);
+
+  /**
+   * גרירה מבוססת Pointer Events – עובדת גם במגע בטלפון וגם בעכבר במחשב,
+   * בניגוד ל-HTML5 drag and drop שאינו נתמך במגע.
+   * לצד הגרירה נשארים כפתורי הקדמה/איחור וחצי המקלדת, לנגישות מלאה.
+   */
+  const startDrag = useCallback((e: React.PointerEvent<HTMLButtonElement>, stopId: string) => {
+    e.preventDefault();
+    dragIdRef.current = stopId;
+    setDragId(stopId);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }, []);
+
+  const onDragMove = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
+    const dragging = dragIdRef.current;
+    if (!dragging) return;
+    const element = document.elementFromPoint(e.clientX, e.clientY);
+    const target = element?.closest<HTMLElement>('[data-stop-id]');
+    const overId = target?.dataset.stopId;
+    if (!overId || overId === dragging) return;
+
+    const ids = stopsRef.current.map((st) => st.id);
+    const from = ids.indexOf(dragging);
+    const to = ids.indexOf(overId);
+    if (from === -1 || to === -1) return;
+    ids.splice(from, 1);
+    ids.splice(to, 0, dragging);
+    reorderRouteStops(stopsRef.current[0].routeId, ids);
+  }, [reorderRouteStops]);
+
+  const endDrag = useCallback(() => {
+    dragIdRef.current = null;
+    setDragId(null);
+  }, []);
 
   function openJournalForStop(stopId: string, customerId: string): void {
     const customer = state.customers.find((c) => c.id === customerId);
@@ -93,12 +136,97 @@ export function RouteScreen() {
             >
               + הוסף תחנה
             </button>
+            {stops.length > 1 && (
+              <button
+                type="button"
+                className="btn btn-ghost mt-2"
+                onClick={() => {
+                  const addressed = stops.map((st) => ({
+                    id: st.id,
+                    address:
+                      state.sites.find((si) => si.id === st.siteId)?.address ??
+                      state.customers.find((c) => c.id === st.customerId)?.address ??
+                      '',
+                  }));
+                  reorderRouteStops(route.id, suggestedOrder(addressed));
+                }}
+              >
+                סדר מומלץ לפי כתובות
+              </button>
+            )}
             {state.customers.length === 0 && (
               <Notice kind="warn">אין עדיין לקוחות. יש להוסיף לקוח לפני בניית מסלול.</Notice>
+            )}
+            {stops.length > 1 && (
+              <p className="hint">
+                הסדר המומלץ מקבץ כתובות קרובות. אפשר לשנות אותו בגרירה או בכפתורי ההקדמה והאיחור.
+              </p>
             )}
           </>
         )}
       </Card>
+
+      {route && stops.length > 1 && (
+        <Card>
+          <div className="card-title">
+            <h3>סדר התחנות</h3>
+            <span className="tag tag-muted">{stops.length} תחנות</span>
+          </div>
+          <p className="hint mb-3">
+            גררו את הידית כדי לשנות סדר, או השתמשו בחצים. הסדר נשמר אוטומטית.
+          </p>
+          <ol className="reorder-list">
+            {stops.map((stop, index) => {
+              const customer = state.customers.find((c) => c.id === stop.customerId);
+              return (
+                <li
+                  key={stop.id}
+                  data-stop-id={stop.id}
+                  className={`reorder-row ${dragId === stop.id ? 'dragging' : ''}`}
+                >
+                  <button
+                    type="button"
+                    className="drag-handle"
+                    aria-label={`שינוי מיקום של ${customer?.name ?? 'תחנה'}. גררו, או השתמשו בחצי המקלדת.`}
+                    onPointerDown={(e) => startDrag(e, stop.id)}
+                    onPointerMove={onDragMove}
+                    onPointerUp={endDrag}
+                    onPointerCancel={endDrag}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowUp') { e.preventDefault(); moveRouteStop(stop.routeId, stop.id, -1); }
+                      if (e.key === 'ArrowDown') { e.preventDefault(); moveRouteStop(stop.routeId, stop.id, 1); }
+                    }}
+                  >
+                    <span aria-hidden="true">⠿</span>
+                  </button>
+                  <span className="grow">
+                    <span className="bold">{index + 1}. {customer?.name ?? 'לקוח'}</span>
+                    <span className="small muted"> · {STOP_STATUS_LABEL[stop.status]}</span>
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    aria-label="הקדם תחנה"
+                    disabled={index === 0}
+                    onClick={() => moveRouteStop(stop.routeId, stop.id, -1)}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    aria-label="אחר תחנה"
+                    disabled={index === stops.length - 1}
+                    onClick={() => moveRouteStop(stop.routeId, stop.id, 1)}
+                  >
+                    ↓
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </Card>
+      )}
 
       {route && stops.length === 0 && (
         <Card><EmptyState icon="⇄" title="המסלול ריק. הוסיפו לקוחות וסדרו את סדר התחנות." /></Card>
@@ -119,7 +247,12 @@ export function RouteScreen() {
         const stations = state.baitStations.filter((b) => b.customerId === stop.customerId);
 
         return (
-          <Card key={stop.id}>
+          <div
+            key={stop.id}
+            data-stop-id={stop.id}
+            className={dragId === stop.id ? 'dragging' : undefined}
+          >
+          <Card>
             <div className="card-title">
               <h3>{index + 1}. {customer?.name ?? 'לקוח'}</h3>
               <Tag kind={stop.status === 'done' ? 'ok' : stop.status === 'postponed' ? 'error' : 'muted'}>
@@ -218,6 +351,7 @@ export function RouteScreen() {
               </button>
             </div>
           </Card>
+          </div>
         );
       })}
     </>

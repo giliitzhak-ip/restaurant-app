@@ -273,6 +273,17 @@ describe('בדיקה 11: מסלול עבודה', () => {
 
     act(() => { result.current.updateRouteStop(lastStop.id, { status: 'done' }); });
     expect(result.current.state.routeStops.find((s) => s.id === lastStop.id)?.status).toBe('done');
+
+    // סידור מחדש מלא (גרירה או סדר מומלץ)
+    const allIds = result.current.state.routeStops
+      .filter((s) => s.routeId === routeId)
+      .map((s) => s.id);
+    act(() => { result.current.reorderRouteStops(routeId, [...allIds].reverse()); });
+    const positions = result.current.state.routeStops
+      .filter((s) => s.routeId === routeId)
+      .sort((a, b) => a.position - b.position)
+      .map((s) => s.id);
+    expect(positions).toEqual([...allIds].reverse());
   });
 });
 
