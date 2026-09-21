@@ -34,6 +34,7 @@ describe('sanitizeInput', () => {
     ay: 1,
     va: 0.25,
     sn: -0.5,
+    sy: 2,
     pt: 1,
     f: InputFlag.Sprint,
   };
@@ -108,7 +109,8 @@ describe('command packing', () => {
       shootHeld: true,
       shootReleased: false,
       tacklePressed: true,
-      lobToggle: true,
+      styleCycle: true,
+      shotStyle: 'lofted',
     });
 
     const restored = toPlayerCommand('home-1', 7, toNetInput(command));

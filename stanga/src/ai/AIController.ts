@@ -5,8 +5,17 @@
  * PlayerCommand a human produces. Nothing here touches the engine, and no
  * external AI service is involved: it is plain, deterministic logic plus a
  * seeded RNG that keeps every possession slightly different.
+ *
+ * The one idea worth knowing before reading it: the opponent does not run at
+ * where the ball is. It runs at where the ball is going to be, and how far
+ * ahead it can see is what a difficulty setting actually changes.
  */
-import { GameConfig, type Difficulty, type DifficultyProfile } from '../config/GameConfig';
+import {
+  GameConfig,
+  type Difficulty,
+  type DifficultyProfile,
+  type ShotStyle,
+} from '../config/GameConfig';
 import { Rng } from '../core/Rng';
 import { clamp, horizontalDistance, yawFromXZ } from '../core/math';
 import type { Vec3 } from '../core/math';
@@ -20,6 +29,7 @@ import {
 import {
   attackingGoalZ,
   defendingGoalZ,
+  type BallState,
   type MatchState,
   type PlayerState,
   type TeamId,
@@ -30,20 +40,28 @@ import { canPlayerTouch } from '../game/TouchRuleEngine';
  * The states of one-touch football.
  *
  * There is no dribbling under the STANGA rule, so there is no "carry the ball"
- * state: the AI either runs onto the ball with a shot already charging, keeps
- * it up in the air, or gets out of the way and waits for its turn again.
+ * state: the opponent either runs onto the ball with a shot already charging,
+ * keeps it up in the air, or gets out of the way and waits its turn again.
  */
 export type AIState =
   | 'Kickoff'
-  /** Running onto the ball with the shot charging. */
-  | 'ChaseBall'
-  /** In range and loaded: release. */
+  /** Running at a ball that is sitting still or barely moving. */
+  | 'Chase'
+  /** Running at where a moving ball will be, which is not where it is. */
+  | 'Intercept'
+  /** Ours and far from goal: carry the move forward. */
+  | 'Attack'
+  /** Inside shooting range: settle, line up, load. */
+  | 'PrepareShot'
+  /** Loaded and in range: release. */
   | 'Shoot'
   /** The ball is up and reachable: keep the chain alive. */
   | 'Juggle'
   /** Moving into space to be passed to. */
   | 'Support'
+  /** Between the ball and our own goal, close enough to be a nuisance. */
   | 'Defend'
+  /** Back to the defensive line after losing it. */
   | 'Recover'
   /** The touch rule says the ball is not ours to play; give it room. */
   | 'HoldOff';
@@ -51,11 +69,61 @@ export type AIState =
 interface ShotPlan {
   /** Lateral offset on the goal line the AI aims at, in metres. */
   aimOffsetX: number;
+  /** Height on the goal it is going for: 0 is along the ground, 1 the bar. */
+  aimHeight: number;
   /** Target charge, 0..1. */
   power: number;
-  lofted: boolean;
+  style: ShotStyle;
   /** How long the AI keeps charging before releasing. */
   chargeSeconds: number;
+}
+
+/**
+ * Where the ball will be in `seconds`, given how it is moving now.
+ *
+ * The same drag and gravity the simulation uses, integrated forward in coarse
+ * steps — coarse on purpose, because this is a guess about the future and
+ * spending a hundred steps on it would buy nothing. Exported so the tests can
+ * check the opponent is actually running at the right place.
+ */
+export function predictBall(ball: BallState, seconds: number, steps = 6): Vec3 {
+  const { ball: config, physics } = GameConfig;
+  const dt = seconds / Math.max(1, steps);
+  let x = ball.position.x;
+  let y = ball.position.y;
+  let z = ball.position.z;
+  let vx = ball.velocity.x;
+  let vy = ball.velocity.y;
+  let vz = ball.velocity.z;
+
+  for (let i = 0; i < steps; i += 1) {
+    const speed = Math.hypot(vx, vy, vz);
+    const drag = Math.max(0, 1 - config.airDrag * speed * dt);
+    vx *= drag;
+    vy *= drag;
+    vz *= drag;
+    if (y > config.airborneHeight) {
+      vy += physics.gravity * dt;
+    } else {
+      const roll = Math.max(0, 1 - config.rollingResistance * dt);
+      vx *= roll;
+      vz *= roll;
+      if (vy < 0) vy = 0;
+    }
+    x += vx * dt;
+    y = Math.max(config.radius, y + vy * dt);
+    z += vz * dt;
+  }
+
+  // The pitch is walled; a prediction that leaves it would send the opponent
+  // running at the fence.
+  const halfWidth = GameConfig.field.width / 2 - config.radius;
+  const halfLength = GameConfig.field.length / 2 + GameConfig.goal.depth;
+  return {
+    x: clamp(x, -halfWidth, halfWidth),
+    y,
+    z: clamp(z, -halfLength, halfLength),
+  };
 }
 
 export class AIController implements PlayerController {
@@ -67,12 +135,20 @@ export class AIController implements PlayerController {
   private stateTime = 0;
   private reactionTimer = 0;
   private chargeTime = 0;
+  /**
+   * Seconds until this player is willing to start another deliberate action.
+   * Without it the opponent asks for a tackle or a strike on every single
+   * tick, which reads as a twitching machine rather than an opponent.
+   */
+  private actionCooldown = 0;
   private plan: ShotPlan;
   private readonly command: PlayerCommand;
   private profile: DifficultyProfile;
   /** Per-possession personality: small, persistent biases so it never feels scripted. */
   private wanderPhase: number;
   private wanderStrength: number;
+  /** Reused so a tick of thinking allocates nothing. */
+  private readonly aimPoint: Vec3 = { x: 0, y: 0, z: 0 };
 
   constructor(
     private readonly playerId: string,
@@ -84,7 +160,7 @@ export class AIController implements PlayerController {
     this.label = 'מחשב';
     this.profile = GameConfig.difficulty[difficulty];
     this.command = createPlayerCommand(playerId);
-    this.plan = this.makePlan();
+    this.plan = this.makePlan(GameConfig.difficulty[difficulty].shootingRange);
     this.wanderPhase = this.rng.range(0, Math.PI * 2);
     this.wanderStrength = this.rng.range(0.1, 0.3);
   }
@@ -113,7 +189,8 @@ export class AIController implements PlayerController {
     this.stateTime = 0;
     this.chargeTime = 0;
     this.reactionTimer = 0;
-    this.plan = this.makePlan();
+    this.actionCooldown = 0;
+    this.plan = this.makePlan(this.profile.shootingRange);
     this.wanderPhase = this.rng.range(0, Math.PI * 2);
     this.wanderStrength = this.rng.range(0.1, 0.3);
   }
@@ -128,6 +205,7 @@ export class AIController implements PlayerController {
     const opponent = state.players.find((player) => player.team !== this.team);
     this.stateTime += dt;
     this.reactionTimer -= dt;
+    this.actionCooldown = Math.max(0, this.actionCooldown - dt);
     this.wanderPhase += dt * 0.9;
 
     if (state.phase === 'celebration' || state.phase === 'finished' || state.phase === 'idle') {
@@ -163,8 +241,8 @@ export class AIController implements PlayerController {
       return 'Juggle';
     }
 
-    // Shoot when loaded — or when the ball is about to be reached anyway.
-    // Running into it would spend the one touch on an accidental bump.
+    // Loaded and on top of it: let go. Or about to run into it anyway, in
+    // which case striking is better than spending the one touch on a bump.
     const loaded = this.chargeTime >= this.plan.chargeSeconds;
     const aboutToCollide = GameConfig.player.radius + GameConfig.ball.radius + 0.35;
     if (myDistance <= GameConfig.kick.range * 0.92 && (loaded || myDistance <= aboutToCollide)) {
@@ -199,7 +277,28 @@ export class AIController implements PlayerController {
 
     // Alone on my side, closestMate is Infinity and this is always true: there
     // is nobody else to do it, so I do it.
-    if (myDistance <= closestMate) return 'ChaseBall';
+    if (myDistance <= closestMate) {
+      const goalDistance = horizontalDistance(ball, {
+        x: 0,
+        y: 0,
+        z: attackingGoalZ(this.team),
+      });
+      // Close enough to hurt: stop chasing and start setting the shot up.
+      if (goalDistance <= this.profile.shootingRange && myDistance < GameConfig.kick.range * 3) {
+        return 'PrepareShot';
+      }
+      // A ball with pace on it is caught by going where it is going.
+      const ballSpeed = Math.hypot(state.ball.velocity.x, state.ball.velocity.z);
+      if (ballSpeed > INTERCEPT_SPEED) return 'Intercept';
+      // Ours, but a long way from goal: there is a pitch to cross first.
+      if (
+        state.ball.lastTouchTeam === this.team &&
+        goalDistance > this.profile.shootingRange * 1.6
+      ) {
+        return 'Attack';
+      }
+      return 'Chase';
+    }
 
     // A team-mate is closer. Get open if we have it, press if they do.
     return state.ball.lastTouchTeam === this.team ? 'Support' : 'Defend';
@@ -209,10 +308,12 @@ export class AIController implements PlayerController {
     if (next === this.state) return;
     // Letting go of the ball lets go of the charge; running onto it starts a
     // fresh plan, because by the time it arrives the picture has changed.
-    if (this.state === 'ChaseBall' && next !== 'Shoot') this.chargeTime = 0;
-    if (next === 'ChaseBall') {
-      this.plan = this.makePlan();
-      this.chargeTime = 0;
+    if (CHARGING_STATES.has(this.state) && next !== 'Shoot') this.chargeTime = 0;
+    if (next === 'Chase' || next === 'Intercept' || next === 'Attack' || next === 'PrepareShot') {
+      if (!CHARGING_STATES.has(this.state)) {
+        this.plan = this.makePlan(this.profile.shootingRange);
+        this.chargeTime = 0;
+      }
     }
     this.state = next;
     this.stateTime = 0;
@@ -241,26 +342,49 @@ export class AIController implements PlayerController {
         break;
       }
 
-      case 'ChaseBall': {
+      case 'Chase':
+      case 'Attack': {
         // Run onto the ball with the shot already loading, and aim at the goal
         // rather than at the ball: the kick goes where the body faces, and the
         // cone in front of the player is wide enough to do both at once.
         this.chargeTime += dt;
         this.moveTowards(me, ball, horizontalDistance(me.position, ball) > 3.5);
-        const aimX = clamp(
-          this.plan.aimOffsetX,
-          -GameConfig.goal.width * 0.45,
-          GameConfig.goal.width * 0.45,
-        );
-        this.faceForShot(me, ball, { x: aimX, y: 0, z: attackZ }, this.profile.aimError);
-        this.command.shootHeld = true;
-        this.command.shootPressed = this.chargeTime <= dt * 1.5;
-        // The AI states the height it wants rather than asking for a toggle:
-        // the toggle belongs to the input devices, and a value is what the
-        // simulation actually reads.
-        this.command.verticalAim = this.plan.lofted
-          ? GameConfig.kick.highAim
-          : GameConfig.kick.flatAim;
+        this.aimAtGoal(me, ball, attackZ);
+        this.loadShot();
+        break;
+      }
+
+      case 'Intercept': {
+        /*
+         * Run at where the ball is going, not at where it is.
+         *
+         * How far ahead depends on how long it would take to get there, which
+         * depends on where it will be — so one round of that is enough to be
+         * useful and cheap. The difficulty caps how far ahead it can see, and
+         * that is most of what separates an easy opponent from a hard one.
+         */
+        const guess = this.interceptPoint(state, me);
+        this.chargeTime += dt;
+        this.moveTowards(me, guess, horizontalDistance(me.position, guess) > 3);
+        this.aimAtGoal(me, ball, attackZ);
+        this.loadShot();
+        break;
+      }
+
+      case 'PrepareShot': {
+        /*
+         * Line the strike up instead of falling into it.
+         *
+         * The approach comes in from behind the ball on the line to the goal,
+         * so the body is already pointing the right way when the foot arrives
+         * — which is what makes the difference between a shot on target and
+         * a scuff into the corner.
+         */
+        const approach = this.approachPoint(me, ball, attackZ);
+        this.chargeTime += dt;
+        this.moveTowards(me, approach, false);
+        this.aimAtGoal(me, ball, attackZ);
+        this.loadShot();
         break;
       }
 
@@ -279,16 +403,10 @@ export class AIController implements PlayerController {
          */
         this.command.shootHeld = false;
         this.command.shootReleased = true;
-        this.faceForShot(
-          me,
-          ball,
-          { x: this.plan.aimOffsetX, y: 0, z: attackZ },
-          this.profile.aimError,
-        );
-        this.command.verticalAim = this.plan.lofted
-          ? GameConfig.kick.highAim
-          : GameConfig.kick.flatAim;
-        if (this.stateTime > 0.34) this.transition('Recover');
+        this.aimAtGoal(me, ball, attackZ);
+        this.command.verticalAim = this.plan.aimHeight;
+        this.command.shotStyle = this.plan.style;
+        if (this.stateTime > SHOT_WINDOW_SECONDS) this.transition('Recover');
         break;
       }
 
@@ -298,6 +416,10 @@ export class AIController implements PlayerController {
         this.moveTowards(me, ball, false);
         this.faceTowards(me, { x: ball.x, y: 0, z: attackZ });
         this.chargeTime += dt * 0.5;
+        if (this.actionCooldown <= 0) {
+          this.command.jugglePressed = true;
+          this.actionCooldown = GameConfig.juggle.cooldownSeconds * 1.6;
+        }
         break;
       }
 
@@ -326,37 +448,55 @@ export class AIController implements PlayerController {
 
       case 'HoldOff': {
         /*
-         * My touch is spent. Back off far enough not to foul the ball by
-         * accident, and no further: the moment somebody else plays it the turn
-         * comes back, and a player who wandered home is out of the game.
+         * My touch is spent, so this is the time to be somewhere useful.
+         *
+         * Backing straight off the ball and stopping is what this used to do,
+         * and against an opponent who never came for the ball it meant the
+         * computer stood almost still for most of a minute. Instead it takes
+         * up a position off to the side and goal-side of the ball: clear of
+         * the ball by more than a foot's reach, facing it, and already where
+         * it wants to be the moment the turn comes back.
          */
+        const side = me.position.x >= ball.x ? 1 : -1;
+        const clearance = GameConfig.kick.range + 1.2;
         const away = {
-          x: ball.x * 0.85 + this.wander() * 1.2,
+          x: clamp(
+            ball.x + side * (clearance + this.wander()),
+            -GameConfig.field.width * 0.44,
+            GameConfig.field.width * 0.44,
+          ),
           y: 0,
-          z: ball.z + Math.sign(defendZ - ball.z) * 2.6,
+          z: clamp(
+            ball.z + Math.sign(defendZ - ball.z) * clearance,
+            -GameConfig.field.length * 0.46,
+            GameConfig.field.length * 0.46,
+          ),
         };
-        this.moveTowards(me, away, false);
+        this.moveTowards(me, away, horizontalDistance(me.position, away) > 5);
         this.faceTowards(me, ball);
         break;
       }
 
       case 'Defend': {
         /*
-         * Press, do not spectate.
+         * Stand on the line the ball would take to the middle of the goal,
+         * and stand on it close enough to be a nuisance.
          *
-         * Goal-side of the ball, but close enough to be a nuisance: a metre
-         * and a half off it rather than nearly halfway back to the goal. A
-         * defender who stands off is a defender the ball walks past, and it
-         * never gets inside tackling range to try anything.
+         * Blocking the angle is what a defender is for: a metre and a half
+         * goal-side of the ball, on the line to the centre of the net, covers
+         * the shot the attacker most wants. A defender who stands off is a
+         * defender the ball walks past, and it never gets inside tackling
+         * range to try anything.
          */
-        const toGoalX = -ball.x;
-        const toGoalZ = defendZ - ball.z;
+        const future = predictBall(state.ball, this.profile.reactionTime * 2);
+        const toGoalX = -future.x;
+        const toGoalZ = defendZ - future.z;
         const toGoal = Math.hypot(toGoalX, toGoalZ) || 1;
         const standOff = 1.5 + this.wander() * 0.4;
         const target = {
-          x: ball.x + (toGoalX / toGoal) * standOff,
+          x: future.x + (toGoalX / toGoal) * standOff,
           y: 0,
-          z: ball.z + (toGoalZ / toGoal) * standOff,
+          z: future.z + (toGoalZ / toGoal) * standOff,
         };
         this.moveTowards(me, target, horizontalDistance(me.position, target) > 3);
         this.faceTowards(me, ball);
@@ -366,7 +506,7 @@ export class AIController implements PlayerController {
 
       case 'Recover': {
         const home = { x: this.wander() * 2.5, y: 0, z: defendZ * 0.3 };
-        this.moveTowards(me, home, false);
+        this.moveTowards(me, home, horizontalDistance(me.position, home) > 6);
         this.faceTowards(me, ball);
         this.chargeTime = 0;
         break;
@@ -375,6 +515,49 @@ export class AIController implements PlayerController {
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
+
+  /** Holds the charge and states the height and shape it wants. */
+  private loadShot(): void {
+    this.command.shootHeld = true;
+    this.command.shootPressed = this.chargeTime <= 0.02;
+    // The AI states the height it wants rather than asking for a toggle: the
+    // toggle belongs to the input devices, and a value is what the simulation
+    // actually reads.
+    this.command.verticalAim = this.plan.aimHeight;
+    this.command.shotStyle = this.plan.style;
+  }
+
+  /** Where to meet a moving ball, given how fast this player can get there. */
+  private interceptPoint(state: MatchState, me: PlayerState): Vec3 {
+    const horizon = this.profile.predictionSeconds;
+    const speed = GameConfig.player.sprintSpeed * this.profile.speedMultiplier;
+    // First guess: how long to reach where it is now. Then look that far ahead
+    // and answer the same question about the new point. Two rounds is enough.
+    let lead = Math.min(horizon, horizontalDistance(me.position, state.ball.position) / speed);
+    for (let i = 0; i < 2; i += 1) {
+      const guess = predictBall(state.ball, lead);
+      lead = Math.min(horizon, horizontalDistance(me.position, guess) / speed);
+    }
+    return predictBall(state.ball, lead);
+  }
+
+  /** A point just behind the ball on the line to the goal, to strike through. */
+  private approachPoint(me: PlayerState, ball: Vec3, attackZ: number): Vec3 {
+    const dx = this.plan.aimOffsetX - ball.x;
+    const dz = attackZ - ball.z;
+    const length = Math.hypot(dx, dz) || 1;
+    const behind = GameConfig.kick.range * 0.55;
+    const target = {
+      x: ball.x - (dx / length) * behind,
+      y: 0,
+      z: ball.z - (dz / length) * behind,
+    };
+    // If the approach point is behind us anyway, just go at the ball: circling
+    // a ball that is about to be taken off you is how possession is lost.
+    return horizontalDistance(me.position, target) > horizontalDistance(me.position, ball) + 1.6
+      ? ball
+      : target;
+  }
 
   private moveTowards(me: PlayerState, target: Vec3, sprint: boolean): void {
     const dx = target.x - me.position.x;
@@ -398,6 +581,18 @@ export class AIController implements PlayerController {
     // The contract carries a world-space direction, not an angle.
     this.command.aimX = Math.sin(yaw);
     this.command.aimY = Math.cos(yaw);
+  }
+
+  /** Points the body at the spot on the goal this plan has picked out. */
+  private aimAtGoal(me: PlayerState, ball: Vec3, attackZ: number): void {
+    this.aimPoint.x = clamp(
+      this.plan.aimOffsetX,
+      -GameConfig.goal.width * 0.48,
+      GameConfig.goal.width * 0.48,
+    );
+    this.aimPoint.y = 0;
+    this.aimPoint.z = attackZ;
+    this.faceForShot(me, ball, this.aimPoint, this.profile.aimError);
   }
 
   /**
@@ -433,14 +628,17 @@ export class AIController implements PlayerController {
     state: MatchState,
   ): void {
     if (!opponent) return;
-    if (me.tackleCooldown > 0) return;
+    if (me.tackleCooldown > 0 || this.actionCooldown > 0) return;
     // A won tackle is a deliberate touch, so it obeys the same rule.
     if (!canPlayerTouch(state.touch, me.id)) return;
     const opponentHasBall =
       horizontalDistance(opponent.position, ball) <= GameConfig.ball.controlRadius * 1.3;
     if (!opponentHasBall) return;
     if (horizontalDistance(me.position, opponent.position) > GameConfig.tackle.range) return;
-    this.command.tacklePressed = this.rng.chance(this.profile.tackleAggression);
+    if (!this.rng.chance(this.profile.tackleAggression)) return;
+    this.command.tacklePressed = true;
+    // One attempt, then a pause. Asking every tick is what made it twitch.
+    this.actionCooldown = GameConfig.tackle.cooldownSeconds;
   }
 
   /** Slow, smooth noise so movement targets breathe instead of snapping. */
@@ -448,14 +646,55 @@ export class AIController implements PlayerController {
     return Math.sin(this.wanderPhase) * this.wanderStrength;
   }
 
-  private makePlan(): ShotPlan {
-    const spread = GameConfig.goal.width * 0.42;
+  /**
+   * Picks a spot on the goal and a way to hit it.
+   *
+   * Most shots go at the net. Some go at the frame on purpose, because the
+   * frame is worth two, three and five points and an opponent who never tries
+   * for it is not playing the same game as the player. How often it tries is
+   * a difficulty setting; so is how well it aims.
+   */
+  private makePlan(shootingRange: number): ShotPlan {
+    const { goal } = GameConfig;
     const power = clamp(0.78 + this.rng.jitter(this.profile.powerJitter), 0.4, 1);
+    const huntsFrame = this.rng.chance(this.profile.frameHuntChance);
+
+    if (huntsFrame) {
+      // The bar, or the corner where the bar meets a post. Both need height,
+      // which is exactly what the lofted style is for.
+      const corner = this.rng.chance(0.45);
+      const side = this.rng.chance(0.5) ? 1 : -1;
+      return {
+        aimOffsetX: corner ? side * (goal.width / 2) : this.rng.range(-0.6, 0.6),
+        aimHeight: this.rng.range(0.1, 0.45),
+        power: Math.max(power, 0.82),
+        style: 'normal',
+        chargeSeconds: GameConfig.kick.chargeSeconds * 0.95,
+      };
+    }
+
+    const spread = goal.width * 0.42;
+    const lofts = this.rng.chance(this.profile.loftChance);
     return {
       aimOffsetX: this.rng.range(-spread, spread),
+      aimHeight: lofts ? GameConfig.kick.highAim : this.rng.range(-0.9, -0.3),
       power,
-      lofted: this.rng.chance(0.22),
-      chargeSeconds: GameConfig.kick.chargeSeconds * power,
+      style: lofts ? 'lofted' : this.rng.chance(0.25) ? 'curled' : 'flat',
+      chargeSeconds: GameConfig.kick.chargeSeconds * power * (shootingRange > 0 ? 1 : 1),
     };
   }
 }
+
+/** Above this ground speed a ball is worth intercepting rather than chasing. */
+const INTERCEPT_SPEED = 3.5;
+
+/** How long the AI keeps asking to release before giving up on the strike. */
+const SHOT_WINDOW_SECONDS = 0.34;
+
+/** States in which a charge is being built up and must survive a transition. */
+const CHARGING_STATES: ReadonlySet<AIState> = new Set<AIState>([
+  'Chase',
+  'Intercept',
+  'Attack',
+  'PrepareShot',
+]);

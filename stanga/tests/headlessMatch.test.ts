@@ -38,7 +38,7 @@ afterEach(() => {
 });
 
 /** Drives one player with a scripted command, tick by tick. */
-function driver(headless: HeadlessMatch) {
+function driver(headless: HeadlessMatch, base: Partial<PlayerCommand> = {}) {
   const command = createPlayerCommand('home-1', 0);
   let tick = 0;
   return (patch: Partial<PlayerCommand> = {}) => {
@@ -54,10 +54,12 @@ function driver(headless: HeadlessMatch) {
         shootHeld: false,
         shootReleased: false,
         tacklePressed: false,
-        lobToggle: false,
+        styleCycle: false,
+        shotStyle: 'normal',
         tickId: tick,
         sequenceNumber: tick,
       },
+      base,
       patch,
     );
     headless.match.submitCommand(command);
@@ -111,6 +113,58 @@ describe('headless simulation', () => {
     expect(headless.match.state.phase).toBe('celebration');
   });
 
+  /*
+   * The frame has to be reachable on purpose.
+   *
+   * These are the acceptance checks for the strike system, and they are driven
+   * through the real controls: charge, aim, release. Before the launch-vector
+   * rewrite neither was possible — every strike left the foot at a couple of
+   * degrees, so the only thing a player could hit was the net or a post.
+   */
+  function shootFrom(
+    headless: HeadlessMatch,
+    verticalAim: number,
+    aimX: number,
+  ): ScoreEventRecord[] {
+    const scored: ScoreEventRecord[] = [];
+    headless.match.events.on('scored', (record) => scored.push(record));
+    headless.match.start();
+
+    const drive = driver(headless, { verticalAim, aimX, aimY: Math.sqrt(1 - aimX * aimX) });
+    for (let i = 0; i < 200; i += 1) drive();
+    // Eight metres out, square to the goal, with the ball at the player's feet.
+    headless.match.ball.reset({ x: 0, y: GameConfig.ball.radius, z: 9 });
+    for (let i = 0; i < 3; i += 1) drive();
+    headless.match.bodyFor('home-1')?.reset({ x: 0, y: 0, z: 8.1 });
+    for (let i = 0; i < 20; i += 1) drive();
+
+    for (let i = 0; i < 70; i += 1) drive({ shootHeld: true, shootPressed: i === 0 });
+    drive({ shootReleased: true });
+    for (let i = 0; i < 140; i += 1) drive();
+    return scored;
+  }
+
+  it('lets a charged strike hit the crossbar, for three points', () => {
+    const scored = shootFrom(makeMatch(), 0, 0);
+    expect(scored[0]?.kind).toBe('crossbar');
+    expect(scored[0]?.points).toBe(GameConfig.match.points.crossbar);
+  });
+
+  it('lets the same strike find the junction, for five', () => {
+    // The corner where the bar meets the post, from the same spot: the only
+    // thing that changes is where the player is facing.
+    const scored = shootFrom(makeMatch(), 0.05, 0.32);
+    expect(scored[0]?.kind).toBe('junction');
+    expect(scored[0]?.points).toBe(GameConfig.match.points.junction);
+  });
+
+  it('keeps a junction out of the post and crossbar columns', () => {
+    // One event per shot, and the highest one wins: a junction may never also
+    // be counted as the post and the bar it sits between.
+    const scored = shootFrom(makeMatch(), 0.05, 0.32);
+    expect(scored).toHaveLength(1);
+  });
+
   it('places the ball exactly where a reset asks, instead of firing it there', () => {
     const headless = makeMatch();
     headless.match.start();
@@ -142,8 +196,12 @@ describe('headless simulation', () => {
     headless.match.bodyFor('home-1')?.reset({ x: 0, y: 0, z: 10.2 });
     for (let i = 0; i < 20; i += 1) drive();
 
-    for (let i = 0; i < 70; i += 1) drive({ shootHeld: true, shootPressed: i === 0 });
-    drive({ shootReleased: true });
+    // Aimed along the deck on purpose: this is about the shot surviving the
+    // aim assist, and a shot aimed at the default height now clips the bar.
+    for (let i = 0; i < 70; i += 1) {
+      drive({ shootHeld: true, shootPressed: i === 0, verticalAim: -1 });
+    }
+    drive({ shootReleased: true, verticalAim: -1 });
     for (let i = 0; i < 90; i += 1) drive();
 
     expect(kicks).toHaveLength(1);

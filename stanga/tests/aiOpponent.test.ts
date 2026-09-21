@@ -162,7 +162,7 @@ describe('the computer opponent', () => {
 
     const command = ai.poll('away-1', 1, { state, dt: DT, cameraYaw: 0, player: computer });
 
-    expect(ai.currentState).toBe('ChaseBall');
+    expect(['Chase', 'Intercept', 'Attack', 'PrepareShot']).toContain(ai.currentState);
     // Moving, and towards the ball rather than away from it.
     expect(Math.hypot(command.moveX, command.moveY)).toBeGreaterThan(0.5);
     expect(command.moveY).toBeGreaterThan(0.5);

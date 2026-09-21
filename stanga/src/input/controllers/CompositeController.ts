@@ -51,12 +51,31 @@ export class CompositeController implements PlayerController {
         merged.aimY = command.aimY;
       }
 
+      /*
+       * Aim, spin and chip were never merged, so a player on a keyboard *and*
+       * a pad could not aim a high ball at all: the merged command always
+       * carried a flat zero. Whichever device is saying something takes it.
+       */
+      if (Math.abs(command.verticalAim) > Math.abs(merged.verticalAim)) {
+        merged.verticalAim = command.verticalAim;
+      }
+      if (Math.abs(command.spin) > Math.abs(merged.spin)) merged.spin = command.spin;
+      merged.chipRequested ||= command.chipRequested;
+      if (command.preferredPassSlot >= 0) merged.preferredPassSlot = command.preferredPassSlot;
+      merged.passHeld ||= command.passHeld;
+      merged.passPressed ||= command.passPressed;
+      merged.passReleased ||= command.passReleased;
+      merged.jugglePressed ||= command.jugglePressed;
+
       merged.sprintPressed ||= command.sprintPressed;
       merged.shootHeld ||= command.shootHeld;
       merged.shootPressed ||= command.shootPressed;
       merged.shootReleased ||= command.shootReleased;
       merged.tacklePressed ||= command.tacklePressed;
-      merged.lobToggle ||= command.lobToggle;
+      merged.styleCycle ||= command.styleCycle;
+      // The last device to change the style owns it: merging two selections
+      // would give a player holding two controllers a shape neither picked.
+      if (command.styleCycle) merged.shotStyle = command.shotStyle;
     }
 
     // Holding on one device while releasing on another is a release only if

@@ -108,7 +108,7 @@ export class NetworkController implements PlayerController {
     command.shootPressed = false;
     command.shootReleased = this.pendingKick;
     command.tacklePressed = this.pendingTackle;
-    command.lobToggle = false;
+    command.styleCycle = false;
     this.pendingKick = false;
     this.pendingTackle = false;
     return command;

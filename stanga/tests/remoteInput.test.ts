@@ -20,7 +20,7 @@ const context: ControlContext = {
 };
 
 function input(n: number, patch: Partial<NetInput> = {}): NetInput {
-  return { n, mx: 0, my: 1, ax: 0, ay: 1, va: 0, sn: 0, pt: -1, f: 0, ...patch };
+  return { n, mx: 0, my: 1, ax: 0, ay: 1, va: 0, sn: 0, sy: 0, pt: -1, f: 0, ...patch };
 }
 
 describe('RemoteInputController', () => {

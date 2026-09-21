@@ -18,12 +18,20 @@ export type BindableAction =
   | 'sprint'
   | 'shoot'
   | 'tackle'
-  | 'lob'
+  /** Cycles the selected shot shape: normal, flat, lofted, curled, chip. */
+  | 'style'
   | 'pass'
   | 'juggle'
-  /** Held: raises and lowers where the next strike is aimed. */
+  /**
+   * Held while striking: raises and lowers where the next strike is aimed.
+   * A press snaps to the top or the bottom of the range, so one tap of the
+   * up key is enough to put the ball in the air.
+   */
   | 'aimUp'
   | 'aimDown'
+  /** Held while striking: swings the direction the ball is struck along. */
+  | 'aimLeft'
+  | 'aimRight'
   /** Held while striking: a short chip instead of a full shot. */
   | 'chip'
   /** Held while striking: bends the ball left or right. */
@@ -50,10 +58,12 @@ export const BINDABLE_ACTIONS: readonly BindableAction[] = [
   'tackle',
   'aimUp',
   'aimDown',
+  'aimLeft',
+  'aimRight',
   'chip',
   'curlLeft',
   'curlRight',
-  'lob',
+  'style',
 ];
 
 export const ACTION_LABELS: Record<BindableAction, string> = {
@@ -64,11 +74,13 @@ export const ACTION_LABELS: Record<BindableAction, string> = {
   sprint: 'ספרינט',
   shoot: 'בעיטה',
   tackle: 'חטיפה',
-  lob: 'שטוחה / מוגבהת',
+  style: 'סוג הבעיטה',
   pass: 'מסירה',
   juggle: 'הקפצה',
   aimUp: 'כוון גבוה',
   aimDown: 'כוון נמוך',
+  aimLeft: 'כוון שמאלה',
+  aimRight: 'כוון ימינה',
   chip: 'הרמה קצרה',
   curlLeft: 'סיבוב שמאלה',
   curlRight: 'סיבוב ימינה',
@@ -84,11 +96,13 @@ export function defaultLeftKeyMap(): KeyMap {
     sprint: ['ShiftLeft'],
     shoot: ['KeyF'],
     tackle: ['KeyG'],
-    lob: ['KeyR'],
+    style: ['KeyR'],
     pass: ['KeyC'],
     juggle: ['KeyV'],
     aimUp: ['KeyT'],
     aimDown: ['KeyB'],
+    aimLeft: ['KeyQ'],
+    aimRight: ['KeyE'],
     chip: ['KeyX'],
     curlLeft: ['KeyZ'],
     curlRight: ['KeyH'],
@@ -105,20 +119,29 @@ export function defaultRightKeyMap(): KeyMap {
     sprint: ['ShiftRight', 'Enter'],
     shoot: ['KeyK'],
     tackle: ['KeyL'],
-    lob: ['KeyO'],
+    style: ['KeyO'],
     pass: ['KeyJ'],
     juggle: ['KeyU'],
     aimUp: ['KeyI'],
     aimDown: ['KeyM'],
-    chip: ['KeyP'],
+    aimLeft: ['KeyY'],
+    aimRight: ['KeyP'],
+    chip: ['Period'],
     curlLeft: ['KeyN'],
     curlRight: ['Semicolon'],
   };
 }
 
 /**
- * The single-player profile keeps the 0.1.0 controls exactly as they were, so a
- * returning player's muscle memory still works.
+ * The single-player profile.
+ *
+ * The arrow keys appear twice on purpose, once for movement and once for
+ * aiming, and that is not a conflict: the two are never live at the same
+ * moment. With no shot charging the arrows walk the player around exactly as
+ * they always have; while the shoot key is held they steer the strike instead
+ * — left and right swing the direction, up puts the ball in the air, down
+ * flattens it. WASD keeps moving throughout, so a player who wants to run and
+ * aim at once still can.
  */
 export function soloKeyMap(): KeyMap {
   return {
@@ -128,17 +151,30 @@ export function soloKeyMap(): KeyMap {
     right: ['KeyD', 'ArrowRight'],
     sprint: ['ShiftLeft', 'ShiftRight'],
     shoot: ['Space'],
-    tackle: ['KeyE'],
-    lob: ['KeyQ'],
+    juggle: ['KeyE'],
+    style: ['KeyQ'],
+    tackle: ['KeyR'],
     pass: ['KeyC'],
-    juggle: ['KeyV'],
-    aimUp: ['KeyR'],
-    aimDown: ['KeyF'],
+    aimUp: ['ArrowUp', 'KeyT'],
+    aimDown: ['ArrowDown', 'KeyG'],
+    aimLeft: ['ArrowLeft'],
+    aimRight: ['ArrowRight'],
     chip: ['KeyX'],
     curlLeft: ['KeyZ'],
-    curlRight: ['KeyG'],
+    curlRight: ['KeyV'],
   };
 }
+
+/**
+ * Keys the solo profile deliberately shares between movement and aiming.
+ * The binding editor must not report these as a conflict.
+ */
+export const SOLO_SHARED_AIM_KEYS: readonly string[] = [
+  'ArrowUp',
+  'ArrowDown',
+  'ArrowLeft',
+  'ArrowRight',
+];
 
 export function defaultKeyMapFor(profile: KeyboardProfileId): KeyMap {
   return profile === 'keyboard-left' ? defaultLeftKeyMap() : defaultRightKeyMap();

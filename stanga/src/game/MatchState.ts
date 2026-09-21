@@ -4,6 +4,7 @@
  * an authoritative server has to be able to own this exact structure.
  */
 import { GameConfig, type ScoreKind } from '../config/GameConfig';
+import type { ShotStyle } from '../config/GameConfig';
 import type { ShotProfile } from '../input/PlayerCommand';
 import { vec3, type Vec3 } from '../core/math';
 import { createTouchRuleState, type TouchRuleState } from './TouchRuleEngine';
@@ -64,6 +65,10 @@ export interface PlayerState {
   kickCharge: number;
   charging: boolean;
   lofted: boolean;
+  /** Which of the five shapes this player's next strike takes. */
+  shotStyle: ShotStyle;
+  /** Seconds the shoot control has been held, so a tap can be told from a charge. */
+  shootHold: number;
   /** Where this player is currently aiming the next strike, -1..1. */
   verticalAim: number;
   /** Requested side spin for the next strike, -1..1. */
@@ -238,6 +243,8 @@ export function createPlayerState(
     kickCharge: 0,
     charging: false,
     lofted: false,
+    shotStyle: 'normal',
+    shootHold: 0,
     verticalAim: 0,
     spin: 0,
     chipRequested: false,

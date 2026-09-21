@@ -6,6 +6,7 @@
  * every inbound shape has a `sanitize*` function here, and the server uses it
  * before the value reaches the simulation.
  */
+import { SHOT_STYLE_ORDER } from '../config/GameConfig';
 import { createPlayerCommand, type PlayerCommand } from '../input/PlayerCommand';
 import type { TeamId } from '../game/MatchState';
 
@@ -14,7 +15,7 @@ import type { TeamId } from '../game/MatchState';
  * would make an older client disagree with the server. Clients that send a
  * different value are rejected with a Hebrew "please refresh" message.
  */
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 
 /** Colyseus room names, one per online mode. */
 export const ROOM_ONE_VS_ONE = 'stanga_1v1';
@@ -110,7 +111,7 @@ export const InputFlag = {
   ShootHeld: 1 << 2,
   ShootReleased: 1 << 3,
   TacklePressed: 1 << 4,
-  LobToggle: 1 << 5,
+  StyleCycle: 1 << 5,
   PassPressed: 1 << 6,
   PassHeld: 1 << 7,
   PassReleased: 1 << 8,
@@ -124,7 +125,7 @@ const ALL_FLAGS =
   InputFlag.ShootHeld |
   InputFlag.ShootReleased |
   InputFlag.TacklePressed |
-  InputFlag.LobToggle |
+  InputFlag.StyleCycle |
   InputFlag.PassPressed |
   InputFlag.PassHeld |
   InputFlag.PassReleased |
@@ -151,6 +152,11 @@ export interface NetInput {
   va: number;
   /** Requested side spin, -1..1. */
   sn: number;
+  /**
+   * Index into `SHOT_STYLE_ORDER` of the shape the next strike takes.
+   * A request like every other: the server clamps it back into the list.
+   */
+  sy: number;
   /** Preferred pass target by team slot, or -1 for "you choose". */
   pt: number;
   /** Packed InputFlag bits. */
@@ -251,6 +257,14 @@ export function sanitizeInput(raw: unknown): NetInput | null {
   const verticalAim = Math.max(-1, Math.min(1, finite(value.va)));
   const spin = Math.max(-1, Math.min(1, finite(value.sn)));
 
+  // An out-of-range style is not a reason to drop the whole input: it simply
+  // means the normal strike, which is what a client that sends nothing gets.
+  const rawStyle = finite(value.sy, 0);
+  const style =
+    Number.isInteger(rawStyle) && rawStyle >= 0 && rawStyle < SHOT_STYLE_ORDER.length
+      ? rawStyle
+      : 0;
+
   // A pass target is a slot number, not a player id: there is nothing to
   // spoof, and the server checks it names a real team-mate anyway.
   const rawSlot = finite(value.pt, -1);
@@ -265,6 +279,7 @@ export function sanitizeInput(raw: unknown): NetInput | null {
     ay: aim.y,
     va: verticalAim,
     sn: spin,
+    sy: style,
     pt: passTarget,
     f: flags,
   };
@@ -297,7 +312,8 @@ export function toPlayerCommand(
   target.shootHeld = (input.f & InputFlag.ShootHeld) !== 0;
   target.shootReleased = (input.f & InputFlag.ShootReleased) !== 0;
   target.tacklePressed = (input.f & InputFlag.TacklePressed) !== 0;
-  target.lobToggle = (input.f & InputFlag.LobToggle) !== 0;
+  target.styleCycle = (input.f & InputFlag.StyleCycle) !== 0;
+  target.shotStyle = SHOT_STYLE_ORDER[input.sy] ?? 'normal';
   return target;
 }
 
@@ -309,7 +325,7 @@ export function toNetInput(command: PlayerCommand): NetInput {
   if (command.shootHeld) flags |= InputFlag.ShootHeld;
   if (command.shootReleased) flags |= InputFlag.ShootReleased;
   if (command.tacklePressed) flags |= InputFlag.TacklePressed;
-  if (command.lobToggle) flags |= InputFlag.LobToggle;
+  if (command.styleCycle) flags |= InputFlag.StyleCycle;
   if (command.passPressed) flags |= InputFlag.PassPressed;
   if (command.passHeld) flags |= InputFlag.PassHeld;
   if (command.passReleased) flags |= InputFlag.PassReleased;
@@ -323,6 +339,7 @@ export function toNetInput(command: PlayerCommand): NetInput {
     ay: command.aimY,
     va: command.verticalAim,
     sn: command.spin,
+    sy: Math.max(0, SHOT_STYLE_ORDER.indexOf(command.shotStyle)),
     pt: command.preferredPassSlot,
     f: flags,
   };

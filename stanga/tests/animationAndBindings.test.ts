@@ -23,6 +23,7 @@ import {
   keyLabel,
   sanitizeKeyMap,
   soloKeyMap,
+  SOLO_SHARED_AIM_KEYS,
 } from '../src/input/KeyBindings';
 
 const STEP = 1 / 60;
@@ -241,13 +242,33 @@ describe('key bindings', () => {
     expect(findConflicts(left, right)).toHaveLength(0);
   });
 
-  it('keeps the solo profile identical to version 0.1.0', () => {
+  it('puts the solo shot controls where the player expects them', () => {
     const solo = soloKeyMap();
     expect(solo.shoot).toEqual(['Space']);
-    expect(solo.tackle).toEqual(['KeyE']);
-    expect(solo.lob).toEqual(['KeyQ']);
+    expect(solo.juggle).toEqual(['KeyE']);
+    expect(solo.style).toEqual(['KeyQ']);
     expect(solo.up).toContain('KeyW');
     expect(solo.up).toContain('ArrowUp');
+  });
+
+  /*
+   * The arrows do two jobs in the solo profile, and that is on purpose: they
+   * walk the player around until a shot is charging, and steer the strike
+   * while one is. The two are never live at the same moment, so the overlap
+   * is a feature rather than the kind of double binding the editor warns about.
+   */
+  it('shares the arrow keys between movement and aiming, deliberately', () => {
+    const solo = soloKeyMap();
+    for (const code of SOLO_SHARED_AIM_KEYS) {
+      const movement = [...solo.up, ...solo.down, ...solo.left, ...solo.right];
+      const aiming = [...solo.aimUp, ...solo.aimDown, ...solo.aimLeft, ...solo.aimRight];
+      expect(movement).toContain(code);
+      expect(aiming).toContain(code);
+    }
+  });
+
+  it('keeps the two split profiles free of shared keys', () => {
+    expect(findConflicts(defaultLeftKeyMap(), defaultRightKeyMap())).toHaveLength(0);
   });
 
   it('reports a key bound to two different actions', () => {

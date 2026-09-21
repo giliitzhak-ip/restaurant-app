@@ -1414,7 +1414,7 @@ export class Game {
       const slot = this.session?.slotFor(player.id);
       if (slot?.controller instanceof HumanTouchController) {
         slot.controller.setChargeRatio(player.kickCharge);
-        slot.controller.setLofted(player.lofted);
+        slot.controller.setShotStyle(player.shotStyle);
       }
     }
 

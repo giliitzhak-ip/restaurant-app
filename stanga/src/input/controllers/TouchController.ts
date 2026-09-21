@@ -6,16 +6,18 @@
  * it started on and stays with it until pointerup or pointercancel, so one
  * player's thumb can never steal the other's stick.
  */
-import { GameConfig } from '../../config/GameConfig';
+import { GameConfig, type ShotStyle } from '../../config/GameConfig';
 import type { ControlContext, PlayerController } from '../PlayerController';
 import { SequenceCounter } from '../PlayerController';
 import {
   applyDeadZone,
   createPlayerCommand,
+  nextShotStyle,
   resetPlayerCommand,
   rotateByYaw,
   type PlayerCommand,
 } from '../PlayerCommand';
+import { SHOT_STYLE_LABELS } from '../../ui/labels';
 
 /**
  * Which part of the screen the pad occupies.
@@ -36,6 +38,9 @@ interface StickPointer {
 const AIM_SWIPE_PIXELS = 90;
 const SPIN_SWIPE_PIXELS = 110;
 
+/** How far a full sideways drag swings the direction of the strike. */
+const SHOT_SWING_RADIANS = 0.6;
+
 function clampUnit(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.max(-1, Math.min(1, value));
@@ -52,13 +57,24 @@ export class HumanTouchController implements PlayerController {
   private readonly shootButton: HTMLButtonElement;
   private readonly sprintButton: HTMLButtonElement;
   private readonly tackleButton: HTMLButtonElement;
-  private readonly lobButton: HTMLButtonElement;
+  private readonly styleButton: HTMLButtonElement;
   private readonly passButton: HTMLButtonElement;
   private readonly juggleButton: HTMLButtonElement;
   /** Where the kick finger went down, so a drag on it can steer the strike. */
   private shootOrigin: { x: number; y: number } | null = null;
   private verticalAim = 0;
   private spin = 0;
+  /** Which of the five shapes the next strike takes. */
+  private shotStyle: ShotStyle = 'normal';
+  /**
+   * Direction a charging strike is being swung along, in world radians.
+   *
+   * A sideways drag on the kick button both bends the ball and swings where
+   * it is struck — which is what "drag right to aim right" has to mean on a
+   * phone, where there is no second stick to point with.
+   */
+  private shotYaw = 0;
+  private steering = false;
   private passPointer: number | null = null;
   private passWasHeld = false;
   private jugglePending = false;
@@ -78,7 +94,7 @@ export class HumanTouchController implements PlayerController {
   private shootPointer: number | null = null;
   private sprintPointer: number | null = null;
   private tacklePending = false;
-  private lobPending = false;
+  private stylePending = false;
   private shootWasHeld = false;
   private sensitivity = 1;
 
@@ -125,11 +141,11 @@ export class HumanTouchController implements PlayerController {
     this.shootButton = makeButton('touch-button touch-button--kick', 'בעיטה');
     this.sprintButton = makeButton('touch-button touch-button--sprint', 'ספרינט');
     this.tackleButton = makeButton('touch-button touch-button--tackle', 'חטיפה');
-    this.lobButton = makeButton('touch-button touch-button--loft', 'שטוחה');
+    this.styleButton = makeButton('touch-button touch-button--style', SHOT_STYLE_LABELS.normal);
     this.passButton = makeButton('touch-button touch-button--pass', 'מסירה');
     this.juggleButton = makeButton('touch-button touch-button--juggle', 'הקפצה');
     actions.append(
-      this.lobButton,
+      this.styleButton,
       this.juggleButton,
       this.tackleButton,
       this.passButton,
@@ -146,8 +162,8 @@ export class HumanTouchController implements PlayerController {
     this.bindTap(this.tackleButton, () => {
       this.tacklePending = true;
     });
-    this.bindTap(this.lobButton, () => {
-      this.lobPending = true;
+    this.bindTap(this.styleButton, () => {
+      this.stylePending = true;
     });
     this.bindHold(this.passButton, 'pass');
     this.bindTap(this.juggleButton, () => {
@@ -257,10 +273,28 @@ export class HumanTouchController implements PlayerController {
     if (!visible) this.reset();
   }
 
-  /** Reflects the player's current shot type on the toggle. */
-  setLofted(lofted: boolean): void {
-    this.lobButton.textContent = lofted ? 'מוגבהת' : 'שטוחה';
-    this.lobButton.classList.toggle('is-active', lofted);
+  /** Reflects the selected shape on the style button. */
+  setShotStyle(style: ShotStyle): void {
+    this.styleButton.textContent = SHOT_STYLE_LABELS[style];
+    this.styleButton.classList.toggle('is-active', style !== 'normal');
+  }
+
+  /**
+   * Puts the stick on the right and the buttons on the left, for a player who
+   * holds the phone the other way round. The layout is physical, so the class
+   * flips it rather than the document's own right-to-left direction.
+   */
+  setMirrored(mirrored: boolean): void {
+    this.root.classList.toggle('is-mirrored', mirrored);
+  }
+
+  /** What the player has selected, so the HUD and the preview agree with it. */
+  get style(): ShotStyle {
+    return this.shotStyle;
+  }
+
+  get aimHeight(): number {
+    return this.verticalAim;
   }
 
   setChargeRatio(ratio: number): void {
@@ -283,8 +317,10 @@ export class HumanTouchController implements PlayerController {
     this.lookDelta.y = 0;
     this.stick = null;
     this.tacklePending = false;
-    this.lobPending = false;
+    this.stylePending = false;
     this.jugglePending = false;
+    this.shotStyle = 'normal';
+    this.steering = false;
     this.passWasHeld = false;
     this.shootOrigin = null;
     this.verticalAim = 0;
@@ -332,19 +368,36 @@ export class HumanTouchController implements PlayerController {
     this.tacklePending = false;
     command.jugglePressed = this.jugglePending;
     this.jugglePending = false;
-    // The flat/high button snaps the aim this controller keeps, rather than
-    // asking the simulation to flip a flag that the next tick would overwrite.
-    command.lobToggle = this.lobPending;
-    if (this.lobPending) {
-      this.verticalAim =
-        this.verticalAim > GameConfig.kick.highAim * 0.3
-          ? GameConfig.kick.flatAim
-          : GameConfig.kick.highAim;
+
+    // The style button cycles the five shapes here rather than asking the
+    // simulation to flip a flag that the next tick would overwrite.
+    if (this.stylePending) {
+      this.shotStyle = nextShotStyle(this.shotStyle);
+      this.setShotStyle(this.shotStyle);
     }
-    this.lobPending = false;
+    command.styleCycle = this.stylePending;
+    this.stylePending = false;
+    command.shotStyle = this.shotStyle;
 
     command.verticalAim = this.verticalAim;
     command.spin = this.spin;
+
+    /*
+     * A sideways drag on the kick button points the shot as well as bending
+     * it. The swing starts from the player's own facing, so the drag nudges
+     * the strike instead of teleporting it somewhere across the pitch.
+     */
+    if (shootHeld) {
+      if (!this.steering) {
+        this.shotYaw = context.player?.facing ?? 0;
+        this.steering = true;
+      }
+      const swing = this.shotYaw + this.spin * SHOT_SWING_RADIANS;
+      command.aimX = Math.sin(swing);
+      command.aimY = Math.cos(swing);
+    } else {
+      this.steering = false;
+    }
 
     return command;
   }

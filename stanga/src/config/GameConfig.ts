@@ -27,6 +27,47 @@ export interface DifficultyProfile {
   readonly tackleAggression: number;
   /** Distance from the target goal under which the AI is willing to shoot. */
   readonly shootingRange: number;
+  /**
+   * How far ahead the AI is allowed to predict the ball, in seconds.
+   *
+   * This is most of what a difficulty setting actually is. An easy opponent
+   * barely looks past the present and arrives where the ball was; a hard one
+   * reads the flight and is standing there when it comes down.
+   */
+  readonly predictionSeconds: number;
+  /** Chance per plan of going for the frame rather than the net. */
+  readonly frameHuntChance: number;
+  /** Chance per plan of putting the ball in the air. */
+  readonly loftChance: number;
+}
+
+/** The five shapes a player can select before striking. */
+export type ShotStyle = 'flat' | 'normal' | 'lofted' | 'curled' | 'chip';
+
+/** The order the shot-style control cycles through. */
+export const SHOT_STYLE_ORDER: readonly ShotStyle[] = [
+  'normal',
+  'flat',
+  'lofted',
+  'curled',
+  'chip',
+];
+
+export interface ShotStyleProfile {
+  /** Where inside the 5°..50° range this style starts, 0..1. */
+  readonly elevationBias: number;
+  /** How much of that range the player's aim still sweeps, 0..1. */
+  readonly elevationScale: number;
+  readonly speedScale: number;
+  /** Ceiling on the charge this style will use. */
+  readonly powerCap: number;
+  readonly spinScale: number;
+  /**
+   * Least spin this style puts on the ball, as a fraction of the maximum.
+   * Selecting "curled" and getting no curl because no direction was asked for
+   * would make the style a label rather than a shot.
+   */
+  readonly spinFloor: number;
 }
 
 export interface QualityProfile {
@@ -159,6 +200,19 @@ export const GameConfig = {
     firstTouchLift: 0.18,
     /** How far from the goal line a violation restart is placed, in metres. */
     restartGoalMargin: 4,
+    /**
+     * Seconds a stationary ball may sit before the turn is officially reopened.
+     *
+     * The rule says the turn comes back on somebody else's touch "or on an
+     * official restart", and this is that restart. Without it a one-on-one
+     * against a player who simply does not come for the ball deadlocks: the
+     * last toucher may not play it again, nobody else will, and the match
+     * stands still. Measured: an opponent spent 82% of a minute backing away
+     * from a ball it was not allowed to touch.
+     */
+    staleSeconds: 3.5,
+    /** Ball speed under which it counts as sitting still, m/s. */
+    staleSpeed: 0.9,
   },
 
   ball: {
@@ -166,10 +220,41 @@ export const GameConfig = {
     mass: 0.43,
     restitution: 0.62,
     friction: 0.55,
-    /** Linear damping, roughly models air + rolling resistance. */
-    linearDamping: 0.35,
-    angularDamping: 0.45,
+    /**
+     * Havok's own damping, now almost nothing.
+     *
+     * It used to be 0.35, which bled the same fraction out of every component
+     * of the velocity whatever the ball was doing — so a ball in flight was
+     * slowed as if it were dragging along the asphalt, and a lofted ball fell
+     * out of the sky. Air drag and rolling resistance are separate forces with
+     * different laws, and they are modelled separately below. What is left
+     * here is a trace, to stop a ball jittering forever on a flat surface.
+     */
+    linearDamping: 0.02,
+    angularDamping: 0.12,
     maxSpeed: 32,
+    /**
+     * Quadratic air drag, in 1/m: dv = -airDrag * |v| * v * dt.
+     *
+     * Derived rather than dialled: 0.5 * rho * Cd * A / m with air at
+     * 1.2 kg/m^3, a sphere's Cd of 0.25, this ball's cross-section and its
+     * mass. It is what makes a hard shot lose its edge over a long flight and
+     * a floated one hang.
+     */
+    airDrag: 0.0137,
+    /**
+     * Rolling resistance on the surface, in 1/s, on top of the air drag.
+     *
+     * Measured rather than guessed: at 0.85 a ball struck at 26 m/s was down
+     * to 7 by the time it reached a goal seventeen metres away, so a pass
+     * died before it arrived. This lets a firm ball cross the pitch and still
+     * brings a loose one to a stop.
+     */
+    rollingResistance: 0.28,
+    /** Above this height over the surface the ball is flying, not rolling. */
+    airborneHeight: 0.17,
+    /** Side spin bleeds away in flight, in 1/s. */
+    spinDecay: 0.5,
     /** Ball is considered controllable by a player inside this radius. */
     controlRadius: 1.4,
     /** Dribble steering strength while in control. */
@@ -215,25 +300,60 @@ export const GameConfig = {
   kick: {
     /** Seconds of holding to reach full power. */
     chargeSeconds: 0.95,
-    minPower: 0.18,
-    /** Impulse magnitude at power 1.0 for a flat shot. */
-    maxImpulse: 9.4,
-    /** Fraction of the impulse redirected upwards on a lofted shot. */
-    loftRatio: 0.62,
-    /** Small permanent lift so flat shots still leave the ground slightly. */
-    flatLift: 0.08,
     /**
-     * Lift at the two ends of the vertical aim, as a fraction of the impulse.
-     * The low end still leaves the ground a little, because a ball pressed
-     * into the asphalt just stops; the high end clears a player but is not a
-     * straight-up punt.
+     * A press shorter than this is a tap, not a charge.
+     *
+     * Without it the shortest possible press still fired at `minPower` along
+     * whatever height the aim happened to be parked at, so there was no way to
+     * just pass the ball forward. A tap is now its own thing: weak, flat, and
+     * always the same, whatever the aim says.
      */
-    minLift: 0.03,
-    maxLift: 0.95,
-    /** Exponent on the vertical aim. >1 puts the fine control near the ground. */
-    liftCurve: 2.2,
+    tapSeconds: 0.14,
+    tapPower: 0.2,
+    minPower: 0.18,
     /**
-     * The two ends the flat/high toggle snaps between.
+     * Outgoing ball speed in m/s at power 0 and at power 1.
+     *
+     * The strike sets the ball's velocity rather than adding an impulse to
+     * whatever it was already doing. A foot swinging through a ball dominates
+     * the ball's own momentum, and it is the only model in which the same
+     * charge and the same aim produce the same shot twice — which is what
+     * aiming at a crossbar needs.
+     */
+    minSpeed: 8,
+    maxSpeed: 23.5,
+    /**
+     * Launch angle limits, in radians: about 5° to about 50°.
+     *
+     * Below 5° the ball is pressed into the asphalt and just stops; above 50°
+     * it is a punt rather than a shot. Everything a player can aim lives
+     * between them, and the crossbar sits inside that range from anywhere on
+     * this pitch.
+     */
+    minElevation: (5 * Math.PI) / 180,
+    maxElevation: (50 * Math.PI) / 180,
+    /** Exponent on the vertical aim. >1 puts the fine control near the ground. */
+    elevationCurve: 1.7,
+    /**
+     * How much pace a steep strike gives up, at the top of the angle range.
+     *
+     * You cannot get a foot right under a ball and still swing through it at
+     * full speed. Without this a full-power lob left at 23 m/s and 47° and
+     * peaked at eleven metres — a moonball on a pitch thirty-four long.
+     */
+    elevationSpeedFalloff: 0.32,
+    /**
+     * Share of the striker's own ground speed that carries into the shot.
+     * Running onto a ball is worth something; it is not worth everything.
+     */
+    runShare: 0.3,
+    /** A ball above this height is struck out of the air: a volley. */
+    volleyHeight: 0.38,
+    /** A volley is cleaner through the ball, and rises a little more. */
+    volleySpeedScale: 1.1,
+    volleyElevationBonus: (4 * Math.PI) / 180,
+    /**
+     * The two ends the flat/high control snaps between.
      *
      * Fine aiming is a held axis, but a game also needs one control that just
      * means "put it in the air" — over a defender, onto a team-mate's head, at
@@ -242,25 +362,76 @@ export const GameConfig = {
      * one you are holding.
      */
     highAim: 0.92,
-    flatAim: -0.5,
-    /** A chip trades reach for height: less forward impulse, much more lift. */
-    chipForwardScale: 0.52,
-    chipLift: 1.25,
-    /** Ceiling on chip power, so it stays a touch rather than a clearance. */
-    chipMaxPower: 0.55,
-    /** Side spin, in radians per second at full request. */
-    maxSpinRate: 26,
+    flatAim: -0.75,
+    /**
+     * What each selected style does to the aim and the speed.
+     *
+     * `elevationBias` and `elevationScale` map the player's -1..1 aim onto a
+     * window inside the 5°..50° range: flat gets the bottom of it, a chip the
+     * top, normal the whole thing. The aim still moves the ball inside the
+     * window, so a style is a gear rather than a fixed value.
+     */
+    styles: {
+      flat: {
+        elevationBias: 0,
+        elevationScale: 0.18,
+        speedScale: 1.06,
+        powerCap: 1,
+        spinScale: 0.4,
+        spinFloor: 0,
+      },
+      normal: {
+        elevationBias: 0,
+        elevationScale: 1,
+        speedScale: 1,
+        powerCap: 1,
+        spinScale: 1,
+        spinFloor: 0,
+      },
+      lofted: {
+        elevationBias: 0.55,
+        elevationScale: 0.45,
+        speedScale: 0.94,
+        powerCap: 1,
+        spinScale: 0.8,
+        spinFloor: 0,
+      },
+      curled: {
+        elevationBias: 0.12,
+        elevationScale: 0.58,
+        speedScale: 0.95,
+        powerCap: 1,
+        spinScale: 1.25,
+        spinFloor: 0.55,
+      },
+      chip: {
+        elevationBias: 0.85,
+        elevationScale: 0.15,
+        speedScale: 0.62,
+        powerCap: 0.62,
+        spinScale: 0.6,
+        spinFloor: 0,
+      },
+    } as const satisfies Record<ShotStyle, ShotStyleProfile>,
+    /** Side spin, in radians per second at full request on a normal strike. */
+    maxSpinRate: 16,
     /** Above this spin rate a strike is reported as curled. */
     curlThreshold: 9,
-    /** Above this lift fraction a strike is reported as lofted. */
-    loftedThreshold: 0.45,
+    /** Above this launch angle a strike is reported as lofted. */
+    loftedElevation: (24 * Math.PI) / 180,
     /** Above this power a low strike is driven rather than rolled. */
     drivenPowerThreshold: 0.55,
     /**
-     * Magnus force coefficient. Small: side spin should bend a long ball by a
-     * metre or so, not steer it round a corner.
+     * Magnus acceleration coefficient, in 1/rad. The sideways acceleration is
+     * this times the spin rate times the ground speed, so the curve develops
+     * over the flight instead of bending the ball at the foot.
+     *
+     * Sized against gravity rather than by eye: at a full curl (20 rad/s) and
+     * twenty metres a second it comes to about 3.5 m/s^2, a third of gravity,
+     * which bends a long ball by a couple of metres. Anything approaching
+     * gravity itself steers the ball round corners instead of bending it.
      */
-    magnusCoefficient: 0.00042,
+    magnusCoefficient: 0.0088,
     /** The ball must be this close to be kickable. */
     range: 1.6,
     /** Movement speed multiplier while a shot is being charged. */
@@ -277,8 +448,8 @@ export const GameConfig = {
 
   /** A pass is a kick with the server choosing where it goes. */
   pass: {
-    /** Impulse magnitude at a full-length pass. */
-    maxImpulse: 6.4,
+    /** Ball speed, m/s, on a full-length pass. */
+    maxSpeed: 15,
     /** Shortest pass the server will play, in metres. */
     minRange: 1.5,
     /** A ground pass reaches at most this far. */
@@ -289,9 +460,9 @@ export const GameConfig = {
     holdSeconds: 0.55,
     /** How far in front of a moving receiver the ball is aimed, in seconds. */
     leadSeconds: 0.35,
-    /** Lift fraction of a ground pass and of a through ball. */
-    groundLift: 0.06,
-    throughLift: 0.34,
+    /** Launch angle of a ground pass and of a through ball, in radians. */
+    groundElevation: (3.5 * Math.PI) / 180,
+    throughElevation: (19 * Math.PI) / 180,
     /** Half-angle of the cone a preferred target must fall inside. */
     coneHalfAngle: 1.4,
     cooldownSeconds: 0.3,
@@ -449,6 +620,9 @@ export const GameConfig = {
       powerJitter: 0.3,
       tackleAggression: 0.3,
       shootingRange: 11,
+      predictionSeconds: 0.25,
+      frameHuntChance: 0.05,
+      loftChance: 0.15,
     },
     normal: {
       reactionTime: 0.26,
@@ -457,6 +631,9 @@ export const GameConfig = {
       powerJitter: 0.18,
       tackleAggression: 0.55,
       shootingRange: 13.5,
+      predictionSeconds: 0.7,
+      frameHuntChance: 0.12,
+      loftChance: 0.25,
     },
     hard: {
       reactionTime: 0.14,
@@ -465,6 +642,9 @@ export const GameConfig = {
       powerJitter: 0.1,
       tackleAggression: 0.8,
       shootingRange: 16,
+      predictionSeconds: 1.4,
+      frameHuntChance: 0.22,
+      loftChance: 0.35,
     },
   } as const satisfies Record<Difficulty, DifficultyProfile>,
 
@@ -564,7 +744,15 @@ export const GameConfig = {
   },
 
   physics: {
-    gravity: -13.8,
+    /**
+     * Real gravity.
+     *
+     * It was -13.8 to stop a lofted ball hanging, which is treating the
+     * symptom: the ball hung because the drag model was wrong, and an
+     * over-strong gravity flattened every arc in the game to compensate. With
+     * proper air drag the honest number works, and a chip looks like a chip.
+     */
+    gravity: -9.81,
     /**
      * Physics substeps per simulation tick. Havok exposes no continuous collision
      * detection here, so the guard against a fast ball tunnelling through a wall is

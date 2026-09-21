@@ -458,7 +458,7 @@ export class UIManager {
       const meter = this.meters[i];
       const player = humans[i];
       if (!meter || !player) continue;
-      this.renderMeter(meter, player, charges[i] ?? 0);
+      this.renderMeter(meter, player, charges[i] ?? 0, state.ball.position.y);
     }
 
     if (state.phase === 'kickoff') {
@@ -496,6 +496,7 @@ export class UIManager {
     meter: (typeof this.meters)[number],
     player: PlayerState,
     charge: number,
+    ballHeight: number,
   ): void {
     meter.name.textContent = player.name;
     meter.name.style.color = kitColor(player.colorId);
@@ -504,7 +505,7 @@ export class UIManager {
       (player.stamina / GameConfig.player.staminaMax) * 100,
     )}%`;
     // What this player's next strike would be, given where they are aiming.
-    meter.shotType.textContent = SHOT_TYPE_LABELS[aimedShotType(player)];
+    meter.shotType.textContent = SHOT_TYPE_LABELS[aimedShotType({ ...player, ballHeight })];
   }
 
   showEvent(

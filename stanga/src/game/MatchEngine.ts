@@ -5,6 +5,7 @@
  * contacts translated into scoring inputs -> rules -> serializable state out.
  * The renderer and the UI only ever read the resulting MatchState and events.
  */
+import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import type { Scene } from '@babylonjs/core/scene';
 import { GameConfig, kindForGoalPart, type GoalPart } from '../config/GameConfig';
 import { EventBus } from '../core/EventBus';
@@ -43,7 +44,7 @@ import {
 } from './MatchState';
 import { findAssist } from './Attribution';
 import { ONE_VS_ONE_ROSTER, type MatchRoster } from './MatchRoster';
-import { magnusImpulse, resolveShot, type ResolvedShot } from './ShotResolver';
+import { magnusAcceleration, resolveShot, type ResolvedShot } from './ShotResolver';
 import { TouchRuleEngine, type TouchOutcome } from './TouchRuleEngine';
 import { ScoringSystem } from './ScoringSystem';
 
@@ -55,6 +56,8 @@ export interface MatchEventMap extends Record<string, unknown> {
     lofted: boolean;
     profile: ShotProfile;
   };
+  /** The ball sat still too long, so the touch rule let everyone back in. */
+  turnReopened: { tick: number };
   /** A tackle attempt resolved, successfully or not. */
   tackle: { playerId: string; team: TeamId; success: boolean };
   /** The team in control of the ball changed (null = loose ball). */
@@ -80,6 +83,8 @@ export interface MatchEventMap extends Record<string, unknown> {
 interface PendingKick {
   playerId: string;
   power: number;
+  /** A short press: a soft ball along the ground rather than a charged strike. */
+  tap: boolean;
   pass?: { targetId: string; hold: number };
 }
 
@@ -156,6 +161,10 @@ export class MatchEngine {
   private pendingViolation: { playerId: string; team: TeamId } | null = null;
   /** Side spin currently on the ball, for the Magnus force. */
   private ballSpin = 0;
+  /** Reused scratch for the per-tick ball forces; no per-frame allocation. */
+  private readonly ballVelocity = new Vector3();
+  /** How long the ball has sat still with nobody allowed to play it. */
+  private staleSeconds = 0;
   private roster: MatchRoster;
   private readonly scene: Scene;
   private friendlyCollision: number;
@@ -300,14 +309,7 @@ export class MatchEngine {
       this.ball.setVelocity(0, 0, 0);
     }
 
-    // Side spin bends a moving ball. Applied as an impulse each tick rather
-    // than baked into the strike, so the curve develops over the flight.
-    this.ballSpin = this.ball.spin;
-    if (Math.abs(this.ballSpin) > 0.5) {
-      const velocity = this.state.ball.velocity;
-      const bend = magnusImpulse(this.ballSpin, velocity.x, velocity.z, dt);
-      this.ball.applyImpulse(bend.x, 0, bend.z);
-    }
+    this.applyBallForces(dt);
 
     this.ballSpeedBeforeStep = this.ball.speed;
     // More substeps for a faster ball: at the speed cap a single 1/120s step
@@ -322,6 +324,7 @@ export class MatchEngine {
         this.checkGoalLine();
         this.expireShot();
         this.recoverOutOfBounds();
+        this.reopenStaleTurn(dt);
       }
       if (this.pendingViolation) {
         const offence = this.pendingViolation;
@@ -376,6 +379,61 @@ export class MatchEngine {
     triggers.pass = false;
     triggers.juggle = false;
     return consumed;
+  }
+
+  /**
+   * The forces on the ball that Havok does not model.
+   *
+   * Havok gives us gravity, the bounce and the surface friction. What it has
+   * is one blanket linear damping, which bleeds the same fraction out of a
+   * ball flying through the air and a ball rolling across asphalt — and those
+   * are different laws. So the damping is turned almost off and the two are
+   * applied here instead:
+   *
+   * - in flight, drag proportional to the square of the speed, which is what
+   *   takes the edge off a hard shot over a long ball and lets a floated one
+   *   hang;
+   * - on the ground, a rolling resistance proportional to the speed, which is
+   *   what brings a pass to a stop in a believable distance;
+   * - side spin, as a sideways acceleration that develops over the flight
+   *   rather than a bend applied at the foot.
+   */
+  private applyBallForces(dt: number): void {
+    const { ball: config } = GameConfig;
+    const velocity = this.ball.readVelocity(this.ballVelocity);
+    const speed = velocity.length();
+    if (speed < 1e-4) {
+      this.ballSpin = this.ball.spin;
+      return;
+    }
+
+    // Air is air whether the ball is flying or rolling: dv = -k |v| v dt, on
+    // all three components, so the drag pulls against the actual direction of
+    // travel rather than only along the floor.
+    const drag = Math.max(0, 1 - config.airDrag * speed * dt);
+    let vx = velocity.x * drag;
+    const vy = velocity.y * drag;
+    let vz = velocity.z * drag;
+
+    this.ballSpin = this.ball.spin;
+    const airborne = this.state.ball.position.y > config.airborneHeight;
+
+    if (airborne) {
+      if (Math.abs(this.ballSpin) > 0.5) {
+        const bend = magnusAcceleration(this.ballSpin, vx, vz);
+        vx += bend.x * dt;
+        vz += bend.z * dt;
+        // Spin bleeds off, so a curl is a curve and not a permanent orbit.
+        this.ball.setSpin(this.ballSpin * Math.max(0, 1 - config.spinDecay * dt));
+      }
+    } else {
+      // Rolling resistance is the ground's alone, and it acts along the floor.
+      const roll = Math.max(0, 1 - config.rollingResistance * dt);
+      vx *= roll;
+      vz *= roll;
+    }
+
+    this.ball.setVelocity(vx, vy, vz);
   }
 
   /**
@@ -434,6 +492,7 @@ export class MatchEngine {
     player.verticalAim = clamp(command.verticalAim, -1, 1);
     player.spin = clamp(command.spin, -1, 1);
     player.chipRequested = command.chipRequested;
+    player.shotStyle = command.shotStyle;
     /*
      * `lofted` is a readout, not a switch.
      *
@@ -488,10 +547,14 @@ export class MatchEngine {
     // full-power shot, so a tap is always a gentle pass.
     if (command.shootHeld && player.kickCooldown <= 0) {
       player.charging = true;
+      player.shootHold += dt;
       player.kickCharge = Math.min(1, player.kickCharge + dt / GameConfig.kick.chargeSeconds);
     } else if (!command.shootHeld) {
       player.charging = false;
     }
+    // A press that started while the kick was on cooldown still counts as a
+    // press: without this the hold reads as zero and every such kick is a tap.
+    if (command.shootPressed) player.shootHold = dt;
 
     if (command.shootReleased) {
       this.tryKick(player);
@@ -529,7 +592,12 @@ export class MatchEngine {
     if (!target) return;
 
     player.passCooldown = GameConfig.pass.cooldownSeconds;
-    this.pendingKicks.push({ playerId: player.id, power: 0, pass: { targetId: target.id, hold } });
+    this.pendingKicks.push({
+      playerId: player.id,
+      power: 0,
+      tap: false,
+      pass: { targetId: target.id, hold },
+    });
     player.windUpTimer = GameConfig.kick.windUpSeconds;
   }
 
@@ -620,14 +688,19 @@ export class MatchEngine {
    * foot does, so the animation and the physics always agree.
    */
   private tryKick(player: PlayerState): void {
+    // A press shorter than the tap window is a tap: a soft ball along the
+    // ground, whatever the aim wheel was left on. Anything longer is a charge,
+    // and the charge decides the pace.
+    const tap = player.shootHold > 0 && player.shootHold < GameConfig.kick.tapSeconds;
     const power = Math.max(GameConfig.kick.minPower, player.kickCharge);
     player.kickCharge = 0;
     player.charging = false;
+    player.shootHold = 0;
 
     if (player.kickCooldown > 0 || player.stunTimer > 0) return;
     if (!this.ballIsKickable(player)) return;
 
-    this.pendingKicks.push({ playerId: player.id, power });
+    this.pendingKicks.push({ playerId: player.id, power, tap });
     player.windUpTimer = GameConfig.kick.windUpSeconds;
     player.kickCooldown = GameConfig.kick.cooldownSeconds + GameConfig.kick.windUpSeconds;
   }
@@ -656,11 +729,16 @@ export class MatchEngine {
       player.windUpTimer = Math.max(0, player.windUpTimer - dt);
       if (player.windUpTimer > 0) continue;
       this.pendingKicks.splice(i, 1);
-      this.strikeBall(player, pending.power, pending.pass);
+      this.strikeBall(player, pending.power, pending.tap, pending.pass);
     }
   }
 
-  private strikeBall(player: PlayerState, power: number, pass?: PendingKick['pass']): void {
+  private strikeBall(
+    player: PlayerState,
+    power: number,
+    tap: boolean,
+    pass?: PendingKick['pass'],
+  ): void {
     // A kick is a deliberate touch, so the rule decides before the foot lands.
     // Refusing here rather than at wind-up time is what makes the call fair:
     // somebody else may have played the ball while the leg was swinging.
@@ -678,11 +756,26 @@ export class MatchEngine {
           power,
           verticalAim: player.verticalAim,
           spin: player.spin,
-          chipRequested: player.chipRequested,
+          // The chip key is a hold-to-override on top of whatever style is
+          // selected, so it stays a real control rather than a sixth entry in
+          // a cycle nobody would reach for in a hurry.
+          style: player.chipRequested ? 'chip' : player.shotStyle,
+          runSpeed: Math.hypot(player.velocity.x, player.velocity.z),
+          ballHeight: this.state.ball.position.y,
+          tap,
         });
     if (!resolved) return;
 
-    this.ball.applyImpulse(resolved.impulseX, resolved.impulseY, resolved.impulseZ);
+    /*
+     * A strike sets the ball's velocity; it does not add to it.
+     *
+     * A foot swinging through a ball dominates whatever the ball was already
+     * doing, and more to the point it is the only model in which the same
+     * charge and the same aim give the same shot twice — which is what aiming
+     * at a crossbar needs. Adding an impulse meant a ball rolling towards you
+     * and a ball rolling away produced two different shots from one control.
+     */
+    this.ball.setVelocity(resolved.velocityX, resolved.velocityY, resolved.velocityZ);
     this.ball.setSpin(resolved.spinRate);
     this.ball.clampSpeed();
     this.ballSpin = resolved.spinRate;
@@ -749,18 +842,21 @@ export class MatchEngine {
     const maxRange = through ? config.throughMaxRange : config.maxRange;
     const reach = Math.min(distance, maxRange);
 
-    // Impulse scales with the distance to cover, so a short ball stays short.
-    const strength = config.maxImpulse * (0.45 + 0.55 * (reach / maxRange));
+    // Pace scales with the distance to cover, so a short ball stays short.
+    const speed = config.maxSpeed * (0.45 + 0.55 * (reach / maxRange));
     const yaw = yawFromXZ(dx, dz);
-    const lift = through ? config.throughLift : config.groundLift;
+    const elevation = through ? config.throughElevation : config.groundElevation;
+    const horizontal = speed * Math.cos(elevation);
 
     return {
-      impulseX: Math.sin(yaw) * strength,
-      impulseY: strength * lift,
-      impulseZ: Math.cos(yaw) * strength,
+      velocityX: Math.sin(yaw) * horizontal,
+      velocityY: speed * Math.sin(elevation),
+      velocityZ: Math.cos(yaw) * horizontal,
       spinRate: 0,
       profile: 'ground',
       power: reach / maxRange,
+      elevation,
+      speed,
     };
   }
 
@@ -1103,6 +1199,34 @@ export class MatchEngine {
       time: this.state.elapsed,
       tick: this.state.tick,
     });
+  }
+
+  /**
+   * Reopens the turn on a ball that nobody is coming for.
+   *
+   * The touch rule gives the turn back on somebody else's touch or on an
+   * official restart. This is the restart: once the ball has been sitting
+   * still for long enough with the last toucher still barred from it, the
+   * turn is simply cleared and everyone may play again. It is not a
+   * punishment and nothing is awarded — the ball stays exactly where it is.
+   */
+  private reopenStaleTurn(dt: number): void {
+    const { touch } = GameConfig;
+    const owner = this.state.touch.lastMeaningfulTouchPlayerId;
+    const settled = this.ballSpeedBeforeStep < touch.staleSpeed;
+
+    if (owner === null || !settled || !this.state.touch.ballHasTouchedGroundSinceFirstTouch) {
+      this.staleSeconds = 0;
+      return;
+    }
+
+    this.staleSeconds += dt;
+    if (this.staleSeconds < touch.staleSeconds) return;
+
+    this.staleSeconds = 0;
+    this.touchRule.reset(this.state.tick);
+    this.lastContactTick.clear();
+    this.events.emit('turnReopened', { tick: this.state.tick });
   }
 
   /** Builds a shot record for a goal that came from a loose ball. */

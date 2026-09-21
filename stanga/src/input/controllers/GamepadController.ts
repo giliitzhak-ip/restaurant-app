@@ -7,11 +7,12 @@
  *   X / Square  — tackle            Y / Triangle — flat / lofted
  *   Right trigger — sprint          Start — pause
  */
-import { GameConfig } from '../../config/GameConfig';
+import { GameConfig, type ShotStyle } from '../../config/GameConfig';
 import type { ControlContext, PlayerController } from '../PlayerController';
 import { SequenceCounter } from '../PlayerController';
 import {
   applyDeadZone,
+  nextShotStyle,
   createPlayerCommand,
   resetPlayerCommand,
   rotateByYaw,
@@ -78,7 +79,14 @@ export class HumanGamepadController implements PlayerController {
   private readonly command: PlayerCommand;
   private readonly sequence = new SequenceCounter();
   private shootWasHeld = false;
-  private lobWasHeld = false;
+  private highWasHeld = false;
+  private lowWasHeld = false;
+  private styleWasHeld = false;
+  /** Which of the five shapes the next strike takes. */
+  private shotStyle: ShotStyle = 'normal';
+  /** Direction a charging strike is being swung along, world radians. */
+  private shotYaw = 0;
+  private steering = false;
   /** Aim height, kept between ticks so the flat/high button sticks. */
   private verticalAim = 0;
   private tackleWasHeld = false;
@@ -121,7 +129,11 @@ export class HumanGamepadController implements PlayerController {
 
   reset(): void {
     this.shootWasHeld = false;
-    this.lobWasHeld = false;
+    this.highWasHeld = false;
+    this.lowWasHeld = false;
+    this.styleWasHeld = false;
+    this.steering = false;
+    this.shotStyle = 'normal';
     this.tackleWasHeld = false;
     this.startWasHeld = false;
     this.sequence.reset();
@@ -151,10 +163,19 @@ export class HumanGamepadController implements PlayerController {
     let rawY = -axis(1);
 
     // D-pad acts as a digital fallback for pads with a poor analogue stick.
-    if (pressed(GamepadButton.DpadUp)) rawY = 1;
-    if (pressed(GamepadButton.DpadDown)) rawY = -1;
-    if (pressed(GamepadButton.DpadLeft)) rawX = -1;
-    if (pressed(GamepadButton.DpadRight)) rawX = 1;
+    /*
+     * The d-pad walks the player around — until a shot is charging, when it
+     * becomes the aim pad instead: up puts the ball in the air, down flattens
+     * it, left and right swing the direction. One control, two jobs that are
+     * never wanted at the same moment; the left stick keeps moving throughout.
+     */
+    const aiming = pressed(GamepadButton.A) || value(GamepadButton.A) > 0.5;
+    if (!aiming) {
+      if (pressed(GamepadButton.DpadUp)) rawY = 1;
+      if (pressed(GamepadButton.DpadDown)) rawY = -1;
+      if (pressed(GamepadButton.DpadLeft)) rawX = -1;
+      if (pressed(GamepadButton.DpadRight)) rawX = 1;
+    }
 
     const move = applyDeadZone(rawX, rawY, this.deadZone);
     const worldMove = rotateByYaw(move.x, move.y, context.cameraYaw);
@@ -194,7 +215,7 @@ export class HumanGamepadController implements PlayerController {
     command.sprintPressed =
       value(GamepadButton.RightTrigger) > 0.35 || pressed(GamepadButton.RightBumper);
 
-    const shootHeld = pressed(GamepadButton.A) || value(GamepadButton.A) > 0.5;
+    const shootHeld = aiming;
     command.shootHeld = shootHeld;
     command.shootPressed = shootHeld && !this.shootWasHeld;
     command.shootReleased = !shootHeld && this.shootWasHeld;
@@ -219,19 +240,47 @@ export class HumanGamepadController implements PlayerController {
     command.chipRequested =
       value(GamepadButton.LeftTrigger) > 0.35 || pressed(GamepadButton.LeftBumper);
 
-    // Up on the d-pad is the high ball: one button that means "put it in the
-    // air", next to the stick that trims the height by hand.
-    const lobHeld = pressed(GamepadButton.DpadUp);
-    const lobPressed = lobHeld && !this.lobWasHeld;
-    command.lobToggle = lobPressed;
-    if (lobPressed) {
-      this.verticalAim =
-        this.verticalAim > GameConfig.kick.highAim * 0.3
-          ? GameConfig.kick.flatAim
-          : GameConfig.kick.highAim;
-      command.verticalAim = this.verticalAim;
+    // Height: a press of up or down is decisive, and holding it walks the
+    // angle the rest of the way, exactly as the keyboard's aim keys do.
+    const highHeld = pressed(GamepadButton.DpadUp);
+    const lowHeld = pressed(GamepadButton.DpadDown);
+    if (highHeld && !this.highWasHeld) this.verticalAim = GameConfig.kick.highAim;
+    if (lowHeld && !this.lowWasHeld) this.verticalAim = GameConfig.kick.flatAim;
+    if (shootHeld && highHeld) this.verticalAim += AIM_RATE * context.dt;
+    if (shootHeld && lowHeld) this.verticalAim -= AIM_RATE * context.dt;
+    this.verticalAim = clampUnit(this.verticalAim);
+    this.highWasHeld = highHeld;
+    this.lowWasHeld = lowHeld;
+    command.verticalAim = this.verticalAim;
+
+    // Clicking the left stick cycles the shape of the next strike.
+    const styleHeld = pressed(GamepadButton.LeftStick);
+    const cycled = styleHeld && !this.styleWasHeld;
+    if (cycled) this.shotStyle = nextShotStyle(this.shotStyle);
+    this.styleWasHeld = styleHeld;
+    command.styleCycle = cycled;
+    command.shotStyle = this.shotStyle;
+
+    // Direction, while charging: the d-pad swings the strike off the body's
+    // own facing, so a long charge can be walked across the goal.
+    if (shootHeld) {
+      if (!this.steering) {
+        this.shotYaw = context.player?.facing ?? 0;
+        this.steering = true;
+      }
+      let steer = 0;
+      if (pressed(GamepadButton.DpadRight)) steer += 1;
+      if (pressed(GamepadButton.DpadLeft)) steer -= 1;
+      this.shotYaw += steer * SHOT_STEER_RATE * context.dt;
+      if (steer !== 0 || move.magnitude === 0) {
+        command.aimX = Math.sin(this.shotYaw);
+        command.aimY = Math.cos(this.shotYaw);
+      } else {
+        this.shotYaw = Math.atan2(worldMove.x, worldMove.z);
+      }
+    } else {
+      this.steering = false;
     }
-    this.lobWasHeld = lobHeld;
 
     const startHeld = pressed(GamepadButton.Start);
     if (startHeld && !this.startWasHeld) this.onPause?.();
@@ -240,3 +289,9 @@ export class HumanGamepadController implements PlayerController {
     return command;
   }
 }
+
+/** How fast the aim pad sweeps the height range, in units per second. */
+const AIM_RATE = 1.6;
+
+/** How fast the aim pad swings a charging strike, in radians per second. */
+const SHOT_STEER_RATE = 1.9;

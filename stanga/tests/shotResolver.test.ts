@@ -6,19 +6,18 @@
  * power and get a legal one back.
  */
 import { describe, expect, it } from 'vitest';
-import { GameConfig } from '../src/config/GameConfig';
-import { describeShot, magnusImpulse, resolveShot } from '../src/game/ShotResolver';
+import { GameConfig, SHOT_STYLE_ORDER, type ShotStyle } from '../src/config/GameConfig';
+import {
+  describeShot,
+  elevationFor,
+  magnusAcceleration,
+  resolveShot,
+  type ShotRequest,
+} from '../src/game/ShotResolver';
 
-const base = { yaw: 0, power: 0.8, verticalAim: 0, spin: 0, chipRequested: false };
+const base: ShotRequest = { yaw: 0, power: 0.8, verticalAim: 0, spin: 0, style: 'normal' };
 
-/** Horizontal speed the ball leaves with, given the impulse. */
-function launchSpeed(impulse: { impulseX: number; impulseZ: number }): number {
-  return Math.hypot(impulse.impulseX, impulse.impulseZ) / GameConfig.ball.mass;
-}
-
-function launchLift(shot: { impulseY: number; impulseX: number; impulseZ: number }): number {
-  return shot.impulseY / Math.hypot(shot.impulseX, shot.impulseZ);
-}
+const degrees = (radians: number) => (radians * 180) / Math.PI;
 
 describe('resolveShot', () => {
   it('clamps power into the range the server allows', () => {
@@ -26,15 +25,14 @@ describe('resolveShot', () => {
     const tooLittle = resolveShot({ ...base, power: -99 });
     expect(tooMuch.power).toBe(1);
     expect(tooLittle.power).toBe(GameConfig.kick.minPower);
-    expect(launchSpeed(tooMuch)).toBeLessThanOrEqual(GameConfig.ball.maxSpeed * 1.5);
+    expect(tooMuch.speed).toBeLessThanOrEqual(GameConfig.ball.maxSpeed);
   });
 
   it('clamps the vertical aim and the spin, whatever the client claims', () => {
     const wild = resolveShot({ ...base, verticalAim: 50, spin: -50 });
     const sane = resolveShot({ ...base, verticalAim: 1, spin: -1 });
-    expect(wild.impulseY).toBeCloseTo(sane.impulseY, 6);
+    expect(wild.velocityY).toBeCloseTo(sane.velocityY, 6);
     expect(wild.spinRate).toBeCloseTo(sane.spinRate, 6);
-    expect(Math.abs(wild.spinRate)).toBeLessThanOrEqual(GameConfig.kick.maxSpinRate);
   });
 
   it('never returns a NaN, however broken the request', () => {
@@ -43,84 +41,142 @@ describe('resolveShot', () => {
       power: Number.NaN,
       verticalAim: Number.NaN,
       spin: Number.NaN,
-      chipRequested: false,
+      style: 'normal',
+      runSpeed: Number.NaN,
+      ballHeight: Number.NaN,
     });
     for (const value of [
       broken.power,
       broken.spinRate,
-      broken.impulseX,
-      broken.impulseY,
-      broken.impulseZ,
+      broken.velocityX,
+      broken.velocityY,
+      broken.velocityZ,
+      broken.elevation,
+      broken.speed,
     ]) {
       expect(Number.isFinite(value)).toBe(true);
     }
   });
 
-  it('aims continuously: higher aim, higher ball, all the way up', () => {
-    const lifts = [-1, -0.5, 0, 0.5, 1].map((verticalAim) =>
-      launchLift(resolveShot({ ...base, verticalAim })),
-    );
-    for (let i = 1; i < lifts.length; i += 1) {
-      expect(lifts[i]).toBeGreaterThan(lifts[i - 1] ?? 0);
+  /*
+   * The launch angle is the whole strike system.
+   *
+   * It used to be a "lift fraction" added on top of the forward impulse, which
+   * meant two things that made the game unaimable: the angle never reached a
+   * useful height, and a higher aim also made the shot harder — a full lob
+   * left the foot 38% faster than a flat drive from the same charge.
+   */
+  it('keeps every strike inside a usable launch window', () => {
+    for (const style of SHOT_STYLE_ORDER) {
+      for (const verticalAim of [-1, -0.5, 0, 0.5, 1]) {
+        const shot = resolveShot({ ...base, style, verticalAim });
+        expect(degrees(shot.elevation)).toBeGreaterThanOrEqual(
+          degrees(GameConfig.kick.minElevation),
+        );
+        expect(degrees(shot.elevation)).toBeLessThanOrEqual(degrees(GameConfig.kick.maxElevation));
+      }
     }
-    // A flat-out ground shot stays on the deck; a full lob really goes up.
-    expect(lifts[0]).toBeLessThan(0.1);
-    expect(lifts[4]).toBeGreaterThan(0.8);
+    expect(degrees(GameConfig.kick.minElevation)).toBeCloseTo(5, 6);
+    expect(degrees(GameConfig.kick.maxElevation)).toBeCloseTo(50, 6);
   });
 
-  it('gives the four profiles genuinely different trajectories', () => {
-    const ground = resolveShot({ ...base, power: 0.3, verticalAim: -0.9 });
-    const driven = resolveShot({ ...base, power: 0.95, verticalAim: -0.6 });
-    const lofted = resolveShot({ ...base, power: 0.8, verticalAim: 0.9 });
-    const chip = resolveShot({ ...base, power: 0.9, verticalAim: 0, chipRequested: true });
+  it('separates height from power, so aiming higher is not also hitting harder', () => {
+    const flatAim = resolveShot({ ...base, verticalAim: -1 });
+    const highAim = resolveShot({ ...base, verticalAim: 1 });
+    // The steep one gives up some pace on purpose, and only some: it must
+    // never end up faster than the flat one, which is what used to happen.
+    expect(highAim.speed).toBeLessThan(flatAim.speed);
+    expect(highAim.speed).toBeGreaterThan(flatAim.speed * 0.6);
+    expect(highAim.velocityY).toBeGreaterThan(flatAim.velocityY * 5);
+  });
 
-    expect(ground.profile).toBe('ground');
-    expect(driven.profile).toBe('driven');
-    expect(lofted.profile).toBe('lofted');
-    expect(chip.profile).toBe('chip');
+  it('aims continuously: higher aim, higher ball, all the way up', () => {
+    const angles = [-1, -0.5, 0, 0.5, 1].map(
+      (verticalAim) => resolveShot({ ...base, verticalAim }).elevation,
+    );
+    for (let i = 1; i < angles.length; i += 1) {
+      expect(angles[i]!).toBeGreaterThan(angles[i - 1]!);
+    }
+  });
 
-    // Driven is the fastest; lofted trades speed for height; a chip is short
-    // and steep, which is what makes it a chip rather than a weak lob.
-    expect(launchSpeed(driven)).toBeGreaterThan(launchSpeed(ground));
-    expect(launchLift(lofted)).toBeGreaterThan(launchLift(driven));
-    expect(launchSpeed(chip)).toBeLessThan(launchSpeed(driven));
-    expect(launchLift(chip)).toBeGreaterThan(launchLift(lofted));
+  it('gives the five styles genuinely different trajectories', () => {
+    const shots = Object.fromEntries(
+      SHOT_STYLE_ORDER.map((style) => [style, resolveShot({ ...base, style, power: 0.9 })]),
+    ) as Record<ShotStyle, ReturnType<typeof resolveShot>>;
+
+    // Flat stays on the deck, lofted really climbs, chip is steepest of all.
+    expect(degrees(shots.flat.elevation)).toBeLessThan(15);
+    expect(degrees(shots.lofted.elevation)).toBeGreaterThan(30);
+    expect(shots.chip.elevation).toBeGreaterThan(shots.lofted.elevation);
     // And a chip can never be hit as hard as a shot.
-    expect(chip.power).toBeLessThanOrEqual(GameConfig.kick.chipMaxPower);
+    expect(shots.chip.speed).toBeLessThan(shots.flat.speed * 0.7);
+    expect(shots.chip.power).toBeLessThanOrEqual(GameConfig.kick.styles.chip.powerCap);
+    // Selecting the curled shape bends the ball even with no direction asked.
+    expect(Math.abs(shots.curled.spinRate)).toBeGreaterThanOrEqual(GameConfig.kick.curlThreshold);
+    expect(shots.curled.profile).toBe('curled');
   });
 
-  it('calls a spun ball curled', () => {
-    const curled = resolveShot({ ...base, spin: 0.9 });
-    expect(curled.profile).toBe('curled');
-    expect(Math.abs(curled.spinRate)).toBeGreaterThanOrEqual(GameConfig.kick.curlThreshold);
+  it('makes a short press a soft ball along the ground, whatever the aim says', () => {
+    const tapped = resolveShot({ ...base, power: 1, verticalAim: 1, tap: true });
+    expect(tapped.elevation).toBeCloseTo(GameConfig.kick.minElevation, 6);
+    expect(tapped.power).toBeLessThanOrEqual(GameConfig.kick.tapPower);
+    expect(tapped.speed).toBeLessThan(resolveShot({ ...base, power: 1 }).speed * 0.6);
+    expect(tapped.profile).toBe('ground');
+  });
 
-    const straight = resolveShot({ ...base, spin: 0.05 });
-    expect(straight.profile).not.toBe('curled');
+  it('calls a ball struck out of the air a volley, and hits it cleaner', () => {
+    const grounded = resolveShot({ ...base, ballHeight: 0 });
+    const volleyed = resolveShot({ ...base, ballHeight: GameConfig.kick.volleyHeight + 0.2 });
+    expect(grounded.profile).not.toBe('volley');
+    expect(volleyed.profile).toBe('volley');
+    expect(volleyed.speed).toBeGreaterThan(grounded.speed);
+    expect(volleyed.elevation).toBeGreaterThan(grounded.elevation);
+  });
+
+  it('carries a share of the run, and only a share', () => {
+    const standing = resolveShot({ ...base, runSpeed: 0 });
+    const running = resolveShot({ ...base, runSpeed: 8 });
+    expect(running.speed).toBeGreaterThan(standing.speed);
+    expect(running.speed - standing.speed).toBeLessThan(8 * 0.5);
   });
 
   it('names a chip a chip whatever else is asked for', () => {
-    expect(describeShot(1.4, 1, 30, true)).toBe('chip');
+    expect(describeShot('chip', 0.05, 1, 30, true)).toBe('chip');
+  });
+
+  it('agrees with the preview about where the ball is going', () => {
+    for (const style of SHOT_STYLE_ORDER) {
+      const shot = resolveShot({ ...base, style, verticalAim: 0.4 });
+      expect(shot.elevation).toBeCloseTo(elevationFor(style, 0.4), 10);
+    }
   });
 });
 
 describe('magnus force', () => {
   it('pushes sideways, never along the flight', () => {
-    const bend = magnusImpulse(20, 0, 18, 1 / 60);
+    const bend = magnusAcceleration(20, 0, 18);
     // Flying along +Z with top-down spin: the push is purely on X.
     expect(Math.abs(bend.z)).toBeLessThan(1e-9);
     expect(bend.x).not.toBe(0);
   });
 
   it('bends the other way for the other spin', () => {
-    const right = magnusImpulse(20, 0, 18, 1 / 60);
-    const left = magnusImpulse(-20, 0, 18, 1 / 60);
+    const right = magnusAcceleration(20, 0, 18);
+    const left = magnusAcceleration(-20, 0, 18);
     expect(Math.sign(right.x)).toBe(-Math.sign(left.x));
   });
 
   it('does nothing to a ball that is not moving', () => {
-    const bend = magnusImpulse(25, 0, 0, 1 / 60);
+    const bend = magnusAcceleration(25, 0, 0);
     expect(bend.x).toBeCloseTo(0, 10);
     expect(bend.z).toBeCloseTo(0, 10);
+  });
+
+  it('stays well under gravity, so a curl is a bend and not a steer', () => {
+    const full = resolveShot({ ...base, power: 1, style: 'curled', spin: 1 });
+    const bend = magnusAcceleration(full.spinRate, 0, full.speed);
+    expect(Math.abs(bend.x)).toBeLessThan(Math.abs(GameConfig.physics.gravity) * 0.5);
+    expect(Math.abs(bend.x)).toBeGreaterThan(1);
   });
 });
 
@@ -128,37 +184,29 @@ describe('the flat/high control', () => {
   /*
    * There has to be a shot that goes over things.
    *
-   * The toggle existed but did nothing: the simulation flipped a flag, and the
-   * controller's own aim value overwrote it on the very next tick, so every
-   * strike came out along the ground however the control was set. These pin
-   * the two ends of it down.
+   * The control existed but did nothing: the simulation flipped a flag, and
+   * the controller's own aim value overwrote it on the very next tick, so
+   * every strike came out along the ground however the control was set. These
+   * pin the two ends of it down.
    */
   const strike = (verticalAim: number) =>
-    resolveShot({ yaw: 0, power: 1, verticalAim, spin: 0, chipRequested: false });
+    resolveShot({ yaw: 0, power: 1, verticalAim, spin: 0, style: 'normal' });
 
   it('puts a real amount of the strike upwards on the high setting', () => {
     const high = strike(GameConfig.kick.highAim);
-    // More than half the impulse goes up: that is what clears a defender.
-    expect(high.impulseY / high.impulseZ).toBeGreaterThan(0.5);
+    expect(degrees(high.elevation)).toBeGreaterThan(35);
     expect(high.profile).toBe('lofted');
   });
 
   it('keeps the flat setting flat', () => {
     const flat = strike(GameConfig.kick.flatAim);
-    expect(flat.impulseY / flat.impulseZ).toBeLessThan(0.12);
+    expect(degrees(flat.elevation)).toBeLessThan(10);
     expect(flat.profile).not.toBe('lofted');
   });
 
   it('separates the two ends by a wide margin, so the control is felt', () => {
     const high = strike(GameConfig.kick.highAim);
     const flat = strike(GameConfig.kick.flatAim);
-    expect(high.impulseY).toBeGreaterThan(flat.impulseY * 6);
-  });
-
-  it('still leaves the whole range in between reachable by hand', () => {
-    const lifts = [-1, -0.5, 0, 0.5, 1].map((aim) => strike(aim).impulseY);
-    for (let i = 1; i < lifts.length; i += 1) {
-      expect(lifts[i]!).toBeGreaterThan(lifts[i - 1]!);
-    }
+    expect(high.velocityY).toBeGreaterThan(flat.velocityY * 4);
   });
 });

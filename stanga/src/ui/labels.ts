@@ -1,5 +1,6 @@
 /** Hebrew UI strings. Code stays English; everything the player reads lives here. */
-import { GameConfig, type ScoreKind } from '../config/GameConfig';
+import { GameConfig, type ScoreKind, type ShotStyle } from '../config/GameConfig';
+import { describeShot, elevationFor, styleProfile } from '../game/ShotResolver';
 import type { MatchOutcome, ShotType, TeamId } from '../game/MatchState';
 
 export const SCORE_KIND_LABELS: Record<ScoreKind, string> = {
@@ -27,7 +28,17 @@ export const SHOT_TYPE_LABELS: Record<ShotType, string> = {
   lofted: 'בעיטה מוגבהת',
   chip: 'הרמה קצרה',
   curled: 'בעיטה מסובבת',
+  volley: 'וולה',
   pass: 'מסירה',
+};
+
+/** The name of the shape the player has *selected*, for the HUD and the pad. */
+export const SHOT_STYLE_LABELS: Record<ShotStyle, string> = {
+  flat: 'שטוחה',
+  normal: 'רגילה',
+  lofted: 'מוגבהת',
+  curled: 'מסובבת',
+  chip: 'צ׳יפ',
 };
 
 /** Which goal a team attacks, in words, for the lobby. */
@@ -53,16 +64,20 @@ export function teamLabel(team: TeamId): string {
 export function aimedShotType(player: {
   verticalAim: number;
   chipRequested: boolean;
+  shotStyle: ShotStyle;
   spin: number;
   kickCharge: number;
+  /** Where the ball is right now: above the volley height, this is a volley. */
+  ballHeight: number;
 }): ShotType {
-  const { kick } = GameConfig;
-  if (player.chipRequested) return 'chip';
-  if (Math.abs(player.spin * kick.maxSpinRate) >= kick.curlThreshold) return 'curled';
-  const aimShare = Math.pow((player.verticalAim + 1) / 2, kick.liftCurve);
-  const lift = kick.minLift + aimShare * (kick.maxLift - kick.minLift);
-  if (lift >= kick.loftedThreshold) return 'lofted';
-  return player.kickCharge >= kick.drivenPowerThreshold ? 'driven' : 'ground';
+  const style = player.chipRequested ? 'chip' : player.shotStyle;
+  return describeShot(
+    style,
+    elevationFor(style, player.verticalAim),
+    player.kickCharge,
+    player.spin * GameConfig.kick.maxSpinRate * styleProfile(style).spinScale,
+    player.ballHeight >= GameConfig.kick.volleyHeight,
+  );
 }
 
 export function attackingGoalLabel(team: TeamId): string {

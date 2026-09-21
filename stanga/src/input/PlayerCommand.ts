@@ -5,20 +5,21 @@
  * client all produce this exact structure. The simulation consumes nothing else
  * and cannot tell them apart.
  *
- * Edge flags (`shootPressed`, `shootReleased`, `tacklePressed`, `lobToggle`) are
- * true for exactly one tick. Level flags (`shootHeld`, `sprintPressed`) describe
- * the current state of the control.
+ * Edge flags (`shootPressed`, `shootReleased`, `tacklePressed`) are true for
+ * exactly one tick. Level flags (`shootHeld`, `sprintPressed`) describe the
+ * current state of the control.
  */
+import { SHOT_STYLE_ORDER, type ShotStyle } from '../config/GameConfig';
 
 /**
- * The five shapes a strike can take.
+ * The six shapes a strike can turn out to be.
  *
- * The player never picks one directly: they aim, load and optionally ask for a
- * chip or a curl, and the *server* works out which of these it was. Reporting
- * it back is what lets the animation, the sound and the statistics agree with
- * the physics.
+ * Distinct from `ShotStyle`, which is what the player *selected*: the server
+ * works out what the strike actually was from the angle it left at, the pace
+ * on it, the spin and whether the ball was in the air. Reporting it back is
+ * what lets the animation, the sound and the statistics agree with the physics.
  */
-export type ShotProfile = 'ground' | 'driven' | 'lofted' | 'chip' | 'curled';
+export type ShotProfile = 'ground' | 'driven' | 'lofted' | 'chip' | 'curled' | 'volley';
 
 export interface PlayerCommand {
   /** Simulation tick this command applies to. */
@@ -62,8 +63,16 @@ export interface PlayerCommand {
   shootReleased: boolean;
   /** True on the single tick a tackle was requested. */
   tacklePressed: boolean;
-  /** True on the single tick the player asked to swap flat/lofted. */
-  lobToggle: boolean;
+  /**
+   * Which of the five shapes the next strike takes.
+   *
+   * The controls own this, not the simulation: the aim and the style are sent
+   * every tick, so anything the simulation flipped was overwritten a tick
+   * later. Cycling it is the job of whichever button the device puts it on.
+   */
+  shotStyle: ShotStyle;
+  /** True on the single tick the player asked for the next style. */
+  styleCycle: boolean;
 
   /** True on the single tick the pass control went down. */
   passPressed: boolean;
@@ -99,7 +108,8 @@ export function createPlayerCommand(playerId: string, tickId = 0): PlayerCommand
     shootHeld: false,
     shootReleased: false,
     tacklePressed: false,
-    lobToggle: false,
+    shotStyle: 'normal',
+    styleCycle: false,
     passPressed: false,
     passHeld: false,
     passReleased: false,
@@ -128,7 +138,8 @@ export function resetPlayerCommand(
   command.shootHeld = false;
   command.shootReleased = false;
   command.tacklePressed = false;
-  command.lobToggle = false;
+  command.shotStyle = 'normal';
+  command.styleCycle = false;
   command.passPressed = false;
   command.passHeld = false;
   command.passReleased = false;
@@ -170,4 +181,15 @@ export function rotateByYaw(x: number, y: number, yaw: number): { x: number; z: 
 /** Yaw of a ground vector, 0 = +Z (matching the rest of the simulation). */
 export function yawOf(x: number, z: number): number {
   return Math.atan2(x, z);
+}
+
+/** The style that follows this one on the cycle control. */
+export function nextShotStyle(style: ShotStyle): ShotStyle {
+  const index = SHOT_STYLE_ORDER.indexOf(style);
+  return SHOT_STYLE_ORDER[(index + 1) % SHOT_STYLE_ORDER.length] ?? 'normal';
+}
+
+/** Turns an untrusted style name back into one of the five. */
+export function sanitizeShotStyle(raw: unknown): ShotStyle {
+  return SHOT_STYLE_ORDER.find((style) => style === raw) ?? 'normal';
 }

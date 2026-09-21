@@ -44,7 +44,8 @@ describe('player command model', () => {
       shootHeld: false,
       shootReleased: false,
       tacklePressed: false,
-      lobToggle: false,
+      styleCycle: false,
+      shotStyle: 'normal',
     });
   });
 
@@ -54,7 +55,8 @@ describe('player command model', () => {
     command.shootHeld = true;
     command.tacklePressed = true;
     command.sprintPressed = true;
-    command.lobToggle = true;
+    command.styleCycle = true;
+    command.shotStyle = 'chip';
     command.aimX = 1;
 
     resetPlayerCommand(command, 42, 99);
@@ -65,7 +67,8 @@ describe('player command model', () => {
     expect(command.shootHeld).toBe(false);
     expect(command.tacklePressed).toBe(false);
     expect(command.sprintPressed).toBe(false);
-    expect(command.lobToggle).toBe(false);
+    expect(command.styleCycle).toBe(false);
+    expect(command.shotStyle).toBe('normal');
     expect(command.aimX).toBe(0);
     expect(command.playerId).toBe('home-1');
   });
@@ -177,7 +180,9 @@ describe('AI controller as a PlayerController', () => {
       command = ai.poll('away-1', i + 2, contextFor(state, 'away-1'));
     }
 
-    expect(['ChaseBall', 'Support', 'Defend']).toContain(ai.currentState);
+    expect(['Chase', 'Intercept', 'Attack', 'PrepareShot', 'Support', 'Defend']).toContain(
+      ai.currentState,
+    );
     // Away attacks -Z, and the ball is at z=4 while the AI sits at z=12.
     expect(command.moveY).toBeLessThan(0);
   });
@@ -203,12 +208,13 @@ describe('AI controller as a PlayerController', () => {
     }
     // Running onto the ball is where the charge happens now: one touch means
     // the shot has to be loaded before the foot ever reaches the ball.
-    expect(seen.has('ChaseBall')).toBe(true);
+    const onTheBall: AIState[] = ['Chase', 'Intercept', 'Attack', 'PrepareShot'];
+    expect(onTheBall.some((name) => seen.has(name))).toBe(true);
     expect(held).toBe(true);
     expect(released).toBe(true);
   });
 
-  it('asks for a shot-type toggle only when its plan differs from the player', () => {
+  it('changes the shape of its strike deliberately, not once per tick', () => {
     const state = liveMatch();
     state.ball.position = { x: 0, y: 0.11, z: -11 };
     state.players[1]!.position = { x: 0, y: 0, z: -10.6 };
@@ -217,11 +223,7 @@ describe('AI controller as a PlayerController', () => {
     let toggles = 0;
     for (let tick = 1; tick <= 200; tick += 1) {
       const command = ai.poll('away-1', tick, contextFor(state, 'away-1'));
-      if (command.lobToggle) {
-        toggles += 1;
-        // The simulation owns the state; mirror what the engine would do.
-        state.players[1]!.lofted = !state.players[1]!.lofted;
-      }
+      if (command.styleCycle) toggles += 1;
     }
     // It must never flap: a handful of deliberate changes, not one per tick.
     expect(toggles).toBeLessThan(12);
@@ -285,7 +287,7 @@ describe('AI controller as a PlayerController', () => {
 
     const a = run(1);
     const b = run(999);
-    expect(a.state).toBe('ChaseBall');
+    expect(['Chase', 'Intercept', 'Attack', 'PrepareShot']).toContain(a.state);
     expect(a.moves).toBe(b.moves);
     expect(a.aims).not.toBe(b.aims);
   });
