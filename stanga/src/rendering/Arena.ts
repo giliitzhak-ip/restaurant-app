@@ -64,16 +64,26 @@ export function buildArena(
   const outerLength = field.length + goal.depth * 2 + field.wallThickness;
 
   // ── Lighting ────────────────────────────────────────────────────────────────
+  /*
+   * Lighting for a street pitch in the afternoon.
+   *
+   * These numbers were raised a long way from where they started, because the
+   * scene rendered as a near-black murk: ACES tone mapping pulls the middle of
+   * the range down hard, and a dark asphalt albedo under a weak sun lands
+   * below the point where anything is readable. The sky above is where all of
+   * this has to sit — the reflection probe captures it, so the light and the
+   * environment have to agree about the time of day.
+   */
   const ambient = new HemisphericLight('ambient', new Vector3(0.2, 1, 0.1), scene);
-  ambient.intensity = 0.62;
-  ambient.diffuse = Color3.FromHexString('#cfd6e2');
-  ambient.groundColor = Color3.FromHexString('#4a453f');
+  ambient.intensity = 1.05;
+  ambient.diffuse = Color3.FromHexString('#c9dcf2');
+  ambient.groundColor = Color3.FromHexString('#6b6459');
 
   const sun = new DirectionalLight('sun', new Vector3(-0.55, -1, 0.38), scene);
   sun.position = new Vector3(18, 26, -14);
-  sun.intensity = 1.35;
-  sun.diffuse = Color3.FromHexString('#ffe8c4');
-  sun.specular = Color3.FromHexString('#fff3dd');
+  sun.intensity = 3.1;
+  sun.diffuse = Color3.FromHexString('#fff0d6');
+  sun.specular = Color3.FromHexString('#fffaf0');
 
   sun.shadowMinZ = 6;
   sun.shadowMaxZ = 70;
@@ -95,14 +105,14 @@ export function buildArena(
   // ── Ground ──────────────────────────────────────────────────────────────────
   const { ground } = colliders;
   const asphalt = createAsphaltTexture(scene);
-  asphalt.uScale = 4;
-  asphalt.vScale = 6;
+  asphalt.uScale = 7;
+  asphalt.vScale = 11;
   const bump = createAsphaltBumpTexture(scene);
   bump.uScale = 12;
   bump.vScale = 18;
   const asphaltRoughness = createAsphaltRoughnessTexture(scene);
-  asphaltRoughness.uScale = 4;
-  asphaltRoughness.vScale = 6;
+  asphaltRoughness.uScale = 7;
+  asphaltRoughness.vScale = 11;
   ground.material = createSurface(scene, 'groundMat', {
     roughness: 0.86,
     albedoTexture: asphalt,
@@ -137,7 +147,7 @@ export function buildArena(
 
   // ── Perimeter ───────────────────────────────────────────────────────────────
   const concrete = createConcreteTexture(scene);
-  concrete.uScale = 8;
+  concrete.uScale = 14;
   const concreteMaterial = createSurface(scene, 'concreteMat', {
     roughness: 0.94,
     albedoTexture: concrete,
@@ -269,9 +279,11 @@ export function buildArena(
     environmentSources.push(...buildNeighbourhood(scene, quality.sceneryDetail));
   }
 
+  // Just enough haze to separate the backdrop from the pitch, in a daylight
+  // colour: a dark fog on a bright scene reads as dirt on the lens.
   scene.fogMode = 2; // FOGMODE_EXP
-  scene.fogDensity = 0.0065;
-  scene.fogColor = Color3.FromHexString('#7c8494');
+  scene.fogDensity = 0.0048;
+  scene.fogColor = Color3.FromHexString('#bcd0e2');
 
   return { ground, goals, sun, shadowCasters, environmentSources };
 }
@@ -320,8 +332,11 @@ function buildNeighbourhood(scene: Scene, detail: number): Mesh[] {
   poleMaterial.specularColor = new Color3(0.3, 0.3, 0.32);
 
   const lampMaterial = new StandardMaterial('lampMat', scene);
-  lampMaterial.emissiveColor = Color3.FromHexString('#ffeabf');
-  lampMaterial.diffuseColor = Color3.FromHexString('#ffeabf');
+  // Daylight: the floodlights are off, so the heads are grey glass and metal
+  // rather than glowing boxes.
+  lampMaterial.emissiveColor = Color3.FromHexString('#20242a');
+  lampMaterial.diffuseColor = Color3.FromHexString('#aab3bd');
+  lampMaterial.specularColor = new Color3(0.5, 0.5, 0.52);
 
   for (const x of [-1, 1]) {
     for (const z of [-1, 1]) {

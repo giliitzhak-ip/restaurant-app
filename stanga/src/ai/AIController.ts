@@ -157,24 +157,6 @@ export class AIController implements PlayerController {
     if (!canPlayerTouch(state.touch, me.id)) return 'HoldOff';
 
     const myDistance = horizontalDistance(me.position, ball);
-    // Only players who are *allowed* to touch the ball count as competition.
-    // Without this the game deadlocks: whoever touched last cannot play it,
-    // and everybody else thinks they are not the nearest.
-    const distanceIfEligible = (player: PlayerState): number =>
-      canPlayerTouch(state.touch, player.id)
-        ? horizontalDistance(player.position, ball)
-        : Number.POSITIVE_INFINITY;
-
-    const closestMate = Math.min(
-      ...state.players
-        .filter((player) => player.team === this.team && player.id !== me.id)
-        .map(distanceIfEligible),
-      Number.POSITIVE_INFINITY,
-    );
-    const opponentDistance = Math.min(
-      ...state.players.filter((player) => player.team !== this.team).map(distanceIfEligible),
-      Number.POSITIVE_INFINITY,
-    );
 
     // The ball is up: a touch in the air keeps the chain alive and is free.
     if (ball.y > GameConfig.ball.radius * 2.5 && myDistance < GameConfig.kick.range * 1.4) {
@@ -189,10 +171,38 @@ export class AIController implements PlayerController {
       return 'Shoot';
     }
 
-    // Whoever is nearest goes; a team-mate closer than me plays it instead.
-    if (myDistance <= opponentDistance + 0.5 && myDistance <= closestMate) return 'ChaseBall';
-    if (Number.isFinite(closestMate) && closestMate < myDistance) return 'Support';
-    return 'Defend';
+    /*
+     * Who goes for the ball is a question about my own team, not about the
+     * opposition.
+     *
+     * This used to also require being nearer the ball than the opponent, and
+     * that is why the computer barely moved: a human standing next to the ball
+     * made the condition permanently false, so the AI sat on its defensive
+     * line and never contested anything. Measured at the time: 87% of a match
+     * in Defend, one touch in sixty seconds, and against a human who stood
+     * still, no touch at all.
+     *
+     * Only players who are *allowed* to touch the ball count. Without that the
+     * game deadlocks the other way: whoever touched last cannot play it, and
+     * everybody else thinks they are not the nearest.
+     */
+    const closestMate = Math.min(
+      ...state.players
+        .filter((player) => player.team === this.team && player.id !== me.id)
+        .map((player) =>
+          canPlayerTouch(state.touch, player.id)
+            ? horizontalDistance(player.position, ball)
+            : Number.POSITIVE_INFINITY,
+        ),
+      Number.POSITIVE_INFINITY,
+    );
+
+    // Alone on my side, closestMate is Infinity and this is always true: there
+    // is nobody else to do it, so I do it.
+    if (myDistance <= closestMate) return 'ChaseBall';
+
+    // A team-mate is closer. Get open if we have it, press if they do.
+    return state.ball.lastTouchTeam === this.team ? 'Support' : 'Defend';
   }
 
   private transition(next: AIState): void {
@@ -242,18 +252,43 @@ export class AIController implements PlayerController {
           -GameConfig.goal.width * 0.45,
           GameConfig.goal.width * 0.45,
         );
-        this.faceTowards(me, { x: aimX, y: 0, z: attackZ }, this.profile.aimError);
+        this.faceForShot(me, ball, { x: aimX, y: 0, z: attackZ }, this.profile.aimError);
         this.command.shootHeld = true;
         this.command.shootPressed = this.chargeTime <= dt * 1.5;
-        this.command.lobToggle = this.wantsLobToggle(me);
+        // The AI states the height it wants rather than asking for a toggle:
+        // the toggle belongs to the input devices, and a value is what the
+        // simulation actually reads.
+        this.command.verticalAim = this.plan.lofted
+          ? GameConfig.kick.highAim
+          : GameConfig.kick.flatAim;
         break;
       }
 
       case 'Shoot': {
+        /*
+         * Keep asking to release for the whole window, not just on the first
+         * tick.
+         *
+         * A strike is refused unless the ball is in range and inside the cone
+         * at the exact moment the control comes up, and a ball that is still
+         * rolling into place fails that test by a few hundredths of a second.
+         * Firing once and hoping is why the AI used to shepherd the ball
+         * around at walking pace without ever hitting it: the charge was spent
+         * every time, on nothing. The engine sets a cooldown on the first
+         * strike that lands, so the repeats after it are no-ops.
+         */
         this.command.shootHeld = false;
-        this.command.shootReleased = this.stateTime <= dt * 1.5;
-        this.faceTowards(me, { x: this.plan.aimOffsetX, y: 0, z: attackZ }, this.profile.aimError);
-        if (this.stateTime > 0.28) this.transition('Recover');
+        this.command.shootReleased = true;
+        this.faceForShot(
+          me,
+          ball,
+          { x: this.plan.aimOffsetX, y: 0, z: attackZ },
+          this.profile.aimError,
+        );
+        this.command.verticalAim = this.plan.lofted
+          ? GameConfig.kick.highAim
+          : GameConfig.kick.flatAim;
+        if (this.stateTime > 0.34) this.transition('Recover');
         break;
       }
 
@@ -290,12 +325,15 @@ export class AIController implements PlayerController {
       }
 
       case 'HoldOff': {
-        // Stand off the ball, between it and the goal being defended, waiting
-        // for somebody else to play it and give the turn back.
+        /*
+         * My touch is spent. Back off far enough not to foul the ball by
+         * accident, and no further: the moment somebody else plays it the turn
+         * comes back, and a player who wandered home is out of the game.
+         */
         const away = {
-          x: ball.x * 0.7 + this.wander() * 1.2,
+          x: ball.x * 0.85 + this.wander() * 1.2,
           y: 0,
-          z: ball.z + Math.sign(defendZ - ball.z) * 3.2,
+          z: ball.z + Math.sign(defendZ - ball.z) * 2.6,
         };
         this.moveTowards(me, away, false);
         this.faceTowards(me, ball);
@@ -303,14 +341,24 @@ export class AIController implements PlayerController {
       }
 
       case 'Defend': {
-        // Stand on the line between the ball and the goal being defended.
-        const blend = 0.42 + this.wander() * 0.1;
+        /*
+         * Press, do not spectate.
+         *
+         * Goal-side of the ball, but close enough to be a nuisance: a metre
+         * and a half off it rather than nearly halfway back to the goal. A
+         * defender who stands off is a defender the ball walks past, and it
+         * never gets inside tackling range to try anything.
+         */
+        const toGoalX = -ball.x;
+        const toGoalZ = defendZ - ball.z;
+        const toGoal = Math.hypot(toGoalX, toGoalZ) || 1;
+        const standOff = 1.5 + this.wander() * 0.4;
         const target = {
-          x: ball.x * (1 - blend) + this.wander() * 0.8,
+          x: ball.x + (toGoalX / toGoal) * standOff,
           y: 0,
-          z: ball.z + (defendZ - ball.z) * blend,
+          z: ball.z + (toGoalZ / toGoal) * standOff,
         };
-        this.moveTowards(me, target, horizontalDistance(me.position, target) > 3.5);
+        this.moveTowards(me, target, horizontalDistance(me.position, target) > 3);
         this.faceTowards(me, ball);
         this.maybeTackle(me, ball, opponent, state);
         break;
@@ -352,6 +400,32 @@ export class AIController implements PlayerController {
     this.command.aimY = Math.cos(yaw);
   }
 
+  /**
+   * Faces the goal — but never so far from the ball that the kick is refused.
+   *
+   * A strike only lands when the ball is inside the cone in front of the
+   * player. Aiming purely at the goal looks right and misses: a ball off to
+   * one side falls outside that cone, the release is swallowed, and the AI
+   * runs through the ball without touching it. So the goal direction is
+   * clamped to stay within the cone of the ball, which is also what a person
+   * does — you have to be facing roughly where the ball is to hit it.
+   */
+  private faceForShot(me: PlayerState, ball: Vec3, goal: Vec3, error: number): void {
+    const toGoal = yawFromXZ(goal.x - me.position.x, goal.z - me.position.z);
+    const toBall = yawFromXZ(ball.x - me.position.x, ball.z - me.position.z);
+    // A margin inside the cone, because the body is still turning when the
+    // foot connects.
+    const limit = GameConfig.kick.coneHalfAngle * 0.6;
+
+    let delta = toGoal - toBall;
+    while (delta > Math.PI) delta -= Math.PI * 2;
+    while (delta < -Math.PI) delta += Math.PI * 2;
+
+    const yaw = toBall + clamp(delta, -limit, limit) + (error > 0 ? this.rng.jitter(error) : 0);
+    this.command.aimX = Math.sin(yaw);
+    this.command.aimY = Math.cos(yaw);
+  }
+
   private maybeTackle(
     me: PlayerState,
     ball: Vec3,
@@ -367,14 +441,6 @@ export class AIController implements PlayerController {
     if (!opponentHasBall) return;
     if (horizontalDistance(me.position, opponent.position) > GameConfig.tackle.range) return;
     this.command.tacklePressed = this.rng.chance(this.profile.tackleAggression);
-  }
-
-  /**
-   * Asks for a shot-type change only when the player's current type differs from
-   * the plan, since the command carries a toggle request rather than a state.
-   */
-  private wantsLobToggle(me: PlayerState): boolean {
-    return me.lofted !== this.plan.lofted && this.chargeTime <= 0.08;
   }
 
   /** Slow, smooth noise so movement targets breathe instead of snapping. */

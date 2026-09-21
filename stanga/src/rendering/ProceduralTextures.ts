@@ -43,25 +43,26 @@ function speckle(
 export function createAsphaltTexture(scene: Scene, size = 1024): DynamicTexture {
   return createCanvasTexture('asphalt', size, scene, (ctx) => {
     const rng = new Rng(0x5747d1);
-    ctx.fillStyle = '#42444a';
+    ctx.fillStyle = '#6a6d76';
     ctx.fillRect(0, 0, size, size);
 
     speckle(ctx, size, rng, 5200, 0.7, 2.6, [
-      '#3a3c42',
-      '#4b4d54',
-      '#53555d',
-      '#35373c',
-      '#5b5d66',
+      '#5f626b',
+      '#74777f',
+      '#7e818a',
+      '#585b63',
+      '#878a93',
     ]);
 
-    // Damp patches for variation.
-    for (let i = 0; i < 26; i += 1) {
+    // Damp patches for variation. Deliberately faint: under a lit scene these
+    // used to read as smears of dirt rather than as wear in the surface.
+    for (let i = 0; i < 14; i += 1) {
       const x = rng.next() * size;
       const y = rng.next() * size;
-      const radius = rng.range(size * 0.04, size * 0.16);
+      const radius = rng.range(size * 0.03, size * 0.09);
       const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-      gradient.addColorStop(0, 'rgba(28,29,33,0.30)');
-      gradient.addColorStop(1, 'rgba(28,29,33,0)');
+      gradient.addColorStop(0, 'rgba(52,55,61,0.1)');
+      gradient.addColorStop(1, 'rgba(52,55,61,0)');
       ctx.fillStyle = gradient;
       ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
     }
@@ -120,7 +121,7 @@ export function createAsphaltRoughnessTexture(scene: Scene, size = 512): Dynamic
         rng.next() * size,
         radius,
       );
-      gradient.addColorStop(0, 'rgba(0, 150, 0, 0.55)');
+      gradient.addColorStop(0, 'rgba(0, 150, 0, 0.28)');
       gradient.addColorStop(1, 'rgba(0, 150, 0, 0)');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, size, size);
@@ -248,7 +249,7 @@ export function createNetTexture(scene: Scene, size = 256): DynamicTexture {
 export function createBuildingTexture(scene: Scene, seed: number, size = 512): DynamicTexture {
   return createCanvasTexture(`building-${seed}`, size, scene, (ctx) => {
     const rng = new Rng(seed);
-    const base = rng.pick(['#8d8378', '#7d7a74', '#9a8e80', '#6f6f6e', '#a09284']);
+    const base = rng.pick(['#c6b8a6', '#b3ab9f', '#d0c0aa', '#a9a49c', '#c9b79f']);
     ctx.fillStyle = base;
     ctx.fillRect(0, 0, size, size);
     speckle(ctx, size, rng, 900, 1, 3, ['rgba(255,255,255,0.05)', 'rgba(0,0,0,0.06)']);
@@ -265,10 +266,13 @@ export function createBuildingTexture(scene: Scene, seed: number, size = 512): D
         const y = marginY + row * cellH + cellH * 0.16;
         const w = cellW * 0.64;
         const h = cellH * 0.6;
-        const lit = rng.chance(0.32);
-        ctx.fillStyle = lit ? rng.pick(['#f4d79a', '#ffe9b8', '#e8c887']) : '#2f3238';
+        // In daylight a window is a dark pane reflecting the sky, not a lamp.
+        const lit = rng.chance(0.08);
+        ctx.fillStyle = lit
+          ? rng.pick(['#f4d79a', '#ffe9b8'])
+          : rng.pick(['#5d6b78', '#6d7b86', '#4f5b66']);
         ctx.fillRect(x, y, w, h);
-        ctx.strokeStyle = 'rgba(30,30,30,0.35)';
+        ctx.strokeStyle = 'rgba(60,55,50,0.4)';
         ctx.lineWidth = 1.5;
         ctx.strokeRect(x, y, w, h);
         // Balcony rail under some windows.
@@ -284,23 +288,28 @@ export function createBuildingTexture(scene: Scene, seed: number, size = 512): D
 /** Vertical sky gradient for the dome. */
 export function createSkyTexture(scene: Scene, size = 512): DynamicTexture {
   const texture = createCanvasTexture('sky', size, scene, (ctx) => {
+    // Late-afternoon daylight: deep blue overhead falling to a warm haze at
+    // the roofline. This is also what the reflection probe captures, so it is
+    // the colour every surface in the scene picks up.
     const gradient = ctx.createLinearGradient(0, 0, 0, size);
-    gradient.addColorStop(0, '#1b2233');
-    gradient.addColorStop(0.42, '#42506b');
-    gradient.addColorStop(0.72, '#9aa2ab');
-    gradient.addColorStop(1, '#d8c2a2');
+    gradient.addColorStop(0, '#2f6bb5');
+    gradient.addColorStop(0.38, '#63a2dd');
+    gradient.addColorStop(0.66, '#a8cbe8');
+    gradient.addColorStop(0.86, '#dfe3e0');
+    gradient.addColorStop(1, '#f0d9b4');
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, size, size);
 
     // Soft clouds.
     const rng = new Rng(0x1234abcd);
-    for (let i = 0; i < 40; i += 1) {
+    for (let i = 0; i < 44; i += 1) {
       const x = rng.next() * size;
-      const y = rng.range(size * 0.2, size * 0.6);
-      const radius = rng.range(size * 0.03, size * 0.12);
+      const y = rng.range(size * 0.12, size * 0.58);
+      const radius = rng.range(size * 0.04, size * 0.15);
       const cloud = ctx.createRadialGradient(x, y, 0, x, y, radius);
-      cloud.addColorStop(0, 'rgba(228,232,238,0.22)');
-      cloud.addColorStop(1, 'rgba(228,232,238,0)');
+      cloud.addColorStop(0, 'rgba(255,255,255,0.5)');
+      cloud.addColorStop(0.55, 'rgba(250,251,253,0.18)');
+      cloud.addColorStop(1, 'rgba(250,251,253,0)');
       ctx.fillStyle = cloud;
       ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
     }

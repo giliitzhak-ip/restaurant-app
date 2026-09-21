@@ -50,7 +50,7 @@ export class Environment {
     probe.cubeTexture.gammaSpace = false;
 
     this.scene.environmentTexture = probe.cubeTexture;
-    this.scene.environmentIntensity = 0.85;
+    this.scene.environmentIntensity = 1.15;
     this.probe = probe;
     this.enabled = true;
   }
@@ -88,7 +88,9 @@ export class Environment {
     const processing = this.scene.imageProcessingConfiguration;
     processing.toneMappingEnabled = true;
     processing.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;
-    processing.exposure = 1.05;
-    processing.contrast = 1.12;
+    // Exposed for a bright outdoor scene. ACES is a filmic curve: at an
+    // exposure of 1 it puts a sunlit pitch somewhere around dusk.
+    processing.exposure = 1.5;
+    processing.contrast = 1.04;
   }
 }

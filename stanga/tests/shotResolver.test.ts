@@ -123,3 +123,42 @@ describe('magnus force', () => {
     expect(bend.z).toBeCloseTo(0, 10);
   });
 });
+
+describe('the flat/high control', () => {
+  /*
+   * There has to be a shot that goes over things.
+   *
+   * The toggle existed but did nothing: the simulation flipped a flag, and the
+   * controller's own aim value overwrote it on the very next tick, so every
+   * strike came out along the ground however the control was set. These pin
+   * the two ends of it down.
+   */
+  const strike = (verticalAim: number) =>
+    resolveShot({ yaw: 0, power: 1, verticalAim, spin: 0, chipRequested: false });
+
+  it('puts a real amount of the strike upwards on the high setting', () => {
+    const high = strike(GameConfig.kick.highAim);
+    // More than half the impulse goes up: that is what clears a defender.
+    expect(high.impulseY / high.impulseZ).toBeGreaterThan(0.5);
+    expect(high.profile).toBe('lofted');
+  });
+
+  it('keeps the flat setting flat', () => {
+    const flat = strike(GameConfig.kick.flatAim);
+    expect(flat.impulseY / flat.impulseZ).toBeLessThan(0.12);
+    expect(flat.profile).not.toBe('lofted');
+  });
+
+  it('separates the two ends by a wide margin, so the control is felt', () => {
+    const high = strike(GameConfig.kick.highAim);
+    const flat = strike(GameConfig.kick.flatAim);
+    expect(high.impulseY).toBeGreaterThan(flat.impulseY * 6);
+  });
+
+  it('still leaves the whole range in between reachable by hand', () => {
+    const lifts = [-1, -0.5, 0, 0.5, 1].map((aim) => strike(aim).impulseY);
+    for (let i = 1; i < lifts.length; i += 1) {
+      expect(lifts[i]!).toBeGreaterThan(lifts[i - 1]!);
+    }
+  });
+});

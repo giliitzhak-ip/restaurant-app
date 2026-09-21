@@ -1,15 +1,23 @@
 /**
- * The visible character: a procedurally built street footballer driven by
- * PlayerAnimator, parented to the capsule that PlayerBody owns.
+ * The visible character: a jointed street footballer driven by PlayerAnimator,
+ * parented to the capsule that PlayerBody owns.
  *
- * Client only. The server has the capsule but none of this, which is what lets
+ * Client only. The server has the capsule and none of this, which is what lets
  * the authoritative simulation run in Node.
  *
- * No external models and no violent animation — the tackle is a leg poke at the
- * ball, and the celebration is arms up and a hop.
+ * The figure is built from real joints rather than four rigid boxes: hip →
+ * knee → ankle and shoulder → elbow → wrist, with a sphere at every joint so
+ * the limbs stay solid as they fold. That is what separates a person from a
+ * marionette at chase-camera distance, and it costs a handful of small meshes
+ * per player. The knee and elbow angles are derived here from the hip and
+ * shoulder angles the animator produces — a limb folds because of where it is
+ * swung, so there is nothing for the animation state machine to author and
+ * nothing that can fall out of step with it.
+ *
+ * No external models, and no violent animation: the tackle is a leg poke at
+ * the ball and the celebration is arms up and a hop.
  */
 import { Color3 } from '@babylonjs/core/Maths/math.color';
-import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
 import type { Mesh } from '@babylonjs/core/Meshes/mesh';
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
@@ -17,14 +25,28 @@ import type { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial';
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import type { Scene } from '@babylonjs/core/scene';
 import { GameConfig } from '../config/GameConfig';
+import { clamp } from '../core/math';
 import type { PlayerBody } from '../entities/PlayerBody';
-import { PlayerAnimator, type AnimatorInputs } from '../entities/PlayerAnimator';
+import { PlayerAnimator, type AnimatorInputs, type Pose } from '../entities/PlayerAnimator';
 import type { PlayerState } from '../game/MatchState';
 import { createKitTexture, type KitPattern } from './ProceduralTextures';
 import { createSurface } from './Surfaces';
 
 const SKIN_TONES: readonly string[] = ['#c98d63', '#8d5a3b', '#e0b08a', '#6f4326'];
 const HAIR_TONES: readonly string[] = ['#241b16', '#3d2a1c', '#111114', '#5a3b22'];
+
+/** Segment lengths in metres, measured off a 1.78 m player. */
+const RIG = {
+  hipY: 0.9,
+  thigh: 0.44,
+  shin: 0.42,
+  chestY: 1.28,
+  shoulderY: 1.44,
+  shoulderX: 0.2,
+  upperArm: 0.3,
+  forearm: 0.27,
+  headY: 1.66,
+} as const;
 
 export interface KitDefinition {
   readonly id: number;
@@ -40,20 +62,33 @@ export function kitFor(colorId: number): KitDefinition {
   return kits[index] ?? kits[0];
 }
 
+/** One side's leg: a hip that swings, and a knee that folds under it. */
+interface Leg {
+  hip: TransformNode;
+  knee: TransformNode;
+}
+
+interface Arm {
+  shoulder: TransformNode;
+  elbow: TransformNode;
+}
+
 export class PlayerView {
   readonly visual: TransformNode;
   readonly marker: Mesh;
   readonly meshes: Mesh[] = [];
   readonly animator = new PlayerAnimator();
 
-  private readonly limbs: { leftLeg: Mesh; rightLeg: Mesh; leftArm: Mesh; rightArm: Mesh };
-  private readonly torso: Mesh;
+  private readonly legs: { left: Leg; right: Leg };
+  private readonly arms: { left: Arm; right: Arm };
+  private readonly torso: TransformNode;
+  private readonly head: TransformNode;
   private readonly torsoMaterial: PBRMaterial;
   private readonly markerMaterial: StandardMaterial;
+  private readonly baseVisualY: number;
   /** Small parts hidden once the player is far enough away to not see them. */
   private readonly detailMeshes: Mesh[] = [];
   private detailVisible = true;
-  private readonly baseVisualY: number;
   private colorId = -1;
 
   constructor(
@@ -69,110 +104,113 @@ export class PlayerView {
     this.baseVisualY = -player.height / 2;
     this.visual.position.y = this.baseVisualY;
 
-    // Small per-player variation so the two characters are not clones.
+    // Small per-player variation so the characters are not clones.
     const variant = hashString(id);
     const skinTone = SKIN_TONES[variant % SKIN_TONES.length] ?? '#c98d63';
-    const hairTone = HAIR_TONES[variant % HAIR_TONES.length] ?? '#241b16';
-    const skinMaterial = solidMaterial(scene, `skin-${id}`, skinTone, 0.54);
-    const shortsMaterial = solidMaterial(scene, `shorts-${id}`, '#1d1f24', 0.86);
+    const hairTone = HAIR_TONES[(variant >> 3) % HAIR_TONES.length] ?? '#241b16';
+    const skin = solidMaterial(scene, `skin-${id}`, skinTone, 0.52);
+    const shorts = solidMaterial(scene, `shorts-${id}`, '#1d1f24', 0.86);
+    const sock = solidMaterial(scene, `sock-${id}`, '#e8eaee', 0.9);
+    const boot = solidMaterial(scene, `boot-${id}`, '#111216', 0.34);
+    const hair = solidMaterial(scene, `hair-${id}`, hairTone, 0.68);
 
     this.torsoMaterial = createSurface(scene, `shirt-${id}`, {
       roughness: 0.82,
       ambientLift: 0.26,
     });
 
-    this.torso = MeshBuilder.CreateBox(
-      `torso-${id}`,
-      { width: 0.46, height: 0.6, depth: 0.26 },
-      scene,
-    );
-    this.torso.position.y = 1.16;
-    this.torso.material = this.torsoMaterial;
+    // ── Torso ────────────────────────────────────────────────────────────────
+    this.torso = new TransformNode(`torso-${id}`, scene);
     this.torso.parent = this.visual;
 
-    const hips = MeshBuilder.CreateBox(
-      `hips-${id}`,
-      { width: 0.42, height: 0.24, depth: 0.25 },
+    // A chest that tapers to the waist reads as a body; a box reads as a box.
+    const chest = MeshBuilder.CreateCylinder(
+      `chest-${id}`,
+      { height: 0.5, diameterTop: 0.44, diameterBottom: 0.36, tessellation: 12 },
       scene,
     );
-    hips.position.y = 0.78;
-    hips.material = shortsMaterial;
-    hips.parent = this.visual;
+    chest.scaling.z = 0.62;
+    chest.position.y = RIG.chestY;
+    chest.material = this.torsoMaterial;
+    chest.parent = this.torso;
+
+    const hips = MeshBuilder.CreateCylinder(
+      `hips-${id}`,
+      { height: 0.26, diameterTop: 0.38, diameterBottom: 0.36, tessellation: 12 },
+      scene,
+    );
+    hips.scaling.z = 0.66;
+    hips.position.y = RIG.hipY + 0.05;
+    hips.material = shorts;
+    hips.parent = this.torso;
 
     const neck = MeshBuilder.CreateCylinder(
       `neck-${id}`,
-      { height: 0.1, diameter: 0.13, tessellation: 8 },
+      { height: 0.12, diameter: 0.13, tessellation: 8 },
       scene,
     );
-    neck.position.y = 1.48;
-    neck.material = skinMaterial;
-    neck.parent = this.visual;
+    neck.position.y = 1.54;
+    neck.material = skin;
+    neck.parent = this.torso;
 
-    const head = MeshBuilder.CreateSphere(`head-${id}`, { diameter: 0.28, segments: 12 }, scene);
-    head.position.y = 1.6;
-    head.material = skinMaterial;
-    head.parent = this.visual;
+    this.meshes.push(chest, hips, neck);
+    this.detailMeshes.push(neck);
 
-    const hair = MeshBuilder.CreateSphere(
-      `hair-${id}`,
-      { diameter: 0.3, segments: 10, slice: 0.58 },
-      scene,
-    );
-    hair.position.y = 1.605;
-    hair.material = solidMaterial(scene, `hair-${id}`, hairTone, 0.66);
-    hair.parent = this.visual;
-    this.detailMeshes.push(hair, neck);
-
-    // Tapered cylinders rather than boxes: a limb that narrows towards the
-    // ankle reads as a leg from the chase camera, where a rectangular prism
-    // reads as furniture. Six sides is enough at this size.
-    const makeLimb = (name: string, x: number, y: number, length: number, thickness: number) => {
-      const limb = MeshBuilder.CreateCylinder(
-        `${name}-${id}`,
-        {
-          height: length,
-          diameterTop: thickness * 1.15,
-          diameterBottom: thickness * 0.82,
-          tessellation: 8,
-        },
+    for (const side of [-1, 1] as const) {
+      const shoulder = MeshBuilder.CreateSphere(
+        `shoulder-${id}-${side}`,
+        { diameter: 0.19, segments: 8 },
         scene,
       );
-      // Pivot at the top so rotation swings the limb from the joint.
-      limb.setPivotPoint(new Vector3(0, length / 2, 0));
-      limb.position.set(x, y, 0);
-      limb.parent = this.visual;
-      return limb;
-    };
-
-    const leftLeg = makeLimb('legL', -0.12, 0.42, 0.72, 0.17);
-    const rightLeg = makeLimb('legR', 0.12, 0.42, 0.72, 0.17);
-    leftLeg.material = skinMaterial;
-    rightLeg.material = skinMaterial;
-
-    const leftArm = makeLimb('armL', -0.31, 1.18, 0.56, 0.13);
-    const rightArm = makeLimb('armR', 0.31, 1.18, 0.56, 0.13);
-    leftArm.material = skinMaterial;
-    rightArm.material = skinMaterial;
-
-    const shoeMaterial = solidMaterial(scene, `shoe-${id}`, '#111216', 0.42);
-    for (const [name, parent] of [
-      ['shoeL', leftLeg],
-      ['shoeR', rightLeg],
-    ] as const) {
-      const shoe = MeshBuilder.CreateBox(
-        `${name}-${id}`,
-        { width: 0.19, height: 0.1, depth: 0.3 },
-        scene,
-      );
-      shoe.position.set(0, -0.3, 0.05);
-      shoe.material = shoeMaterial;
-      shoe.parent = parent;
-      this.meshes.push(shoe);
-      this.detailMeshes.push(shoe);
+      shoulder.position.set(side * RIG.shoulderX, RIG.shoulderY, 0);
+      shoulder.material = this.torsoMaterial;
+      shoulder.parent = this.torso;
+      this.meshes.push(shoulder);
     }
 
-    this.limbs = { leftLeg, rightLeg, leftArm, rightArm };
-    this.meshes.push(this.torso, hips, neck, head, hair, leftLeg, rightLeg, leftArm, rightArm);
+    // ── Head ─────────────────────────────────────────────────────────────────
+    this.head = new TransformNode(`head-${id}`, scene);
+    this.head.position.y = RIG.headY;
+    this.head.parent = this.torso;
+
+    const skull = MeshBuilder.CreateSphere(`skull-${id}`, { diameter: 0.25, segments: 14 }, scene);
+    skull.scaling.set(1, 1.12, 1.04);
+    skull.material = skin;
+    skull.parent = this.head;
+
+    // A cap of hair, and a brow that catches the light: at this distance a
+    // silhouette is the face, and these two are what give it one.
+    const crown = MeshBuilder.CreateSphere(
+      `hair-${id}`,
+      { diameter: 0.27, segments: 12, slice: 0.56 },
+      scene,
+    );
+    crown.position.y = 0.012;
+    crown.scaling.set(1, 1.02, 1.06);
+    crown.material = hair;
+    crown.parent = this.head;
+
+    const brow = MeshBuilder.CreateBox(
+      `brow-${id}`,
+      { width: 0.2, height: 0.035, depth: 0.05 },
+      scene,
+    );
+    brow.position.set(0, 0.035, 0.105);
+    brow.material = hair;
+    brow.parent = this.head;
+
+    this.meshes.push(skull, crown, brow);
+    this.detailMeshes.push(crown, brow);
+
+    // ── Limbs ────────────────────────────────────────────────────────────────
+    this.legs = {
+      left: this.buildLeg(id, -1, skin, shorts, sock, boot),
+      right: this.buildLeg(id, 1, skin, shorts, sock, boot),
+    };
+    this.arms = {
+      left: this.buildArm(id, -1, skin),
+      right: this.buildArm(id, 1, skin),
+    };
 
     // Every player gets a ring; whether it is shown depends on who is driving,
     // which can change between matches.
@@ -190,13 +228,141 @@ export class PlayerView {
     this.setMarkerVisible(isHuman);
   }
 
+  /** Hip → thigh → knee → shin → sock → boot, each hanging off the last. */
+  private buildLeg(
+    id: string,
+    side: -1 | 1,
+    skin: PBRMaterial,
+    shorts: PBRMaterial,
+    sock: PBRMaterial,
+    boot: PBRMaterial,
+  ): Leg {
+    const tag = side < 0 ? 'L' : 'R';
+    const hip = new TransformNode(`hip${tag}-${id}`, this.scene);
+    hip.position.set(side * 0.105, RIG.hipY, 0);
+    hip.parent = this.visual;
+
+    const thigh = MeshBuilder.CreateCylinder(
+      `thigh${tag}-${id}`,
+      { height: RIG.thigh, diameterTop: 0.19, diameterBottom: 0.145, tessellation: 8 },
+      this.scene,
+    );
+    thigh.position.y = -RIG.thigh / 2;
+    thigh.material = skin;
+    thigh.parent = hip;
+
+    // The shorts hang off the thigh, so they swing with the leg.
+    const short = MeshBuilder.CreateCylinder(
+      `short${tag}-${id}`,
+      { height: 0.22, diameterTop: 0.23, diameterBottom: 0.2, tessellation: 10 },
+      this.scene,
+    );
+    short.position.y = -0.09;
+    short.material = shorts;
+    short.parent = hip;
+
+    const knee = new TransformNode(`knee${tag}-${id}`, this.scene);
+    knee.position.y = -RIG.thigh;
+    knee.parent = hip;
+
+    const kneeCap = MeshBuilder.CreateSphere(
+      `kneecap${tag}-${id}`,
+      { diameter: 0.145, segments: 8 },
+      this.scene,
+    );
+    kneeCap.material = skin;
+    kneeCap.parent = knee;
+
+    const shin = MeshBuilder.CreateCylinder(
+      `shin${tag}-${id}`,
+      { height: RIG.shin, diameterTop: 0.135, diameterBottom: 0.1, tessellation: 8 },
+      this.scene,
+    );
+    shin.position.y = -RIG.shin / 2;
+    shin.material = skin;
+    shin.parent = knee;
+
+    const stocking = MeshBuilder.CreateCylinder(
+      `sock${tag}-${id}`,
+      { height: 0.24, diameterTop: 0.14, diameterBottom: 0.108, tessellation: 8 },
+      this.scene,
+    );
+    stocking.position.y = -RIG.shin + 0.12;
+    stocking.material = sock;
+    stocking.parent = knee;
+
+    const shoe = MeshBuilder.CreateBox(
+      `boot${tag}-${id}`,
+      { width: 0.11, height: 0.075, depth: 0.26 },
+      this.scene,
+    );
+    shoe.position.set(0, -RIG.shin - 0.03, 0.05);
+    shoe.material = boot;
+    shoe.parent = knee;
+
+    this.meshes.push(thigh, short, kneeCap, shin, stocking, shoe);
+    this.detailMeshes.push(kneeCap, stocking, shoe);
+    return { hip, knee };
+  }
+
+  /** Shoulder → upper arm → elbow → forearm → hand. */
+  private buildArm(id: string, side: -1 | 1, skin: PBRMaterial): Arm {
+    const tag = side < 0 ? 'L' : 'R';
+    const shoulder = new TransformNode(`arm${tag}-${id}`, this.scene);
+    shoulder.position.set(side * RIG.shoulderX, RIG.shoulderY, 0);
+    shoulder.parent = this.visual;
+
+    const upper = MeshBuilder.CreateCylinder(
+      `upperarm${tag}-${id}`,
+      { height: RIG.upperArm, diameterTop: 0.125, diameterBottom: 0.1, tessellation: 8 },
+      this.scene,
+    );
+    upper.position.y = -RIG.upperArm / 2;
+    upper.material = skin;
+    upper.parent = shoulder;
+
+    const elbow = new TransformNode(`elbow${tag}-${id}`, this.scene);
+    elbow.position.y = -RIG.upperArm;
+    elbow.parent = shoulder;
+
+    const joint = MeshBuilder.CreateSphere(
+      `elbowcap${tag}-${id}`,
+      { diameter: 0.1, segments: 6 },
+      this.scene,
+    );
+    joint.material = skin;
+    joint.parent = elbow;
+
+    const forearm = MeshBuilder.CreateCylinder(
+      `forearm${tag}-${id}`,
+      { height: RIG.forearm, diameterTop: 0.098, diameterBottom: 0.078, tessellation: 8 },
+      this.scene,
+    );
+    forearm.position.y = -RIG.forearm / 2;
+    forearm.material = skin;
+    forearm.parent = elbow;
+
+    const hand = MeshBuilder.CreateSphere(
+      `hand${tag}-${id}`,
+      { diameter: 0.095, segments: 6 },
+      this.scene,
+    );
+    hand.scaling.set(0.8, 1.15, 1);
+    hand.position.y = -RIG.forearm - 0.02;
+    hand.material = skin;
+    hand.parent = elbow;
+
+    this.meshes.push(upper, joint, forearm, hand);
+    this.detailMeshes.push(joint, hand);
+    return { shoulder, elbow };
+  }
+
   /**
    * Level of detail, by distance.
    *
-   * Hair, a neck and a pair of boots are four meshes and four materials that
-   * nobody can resolve from twenty metres away. Hiding them there is the
-   * cheapest LOD there is, and unlike a swapped mesh it cannot pop the
-   * silhouette.
+   * Joint caps, hands, boots, socks and hair are nine meshes nobody can
+   * resolve from twenty metres away. Hiding them there is the cheapest LOD
+   * there is, and unlike a swapped mesh it cannot pop the silhouette.
    */
   setDetailVisible(visible: boolean): void {
     if (visible === this.detailVisible) return;
@@ -252,21 +418,49 @@ export class PlayerView {
   updateVisual(state: PlayerState, inputs: AnimatorInputs, dt: number): void {
     const pose = this.animator.update(state, inputs, dt);
 
-    this.visual.rotation.y = state.facing + pose.torsoYaw;
-    this.visual.rotation.x = pose.torsoPitch;
-    this.visual.rotation.z = pose.torsoRoll;
+    this.visual.rotation.y = state.facing;
     this.visual.position.y = this.baseVisualY + pose.bob;
 
-    this.limbs.leftLeg.rotation.x = pose.leftLeg;
-    this.limbs.rightLeg.rotation.x = pose.rightLeg;
-    this.limbs.leftArm.rotation.x = pose.leftArm;
-    this.limbs.rightArm.rotation.x = pose.rightArm;
-    // Arms swing outwards as they are raised, so a celebration reads clearly.
-    this.limbs.leftArm.rotation.z = -pose.armsUp * 0.5;
-    this.limbs.rightArm.rotation.z = pose.armsUp * 0.5;
+    // The torso leans and twists; the legs hang off the body itself, so a
+    // forward lean does not drag the feet out from under the player.
+    this.torso.rotation.x = pose.torsoPitch;
+    this.torso.rotation.z = pose.torsoRoll;
+    this.torso.rotation.y = pose.torsoYaw;
+    // The head stays roughly level whatever the body is doing, which is most
+    // of what makes a run cycle look like a person rather than a puppet.
+    this.head.rotation.x = -pose.torsoPitch * 0.6;
+    this.head.rotation.y = -pose.torsoYaw * 0.4;
+
+    this.poseLeg(this.legs.left, pose.leftLeg);
+    this.poseLeg(this.legs.right, pose.rightLeg);
+    this.poseArm(this.arms.left, pose.leftArm, pose.armsUp, -1);
+    this.poseArm(this.arms.right, pose.rightArm, pose.armsUp, 1);
 
     // Counter-rotate so the ring never appears to spin with the body.
     this.marker.rotation.y = -this.visual.rotation.y;
+  }
+
+  /**
+   * A knee folds because of where the leg is swung, not because something
+   * authored it: drawn back behind the body it folds hard (the heel comes up),
+   * reaching forward it stays nearly straight (that is the leg you stand on).
+   * Deriving it here means all twelve animation states get knees for free and
+   * none of them can disagree with the hip they hang from.
+   */
+  private poseLeg(leg: Leg, hipAngle: number): void {
+    leg.hip.rotation.x = hipAngle;
+    const drawnBack = Math.max(0, -hipAngle);
+    const reachingForward = Math.max(0, hipAngle);
+    leg.knee.rotation.x = clamp(0.1 + drawnBack * 1.15 + reachingForward * 0.3, 0, 2.2);
+  }
+
+  /** Elbows are never straight on a running body; they open as the arm rises. */
+  private poseArm(arm: Arm, shoulderAngle: number, armsUp: number, side: -1 | 1): void {
+    arm.shoulder.rotation.x = shoulderAngle;
+    // Arms swing outwards as they are raised, so a celebration reads clearly.
+    arm.shoulder.rotation.z = side * armsUp * 0.5;
+    const bend = (0.38 + Math.abs(shoulderAngle) * 0.42) * (1 - armsUp * 0.65);
+    arm.elbow.rotation.x = clamp(bend, 0, 1.6);
   }
 }
 
@@ -294,3 +488,5 @@ function hashString(value: string): number {
   }
   return hash;
 }
+
+export type { Pose };

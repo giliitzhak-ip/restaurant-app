@@ -79,6 +79,8 @@ export class HumanGamepadController implements PlayerController {
   private readonly sequence = new SequenceCounter();
   private shootWasHeld = false;
   private lobWasHeld = false;
+  /** Aim height, kept between ticks so the flat/high button sticks. */
+  private verticalAim = 0;
   private tackleWasHeld = false;
   private passWasHeld = false;
   private juggleWasHeld = false;
@@ -164,7 +166,19 @@ export class HumanGamepadController implements PlayerController {
     // faces, and how far up or sideways it is pushed is how high and how bent
     // the next strike will be. That is what makes the crossbar reachable on a
     // pad without a second stick.
-    command.verticalAim = clampUnit(-axis(3));
+    /*
+     * The right stick does double duty: where it points is where the player
+     * faces, and how far up or sideways it is pushed is how high and how bent
+     * the next strike will be. That is what makes the crossbar reachable on a
+     * pad without a second stick.
+     *
+     * Pushing the stick overrides the aim; letting go leaves it where the
+     * flat/high button last parked it, so the high ball is a setting and not
+     * something you have to hold.
+     */
+    const stickAim = clampUnit(-axis(3));
+    if (Math.abs(stickAim) > this.deadZone) this.verticalAim = stickAim;
+    command.verticalAim = this.verticalAim;
     command.spin = clampUnit(axis(2)) * 0.85;
     if (aim.magnitude > 0) {
       const worldAim = rotateByYaw(aim.x, aim.y, context.cameraYaw);
@@ -205,8 +219,18 @@ export class HumanGamepadController implements PlayerController {
     command.chipRequested =
       value(GamepadButton.LeftTrigger) > 0.35 || pressed(GamepadButton.LeftBumper);
 
-    const lobHeld = pressed(GamepadButton.DpadUp) && pressed(GamepadButton.LeftBumper);
-    command.lobToggle = lobHeld && !this.lobWasHeld;
+    // Up on the d-pad is the high ball: one button that means "put it in the
+    // air", next to the stick that trims the height by hand.
+    const lobHeld = pressed(GamepadButton.DpadUp);
+    const lobPressed = lobHeld && !this.lobWasHeld;
+    command.lobToggle = lobPressed;
+    if (lobPressed) {
+      this.verticalAim =
+        this.verticalAim > GameConfig.kick.highAim * 0.3
+          ? GameConfig.kick.flatAim
+          : GameConfig.kick.highAim;
+      command.verticalAim = this.verticalAim;
+    }
     this.lobWasHeld = lobHeld;
 
     const startHeld = pressed(GamepadButton.Start);

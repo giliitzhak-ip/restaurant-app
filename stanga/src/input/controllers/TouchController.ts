@@ -45,6 +45,7 @@ export class HumanTouchController implements PlayerController {
   readonly kind = 'touch' as const;
   readonly root: HTMLDivElement;
 
+  private readonly lookZone: HTMLDivElement;
   private readonly stickZone: HTMLDivElement;
   private readonly stickBase: HTMLDivElement;
   private readonly stickKnob: HTMLDivElement;
@@ -68,6 +69,11 @@ export class HumanTouchController implements PlayerController {
   private readonly cleanups: (() => void)[] = [];
 
   private stick: StickPointer | null = null;
+  /** The finger currently swinging the camera, and where it was last frame. */
+  private lookPointer: number | null = null;
+  private lookLast = { x: 0, y: 0 };
+  /** Screen fractions dragged since the game last read them. */
+  private lookDelta = { x: 0, y: 0 };
   /** Pointer currently owning each hold button, or null. */
   private shootPointer: number | null = null;
   private sprintPointer: number | null = null;
@@ -93,6 +99,17 @@ export class HumanTouchController implements PlayerController {
     this.nameTag.textContent = label;
     // The solo layout needs no name tag above the controls.
     if (side === 'full') this.nameTag.classList.add('is-hidden');
+
+    /*
+     * The look zone is the whole pad, and it is added first so that every
+     * actual control sits on top of it. A finger that lands on the stick or a
+     * button belongs to that control; a finger that lands anywhere else — the
+     * middle of the screen, the empty space above the buttons — swings the
+     * camera. That is the rule people already expect from a phone game, and it
+     * needs no visible furniture of its own.
+     */
+    this.lookZone = document.createElement('div');
+    this.lookZone.className = 'touch-pad__look-zone';
 
     this.stickZone = document.createElement('div');
     this.stickZone.className = 'touch-pad__stick-zone';
@@ -120,8 +137,9 @@ export class HumanTouchController implements PlayerController {
       this.shootButton,
     );
 
-    this.root.append(this.nameTag, this.stickZone, actions);
+    this.root.append(this.lookZone, this.nameTag, this.stickZone, actions);
 
+    this.bindLook();
     this.bindStick();
     this.bindHold(this.shootButton, 'shoot');
     this.bindHold(this.sprintButton, 'sprint');
@@ -136,6 +154,68 @@ export class HumanTouchController implements PlayerController {
       this.jugglePending = true;
     });
     this.bindKickAiming();
+  }
+
+  /** Drag anywhere that is not a control to swing the view. */
+  private bindLook(): void {
+    const onDown = (event: PointerEvent) => {
+      if (this.lookPointer !== null) return;
+      event.preventDefault();
+      this.lookZone.setPointerCapture(event.pointerId);
+      this.lookPointer = event.pointerId;
+      this.lookLast = { x: event.clientX, y: event.clientY };
+    };
+    const onMove = (event: PointerEvent) => {
+      if (this.lookPointer !== event.pointerId) return;
+      event.preventDefault();
+      // As a fraction of the screen, so a phone and a tablet feel the same.
+      const width = window.innerWidth || 1;
+      const height = window.innerHeight || 1;
+      this.lookDelta.x += (event.clientX - this.lookLast.x) / width;
+      this.lookDelta.y += (event.clientY - this.lookLast.y) / height;
+      this.lookLast = { x: event.clientX, y: event.clientY };
+    };
+    const onUp = (event: PointerEvent) => {
+      if (this.lookPointer !== event.pointerId) return;
+      this.lookPointer = null;
+    };
+
+    this.lookZone.addEventListener('pointerdown', onDown, { passive: false });
+    this.lookZone.addEventListener('pointermove', onMove, { passive: false });
+    this.lookZone.addEventListener('pointerup', onUp);
+    this.lookZone.addEventListener('pointercancel', onUp);
+    this.cleanups.push(() => {
+      this.lookZone.removeEventListener('pointerdown', onDown);
+      this.lookZone.removeEventListener('pointermove', onMove);
+      this.lookZone.removeEventListener('pointerup', onUp);
+      this.lookZone.removeEventListener('pointercancel', onUp);
+    });
+  }
+
+  /**
+   * How far the view has been dragged since this was last called, in screen
+   * fractions, and clears it. The camera is the renderer's business, so the
+   * controller only reports; it never reaches for a camera itself.
+   */
+  consumeLook(): { x: number; y: number } {
+    const delta = { x: this.lookDelta.x, y: this.lookDelta.y };
+    this.lookDelta.x = 0;
+    this.lookDelta.y = 0;
+    return delta;
+  }
+
+  /**
+   * Turns the look zone off. The shared camera of a two-player match frames
+   * both players at once, so there is nothing sensible for a swing to do —
+   * and a control that silently does nothing is worse than no control.
+   */
+  setLookEnabled(enabled: boolean): void {
+    this.lookZone.classList.toggle('is-hidden', !enabled);
+    if (!enabled) {
+      this.lookPointer = null;
+      this.lookDelta.x = 0;
+      this.lookDelta.y = 0;
+    }
   }
 
   /**
@@ -198,6 +278,9 @@ export class HumanTouchController implements PlayerController {
     }
     this.sprintPointer = null;
     this.passPointer = null;
+    this.lookPointer = null;
+    this.lookDelta.x = 0;
+    this.lookDelta.y = 0;
     this.stick = null;
     this.tacklePending = false;
     this.lobPending = false;
@@ -249,7 +332,15 @@ export class HumanTouchController implements PlayerController {
     this.tacklePending = false;
     command.jugglePressed = this.jugglePending;
     this.jugglePending = false;
+    // The flat/high button snaps the aim this controller keeps, rather than
+    // asking the simulation to flip a flag that the next tick would overwrite.
     command.lobToggle = this.lobPending;
+    if (this.lobPending) {
+      this.verticalAim =
+        this.verticalAim > GameConfig.kick.highAim * 0.3
+          ? GameConfig.kick.flatAim
+          : GameConfig.kick.highAim;
+    }
     this.lobPending = false;
 
     command.verticalAim = this.verticalAim;

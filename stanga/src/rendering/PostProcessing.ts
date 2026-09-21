@@ -46,8 +46,8 @@ export class PostProcessing {
     pipeline.bloomEnabled = profile.bloom;
     if (profile.bloom) {
       // Sunlight on wet asphalt, not a light show.
-      pipeline.bloomThreshold = 0.86;
-      pipeline.bloomWeight = 0.22;
+      pipeline.bloomThreshold = 0.9;
+      pipeline.bloomWeight = 0.18;
       pipeline.bloomKernel = 48;
       pipeline.bloomScale = 0.5;
     }
@@ -59,7 +59,8 @@ export class PostProcessing {
     pipeline.imageProcessingEnabled = true;
     const processing = pipeline.imageProcessing;
     processing.vignetteEnabled = true;
-    processing.vignetteWeight = 2.2;
+    // A hint of falloff at the corners, not a tunnel.
+    processing.vignetteWeight = 1;
     processing.vignetteColor = new Color4(0, 0, 0, 0);
     processing.vignetteCameraFov = 1.2;
 

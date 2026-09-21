@@ -936,6 +936,18 @@ kbd {
   padding-right: 1rem;
 }
 
+/*
+ * Underneath every control: a finger that misses the stick and the buttons
+ * lands here and swings the camera. No fill and no border — the empty middle
+ * of the screen is the control.
+ */
+.touch-pad__look-zone {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  touch-action: none;
+}
+
 .touch-pad__stick-zone {
   position: absolute;
   bottom: 0;

@@ -232,6 +232,17 @@ export const GameConfig = {
     maxLift: 0.95,
     /** Exponent on the vertical aim. >1 puts the fine control near the ground. */
     liftCurve: 2.2,
+    /**
+     * The two ends the flat/high toggle snaps between.
+     *
+     * Fine aiming is a held axis, but a game also needs one control that just
+     * means "put it in the air" — over a defender, onto a team-mate's head, at
+     * the crossbar. These are that control's two positions, and every input
+     * device snaps to the same pair so a high ball is the same ball whichever
+     * one you are holding.
+     */
+    highAim: 0.92,
+    flatAim: -0.5,
     /** A chip trades reach for height: less forward impulse, much more lift. */
     chipForwardScale: 0.52,
     chipLift: 1.25,
@@ -342,6 +353,32 @@ export const GameConfig = {
     shakeScale: { off: 0, subtle: 0.45, normal: 1 } as const,
     /** How strongly the view leans towards the ball rather than the goal. */
     ballAwarenessWeight: 0.22,
+    /**
+     * Player-driven look.
+     *
+     * The chase camera picks a sensible angle, but a sensible angle is not
+     * always the one you want: you cannot see who is behind you, and you
+     * cannot line a shot up from the side. Dragging a finger across the middle
+     * of the screen swings the view, and it eases back to the automatic angle
+     * once you stop — a held offset that never returns leaves people playing
+     * sideways without realising why.
+     */
+    look: {
+      /** Radians of yaw for a drag across the full width of the screen. */
+      yawPerScreen: Math.PI * 1.35,
+      /** How far the view may be swung either way. */
+      maxYaw: Math.PI * 0.85,
+      /** Pitch is -1 (low, behind) to 1 (high, looking down). */
+      pitchPerScreen: 2.4,
+      maxPitch: 0.9,
+      /** Height and distance at the two ends of the pitch range, as factors. */
+      pitchHeight: 1.55,
+      pitchDistance: 0.55,
+      /** Seconds of no input before the view starts easing back. */
+      recentreDelay: 2.4,
+      /** How fast it eases back, in units per second. */
+      recentreRate: 0.85,
+    },
     /**
      * Hard cap, in radians, on how far the view may swing off the line to the
      * attacking goal. Without it a ball in the corner rotates the goal out of

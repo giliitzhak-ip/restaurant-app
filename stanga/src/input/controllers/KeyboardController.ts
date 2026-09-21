@@ -105,7 +105,6 @@ export class HumanKeyboardController implements PlayerController {
 
     command.jugglePressed = pressedAny(this.keys.juggle);
     command.tacklePressed = pressedAny(this.keys.tackle);
-    command.lobToggle = pressedAny(this.keys.lob);
     command.chipRequested = heldAny(this.keys.chip);
 
     // A keyboard has no analogue stick, so the aim height is a value the two
@@ -113,6 +112,18 @@ export class HumanKeyboardController implements PlayerController {
     const dt = context.dt;
     if (heldAny(this.keys.aimUp)) this.verticalAim += AIM_RATE * dt;
     if (heldAny(this.keys.aimDown)) this.verticalAim -= AIM_RATE * dt;
+
+    // The flat/high control snaps that same value to one end or the other. It
+    // has to live here rather than in the simulation: the aim is sent every
+    // tick, so anything the simulation toggled was overwritten a tick later
+    // and there was no way to deliberately hit a high ball at all.
+    const lob = pressedAny(this.keys.lob);
+    command.lobToggle = lob;
+    if (lob) {
+      this.verticalAim =
+        this.verticalAim > HIGH_AIM * 0.3 ? GameConfig.kick.flatAim : GameConfig.kick.highAim;
+    }
+
     this.verticalAim = Math.max(-1, Math.min(1, this.verticalAim));
     command.verticalAim = this.verticalAim;
 
@@ -131,6 +142,9 @@ export class HumanKeyboardController implements PlayerController {
 }
 
 export const KEYBOARD_DEAD_ZONE = GameConfig.input.deadZone;
+
+/** Where the flat/high control parks the aim. */
+const HIGH_AIM = GameConfig.kick.highAim;
 
 /** How fast the aim keys sweep the full range, in units per second. */
 const AIM_RATE = 1.6;

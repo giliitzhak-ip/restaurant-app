@@ -146,6 +146,10 @@ export class Game {
   /** Rolling frame-time window for the graphics screen. */
   private frameSamples = 0;
   private frameMsTotal = 0;
+  /** Mouse drag on the canvas, in screen fractions, waiting to be applied. */
+  private readonly pointerLook = { x: 0, y: 0 };
+  private lookPointerId: number | null = null;
+  private lookPointerLast = { x: 0, y: 0 };
   /** The preset actually running, which auto-degradation may lower. */
   private effectiveQuality: QualityLevel = 'medium';
   private slowFrames = 0;
@@ -796,6 +800,9 @@ export class Game {
     for (const [id, pad] of this.touchPads) {
       const visible = active.has(id);
       pad.setVisible(visible);
+      // The shared camera of a local two-player match frames both players; a
+      // swing has nothing to do there, so the zone is off rather than dead.
+      pad.setLookEnabled(this.mode !== 'localTwoPlayer');
       if (visible) {
         const slot = slots.find((entry) => entry.controller.deviceId === id);
         if (slot) {
@@ -1290,6 +1297,29 @@ export class Game {
     this.markers.setEnabled(level !== 'low');
   }
 
+  /**
+   * Collects this frame's camera swing and applies it.
+   *
+   * Two sources, one destination: a finger dragged across the middle of the
+   * screen, and — on a desktop — the mouse dragged across the canvas. The
+   * controllers only report how far they were dragged; deciding what that
+   * means for the view is the camera's business, not theirs.
+   */
+  private applyLookInput(): void {
+    let x = this.pointerLook.x;
+    let y = this.pointerLook.y;
+    this.pointerLook.x = 0;
+    this.pointerLook.y = 0;
+
+    for (const pad of this.touchPads.values()) {
+      const delta = pad.consumeLook();
+      x += delta.x;
+      y += delta.y;
+    }
+
+    if (x !== 0 || y !== 0) this.soloCamera.look(x, y);
+  }
+
   private refreshRosterVisuals(): void {
     this.quality.setDynamicCasters(this.views.shadowCasters);
     this.markers.setPlayers(this.views.playerIds);
@@ -1364,6 +1394,7 @@ export class Game {
     if (this.mode === 'localTwoPlayer') {
       this.sharedCamera.update(this.cameraFocus(), dt);
     } else {
+      this.applyLookInput();
       const local = this.localPlayer();
       if (local) this.soloCamera.update(local.position, state.ball.position, local.team, dt);
     }
@@ -1572,6 +1603,30 @@ export class Game {
     document.addEventListener('gesturestart', onGesture);
     document.addEventListener('dblclick', onGesture);
 
+    // Mouse drag on the pitch swings the view, the same way a finger does on
+    // the middle of a phone screen. The canvas has nothing else to click.
+    const onLookDown = (event: PointerEvent) => {
+      if (event.pointerType === 'touch' || this.lookPointerId !== null) return;
+      if (this.phase !== 'playing' || this.mode === 'localTwoPlayer') return;
+      this.lookPointerId = event.pointerId;
+      this.lookPointerLast = { x: event.clientX, y: event.clientY };
+      this.canvas.setPointerCapture(event.pointerId);
+    };
+    const onLookMove = (event: PointerEvent) => {
+      if (this.lookPointerId !== event.pointerId) return;
+      this.pointerLook.x += (event.clientX - this.lookPointerLast.x) / (window.innerWidth || 1);
+      this.pointerLook.y += (event.clientY - this.lookPointerLast.y) / (window.innerHeight || 1);
+      this.lookPointerLast = { x: event.clientX, y: event.clientY };
+    };
+    const onLookUp = (event: PointerEvent) => {
+      if (this.lookPointerId !== event.pointerId) return;
+      this.lookPointerId = null;
+    };
+    this.canvas.addEventListener('pointerdown', onLookDown);
+    this.canvas.addEventListener('pointermove', onLookMove);
+    this.canvas.addEventListener('pointerup', onLookUp);
+    this.canvas.addEventListener('pointercancel', onLookUp);
+
     const unsubscribeDisconnect = this.devices.events.on('gamepadDisconnected', () => {
       if (this.phase === 'lobby') this.renderLobby('בקר התנתק.');
     });
@@ -1588,6 +1643,10 @@ export class Game {
       this.canvas.removeEventListener('contextmenu', onContextMenu);
       document.removeEventListener('gesturestart', onGesture);
       document.removeEventListener('dblclick', onGesture);
+      this.canvas.removeEventListener('pointerdown', onLookDown);
+      this.canvas.removeEventListener('pointermove', onLookMove);
+      this.canvas.removeEventListener('pointerup', onLookUp);
+      this.canvas.removeEventListener('pointercancel', onLookUp);
       unsubscribeDisconnect();
       unsubscribeConnect();
     });

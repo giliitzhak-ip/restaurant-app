@@ -434,12 +434,17 @@ export class MatchEngine {
     player.verticalAim = clamp(command.verticalAim, -1, 1);
     player.spin = clamp(command.spin, -1, 1);
     player.chipRequested = command.chipRequested;
-    // The keyboard has no vertical axis, so the old toggle survives as a way
-    // to jump between along-the-ground and a lofted ball.
-    if (command.lobToggle) {
-      player.lofted = !player.lofted;
-      player.verticalAim = player.lofted ? 0.65 : -0.6;
-    }
+    /*
+     * `lofted` is a readout, not a switch.
+     *
+     * It used to be toggled here, and then overwritten on the very next tick
+     * by the controller's own aim value — so the flat/high control did
+     * nothing at all and there was no way to deliberately put the ball in the
+     * air. The toggle now lives where the aim lives, in the controllers, and
+     * this line only reports which half of the range they left it in, for the
+     * HUD, the animation and the aim marker.
+     */
+    player.lofted = player.verticalAim > 0.25;
     player.passCooldown = Math.max(0, player.passCooldown - dt);
     player.juggleCooldown = Math.max(0, player.juggleCooldown - dt);
 

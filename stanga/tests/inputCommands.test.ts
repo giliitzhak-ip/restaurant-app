@@ -243,7 +243,7 @@ describe('AI controller as a PlayerController', () => {
     expect(command.tacklePressed).toBe(false);
   });
 
-  it('plays differently on different seeds but replays identically on the same one', () => {
+  it('replays identically on the same seed, so a server can reproduce a match', () => {
     const run = (seed: number) => {
       const state = liveMatch();
       state.ball.position = { x: 1, y: 0.11, z: 1 };
@@ -251,12 +251,42 @@ describe('AI controller as a PlayerController', () => {
       const path: number[] = [];
       for (let tick = 1; tick <= 120; tick += 1) {
         const command = ai.poll('away-1', tick, contextFor(state, 'away-1'));
-        path.push(Math.round(command.moveX * 1000));
+        path.push(Math.round(command.moveX * 1000), Math.round(command.aimX * 1000));
       }
       return path.join(',');
     };
-    expect(run(1)).not.toBe(run(999));
-    // A server will need the same seed to produce the same match.
     expect(run(5)).toBe(run(5));
+    expect(run(1)).not.toBe(run(999));
+  });
+
+  it('runs at the ball the same way whatever the seed, and aims differently', () => {
+    /*
+     * The seed is personality, not pathfinding.
+     *
+     * Running at a loose ball is the same straight line for everybody — the
+     * variation belongs in where the shot is aimed and how hard it is hit. It
+     * used to show up in the movement too, but only because the AI was
+     * standing off the ball on a wandering defensive line instead of going for
+     * it, which is the bug this pins shut.
+     */
+    const run = (seed: number) => {
+      const state = liveMatch();
+      state.ball.position = { x: 1, y: 0.11, z: 1 };
+      const ai = new AIController('away-1', 'away', 'normal', new Rng(seed));
+      const moves: number[] = [];
+      const aims: number[] = [];
+      for (let tick = 1; tick <= 120; tick += 1) {
+        const command = ai.poll('away-1', tick, contextFor(state, 'away-1'));
+        moves.push(Math.round(command.moveX * 1000));
+        aims.push(Math.round(command.aimX * 1000));
+      }
+      return { state: ai.currentState, moves: moves.join(','), aims: aims.join(',') };
+    };
+
+    const a = run(1);
+    const b = run(999);
+    expect(a.state).toBe('ChaseBall');
+    expect(a.moves).toBe(b.moves);
+    expect(a.aims).not.toBe(b.aims);
   });
 });

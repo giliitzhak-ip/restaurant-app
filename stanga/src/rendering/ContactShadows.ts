@@ -7,10 +7,15 @@
  * is off, and they still read correctly on GPUs or drivers where a depth-based
  * shadow map is unavailable.
  *
- * They are deliberately opaque and tinted towards the asphalt rather than
- * alpha-blended: a blended overlay is at the mercy of the driver's transparency
- * sorting, and a missing shadow is far worse than a slightly firmer one.
+ * They multiply the ground rather than painting over it. A shadow that paints
+ * an absolute colour has to guess how bright the lit pitch will end up, and
+ * that guess is wrong the moment anything about the lighting changes: these
+ * were pure black discs for a while, and then the right grey on one quality
+ * preset and black holes on another, because the exposure differs between
+ * them. Multiplying cannot be wrong that way — whatever is underneath gets
+ * darker, and white means no shadow at all.
  */
+import { Constants } from '@babylonjs/core/Engines/constants';
 import { Color3 } from '@babylonjs/core/Maths/math.color';
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
 import type { Mesh } from '@babylonjs/core/Meshes/mesh';
@@ -20,12 +25,12 @@ import type { Scene } from '@babylonjs/core/scene';
 import { clamp } from '../core/math';
 import type { Vec3 } from '../core/math';
 
-/** Height at which a contact shadow has faded into the ground colour. */
+/** Height at which a contact shadow has faded away entirely. */
 const FADE_HEIGHT = 3;
-/** Darkest tint, directly under a grounded object. */
-const SHADOW_COLOR = Color3.FromHexString('#212329');
-/** The colour the disc fades towards: the lit asphalt around it. */
-const GROUND_COLOR = Color3.FromHexString('#3c3e45');
+/** Multiplier directly under a grounded object: how much darker the ground goes. */
+const SHADOW_COLOR = Color3.FromHexString('#6f747e');
+/** No shadow. White multiplies to nothing. */
+const CLEAR_COLOR = Color3.White();
 
 interface Blob {
   mesh: Mesh;
@@ -50,10 +55,21 @@ export class ContactShadows {
 
   create(name: string, radius: number, strength = 1): number {
     const material = new StandardMaterial(`contactShadowMat-${name}`, this.scene);
+    /*
+     * With lighting disabled, Babylon renders `emissiveColor` and ignores
+     * `diffuseColor` entirely — so the tint has to be written there. It was
+     * being written to the diffuse, which left every one of these discs pure
+     * black: unnoticeable on a dark pitch, and a hole punched in a bright one.
+     */
     material.disableLighting = true;
-    material.diffuseColor = SHADOW_COLOR.clone();
+    material.diffuseColor = Color3.Black();
     material.specularColor = Color3.Black();
-    material.emissiveColor = Color3.Black();
+    material.emissiveColor = SHADOW_COLOR.clone();
+    // Multiply: the disc scales what is already on screen, so it darkens the
+    // pitch by the same amount whatever the exposure of the preset in use.
+    material.alphaMode = Constants.ALPHA_MULTIPLY;
+    material.alpha = 0.999;
+    material.backFaceCulling = false;
     // Same trick the pitch markings use to stay above the asphalt.
     material.zOffset = -2;
 
@@ -98,7 +114,7 @@ export class ContactShadows {
       0.02,
       position.z - this.offsetZ * height,
     );
-    Color3.LerpToRef(GROUND_COLOR, SHADOW_COLOR, fade, blob.material.diffuseColor);
+    Color3.LerpToRef(CLEAR_COLOR, SHADOW_COLOR, fade, blob.material.emissiveColor);
   }
 
   setEnabled(enabled: boolean): void {
