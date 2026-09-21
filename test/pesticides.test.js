@@ -30,6 +30,12 @@ async function page(fn){
 }
 const startJ=p=>p.evaluate(async pl=>{await A.newJ();cur.client.name='מסעדת הגפן';
   cur.place=Object.assign(cur.place,pl);cur.step=3;touch();render()},PLACE);
+/* בחירת חומר דרך שדה החיפוש, כפי שמשתמש עושה בפועל */
+const pick=async(p,id)=>{
+  const name=SEED.products.find(x=>x.id===id).nameHe;
+  await p.fill('#pq',name);await p.waitForTimeout(320);
+  await p.click(`.sugitem[data-p="${id}"]`);await p.waitForTimeout(250);
+};
 
 (async()=>{
 B=await chromium.launch({executablePath:EXE,args:['--no-sandbox']});
@@ -111,7 +117,7 @@ await page(async p=>{
 console.log('\n3. אין מינונים ומגבלות ריסוס במסך');
 await page(async p=>{
   await startJ(p);
-  await p.click('[data-a="pickProd"][data-p="draker-10-2"]');
+  await pick(p,'draker-10-2');
   await p.evaluate(()=>{A.setPest({i:0,val:'תיקנים'})});
   const t=await p.textContent('#app');
   ok('לא מוצגת בחירת סוג משטח',!t.includes('סוג המשטח'));
@@ -127,7 +133,7 @@ await page(async p=>{
 console.log('\n4. דרגון – כניסה מחדש והוראת 24 השעות למיטה');
 await page(async p=>{
   await startJ(p);
-  await p.click('[data-a="pickProd"][data-p="dragon"]');
+  await pick(p,'dragon');
   await p.evaluate(()=>{A.setPest({i:0,val:'תיקנים'})});
   const re1=await p.evaluate(()=>reentryFor(cur));
   eq('כניסה מחדש שעה',re1.minutes,60);
@@ -154,7 +160,7 @@ await page(async p=>{
 console.log('\n5. פסטיון – בלי זמן כניסה מחדש של ריסוס');
 await page(async p=>{
   await startJ(p);
-  await p.click('[data-a="pickProd"][data-p="pastion-plus-pasta"]');
+  await pick(p,'pastion-plus-pasta');
   await p.evaluate(()=>{A.setPest({i:0,val:'עכברים'})});
   const r=await p.evaluate(()=>({re:reentryFor(cur),t:prodById('pastion-plus-pasta').reentry}));
   eq('אין זמן כניסה מספרי',r.re.minutes,0);
@@ -164,58 +170,173 @@ await page(async p=>{
   ok('מוצגות תיבות האכלה',(await p.textContent('#app')).includes('תיבות האכלה שהוצבו'));
 });
 
-console.log('\n5א. חיפוש ברשימה המלאה');
+console.log('\n5א. שדה חיפוש חומר עם השלמה אוטומטית');
 await page(async p=>{
   await startJ(p);
-  ok('תיבת חיפוש קיימת',!!(await p.$('#pq')));
-  const cards=(await p.$$('.pcard')).length;
-  ok('לא כל 151 מוצגים בבת אחת',cards<60,'cards='+cards);
-  const okc=(await p.$$('.pcard.ok')).length;
-  ok('שלושת המאומתים מוצגים תמיד',okc===3,'ok='+okc);
-  await p.evaluate(()=>{A._pq='סנו';render()});
-  const hits=await p.evaluate(()=>{
-    const shown=[...document.querySelectorAll('.pcard')].map(el=>el.dataset.p);
-    return shown.filter(id=>{const x=prodById(id);
-      if(!x||x.verificationStatus==='verified')return false;/* המאומתים מוצגים תמיד */
-      const q='סנו';
-      return !(x.nameHe.includes(q)||(x.manufacturer||'').includes(q)||
-               ingText(x).includes(q)||(x.targetPests||[]).join(' ').includes(q));
-    });
-  });
-  eq('כל תוצאה תואמת לחיפוש (שם, חומר פעיל, מזיק או בעל רישום)',hits,[]);
-  const cnt=await p.evaluate(()=>document.querySelectorAll('.pcard').length);
-  ok('החיפוש מצמצם את הרשימה',cnt>0&&cnt<SEED.products.length,'cards='+cnt);
-  await p.evaluate(()=>{A._pq='fipronil';render()});
-  const n2=await p.evaluate(()=>document.querySelectorAll('.pcard .pmain b').length);
-  ok('חיפוש לפי חומר פעיל עובד',n2>0);
-  await p.evaluate(()=>{A._pq='';A._pcat='rodents';render()});
-  const c2=(await p.$$('.pcard')).length;
-  ok('סינון לפי קטגוריה עובד',c2>0&&c2<40,'cards='+c2);
+  ok('מוצג שדה חיפוש נקי',!!(await p.$('#pq')));
+  eq('הכיתוב בשדה',await p.evaluate(()=>document.getElementById('pq').placeholder),'הקלד שם חומר…');
+  eq('לפני הקלדה אין רשימת חומרים',(await p.$$('.sugitem')).length,0);
+  eq('אין רשימה פתוחה של כל החומרים',(await p.$$('.pcard')).length,0);
+
+  const type=async q=>{await p.fill('#pq',q);await p.waitForTimeout(320);
+    return p.evaluate(()=>[...document.querySelectorAll('.sugitem .smain b')].map(x=>x.textContent));};
+
+  let r=await type('ד');
+  ok('הקלדת "ד" מציגה את דרגון ודרקר',r.includes('דרגון')&&r.includes('דרקר 10.2'),r.join(','));
+  r=await type('דר');
+  ok('הקלדת "דר" מציגה את שניהם',r.includes('דרגון')&&r.includes('דרקר 10.2'),r.join(','));
+  r=await type('דרג');
+  eq('הקלדת "דרג" – דרגון ראשון',r[0],'דרגון');
+  r=await type('דרק');
+  eq('הקלדת "דרק" – דרקר ראשון',r[0],'דרקר 10.2');
+  r=await type('פס');
+  ok('הקלדת "פס" מציגה את פסטיון',r.includes('פסטיון פלוס פסטה'),r.join(','));
+  r=await type('בל');
+  ok('הקלדת "בל" מציגה את בלוקיון',r.includes('בלוקיון פלוס'),r.join(','));
+
+  r=await type('dragon');
+  eq('חיפוש באנגלית מוצא את דרגון',r[0],'דרגון');
+  r=await type('DRAKER');
+  eq('אותיות גדולות באנגלית',r[0],'דרקר 10.2');
+  r=await type('Bifenthrin');
+  eq('חיפוש לפי חומר פעיל באנגלית',r[0],'דרגון');
+  r=await type('ביפנתרין');
+  eq('חיפוש לפי חומר פעיל בעברית',r[0],'דרגון');
+  r=await type('Pestion Plus');
+  eq('שם חלופי מלא',r[0],'פסטיון פלוס פסטה');
+  r=await type('דרקר 10.2');
+  eq('התאמה מלאה',r[0],'דרקר 10.2');
+  r=await type('דרקר-10.2');
+  eq('מקפים ונקודות אינם משפיעים',r[0],'דרקר 10.2');
+  r=await type('  דרקר   10.2  ');
+  eq('רווחים כפולים אינם משפיעים',r[0],'דרקר 10.2');
+  r=await type('פסטיון פלוס"');
+  eq('גרשיים אינם משפיעים',r[0],'פסטיון פלוס פסטה');
+
+  await p.fill('#pq','דרג');await p.waitForTimeout(320);
+  eq('האותיות שהוקלדו מודגשות',
+     await p.evaluate(()=>document.querySelector('.sugitem mark.hl').textContent),'דרג');
+  const card=await p.textContent('.sugitem');
+  ok('הכרטיס מציג רישום ותוקף',card.includes('640')&&card.includes('2030'),card);
+
+  await p.fill('#pq','א');await p.waitForTimeout(320);
+  const shown=(await p.$$('.sugitem')).length;
+  ok('עד שמונה הצעות',shown<=8&&shown>0,'shown='+shown);
+  ok('הודעה על תוצאות נוספות',(await p.textContent('#app')).includes('נמצאו תוצאות נוספות'));
+
+  await p.fill('#pq','זזזזז');await p.waitForTimeout(320);
+  ok('אין תוצאות – הודעה מתאימה',(await p.textContent('#app')).includes('לא נמצא חומר מתאים'));
+  ok('קיים כפתור בקשה להוספת חומר',!!(await p.$('[data-a="reqProd"]')));
+  await p.click('[data-a="reqProd"]');
+  const req=await p.evaluate(()=>({list:S.prodRequests,total:PRODUCTS().length}));
+  ok('הבקשה נשמרה בלבד ולא הוסיפה חומר',
+     req.list.length===1&&req.list[0].q==='זזזזז'&&req.list[0].status==='ממתין לבדיקה'&&req.total===151,
+     JSON.stringify(req));
+});
+
+console.log('\n5ב. מקלדת ובחירה');
+await page(async p=>{
+  await startJ(p);
+  await p.fill('#pq','דר');await p.waitForTimeout(320);
+  await p.press('#pq','ArrowDown');
+  eq('חץ למטה מסמן תוצאה',await p.evaluate(()=>sugState.active),0);
+  await p.press('#pq','ArrowDown');
+  eq('חץ נוסף מתקדם',await p.evaluate(()=>sugState.active),1);
+  await p.press('#pq','ArrowUp');
+  eq('חץ למעלה חוזר',await p.evaluate(()=>sugState.active),0);
+  eq('ARIA מסמן את התוצאה הפעילה',
+     await p.evaluate(()=>document.getElementById('pq').getAttribute('aria-activedescendant')),'sug-0');
+  await p.press('#pq','Enter');
+  await p.waitForTimeout(250);
+  eq('Enter בוחר את התוצאה',await p.evaluate(()=>cur.apps[0].pid),'dragon');
+  eq('הרשימה נסגרה',(await p.$$('.sugitem')).length,0);
+  ok('החומר מוצג בשדה עם כפתור הסרה',!!(await p.$('.selchip'))&&!!(await p.$('.xbtn')));
+  ok('מוצג שדה בחירת מזיק',(await p.textContent('#app')).includes('בחר מזיק'));
 });
 await page(async p=>{
   await startJ(p);
+  await p.fill('#pq','דר');await p.waitForTimeout(320);
+  await p.press('#pq','Escape');
+  await p.waitForTimeout(120);
+  eq('Escape סוגר את ההצעות',(await p.$$('.sugitem')).length,0);
+});
+
+console.log('\n5ג. טעינת נתוני התווית והחלפת חומר');
+await page(async p=>{
+  await startJ(p);
+  await p.fill('#pq','דרגון');await p.waitForTimeout(320);
+  await p.click('.sugitem');await p.waitForTimeout(250);
+  const r=await p.evaluate(()=>({pid:cur.apps[0].pid,active:cur.apps[0].active,
+    reg:cur.apps[0].registrationNumber,pests:(labelOf(cur.apps[0])||{}).targetPests,
+    re:reentryFor(cur).minutes,batch:cur.apps[0].batch,exp:cur.apps[0].pkgExpiry,
+    used:cur.apps[0].amountUsed}));
+  eq('נטענו נתוני התווית הנכונים',[r.pid,r.active,r.reg,r.re],['dragon','Bifenthrin','640',60]);
+  ok('נטענו המזיקים המותרים',r.pests.includes('פשפש המיטה'));
+  eq('נתוני ביצוע לא מולאו',[r.batch,r.exp,r.used],['','','']);
+  await p.evaluate(()=>{cur.apps[0].pest='תיקנים';touch();
+    const a=cur.apps[0],old=labelOf(a);
+    ['pid','product','active','conc','registrationNumber','surface','dosageId','pest'].forEach(k=>a[k]='');
+    (old&&old.conditionalInstructions||[]).forEach(c=>{if(c.questionKey)delete a[c.questionKey]});
+    a.labelSnapshot=null;clearExecution(a);
+    delete cur.verify['product:'+a.id];vSync(cur);touch();render()});
+  await p.fill('#pq','פסטיון');await p.waitForTimeout(320);
+  await p.click('.sugitem');await p.waitForTimeout(250);
+  const r2=await p.evaluate(()=>({pid:cur.apps[0].pid,active:cur.apps[0].active,
+    pest:cur.apps[0].pest,re:reentryFor(cur).minutes,
+    groups:warningGroups(cur).map(g=>g.name),
+    txt:document.getElementById('app').textContent}));
+  eq('נטען החומר החדש',[r2.pid,r2.active],['pastion-plus-pasta','Brodifacoum, Denatonium Benzoate']);
+  eq('המזיק של החומר הקודם נוקה',r2.pest,'');
+  eq('זמן הכניסה של דרגון נמחק',r2.re,0);
+  eq('אין ערבוב אזהרות בין חומרים',r2.groups,['פסטיון פלוס פסטה']);
+  ok('אזהרה ייחודית לדרגון אינה מוצגת',!r2.txt.includes('עלול להיות קטלני בבליעה'));
+});
+
+console.log('\n5ד. מזיק מהתווית בלבד');
+await page(async p=>{
+  await startJ(p);
+  await p.fill('#pq','פסטיון');await p.waitForTimeout(320);
+  await p.click('.sugitem');await p.waitForTimeout(250);
+  const chips=await p.evaluate(()=>[...document.querySelectorAll('[data-a="setPest"]')].map(x=>x.dataset.val));
+  eq('רק המזיקים שבתווית',chips,['עכברים','חולדות']);
+  await p.evaluate(()=>{A.setPest({i:0,val:'תיקנים'})});
+  eq('מזיק שאינו בתווית אינו נבחר',await p.evaluate(()=>cur.apps[0].pest),'');
+  await p.evaluate(()=>{A.setPest({i:0,val:'חולדות'})});
+  eq('מזיק מהתווית נבחר',await p.evaluate(()=>cur.apps[0].pest),'חולדות');
+});
+
+console.log('\n5ה. תכשיר לא מאומת אינו ניתן לבחירה');
+await page(async p=>{
+  await startJ(p);
+  const name=await p.evaluate(()=>PRODUCTS().find(x=>x.verificationStatus==='needs_review').nameHe);
+  await p.fill('#pq',name);await p.waitForTimeout(320);
+  const r=await p.evaluate(n=>{
+    const el=[...document.querySelectorAll('.sugitem')].find(x=>x.textContent.includes(n));
+    return {found:!!el,blocked:el&&el.classList.contains('blocked'),
+      pickable:!!(el&&el.dataset.a),txt:el?el.textContent:''};
+  },name);
+  ok('התכשיר מופיע בחיפוש',r.found);
+  ok('מוצג כחסום ואינו ניתן לבחירה',r.blocked&&!r.pickable);
+  ok('מוצג "לא ניתן לשימוש – ממתין לאימות"',r.txt.includes('לא ניתן לשימוש'));
   const id=await p.evaluate(()=>PRODUCTS().find(x=>x.verificationStatus==='needs_review').id);
   await p.evaluate(i=>{A.pickProd({p:i,i:0})},id);
-  const r=await p.evaluate(()=>({pid:cur.apps[0].pid,prod:cur.apps[0].product,
-    pests:(labelOf(cur.apps[0])||{}).targetPests||[]}));
-  ok('אפשר לבחור תכשיר מהרשימה',r.pid===id&&!!r.prod);
-  ok('רשימת המזיקים נטענת מהרשימה',r.pests.length>0);
-  const t=await p.textContent('#app');
-  ok('מוצגת אזהרה שהתכשיר לא אומת',t.includes('לא אומת מול תווית'));
-  ok('מוצג שאין אזהרות שמורות',t.includes('לא נשמרו במערכת אזהרות לתכשיר הזה'));
-  eq('אין זמן כניסה מחדש',await p.evaluate(()=>reentryFor(cur).minutes),0);
+  eq('גם קריאה ישירה אינה בוחרת אותו',await p.evaluate(()=>cur.apps[0].pid),'');
 });
 
 console.log('\n6. בלוקיון חסום');
 await page(async p=>{
   await startJ(p);
-  await p.evaluate(()=>{A._pq='בלוקיון';render()});
+  await p.fill('#pq','בלוקיון');await p.waitForTimeout(320);
   const r=await p.evaluate(()=>({blocked:prodBlocked(prodById('blokion-plus')),
     reason:prodBlockReason(prodById('blokion-plus')),
-    disabled:!!document.querySelector('[data-p="blokion-plus"][disabled]')}));
+    shown:[...document.querySelectorAll('.sugitem .smain b')].map(x=>x.textContent),
+    locked:!!document.querySelector('.sugitem.blocked'),
+    noPick:!document.querySelector('.sugitem[data-a="pickProd"]')}));
   ok('בלוקיון מסומן כחסום',r.blocked&&r.reason.includes('ממתין לאימות'));
-  ok('הכפתור מושבת במסך',r.disabled);
-  await p.evaluate(()=>{A.pickProd({p:'blokion-plus',i:0})});
+  ok('בלוקיון מופיע בתוצאות החיפוש',r.shown.includes('בלוקיון פלוס'),r.shown.join(','));
+  ok('מוצג עם מנעול ואינו ניתן לבחירה',r.locked&&r.noPick);
+  ok('מוצג הכיתוב "לא ניתן לשימוש"',(await p.textContent('.sugitem')).includes('לא ניתן לשימוש'));
+  await p.click('.sugitem',{force:true});await p.waitForTimeout(150);
   eq('לחיצה עליו אינה בוחרת אותו',await p.evaluate(()=>cur.apps[0].pid),'');
   eq('תבנית בלוקיון חסומה',await p.evaluate(()=>tplState(tplById('t-blokion'))),'blocked');
   await p.evaluate(()=>{A.useTplHere({p:'t-blokion'})});
@@ -225,7 +346,7 @@ await page(async p=>{
 console.log('\n7. תוקף רישום שפג חוסם יומן חדש');
 await page(async p=>{
   await startJ(p);
-  await p.click('[data-a="pickProd"][data-p="dragon"]');
+  await pick(p,'dragon');
   const r=await p.evaluate(()=>{
     prodById('dragon').registrationExpiry='2020';
     return {blocked:prodBlocked(prodById('dragon')),
@@ -241,7 +362,7 @@ await page(async p=>{
 console.log('\n8. שדות ביצוע – הזנה ידנית בלבד');
 await page(async p=>{
   await startJ(p);
-  await p.click('[data-a="pickProd"][data-p="dragon"]');
+  await pick(p,'dragon');
   const a=await p.evaluate(()=>cur.apps[0]);
   eq('אצווה, תפוגה וכמויות ריקות לאחר בחירת החומר',
      [a.batch,a.pkgExpiry,a.amountUsed,a.waterAmount,a.areas],['','','','','']);

@@ -69,7 +69,14 @@
         }
       ],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": [
+        "דרגון",
+        "DRAGON",
+        "Dragon",
+        "ביפנתרין",
+        "Bifenthrin"
+      ]
     },
     {
       "id": "draker-10-2",
@@ -140,7 +147,15 @@
       "verificationNote": "הנתונים הועתקו מתווית המוצר על ידי בעל הרישיון. קובץ התווית לא הורד ולא אומת אוטומטית על ידי המערכת (labelSha256 ריק). חובה לפעול לפי התווית העדכנית ולפי תנאי רישיון המדביר.",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": [
+        "דרקר",
+        "דרקר 10.2",
+        "DRAKER",
+        "Draker 10.2",
+        "סיפרמטרין",
+        "Cypermethrin"
+      ]
     },
     {
       "id": "pastion-plus-pasta",
@@ -201,7 +216,16 @@
       "verificationNote": "הנתונים הועתקו מתווית המוצר על ידי בעל הרישיון. קובץ התווית לא הורד ולא אומת אוטומטית על ידי המערכת (labelSha256 ריק). חובה לפעול לפי התווית העדכנית ולפי תנאי רישיון המדביר.",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": true
+      "stationTracking": true,
+      "searchAliases": [
+        "פסטיון",
+        "פסטיון פלוס",
+        "פסטיון פלוס פסטה",
+        "Pestion",
+        "Pestion Plus",
+        "ברודיפקום",
+        "Brodifacoum"
+      ]
     },
     {
       "id": "blokion-plus",
@@ -237,7 +261,15 @@
       "verificationNote": "לא אותרה תווית רשמית בתוקף עבור מוצר זה. גישת הרשת לאתרי המשרד להגנת הסביבה חסומה בסביבת הפיתוח, ולכן לא בוצע חיפוש במאגר הרשמי. אין להשתמש במוצר ביומן טיפול עד לאיתור תווית רשמית ועדכנית ואימות כל הנתונים מולה. אין להעתיק לכאן נתונים מפסטיון פלוס או מכל תכשיר אחר.",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": true
+      "stationTracking": true,
+      "searchAliases": [
+        "בלוקיון",
+        "בלוקיון פלוס",
+        "Blockion",
+        "Blockion Plus",
+        "ברודיפקום",
+        "Brodifacoum"
+      ]
     },
     {
       "id": "reg-deb3206484",
@@ -286,7 +318,8 @@
       "manufacturer": "חברת רימי כימיקלים בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-f0f9f33fc5",
@@ -334,7 +367,8 @@
       "manufacturer": "",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-96fcf97378",
@@ -383,7 +417,8 @@
       "manufacturer": "תפזול תעשיות כימיות בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-ab69f3cddc",
@@ -427,7 +462,8 @@
       "manufacturer": "דור.קי פיתוח ושיווק בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-b21c57100a",
@@ -472,7 +508,8 @@
       "manufacturer": "דורקי פיתוח ושיווק בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-e4cee46fcb",
@@ -522,7 +559,8 @@
       "manufacturer": "אס.סי. גונסון ישראל בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-d35a34e0c9",
@@ -567,7 +605,8 @@
       "manufacturer": "תפזול תעשיות כימיות בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": true
+      "stationTracking": true,
+      "searchAliases": []
     },
     {
       "id": "reg-c85c8c899f",
@@ -612,7 +651,8 @@
       "manufacturer": "תפזול תעשיות כימיות בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": true
+      "stationTracking": true,
+      "searchAliases": []
     },
     {
       "id": "reg-b23dcb9466",
@@ -666,7 +706,8 @@
       "manufacturer": "סנו מפעלי ברונוס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-783753e0e9",
@@ -710,7 +751,8 @@
       "manufacturer": "גורי ע.ע.ע. בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-586fed5b4b",
@@ -754,7 +796,8 @@
       "manufacturer": "אר.פי.סי החברה להדברה - נס הרים",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-b2e5580dd3",
@@ -799,7 +842,8 @@
       "manufacturer": "אר.פי.סי החברה להדברה - נס הרים",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": true
+      "stationTracking": true,
+      "searchAliases": []
     },
     {
       "id": "reg-554da9282a",
@@ -843,7 +887,8 @@
       "manufacturer": "תפזול תעשיות כימיות בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-045b9c17a3",
@@ -895,7 +940,8 @@
       "manufacturer": "תפזול תעשיות כימיות בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-6980d78ce6",
@@ -939,7 +985,8 @@
       "manufacturer": "זרעים גדרה בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-13b1e10ddf",
@@ -985,7 +1032,8 @@
       "manufacturer": "סאסאטק אגש\"ח בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-bb6dd03a4f",
@@ -1039,7 +1087,8 @@
       "manufacturer": "סנו מפעלי ברונוס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-f877db2a2f",
@@ -1088,7 +1137,8 @@
       "manufacturer": "גדות אגרו בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-9aeeb0311d",
@@ -1133,7 +1183,8 @@
       "manufacturer": "אר.פי.סי החברה להדברה - נס הרים",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-b0bb47fb32",
@@ -1186,7 +1237,8 @@
       "manufacturer": "חברת רימי כימיקלים בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-506f9961d4",
@@ -1234,7 +1286,8 @@
       "manufacturer": "לידור אלמנטס בע\"מ- ירושלים",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-5a9db11b62",
@@ -1288,7 +1341,8 @@
       "manufacturer": "סאסאטק אגש\"ח בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-aa1c7f56ee",
@@ -1334,7 +1388,8 @@
       "manufacturer": "אלמנדה ישראל בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-4cdea975bf",
@@ -1378,7 +1433,8 @@
       "manufacturer": "סאסאטק אגש\"ח בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-3f6243d3a5",
@@ -1422,7 +1478,8 @@
       "manufacturer": "סאסאטק אגש\"ח בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-f2934ea63f",
@@ -1466,7 +1523,8 @@
       "manufacturer": "אר.פי.סי החברה להדברה - נס הרים",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-f971b0ebe9",
@@ -1510,7 +1568,8 @@
       "manufacturer": "סנו מפעלי ברונוס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-7ff411a141",
@@ -1554,7 +1613,8 @@
       "manufacturer": "אר.פי.סי החברה להדברה - נס הרים",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-e3e17340c5",
@@ -1611,7 +1671,8 @@
       "manufacturer": "סאסאטק אגש\"ח בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-a8e28cee6f",
@@ -1655,7 +1716,8 @@
       "manufacturer": "א.ע יזמות ופרוייקטים",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-0af370c67b",
@@ -1699,7 +1761,8 @@
       "manufacturer": "א.ע יזמות ופרוייקטים",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-5b41cc4292",
@@ -1744,7 +1807,8 @@
       "manufacturer": "חברת רימי כימיקלים בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": true
+      "stationTracking": true,
+      "searchAliases": []
     },
     {
       "id": "reg-67b7901b53",
@@ -1790,7 +1854,8 @@
       "manufacturer": "חברת רימי כימיקלים בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-87668251be",
@@ -1835,7 +1900,8 @@
       "manufacturer": "תפזול תעשיות כימיות בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-7f09501141",
@@ -1879,7 +1945,8 @@
       "manufacturer": "סנו מפעלי ברונוס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-48471d8de1",
@@ -1923,7 +1990,8 @@
       "manufacturer": "סאסאטק אגש\"ח בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-59baeaffa9",
@@ -1976,7 +2044,8 @@
       "manufacturer": "סיקמקס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-045445ffa1",
@@ -2020,7 +2089,8 @@
       "manufacturer": "אקו רד (כמיארט) בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-800723f724",
@@ -2064,7 +2134,8 @@
       "manufacturer": "א.ע יזמות ופרוייקטים",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-35687e6b32",
@@ -2108,7 +2179,8 @@
       "manufacturer": "גורי ע.ע.ע. בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-3b32a9ce75",
@@ -2161,7 +2233,8 @@
       "manufacturer": "נורון חברה לייבוא ולייצור בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-143629e9c7",
@@ -2206,7 +2279,8 @@
       "manufacturer": "חברת רימי כימיקלים בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-c739cc1d11",
@@ -2251,7 +2325,8 @@
       "manufacturer": "תפזול תעשיות כימיות בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": true
+      "stationTracking": true,
+      "searchAliases": []
     },
     {
       "id": "reg-d3c83f6305",
@@ -2299,7 +2374,8 @@
       "manufacturer": "חברת רימי כימיקלים בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-9495635383",
@@ -2344,7 +2420,8 @@
       "manufacturer": "חברת רימי כימיקלים בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": true
+      "stationTracking": true,
+      "searchAliases": []
     },
     {
       "id": "reg-f78105eae9",
@@ -2402,7 +2479,8 @@
       "manufacturer": "סאסאטק אגש\"ח בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-5aa6221fce",
@@ -2446,7 +2524,8 @@
       "manufacturer": "אפקטיבי הדברות",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-f4606bec20",
@@ -2490,7 +2569,8 @@
       "manufacturer": "אפקטיבי הדברות",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-739ed032f6",
@@ -2539,7 +2619,8 @@
       "manufacturer": "אר.פי.סי החברה להדברה - נס הרים",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-1f0bd0c599",
@@ -2587,7 +2668,8 @@
       "manufacturer": "אר.פי.סי החברה להדברה - נס הרים",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-cdfdf3e1cf",
@@ -2651,7 +2733,8 @@
       "manufacturer": "סנו מפעלי ברונוס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-e11f0b6911",
@@ -2697,7 +2780,8 @@
       "manufacturer": "חברת רימי כימיקלים בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-ec55a69938",
@@ -2741,7 +2825,8 @@
       "manufacturer": "סנו מפעלי ברונוס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-c5cee394b2",
@@ -2795,7 +2880,8 @@
       "manufacturer": "סאסאטק אגש\"ח בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-878be49fae",
@@ -2839,7 +2925,8 @@
       "manufacturer": "סנו מפעלי ברונוס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-6119dcc8c0",
@@ -2894,7 +2981,8 @@
       "manufacturer": "אס.סי. גונסון ישראל בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-2c90db3259",
@@ -2955,7 +3043,8 @@
       "manufacturer": "סאסאטק אגש\"ח בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-7692752388",
@@ -3003,7 +3092,8 @@
       "manufacturer": "דע קדם פרוייקטים (1987) בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-5fa1e3dc78",
@@ -3047,7 +3137,8 @@
       "manufacturer": "סיקמקס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-fe431e0a10",
@@ -3091,7 +3182,8 @@
       "manufacturer": "קומפלקס כימיקלים בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-d78f6b7a0f",
@@ -3138,7 +3230,8 @@
       "manufacturer": "תפזול תעשיות כימיות בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-86ad8a7faf",
@@ -3183,7 +3276,8 @@
       "manufacturer": "אדמה פתרונות לחקלאות בע\"מ-ארומה",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": true
+      "stationTracking": true,
+      "searchAliases": []
     },
     {
       "id": "reg-d452561f76",
@@ -3233,7 +3327,8 @@
       "manufacturer": "אדמה פתרונות לחקלאות בע\"מ-ארומה",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-128ceb689f",
@@ -3282,7 +3377,8 @@
       "manufacturer": "אדמה פתרונות לחקלאות בע\"מ-ארומה",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-5c8ca05bea",
@@ -3326,7 +3422,8 @@
       "manufacturer": "חברת רימי כימיקלים בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-0c87ac3a4e",
@@ -3378,7 +3475,8 @@
       "manufacturer": "חברת רימי כימיקלים בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-d57f033a40",
@@ -3427,7 +3525,8 @@
       "manufacturer": "סיקמקס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-1504df4462",
@@ -3472,7 +3571,8 @@
       "manufacturer": "אר.פי.סי החברה להדברה - נס הרים",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-47b6adc6d6",
@@ -3517,7 +3617,8 @@
       "manufacturer": "אלמנדה ישראל בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-4ffe6dcc60",
@@ -3562,7 +3663,8 @@
       "manufacturer": "תפזול תעשיות כימיות בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-78f0050d61",
@@ -3613,7 +3715,8 @@
       "manufacturer": "חברת רימי כימיקלים בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-a470b5483b",
@@ -3657,7 +3760,8 @@
       "manufacturer": "תפזול תעשיות כימיות בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-d25f63b1dd",
@@ -3705,7 +3809,8 @@
       "manufacturer": "חברת רימי כימיקלים בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-2bad6febc2",
@@ -3751,7 +3856,8 @@
       "manufacturer": "זרעים גדרה בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-fc8cc19a6d",
@@ -3795,7 +3901,8 @@
       "manufacturer": "גורי ע.ע.ע. בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-a80108d746",
@@ -3844,7 +3951,8 @@
       "manufacturer": "חברת רימי כימיקלים בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-4b81f79f04",
@@ -3888,7 +3996,8 @@
       "manufacturer": "חברת רימי כימיקלים בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-49d81cdc7f",
@@ -3932,7 +4041,8 @@
       "manufacturer": "זרעים גדרה בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-e0dcc37208",
@@ -3976,7 +4086,8 @@
       "manufacturer": "זרעים גדרה בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-6992ca5c22",
@@ -4020,7 +4131,8 @@
       "manufacturer": "סנו מפעלי ברונוס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-4a92b26590",
@@ -4067,7 +4179,8 @@
       "manufacturer": "חברת רימי כימיקלים בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-6c43b4a741",
@@ -4116,7 +4229,8 @@
       "manufacturer": "חברת רימי כימיקלים בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-fa7100da96",
@@ -4164,7 +4278,8 @@
       "manufacturer": "חברת רימי כימיקלים בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-3e9c796131",
@@ -4209,7 +4324,8 @@
       "manufacturer": "חברת רימי כימיקלים בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-5eb2295f70",
@@ -4253,7 +4369,8 @@
       "manufacturer": "חברת רימי כימיקלים בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-727ee31b86",
@@ -4300,7 +4417,8 @@
       "manufacturer": "אדמה פתרונות לחקלאות בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-2564bc19da",
@@ -4345,7 +4463,8 @@
       "manufacturer": "סיקמקס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": true
+      "stationTracking": true,
+      "searchAliases": []
     },
     {
       "id": "reg-ed98bac041",
@@ -4390,7 +4509,8 @@
       "manufacturer": "סיקמקס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": true
+      "stationTracking": true,
+      "searchAliases": []
     },
     {
       "id": "reg-ea3b1fca45",
@@ -4436,7 +4556,8 @@
       "manufacturer": "סיקמקס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-5039201a46",
@@ -4485,7 +4606,8 @@
       "manufacturer": "",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-83b75279dc",
@@ -4533,7 +4655,8 @@
       "manufacturer": "",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-84fe08f1a5",
@@ -4581,7 +4704,8 @@
       "manufacturer": "",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-9c09974e64",
@@ -4625,7 +4749,8 @@
       "manufacturer": "",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-78e2e13b57",
@@ -4669,7 +4794,8 @@
       "manufacturer": "",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-64f80a4181",
@@ -4713,7 +4839,8 @@
       "manufacturer": "",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-b6e80f42b4",
@@ -4757,7 +4884,8 @@
       "manufacturer": "לוכסמבורג תעשיות בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-ce7aa958eb",
@@ -4809,7 +4937,8 @@
       "manufacturer": "סאסאטק אגש\"ח בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-d5ed491413",
@@ -4854,7 +4983,8 @@
       "manufacturer": "א.ע יזמות ופרוייקטים",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-66be3c5bb0",
@@ -4898,7 +5028,8 @@
       "manufacturer": "תרסיס חברה לחימיקלים חקלאיים ותעשיתיים בעמ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-cb28ce3c6e",
@@ -4942,7 +5073,8 @@
       "manufacturer": "תפזול תעשיות כימיות בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-66f53ef27e",
@@ -4990,7 +5122,8 @@
       "manufacturer": "אס.סי. גונסון ישראל בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-47f7cafe18",
@@ -5035,7 +5168,8 @@
       "manufacturer": "זרעים גדרה בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-09a33a947b",
@@ -5092,7 +5226,8 @@
       "manufacturer": "סנו מפעלי ברונוס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-68f4a47484",
@@ -5140,7 +5275,8 @@
       "manufacturer": "אדמה פתרונות לחקלאות בע\"מ-ארומה",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-10f2384864",
@@ -5194,7 +5330,8 @@
       "manufacturer": "סנו מפעלי ברונוס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-55683ba67d",
@@ -5244,7 +5381,8 @@
       "manufacturer": "סנו מפעלי ברונוס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-aaebf882a0",
@@ -5288,7 +5426,8 @@
       "manufacturer": "סנו מפעלי ברונוס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-5bdd7a86f0",
@@ -5333,7 +5472,8 @@
       "manufacturer": "א.ע יזמות ופרוייקטים",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": true
+      "stationTracking": true,
+      "searchAliases": []
     },
     {
       "id": "reg-d17a8fb0aa",
@@ -5378,7 +5518,8 @@
       "manufacturer": "א.ע יזמות ופרוייקטים",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": true
+      "stationTracking": true,
+      "searchAliases": []
     },
     {
       "id": "reg-e15855d4ec",
@@ -5430,7 +5571,8 @@
       "manufacturer": "דור.קי פיתוח ושיווק בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-537a6f8bf2",
@@ -5487,7 +5629,8 @@
       "manufacturer": "אר.פי.סי החברה להדברה - נס הרים",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-5118e47ad5",
@@ -5532,7 +5675,8 @@
       "manufacturer": "אביק תוצרים וטרינריים בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-2dfc957715",
@@ -5578,7 +5722,8 @@
       "manufacturer": "דע קדם פרוייקטים (1987) בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-5a955fa2b6",
@@ -5631,7 +5776,8 @@
       "manufacturer": "לידור אלמנטס בע\"מ- ירושלים",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-a4c4869fe5",
@@ -5676,7 +5822,8 @@
       "manufacturer": "סאסאטק אגש\"ח בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": true
+      "stationTracking": true,
+      "searchAliases": []
     },
     {
       "id": "reg-d131ddf804",
@@ -5722,7 +5869,8 @@
       "manufacturer": "סנו מפעלי ברונוס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-d3829e2da1",
@@ -5766,7 +5914,8 @@
       "manufacturer": "סנו מפעלי ברונוס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-0b245c42c3",
@@ -5816,7 +5965,8 @@
       "manufacturer": "סנו מפעלי ברונוס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-092e391cc2",
@@ -5873,7 +6023,8 @@
       "manufacturer": "סנו מפעלי ברונוס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-70cf508214",
@@ -5917,7 +6068,8 @@
       "manufacturer": "סנו מפעלי ברונוס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-ed4b28de53",
@@ -5975,7 +6127,8 @@
       "manufacturer": "סנו מפעלי ברונוס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-cccb288b91",
@@ -6029,7 +6182,8 @@
       "manufacturer": "סנו מפעלי ברונוס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-cd94e9c63d",
@@ -6081,7 +6235,8 @@
       "manufacturer": "סנו מפעלי ברונוס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-c123f08668",
@@ -6135,7 +6290,8 @@
       "manufacturer": "סנו מפעלי ברונוס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-38875bb7ac",
@@ -6193,7 +6349,8 @@
       "manufacturer": "סאסאטק אגש\"ח בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-9f37c72c6e",
@@ -6247,7 +6404,8 @@
       "manufacturer": "סאסאטק אגש\"ח בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-28403287ae",
@@ -6292,7 +6450,8 @@
       "manufacturer": "חברת רימי כימיקלים בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-5edf38c1d1",
@@ -6336,7 +6495,8 @@
       "manufacturer": "אר.פי.סי החברה להדברה - נס הרים",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-26a90d9b22",
@@ -6380,7 +6540,8 @@
       "manufacturer": "סנו מפעלי ברונוס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-32963def93",
@@ -6428,7 +6589,8 @@
       "manufacturer": "חברת רימי כימיקלים בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-7bf276f61c",
@@ -6472,7 +6634,8 @@
       "manufacturer": "סנו מפעלי ברונוס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-bf88939367",
@@ -6517,7 +6680,8 @@
       "manufacturer": "סיקמקס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-762ce97119",
@@ -6566,7 +6730,8 @@
       "manufacturer": "חברת רימי כימיקלים בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-a7eb7a40c9",
@@ -6611,7 +6776,8 @@
       "manufacturer": "תפזול תעשיות כימיות בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-4c3a9db106",
@@ -6656,7 +6822,8 @@
       "manufacturer": "חברת רימי כימיקלים בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": true
+      "stationTracking": true,
+      "searchAliases": []
     },
     {
       "id": "reg-fe039be50a",
@@ -6700,7 +6867,8 @@
       "manufacturer": "רועי נעים",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-60e33d90cd",
@@ -6744,7 +6912,8 @@
       "manufacturer": "רועי נעים",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-e935d6ec25",
@@ -6789,7 +6958,8 @@
       "manufacturer": "רועי נעים",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-179ec3c296",
@@ -6843,7 +7013,8 @@
       "manufacturer": "סנו מפעלי ברונוס בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-9c05367118",
@@ -6887,7 +7058,8 @@
       "manufacturer": "דור.קי פיתוח ושיווק בע\"מ",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-e033a73b08",
@@ -6937,7 +7109,8 @@
       "manufacturer": "",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-8b695615f1",
@@ -6981,7 +7154,8 @@
       "manufacturer": "",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-7c03ad9142",
@@ -7025,7 +7199,8 @@
       "manufacturer": "",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-b86e1be91a",
@@ -7085,7 +7260,8 @@
       "manufacturer": "",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-d89b486c2c",
@@ -7129,7 +7305,8 @@
       "manufacturer": "",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-93baabffef",
@@ -7173,7 +7350,8 @@
       "manufacturer": "",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     },
     {
       "id": "reg-6f2e955cc0",
@@ -7220,7 +7398,8 @@
       "manufacturer": "א.ע יזמות ופרוייקטים",
       "conditionalInstructions": [],
       "preparationSteps": [],
-      "stationTracking": false
+      "stationTracking": false,
+      "searchAliases": []
     }
   ]
 }

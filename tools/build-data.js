@@ -79,6 +79,8 @@ function lint(data){
       (d.forPests||[]).forEach(x=>{if(!(p.targetPests||[]).includes(x))
         err.push(at(`המינון ${d.id} מתייחס למזיק שאינו בתווית: ${x}`))});
     });
+    (p.searchAliases||[]).forEach(a=>{if(typeof a!=='string'||!a.trim())
+      err.push(at('searchAliases מכיל ערך שאינו מחרוזת'))});
     (p.conditionalInstructions||[]).forEach(c=>{
       (c.forPests||[]).forEach(x=>{if(!(p.targetPests||[]).includes(x))
         err.push(at(`הוראה מותנית מתייחסת למזיק שאינו בתווית: ${x}`))});
