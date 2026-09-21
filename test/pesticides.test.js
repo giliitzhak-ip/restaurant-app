@@ -34,7 +34,7 @@ async function page(fn){
   return errs;
 }
 const startJ=p=>p.evaluate(async pl=>{await A.newJ();cur.client.name='מסעדת הגפן';
-  cur.place=Object.assign(cur.place,pl);cur.step=3;touch();render()},PLACE);
+  cur.place=Object.assign(cur.place,pl);cur.step=4;touch();render()},PLACE);
 /* בחירת חומר דרך שדה החיפוש, כפי שמשתמש עושה בפועל */
 const pick=async(p,id)=>{
   const name=SEED.products.find(x=>x.id===id).nameHe;
@@ -454,7 +454,7 @@ await page(async p=>{
   /* רענון הדף */
   await p.reload();
   await p.waitForFunction(()=>document.querySelector('#app')&&document.querySelector('#app').children.length>0);
-  await p.evaluate(id=>{cur=S.journals[id];cur.step=3;view='wizard';render()},jid);
+  await p.evaluate(id=>{cur=S.journals[id];cur.step=4;view='wizard';render()},jid);
   await p.waitForTimeout(200);
   const after=await p.evaluate(()=>({id:cur.apps[0].selectedMaterialId,
     nm:cur.apps[0].selectedMaterialName,chip:!!document.querySelector('.selchip'),
@@ -775,7 +775,7 @@ await page(async p=>{
   /* יומן חדש עם אותו חומר */
   await p.evaluate(async pl=>{
     await A.newJ();cur.client.name='מסעדת הגפן';
-    cur.place=Object.assign(cur.place,pl);cur.step=3;
+    cur.place=Object.assign(cur.place,pl);cur.step=4;
     selectMaterial(PRODUCTS().find(x=>x.nameHe==='מאסטר פליי'),{index:0});
     render();
   },PLACE);

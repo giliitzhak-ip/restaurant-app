@@ -77,6 +77,7 @@ const startJournal=async(p,place)=>p.evaluate(async pl=>{
   await A.newJ();
   cur.client.name='מסעדת הגפן';cur.client.phone='02-5551234';
   cur.place=Object.assign(cur.place,pl);
+  cur.step=1; /* שלב "לקוח ואתר" – שם מופיע כרטיס היומן הקודם */
   touch();render();
 },place);
 
@@ -209,7 +210,7 @@ await withPage(FULL,async p=>{
   await startJournal(p,PLACE_A);
   await p.evaluate(()=>{A._clSrc='j1';A._clSel=new Set(ALL_SECTIONS());sectionSheet()});
   await p.click('[data-a="secLoad"]');
-  await p.evaluate(()=>{cur.step=3;render()});
+  await p.evaluate(()=>{cur.step=4;render()});
   const id=await p.evaluate(()=>cur.apps[0].id);
   const ex=await p.evaluate(()=>({b:cur.apps[0].batch,e:cur.apps[0].pkgExpiry,
     u:cur.apps[0].amountUsed,w:cur.apps[0].waterAmount,a:cur.apps[0].areas}));
@@ -225,7 +226,7 @@ await withPage(FULL,async p=>{
   const v=await p.evaluate(i=>cur.verify['product:'+i],id);
   ok('אישור התכשיר נשמר עם מי ומתי',v.state==='ok'&&v.at>0&&v.by.includes('יצחק כהן'),JSON.stringify(v));
   /* אזהרות דורשות אישור מפורש – עריכה לבדה לא מספיקה */
-  await p.evaluate(()=>{cur.step=4;render()});
+  await p.evaluate(()=>{cur.step=5;render()});
   await p.evaluate(()=>{const el=document.querySelector('[data-f="warnBefore.riskHuman"]');
     el.value='להרחיק ילדים ובעלי חיים';el.dispatchEvent(new Event('input',{bubbles:true}))});
   eq('עריכת אזהרה אינה מאמתת אותה לבד',await p.evaluate(()=>cur.verify.warnBefore.state),'pending');
@@ -239,7 +240,7 @@ await withPage(FULL,async p=>{
   await startJournal(p,PLACE_A);
   await p.evaluate(()=>{A._clSrc='j1';A._clSel=new Set(ALL_SECTIONS());sectionSheet()});
   await p.click('[data-a="secLoad"]');
-  await p.evaluate(()=>{cur.step=5;render()});
+  await p.evaluate(()=>{cur.step=7;render()});
   const r=await p.evaluate(()=>{
     const pend=Object.keys(cur.verify).filter(k=>cur.verify[k].state==='pending');
     return {bulk:pend.filter(k=>vBulkOk(k)),strict:pend.filter(k=>!vBulkOk(k))};
@@ -385,7 +386,7 @@ await withPage(FULL,async p=>{
   ok('תכשיר שאינו במאגר אינו מאומת',r.unknown===false&&!!r.why);
   ok('התאמת מזיק לרישום – תקין',r.fit===null);
   ok('התאמת מזיק לרישום – אי התאמה מזוהה',typeof r.bad==='string'&&r.bad.includes('חולדות'));
-  await p.evaluate(()=>{cur.apps[0].product='תכשיר שלא קיים';cur.step=3;touch();render()});
+  await p.evaluate(()=>{cur.apps[0].product='תכשיר שלא קיים';cur.step=4;touch();render()});
   ok('מוצגת אזהרה על תכשיר שלא ניתן לאמת',
      (await p.textContent('#app')).includes('לא ניתן לאמת את התכשיר'));
 });
