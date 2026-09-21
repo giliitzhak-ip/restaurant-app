@@ -53,21 +53,22 @@ eq('ארבעת התכשירים מהרשימה שנמסרה קיימים',
    ['blokion-plus','dragon','draker-10-2','pastion-plus-pasta']);
 ok('הרשימה המלאה נטענה',SEED.products.length>=150,'got '+SEED.products.length);
 eq('שלושה מאומתים מתווית',SEED.products.filter(p=>p.verificationStatus==='verified').length,3);
-eq('אחד חסום',SEED.products.filter(p=>p.verificationStatus==='blocked').length,1);
-ok('השאר מסומנים כלא מאומתים',
-   SEED.products.filter(p=>p.verificationStatus==='needs_review').length===SEED.products.length-4);
+eq('אין אף חומר חסום',SEED.products.filter(p=>p.verificationStatus==='blocked').length,0);
+ok('השאר במצב unknown',
+   SEED.products.filter(p=>p.verificationStatus==='unknown').length===SEED.products.length-3);
+ok('כל חומר מסומן כניתן לבחירה',SEED.products.every(p=>p.isSelectable===true));
 ok('לתכשיר לא מאומת אין אזהרות, מינונים או זמן כניסה',
-   SEED.products.filter(p=>p.verificationStatus==='needs_review').every(p=>
+   SEED.products.filter(p=>p.verificationStatus==='unknown').every(p=>
      !p.warningsHuman.length&&!p.warningsAnimals.length&&!p.warningsEnvironment.length&&
      !p.dosages.length&&!p.applicationRestrictions.length&&!p.reentry.text&&!p.reentry.minutes));
 ok('לתכשיר לא מאומת אין מספר רישום או קישור לתווית',
-   SEED.products.filter(p=>p.verificationStatus==='needs_review').every(p=>
+   SEED.products.filter(p=>p.verificationStatus==='unknown').every(p=>
      !p.registrationNumber&&!p.registrationExpiry&&!p.officialLabelUrl));
-ok('לכל תכשיר לא מאומת יש מזיקי מטרה',
-   SEED.products.filter(p=>p.verificationStatus==='needs_review').every(p=>p.targetPests.length>0));
+ok('לחומר ללא מזיקי תווית מוזן המזיק ידנית',
+   SEED.products.filter(p=>!p.targetPests.length).every(p=>p.verificationStatus!=='verified'));
 ok('כל תכשיר לא מאומת נושא הסבר על מקור הנתונים',
-   SEED.products.filter(p=>p.verificationStatus==='needs_review').every(p=>
-     p.statusLabel.includes('לא אומת')&&p.verificationNote.includes('לא אומת')));
+   SEED.products.filter(p=>p.verificationStatus==='unknown').every(p=>
+     !!p.statusLabel&&!!p.verificationNote));
 eq('דרגון – רישום וחומר פעיל',[byId('dragon').registrationNumber,byId('dragon').registrationExpiry,
    byId('dragon').activeIngredients[0].name,byId('dragon').activeIngredients[0].percent],['640','2030','Bifenthrin','9.6%']);
 eq('דרקר – שלושה חומרים פעילים',byId('draker-10-2').activeIngredients.map(x=>x.name+' '+x.percent),
@@ -78,9 +79,9 @@ ok('כל קישורי התוויות הם כתובות תקינות',
    SEED.products.filter(p=>p.officialLabelUrl).every(p=>/^https:\/\/\S+\.pdf$/.test(p.officialLabelUrl)),
    SEED.products.filter(p=>p.officialLabelUrl).map(p=>p.officialLabelUrl).join(' '));
 const bl=byId('blokion-plus');
-eq('בלוקיון – חסום ולא ניתן לבחירה',[bl.verificationStatus,bl.isSelectable,bl.statusLabel],
-   ['blocked',false,'ממתין לאימות תווית ורישום בתוקף']);
-ok('בלוקיון – אין בו שום תוכן תווית',
+eq('בלוקיון – ניתן לבחירה עם תג מידע',[bl.verificationStatus,bl.isSelectable,bl.statusLabel],
+   ['unknown',true,'מידע יושלם בהמשך']);
+ok('בלוקיון – עדיין אין בו תוכן תווית שהומצא',
    [...bl.warningsHuman,...bl.warningsAnimals,...bl.warningsEnvironment,...bl.dosages,
     ...bl.targetPests,...bl.activeIngredients,...bl.applicationRestrictions].length===0&&
    !bl.reentry.text&&!bl.registrationNumber);
@@ -88,8 +89,7 @@ const pw=new Set(byId('pastion-plus-pasta').warningsHuman.concat(byId('pastion-p
 ok('אזהרות פסטיון לא הועתקו לבלוקיון',
    !bl.warningsHuman.some(w=>pw.has(w))&&!bl.warningsAnimals.some(w=>pw.has(w)));
 ok('לא נטען hash של קובץ תווית לאף מוצר',SEED.products.every(p=>p.labelSha256===''));
-ok('לכל מוצר פעיל יש הערת מקור המסבירה את האימות',
-   SEED.products.filter(p=>p.verificationStatus!=='blocked').every(p=>!!p.verificationNote));
+ok('לכל מוצר יש הערת מקור',SEED.products.every(p=>!!p.verificationNote));
 ok('אין מינונים באף מוצר',SEED.products.every(p=>p.dosages.length===0),
    SEED.products.map(p=>p.id+':'+p.dosages.length).join(' '));
 ok('אין מגבלות ריסוס באף מוצר',SEED.products.every(p=>p.applicationRestrictions.length===0),
@@ -306,22 +306,22 @@ await page(async p=>{
   eq('מזיק מהתווית נבחר',await p.evaluate(()=>cur.apps[0].pest),'חולדות');
 });
 
-console.log('\n5ה. תכשיר לא מאומת אינו ניתן לבחירה');
+console.log('\n5ה. תכשיר ללא נתוני אימות ניתן לבחירה');
 await page(async p=>{
   await startJ(p);
-  const name=await p.evaluate(()=>PRODUCTS().find(x=>x.verificationStatus==='needs_review').nameHe);
-  await p.fill('#pq',name);await p.waitForTimeout(320);
-  const r=await p.evaluate(n=>{
-    const el=[...document.querySelectorAll('.sugitem')].find(x=>x.textContent.includes(n));
-    return {found:!!el,blocked:el&&el.classList.contains('blocked'),
+  const m=await p.evaluate(()=>{const x=PRODUCTS().find(y=>y.verificationStatus==='unknown');
+    return {id:x.id,name:x.nameHe}});
+  await p.fill('#pq',m.name);await p.waitForTimeout(320);
+  const r=await p.evaluate(i=>{
+    const el=[...document.querySelectorAll('.sugitem')].find(x=>x.dataset.mid===i);
+    return {found:!!el,disabled:!!(el&&(el.disabled||el.getAttribute('aria-disabled')==='true')),
       pickable:!!(el&&el.dataset.a),txt:el?el.textContent:''};
-  },name);
+  },m.id);
   ok('התכשיר מופיע בחיפוש',r.found);
-  ok('מוצג כחסום ואינו ניתן לבחירה',r.blocked&&!r.pickable);
-  ok('מוצג "לא ניתן לשימוש – ממתין לאימות"',r.txt.includes('לא ניתן לשימוש'));
-  const id=await p.evaluate(()=>PRODUCTS().find(x=>x.verificationStatus==='needs_review').id);
-  await p.evaluate(i=>{A.pickProd({p:i,i:0})},id);
-  eq('גם קריאה ישירה אינה בוחרת אותו',await p.evaluate(()=>cur.apps[0].selectedMaterialId),'');
+  ok('אינו מושבת וניתן לבחירה',!r.disabled&&r.pickable);
+  ok('לא מוצג "לא ניתן לשימוש"',!r.txt.includes('לא ניתן לשימוש'));
+  await p.click(`.sugitem[data-mid="${m.id}"]`);await p.waitForTimeout(250);
+  eq('נכנס ליומן',await p.evaluate(()=>cur.apps[0].selectedMaterialId),m.id);
 });
 
 console.log('\n5ו. בחירת חומר מתוצאות החיפוש (רגרסיה לתקלה)');
@@ -345,6 +345,10 @@ await page(async p=>{
        return ids.every(Boolean)&&new Set(ids).size===ids.length}));
   ok('אין שכבה שחוסמת לחיצות',
      await p.evaluate(()=>[...document.querySelectorAll('.sugitem')].every(e=>getComputedStyle(e).pointerEvents!=='none')));
+  ok('אין תוצאה מושבתת ואין מנעול',
+     await p.evaluate(()=>document.querySelectorAll('.sugitem[disabled],.sugitem[aria-disabled="true"]').length===0));
+  ok('כל תוצאה ניתנת לבחירה',
+     await p.evaluate(()=>[...document.querySelectorAll('.sugitem')].every(e=>e.dataset.a==='pickProd')));
 });
 
 /* 1-3: לחיצה על כל אחד מהחומרים המאומתים */
@@ -420,9 +424,9 @@ await page(async p=>{
   await p.evaluate(()=>{const el=document.querySelector('.sugitem[data-mid="blokion-plus"]');
     el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,cancelable:true}))});
   await p.waitForTimeout(250);
-  eq('בלוקיון חסום אינו נכנס ליומן',await p.evaluate(()=>cur.apps[0].selectedMaterialId),'');
-  ok('מוצגת ההודעה המתאימה',
-     (await p.textContent('#app')).includes('לא ניתן לבחור בחומר זה עד לאימות תווית ורישום בתוקף'));
+  eq('בלוקיון נכנס ליומן כרגיל',await p.evaluate(()=>cur.apps[0].selectedMaterialId),'blokion-plus');
+  ok('אין הודעת חסימה',
+     !(await p.textContent('#app')).includes('לא ניתן לבחור בחומר זה'));
 });
 
 console.log('\n5ח. שמירה, רענון והחלפה');
@@ -488,40 +492,129 @@ await page(async p=>{
   ok('שדה החיפוש חוזר למצב ריק',r.input);
 });
 
-console.log('\n6. בלוקיון חסום');
+console.log('\n6. כל חומר ניתן לבחירה');
 await page(async p=>{
   await startJ(p);
-  await p.fill('#pq','בלוקיון');await p.waitForTimeout(320);
-  const r=await p.evaluate(()=>({blocked:prodBlocked(prodById('blokion-plus')),
-    reason:prodBlockReason(prodById('blokion-plus')),
+  await p.fill('#pq','בל');await p.waitForTimeout(320);
+  const r=await p.evaluate(()=>({
     shown:[...document.querySelectorAll('.sugitem .smain b')].map(x=>x.textContent),
-    locked:!!document.querySelector('.sugitem.blocked'),
-    noPick:!document.querySelector('.sugitem[data-a="pickProd"]')}));
-  ok('בלוקיון מסומן כחסום',r.blocked&&r.reason.includes('ממתין לאימות'));
-  ok('בלוקיון מופיע בתוצאות החיפוש',r.shown.includes('בלוקיון פלוס'),r.shown.join(','));
-  ok('מוצג עם מנעול ואינו ניתן לבחירה',r.locked&&r.noPick);
-  ok('מוצג הכיתוב "לא ניתן לשימוש"',(await p.textContent('.sugitem')).includes('לא ניתן לשימוש'));
-  await p.click('.sugitem',{force:true});await p.waitForTimeout(150);
-  eq('לחיצה עליו אינה בוחרת אותו',await p.evaluate(()=>cur.apps[0].selectedMaterialId),'');
-  eq('תבנית בלוקיון חסומה',await p.evaluate(()=>tplState(tplById('t-blokion'))),'blocked');
+    locked:document.querySelectorAll('.sugitem[disabled],.sugitem[aria-disabled="true"]').length,
+    locks:document.querySelectorAll('.sugbox .sicon svg rect[y="11"]').length,
+    txt:document.querySelector('.sugbox').textContent}));
+  ok('בלוקיון מופיע בתוצאות',r.shown.includes('בלוקיון פלוס'),r.shown.join(','));
+  eq('אין תוצאה מושבתת',r.locked,0);
+  ok('לא מוצג הכיתוב "לא ניתן לשימוש"',!r.txt.includes('לא ניתן לשימוש'));
+  await p.click('.sugitem[data-mid="blokion-plus"]');
+  await p.waitForTimeout(300);
+  const after=await p.evaluate(()=>({id:cur.apps[0].selectedMaterialId,
+    nm:cur.apps[0].selectedMaterialName,txt:document.getElementById('app').textContent}));
+  eq('בלוקיון נכנס ליומן',[after.id,after.nm],['blokion-plus','בלוקיון פלוס']);
+  ok('לא מוצגת הודעת חסימה',!after.txt.includes('לא ניתן לבחור בחומר זה'));
+  ok('מוצג תג מידע כתום',after.txt.includes('מידע יושלם בהמשך'));
+  ok('מוצגים תגי השלמת מידע',after.txt.includes('פרטי רישום לא הוזנו')&&
+     after.txt.includes('תווית טרם צורפה')&&after.txt.includes('תוקף לא ידוע'));
+});
+await page(async p=>{
+  await startJ(p);
+  /* חמישה חומרים שונים מתוך הרשימה, כולל אלה שבצילום */
+  for(const name of ['מאסטר פליי','מארש','גרנולר','סנו K-333','אנטי אנט']){
+    const id=await p.evaluate(n=>{const x=PRODUCTS().find(y=>y.nameHe.includes(n));return x?x.id:''},name);
+    if(!id){ok('נמצא במאגר: '+name,false);continue}
+    await p.evaluate(()=>{clearMaterial(cur.apps[0],cur);touch();render()});
+    await p.fill('#pq',name);await p.waitForTimeout(320);
+    const has=await p.$(`.sugitem[data-mid="${id}"]`);
+    if(!has){ok('נבחר: '+name,false,'לא הופיע בתוצאות');continue}
+    await p.click(`.sugitem[data-mid="${id}"]`);await p.waitForTimeout(250);
+    eq('נבחר בהצלחה: '+name,await p.evaluate(()=>cur.apps[0].selectedMaterialId),id);
+  }
+});
+await page(async p=>{
+  await startJ(p);
+  /* לחיצה על כל שטח הכרטיס, לא רק על השם */
+  await p.fill('#pq','מאסט');await p.waitForTimeout(320);
+  const hit=await p.evaluate(()=>{
+    const el=document.querySelector('.sugitem');
+    const r=el.getBoundingClientRect();
+    const pts=[[r.left+8,r.top+8],[r.right-8,r.bottom-8],[r.left+r.width/2,r.top+r.height/2]];
+    return pts.map(([x,y])=>{const h=document.elementFromPoint(x,y);return !!(h&&el.contains(h))});
+  });
+  ok('כל שטח הכרטיס לחיץ',hit.every(Boolean),JSON.stringify(hit));
+  const small=await p.evaluate(()=>{const s=document.querySelector('.sugitem small');
+    s.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,cancelable:true}));
+    return cur.apps[0].selectedMaterialId});
+  ok('לחיצה על טקסט משני בכרטיס בוחרת את החומר',!!small);
+});
+await page(async p=>{
+  await startJ(p);
+  const id=await p.evaluate(()=>PRODUCTS().find(x=>x.verificationStatus==='unknown'&&!x.registrationExpiry).id);
+  await p.evaluate(i=>{selectMaterial(prodById(i),{index:0});render()},id);
+  const r=await p.evaluate(()=>({id:cur.apps[0].selectedMaterialId,
+    errs:validate(cur).map(e=>e.msg)}));
+  eq('חומר ללא תאריך תוקף נכנס ליומן',r.id,id);
+  ok('אין שגיאת אימות שחוסמת בגלל סטטוס או תוקף',
+     !r.errs.some(m=>m.includes('ממתין לאימות')||m.includes('תוקף הרישום')||m.includes('לא ניתן לשמור')),
+     r.errs.join(' | '));
+});
+await page(async p=>{
+  await startJ(p);
+  await p.evaluate(()=>{prodById('dragon').registrationExpiry='2019';
+    selectMaterial(prodById('dragon'),{index:0});render()});
+  const r=await p.evaluate(()=>({id:cur.apps[0].selectedMaterialId,
+    txt:document.getElementById('app').textContent,
+    errs:validate(cur).filter(e=>e.msg.includes('תוקף')).length}));
+  eq('חומר עם תוקף ישן נכנס ליומן',r.id,'dragon');
+  ok('מוצגת אזהרה בלבד',r.txt.includes('תוקף הרישום המופיע במאגר דורש בדיקה'));
+  ok('קיימת אפשרות "קראתי והבנתי"',r.txt.includes('קראתי והבנתי'));
+  eq('האזהרה אינה חוסמת שמירה',r.errs,0);
+  await p.click('[data-a="ackExpiry"]');await p.waitForTimeout(250);
+  ok('האישור נרשם',await p.evaluate(()=>!!(cur.expiryAck||{})['dragon']));
+});
+await page(async p=>{
+  await startJ(p);
+  /* חומר ללא מזיקי תווית – המזיק מוזן ידנית והיומן ניתן לשמירה */
+  await p.evaluate(()=>{selectMaterial(prodById('blokion-plus'),{index:0});render()});
+  const t=await p.textContent('#app');
+  ok('מוצג שדה מזיק להזנה ידנית',t.includes('הוזן ידנית'));
+  await p.evaluate(()=>{const el=document.querySelector('[data-f="apps.0.pest"]');
+    el.value='חולדות';el.dispatchEvent(new Event('input',{bubbles:true}))});
+  const r=await p.evaluate(()=>({pest:cur.apps[0].pest,
+    bad:validate(cur).filter(e=>e.msg.includes('אינו מופיע בתווית')).length}));
+  eq('המזיק נשמר',r.pest,'חולדות');
+  eq('אין חסימה על מזיק שלא בתווית',r.bad,0);
+});
+await page(async p=>{
+  /* תבניות: אין תבנית חסומה */
+  await p.evaluate(()=>go('templates'));
+  const r=await p.evaluate(()=>({
+    states:TREATMENTS.map(t=>tplState(t)),
+    disabled:document.querySelectorAll('.tcard[disabled]').length,
+    txt:document.getElementById('app').textContent}));
+  ok('אין תבנית במצב blocked',!r.states.includes('blocked'),r.states.join(','));
+  eq('אין כרטיס תבנית מושבת',r.disabled,0);
+  ok('לא מוצגת הודעת הפעלה עתידית',!r.txt.includes('התבנית תופעל לאחר אימות'));
+  ok('טעינת תבנית ללא יומן פתוח אינה קורסת',
+     await p.evaluate(()=>{try{A.useTplHere({p:'t-blokion'});return true}catch(e){return false}}));
+});
+await page(async p=>{
+  await startJ(p);
   await p.evaluate(()=>{A.useTplHere({p:'t-blokion'})});
-  eq('לא ניתן לטעון את תבנית בלוקיון',await p.evaluate(()=>cur.tplId||''),'');
+  await p.waitForTimeout(200);
+  eq('תבנית בלוקיון נטענת',await p.evaluate(()=>cur.apps[0].selectedMaterialId),'blokion-plus');
 });
 
-console.log('\n7. תוקף רישום שפג חוסם יומן חדש');
+console.log('\n7. תוקף רישום שפג אינו חוסם');
 await page(async p=>{
   await startJ(p);
   await pick(p,'dragon');
   const r=await p.evaluate(()=>{
     prodById('dragon').registrationExpiry='2020';
-    return {blocked:prodBlocked(prodById('dragon')),
-      errs:validate(cur).filter(e=>e.msg.includes('תוקף')).length};
+    return {expired:regExpired(prodById('dragon')),
+      blocking:validate(cur).filter(e=>e.msg.includes('תוקף')||e.msg.includes('לא ניתן לשמור')).length,
+      id:cur.apps[0].selectedMaterialId};
   });
-  ok('מוצר שתוקפו פג מזוהה',r.blocked);
-  ok('היומן החדש נחסם',r.errs>0);
-  const hist=await p.evaluate(()=>{
-    cur.status='done';const e=validate(cur).filter(x=>x.msg.includes('תוקף')).length;cur.status='draft';return e});
-  eq('ביומן היסטורי הוא נשאר זמין',hist,0);
+  ok('מזוהה שתוקף הרישום חלף',r.expired);
+  eq('החומר נשאר ביומן',r.id,'dragon');
+  eq('אין חסימת שמירה בגלל תוקף',r.blocking,0);
 });
 
 console.log('\n8. שדות ביצוע – הזנה ידנית בלבד');
@@ -542,11 +635,11 @@ await page(async p=>{
   const t=await p.textContent('#app');
   ok('מסך התבניות נפתח',t.includes('תבניות טיפול'));
   ok('שש תבניות',(await p.$$('.tcard')).length>=6);
-  ok('תבנית חסומה עם מנעול',!!(await p.$('.tcard.blocked')));
-  ok('הודעת ההפעלה של בלוקיון',t.includes('התבנית תופעל לאחר אימות תווית ורישום בתוקף'));
+  eq('אין תבנית חסומה',(await p.$$('.tcard.blocked')).length,0);
+  ok('אין כרטיס תבנית מושבת',(await p.$$('.tcard[disabled]')).length===0);
   const st=await p.evaluate(()=>TREATMENTS.map(x=>[x.id,tplState(x)]));
   eq('מצבי התבניות',st,[['t-dragon-crawling','ok'],['t-dragon-bedbug','choice'],
-     ['t-draker-crawling','ok'],['t-pastion-mice','ok'],['t-pastion-rats','ok'],['t-blokion','blocked']]);
+     ['t-draker-crawling','ok'],['t-pastion-mice','ok'],['t-pastion-rats','ok'],['t-blokion','info']]);
 });
 await page(async p=>{
   await startJ(p);

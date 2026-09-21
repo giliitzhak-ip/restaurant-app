@@ -12,7 +12,8 @@ const REQUIRED=['id','nameHe','category','formulation','registrationNumber','reg
  'customerInstructionsBefore','customerInstructionsAfter','professionalPpe','firstAid',
  'applicationRestrictions','dosages','reentry','officialLabelUrl','sourceType',
  'verificationStatus','isSelectable','lastVerifiedAt','labelSha256'];
-const STATUSES=['verified','needs_review','blocked'];
+/* unknown = טרם הוזנו נתוני אימות. אינו חוסם בחירה – מידע בלבד. */
+const STATUSES=['verified','needs_review','unknown','blocked'];
 const REENTRY=['numeric','label_condition','not_applicable_by_label',''];
 const CATEGORIES=['crawling_insects','rodents','flying_insects','other'];
 
@@ -58,7 +59,8 @@ function lint(data){
     }else{
       /* מוצר מהרשימה המובנית: מותר בלי פרטי תווית, אך אסור שיציג תוכן תווית
          שלא אומת – אחרת הוא ייראה כאילו נבדק */
-      if(!(p.targetPests||[]).length)err.push(at('מוצר ברשימה ללא מזיקי מטרה'));
+      /* מזיקי מטרה אינם חובה לחומר שטרם הוזנו לו נתוני תווית –
+         באפליקציה המזיק מוזן ידנית במקרה כזה */
       if(!p.statusLabel)err.push(at('מוצר לא מאומת ללא statusLabel'));
       if(!p.verificationNote)err.push(at('מוצר לא מאומת ללא הסבר על מקור הנתונים'));
       if(p.officialLabelUrl)err.push(at('מוצר לא מאומת עם קישור לתווית'));
