@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="יומן הדברה">
+  <rect width="512" height="512" rx="112" fill="#0B3D2E"/>
+  <rect x="112" y="96" width="288" height="320" rx="30" fill="#FFFFFF"/>
+  <rect x="112" y="96" width="288" height="62" rx="30" fill="#18B765"/>
+  <rect x="150" y="196" width="212" height="20" rx="10" fill="#DFF6E8"/>
+  <rect x="150" y="246" width="164" height="20" rx="10" fill="#DFF6E8"/>
+  <path d="M150 316 l44 44 l84 -96" fill="none" stroke="#18B765" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
