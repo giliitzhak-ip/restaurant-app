@@ -27,7 +27,15 @@ npm run e2e       # בדיקות קבלה בדפדפן (דורש: npm i -D playw
                   # 69 בדיקות: זרימת יומן, חיפוש חומרים, מסלול, נגישות
 ```
 
-משתני סביבה: `PORT` (ברירת מחדל 3000), `DATA_DIR` (ברירת מחדל `./data`).
+בנייה עצמאית ללא שרת (לאירוח סטטי או להדגמה) — ללא סנכרון וללא service worker,
+כל הנתונים נשמרים בדפדפן בלבד:
+
+```bash
+VITE_STANDALONE=1 npx vite build --base=./ --outDir=dist-demo
+```
+
+משתני סביבה: `PORT` (ברירת מחדל 3000), `DATA_DIR` (ברירת מחדל `./data`),
+`VITE_STANDALONE=1` (בנייה ללא שרת).
 ל-`npm run e2e` אפשר להגדיר `BASE_URL` ו-`CHROME_PATH`.
 
 ## ארכיטקטורה

@@ -1,6 +1,7 @@
 import { useStore } from '../state/store';
 import { Card, Field, Notice, Tag } from '../components/ui';
 import { formatDateTime } from '../lib/format';
+import { STANDALONE } from '../lib/config';
 import type { Role } from '../types';
 
 const ROLE_LABEL: Record<Role, string> = {
@@ -58,12 +59,24 @@ export function ProfileScreen() {
 
       <Card>
         <div className="card-title"><h3>סנכרון ועבודה בשטח</h3></div>
-        <p className="small">
-          מצב חיבור: {online ? 'מחובר' : 'לא מחובר'} · ממתינים לסנכרון: {pendingSync}.
-        </p>
-        <Notice kind="info">
-          כל שינוי נשמר מיד במכשיר. כשאין רשת, הנתונים נשמרים בתור סנכרון ונשלחים לשרת ברגע שהחיבור חוזר.
-        </Notice>
+        {STANDALONE ? (
+          <>
+            <p className="small">גרסת הדגמה ללא שרת. כל הנתונים נשמרים במכשיר שלך בלבד.</p>
+            <Notice kind="info">
+              במצב זה אין סנכרון לשרת. הנתונים נשמרים בדפדפן של המכשיר ונשארים גם אחרי רענון,
+              אך אינם עוברים בין מכשירים ואינם מגובים.
+            </Notice>
+          </>
+        ) : (
+          <>
+            <p className="small">
+              מצב חיבור: {online ? 'מחובר' : 'לא מחובר'} · ממתינים לסנכרון: {pendingSync}.
+            </p>
+            <Notice kind="info">
+              כל שינוי נשמר מיד במכשיר. כשאין רשת, הנתונים נשמרים בתור סנכרון ונשלחים לשרת ברגע שהחיבור חוזר.
+            </Notice>
+          </>
+        )}
       </Card>
 
       <Card>

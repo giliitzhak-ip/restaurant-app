@@ -1,6 +1,7 @@
 import type { SyncOp } from '../types';
 import { kvGet, kvSet } from './storage';
 import { newId } from './id';
+import { STANDALONE } from './config';
 
 /**
  * תור סנכרון מול השרת. כל שינוי נשמר מקומית מיד ונכנס לתור.
@@ -43,6 +44,8 @@ class SyncQueue {
   }
 
   async enqueue(entity: string, entityId: string, payload: unknown): Promise<void> {
+    // בבנייה ללא שרת אין למי לסנכרן; הנתונים נשמרים במכשיר בלבד.
+    if (STANDALONE) return;
     await this.load();
     // איחוד: פעולה חדשה על אותה ישות מחליפה את הקודמת (המצב המלא נשלח בכל פעם)
     this.queue = this.queue.filter((op) => !(op.entity === entity && op.entityId === entityId));
@@ -92,7 +95,7 @@ class SyncQueue {
 export const syncQueue = new SyncQueue();
 
 export function startSyncWatchers(): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || STANDALONE) return;
   void syncQueue.load().then(() => syncQueue.flush());
   window.addEventListener('online', () => void syncQueue.flush());
   window.addEventListener('offline', () => void syncQueue.flush());

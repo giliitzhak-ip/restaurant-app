@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { StoreProvider } from './state/store';
+import { STANDALONE } from './lib/config';
 import './styles/global.css';
 
 const saved = localStorage.getItem('theme');
@@ -15,7 +16,7 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 );
 
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
+if ('serviceWorker' in navigator && import.meta.env.PROD && !STANDALONE) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {
       /* עבודה ללא service worker עדיין אפשרית */
