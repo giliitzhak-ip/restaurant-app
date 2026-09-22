@@ -258,6 +258,7 @@ const PEST_CHIPS=['תיקן גרמני','תיקן אמריקאי','נמלים','
 const ANNEX=[
   {re:/קרצי/,label:'סוג הקרציות',opts:['קשות','רכות']},
   {re:/יתוש/,label:'יתושים',opts:['בוגרים','זחלים']},
+  {re:/זבוב/,label:'זבובים',opts:['בוגרים','רימות'],opt:true},
   {re:/טרמיט/,label:'סוג הטרמיטים',opts:['טרמיטי קרקע','טרמיטי עץ']},
   {re:/חיפושי|יקרונ|ליקטוס|חדקונ/,label:'פירוט ברמת המשפחה',free:'למשל יקרוניות, ליקטוס, חדקוניות'}
 ];
@@ -386,7 +387,7 @@ function validate(j){
   if(!j.findings.length)add(3,'findings','יש להוסיף לפחות מזיק אחד');
   j.findings.forEach((f,i)=>{const n=`מזיק ${i+1}: `;
     req(3,`findings.${i}.pest`,n+'שם המזיק');
-    const ax=annexFor(f.pest);if(ax)req(3,`findings.${i}.subtype`,n+ax.label);
+    const ax=annexFor(f.pest);if(ax&&!ax.opt)req(3,`findings.${i}.subtype`,n+ax.label);
     req(3,`findings.${i}.identification`,n+'פעולות הזיהוי שבוצעו');
     req(3,`findings.${i}.signs`,n+'סימני הנגיעות');
     req(3,`findings.${i}.location`,n+'מיקום הנגיעות');
@@ -577,9 +578,9 @@ function fChips(label,path,opts,{req=true}={}){
   const v=getP(cur,path);
   return `<div class="field"><span class="flabel ${req?'req':''}">${label}</span><div class="chips${ec(path)}" data-fw="${path}" role="radiogroup" aria-label="${esc(label)}">${opts.map(o=>`<button type="button" role="radio" aria-checked="${o===v}" class="chip ${o===v?'on':''}" data-a="setv" data-f="${path}" data-val="${esc(o)}">${esc(o)}</button>`).join('')}</div></div>`;
 }
-function fSeg(label,path,opts,{req=true}={}){
+function fSeg(label,path,opts,{req=true,opt=false}={}){
   const v=getP(cur,path);
-  return `<div class="field"><span class="flabel ${req?'req':''}">${label}</span><div class="seg${ec(path)}" data-fw="${path}" role="radiogroup" aria-label="${esc(label)}">${opts.map(o=>`<button type="button" role="radio" aria-checked="${o===v}" class="${o===v?'on':''}" data-a="setv" data-f="${path}" data-val="${esc(o)}">${esc(o)}</button>`).join('')}</div></div>`;
+  return `<div class="field"><span class="flabel ${req?'req':''}">${label}${opt?' <span class="opt">(לא חובה)</span>':''}</span><div class="seg${ec(path)}" data-fw="${path}" role="radiogroup" aria-label="${esc(label)}">${opts.map(o=>`<button type="button" role="radio" aria-checked="${o===v}" class="${o===v?'on':''}" data-a="setv" data-f="${path}" data-val="${esc(o)}">${esc(o)}</button>`).join('')}</div></div>`;
 }
 function fToggle(label,path){const v=!!getP(cur,path);return `<div class="toggle"><span>${label}</span><button type="button" class="sw" role="switch" aria-checked="${v}" aria-label="${esc(label)}" data-a="tog" data-f="${path}"></button></div>`}
 function fCheck(label,path,req=false){const v=!!getP(cur,path);return `<label class="check${ec(path)}" data-fw="${path}"><input type="checkbox" data-c="${path}" ${v?'checked':''}><span class="${req?'req':''}">${label}</span></label>`}
@@ -650,7 +651,7 @@ function w1(){
   ${cur.findings.map((f,i)=>{const ax=annexFor(f.pest);return `<div class="sec"><div class="sech"><h3>מזיק ${i+1}${f.pest?': '+esc(f.pest):''}</h3>${cur.findings.length>1?`<button class="del" data-a="rm" data-k="findings" data-i="${i}">הסר</button>`:''}</div><div class="secb">
     ${fInput('המזיק שנמצא',`findings.${i}.pest`,{list:'pestlist'})}
     <div class="chips" style="margin-top:8px">${PEST_CHIPS.map(pc=>`<button type="button" class="chip ${f.pest===pc?'on':''}" data-a="setv" data-f="findings.${i}.pest" data-val="${pc}">${pc}</button>`).join('')}</div>
-    ${ax?(ax.free?fInput(ax.label,`findings.${i}.subtype`,{ph:ax.free}):fSeg(ax.label,`findings.${i}.subtype`,ax.opts)):''}
+    ${ax?(ax.free?fInput(ax.label,`findings.${i}.subtype`,{ph:ax.free}):fSeg(ax.label,`findings.${i}.subtype`,ax.opts,{req:!ax.opt,opt:!!ax.opt})):''}
     ${fText('פעולות הזיהוי שבוצעו',`findings.${i}.identification`,{ph:'מה נבדק ואיך זוהה המזיק'})}
     ${fInput('דרגת ההתפתחות',`findings.${i}.stage`,{req:false,opt:true,ph:'כאשר רלוונטי'})}
     <div class="field${ec(`findings.${i}.signs`)}"><span class="flabel req" style="display:flex;justify-content:space-between;align-items:center">ממצאי הניטור וסימני הנגיעות
