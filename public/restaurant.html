@@ -1,1 +1,195 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ניהול מסעדה</title>
+<style>
+  :root { --bg:#f3f4f6; --card:#fff; --text:#1f2937; --muted:#6b7280; --accent:#2563eb; --line:#e5e7eb; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, Arial, sans-serif; background:var(--bg); color:var(--text); }
+  header { background:#111827; color:#fff; padding:12px 16px; display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+  header h1 { margin:0; font-size:1.2rem; flex:1; }
+  nav button { background:transparent; color:#cbd5e1; border:0; padding:8px 12px; font-size:1rem; cursor:pointer; border-radius:6px; }
+  nav button.active { background:#374151; color:#fff; }
+  main { padding:16px; max-width:1200px; margin:0 auto; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-bottom:16px; }
+  .stat { background:var(--card); border-radius:10px; padding:12px; }
+  .stat b { display:block; font-size:1.6rem; }
+  .stat span { color:var(--muted); }
+  .cols { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; }
+  .col h2 { font-size:1rem; margin:0 0 8px; }
+  .order { background:var(--card); border-radius:10px; padding:12px; margin-bottom:10px; border-right:4px solid var(--accent); }
+  .order.new { border-color:#dc2626; }
+  .order.ready { border-color:#16a34a; }
+  .order .top { display:flex; justify-content:space-between; font-weight:600; }
+  .order ul { margin:8px 0; padding-inline-start:18px; }
+  .order .note { background:#fef3c7; padding:4px 8px; border-radius:6px; font-size:.9rem; }
+  .order .time { color:var(--muted); font-size:.85rem; font-weight:400; }
+  .actions { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  button.b { border:1px solid var(--line); background:#fff; border-radius:6px; padding:6px 10px; cursor:pointer; font:inherit; }
+  button.b.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  button.b.danger { color:#dc2626; }
+  table { width:100%; border-collapse:collapse; background:var(--card); border-radius:10px; overflow:hidden; }
+  th, td { padding:8px 10px; border-bottom:1px solid var(--line); text-align:right; }
+  th { background:#f9fafb; }
+  .scroll { overflow-x:auto; }
+  form.add { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; margin-bottom:12px; background:var(--card); padding:12px; border-radius:10px; }
+  input { padding:8px; border:1px solid var(--line); border-radius:6px; font:inherit; width:100%; }
+  .hidden { display:none; }
+  .empty { color:var(--muted); padding:8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🍽️ ניהול מסעדה</h1>
+  <nav>
+    <button data-tab="orders" class="active">הזמנות</button>
+    <button data-tab="menu">תפריט</button>
+    <button data-tab="history">היסטוריה</button>
+  </nav>
+</header>
+<main>
+  <section id="orders">
+    <div class="stats" id="stats"></div>
+    <div class="cols">
+      <div class="col"><h2>🆕 חדשות</h2><div id="col-new"></div></div>
+      <div class="col"><h2>👨‍🍳 בהכנה</h2><div id="col-preparing"></div></div>
+      <div class="col"><h2>✅ מוכנות להגשה</h2><div id="col-ready"></div></div>
+    </div>
+  </section>
 
+  <section id="menu" class="hidden">
+    <form class="add" id="addForm">
+      <input name="name" placeholder="שם המנה" required>
+      <input name="description" placeholder="תיאור">
+      <input name="price" type="number" step="0.5" min="0" placeholder="מחיר" required>
+      <input name="category" placeholder="קטגוריה" required>
+      <button class="b primary" type="submit">הוספה</button>
+    </form>
+    <div class="scroll"><table>
+      <thead><tr><th>שם</th><th>תיאור</th><th>מחיר</th><th>קטגוריה</th><th>זמין</th><th></th></tr></thead>
+      <tbody id="menuRows"></tbody>
+    </table></div>
+  </section>
+
+  <section id="history" class="hidden">
+    <div class="scroll"><table>
+      <thead><tr><th>#</th><th>שולחן</th><th>פריטים</th><th>הוגש</th></tr></thead>
+      <tbody id="historyRows"></tbody>
+    </table></div>
+  </section>
+</main>
+
+<script>
+  var current = 'orders';
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function api(url, method, body) {
+    return fetch(url, { method: method || 'GET', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
+      .then(function(r) { if (!r.ok) throw new Error(r.status); return r.json(); });
+  }
+  function time(t) { return t ? new Date(t.replace(' ', 'T') + 'Z').toLocaleTimeString('he-IL', { hour:'2-digit', minute:'2-digit' }) : ''; }
+
+  // ── Orders ──
+  var NEXT = { new: ['preparing', 'התחל הכנה'], seen: ['preparing', 'התחל הכנה'], preparing: ['ready', 'מוכן'], ready: ['served', 'הוגש'] };
+
+  function loadOrders() {
+    api('/api/stats').then(function(s) {
+      document.getElementById('stats').innerHTML =
+        '<div class="stat"><b>' + s.new + '</b><span>הזמנות חדשות</span></div>' +
+        '<div class="stat"><b>' + s.preparing + '</b><span>בהכנה</span></div>' +
+        '<div class="stat"><b>' + s.ready + '</b><span>מוכנות</span></div>' +
+        '<div class="stat"><b>' + s.active_tables + '</b><span>שולחנות פעילים</span></div>';
+    }).catch(function() {});
+
+    api('/api/orders').then(function(orders) {
+      var cols = { new: '', preparing: '', ready: '' };
+      orders.forEach(function(o) {
+        var col = o.status === 'seen' ? 'preparing' : o.status;
+        if (!(col in cols)) return;
+        var next = NEXT[o.status];
+        cols[col] += '<div class="order ' + col + '"><div class="top"><span>שולחן ' + esc(o.table_number) + '</span>' +
+          '<span class="time">#' + o.id + ' · ' + time(o.created_at) + '</span></div><ul>' +
+          o.items.map(function(i) { return '<li>' + esc(i.name) + ' × ' + i.quantity + (i.special_request ? ' <i>(' + esc(i.special_request) + ')</i>' : '') + '</li>'; }).join('') +
+          '</ul>' + (o.notes ? '<div class="note">📝 ' + esc(o.notes) + '</div>' : '') +
+          '<div class="actions">' + (next ? '<button class="b primary" data-order="' + o.id + '" data-status="' + next[0] + '">' + next[1] + '</button>' : '') +
+          '<button class="b danger" data-order="' + o.id + '" data-status="cancelled">ביטול</button></div></div>';
+      });
+      Object.keys(cols).forEach(function(k) { document.getElementById('col-' + k).innerHTML = cols[k] || '<div class="empty">אין הזמנות</div>'; });
+    }).catch(function() {});
+  }
+
+  document.getElementById('orders').addEventListener('click', function(e) {
+    var b = e.target.closest('button[data-order]');
+    if (!b) return;
+    if (b.dataset.status === 'cancelled' && !confirm('לבטל את ההזמנה?')) return;
+    api('/api/orders/' + b.dataset.order + '/status', 'PATCH', { status: b.dataset.status }).then(loadOrders);
+  });
+
+  // ── Menu ──
+  function loadMenu() {
+    api('/api/menu/all').then(function(items) {
+      document.getElementById('menuRows').innerHTML = items.map(function(m) {
+        return '<tr data-id="' + m.id + '"><td>' + esc(m.name) + '</td><td>' + esc(m.description) + '</td><td>₪' + m.price + '</td><td>' + esc(m.category) + '</td>' +
+          '<td><input type="checkbox" data-act="avail"' + (m.available ? ' checked' : '') + '></td>' +
+          '<td><button class="b" data-act="edit">עריכה</button> <button class="b danger" data-act="del">מחיקה</button></td></tr>';
+      }).join('') || '<tr><td colspan="6" class="empty">התפריט ריק</td></tr>';
+      window._menu = items;
+    });
+  }
+
+  document.getElementById('addForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var f = e.target;
+    api('/api/menu', 'POST', { name: f.name.value, description: f.description.value, price: f.price.value, category: f.category.value })
+      .then(function() { f.reset(); loadMenu(); })
+      .catch(function() { alert('ההוספה נכשלה'); });
+  });
+
+  document.getElementById('menuRows').addEventListener('click', function(e) {
+    var el = e.target.closest('[data-act]');
+    if (!el) return;
+    var id = el.closest('tr').dataset.id;
+    var act = el.dataset.act;
+    if (act === 'avail') {
+      api('/api/menu/' + id + '/available', 'PATCH', { available: el.checked });
+    } else if (act === 'del') {
+      if (confirm('למחוק את המנה?')) api('/api/menu/' + id, 'DELETE').then(loadMenu);
+    } else if (act === 'edit') {
+      var m = (window._menu || []).find(function(x) { return String(x.id) === id; });
+      if (!m) return;
+      var name = prompt('שם', m.name); if (name === null) return;
+      var description = prompt('תיאור', m.description); if (description === null) return;
+      var price = prompt('מחיר', m.price); if (price === null) return;
+      var category = prompt('קטגוריה', m.category); if (category === null) return;
+      api('/api/menu/' + id, 'PUT', { name: name, description: description, price: price, category: category })
+        .then(loadMenu).catch(function() { alert('העדכון נכשל'); });
+    }
+  });
+
+  // ── History ──
+  function loadHistory() {
+    api('/api/orders/history').then(function(rows) {
+      document.getElementById('historyRows').innerHTML = rows.map(function(o) {
+        return '<tr><td>' + o.id + '</td><td>' + esc(o.table_number) + '</td><td>' + esc(o.items_summary) + '</td><td>' + time(o.updated_at) + '</td></tr>';
+      }).join('') || '<tr><td colspan="4" class="empty">אין עדיין הזמנות שהוגשו</td></tr>';
+    });
+  }
+
+  // ── Tabs & polling ──
+  var LOADERS = { orders: loadOrders, menu: loadMenu, history: loadHistory };
+  document.querySelector('nav').addEventListener('click', function(e) {
+    var b = e.target.closest('button[data-tab]');
+    if (!b) return;
+    current = b.dataset.tab;
+    document.querySelectorAll('nav button').forEach(function(x) { x.classList.toggle('active', x === b); });
+    document.querySelectorAll('main > section').forEach(function(s) { s.classList.toggle('hidden', s.id !== current); });
+    LOADERS[current]();
+  });
+
+  loadOrders();
+  setInterval(function() { if (current === 'orders') loadOrders(); }, 5000);
+</script>
+</body>
+</html>

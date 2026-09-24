@@ -1,1 +1,119 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>תפריט והזמנה</title>
+<style>
+  :root { --bg:#f6f4ef; --card:#fff; --text:#222; --muted:#777; --accent:#c0392b; --line:#e5e1d8; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, Arial, sans-serif; background:var(--bg); color:var(--text); padding-bottom:110px; }
+  header { background:var(--accent); color:#fff; padding:16px; text-align:center; }
+  header h1 { margin:0; font-size:1.4rem; }
+  header p { margin:4px 0 0; opacity:.9; }
+  main { max-width:720px; margin:0 auto; padding:12px 16px; }
+  h2 { margin:20px 0 8px; font-size:1.1rem; border-bottom:2px solid var(--line); padding-bottom:4px; }
+  .item { background:var(--card); border-radius:10px; padding:12px; margin-bottom:8px; display:flex; gap:12px; align-items:center; box-shadow:0 1px 2px rgba(0,0,0,.05); }
+  .item .info { flex:1; }
+  .item .name { font-weight:600; }
+  .item .desc { color:var(--muted); font-size:.9rem; }
+  .item .price { font-weight:600; white-space:nowrap; }
+  .qty { display:flex; align-items:center; gap:6px; }
+  .qty button { width:32px; height:32px; border-radius:50%; border:1px solid var(--accent); background:#fff; color:var(--accent); font-size:1.1rem; cursor:pointer; }
+  .qty span { min-width:18px; text-align:center; }
+  textarea { width:100%; border:1px solid var(--line); border-radius:8px; padding:8px; font:inherit; }
+  .bar { position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid var(--line); padding:12px 16px; }
+  .bar .inner { max-width:720px; margin:0 auto; display:flex; gap:12px; align-items:center; }
+  .bar .total { flex:1; font-weight:600; }
+  .bar button { background:var(--accent); color:#fff; border:0; border-radius:8px; padding:12px 20px; font-size:1rem; cursor:pointer; }
+  .bar button:disabled { opacity:.5; cursor:default; }
+  .msg { padding:12px; border-radius:8px; margin:12px 0; }
+  .msg.ok { background:#e6f4ea; color:#1e7e34; }
+  .msg.err { background:#fdecea; color:#a02622; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🍽️ התפריט שלנו</h1>
+  <p id="tableLabel"></p>
+</header>
+<main>
+  <div id="msg"></div>
+  <div id="menu">טוען תפריט…</div>
+  <h2>הערות להזמנה</h2>
+  <textarea id="notes" rows="2" placeholder="למשל: בלי בצל, אלרגיה לאגוזים"></textarea>
+</main>
+<div class="bar"><div class="inner">
+  <div class="total" id="total">סה"כ: ₪0</div>
+  <button id="send" disabled>שליחת הזמנה</button>
+</div></div>
 
+<script>
+  var params = new URLSearchParams(location.search);
+  var table = parseInt(params.get('table'), 10);
+  var menu = [];
+  var cart = {};
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function showMsg(text, ok) { document.getElementById('msg').innerHTML = '<div class="msg ' + (ok ? 'ok' : 'err') + '">' + esc(text) + '</div>'; }
+
+  if (!table) {
+    document.getElementById('tableLabel').textContent = 'לא צוין מספר שולחן';
+    showMsg('חסר מספר שולחן בכתובת, למשל: customer.html?table=5', false);
+  } else {
+    document.getElementById('tableLabel').textContent = 'שולחן ' + table;
+  }
+
+  function render() {
+    var byCat = {};
+    menu.forEach(function(m) { (byCat[m.category] = byCat[m.category] || []).push(m); });
+    var html = '';
+    Object.keys(byCat).forEach(function(cat) {
+      html += '<h2>' + esc(cat) + '</h2>';
+      byCat[cat].forEach(function(m) {
+        var q = cart[m.id] || 0;
+        html += '<div class="item"><div class="info"><div class="name">' + esc(m.name) + '</div>' +
+          (m.description ? '<div class="desc">' + esc(m.description) + '</div>' : '') + '</div>' +
+          '<div class="price">₪' + m.price + '</div>' +
+          '<div class="qty"><button data-id="' + m.id + '" data-d="-1">−</button><span>' + q + '</span>' +
+          '<button data-id="' + m.id + '" data-d="1">+</button></div></div>';
+      });
+    });
+    document.getElementById('menu').innerHTML = html || 'התפריט ריק כרגע';
+    var total = 0, count = 0;
+    menu.forEach(function(m) { total += (cart[m.id] || 0) * m.price; count += cart[m.id] || 0; });
+    document.getElementById('total').textContent = 'סה"כ: ₪' + total + (count ? ' (' + count + ' פריטים)' : '');
+    document.getElementById('send').disabled = !count || !table;
+  }
+
+  document.getElementById('menu').addEventListener('click', function(e) {
+    var b = e.target.closest('button[data-id]');
+    if (!b) return;
+    var id = b.dataset.id;
+    cart[id] = Math.max(0, (cart[id] || 0) + Number(b.dataset.d));
+    render();
+  });
+
+  document.getElementById('send').addEventListener('click', function() {
+    var btn = this;
+    var items = Object.keys(cart).filter(function(id) { return cart[id] > 0; })
+      .map(function(id) { return { menu_item_id: Number(id), quantity: cart[id] }; });
+    btn.disabled = true;
+    fetch('/api/orders', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table_number: table, items: items, notes: document.getElementById('notes').value })
+    }).then(function(r) { return r.json().then(function(d) { if (!r.ok) throw new Error(d.error); return d; }); })
+      .then(function(d) {
+        cart = {}; document.getElementById('notes').value = '';
+        showMsg('✅ ההזמנה נשלחה למטבח (מספר ' + d.order_id + ')', true);
+        render(); window.scrollTo(0, 0);
+      })
+      .catch(function() { showMsg('שליחת ההזמנה נכשלה, נסו שוב', false); render(); });
+  });
+
+  fetch('/api/menu').then(function(r) { return r.json(); })
+    .then(function(d) { menu = d; render(); })
+    .catch(function() { document.getElementById('menu').textContent = 'לא ניתן לטעון את התפריט'; });
+</script>
+</body>
+</html>

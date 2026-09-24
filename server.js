@@ -73,7 +73,8 @@ function readBody(req) {
   return new Promise(resolve => {
     let body = '';
     req.on('data', chunk => body += chunk);
-    req.on('end', () => { try { resolve(JSON.parse(body)); } catch { resolve({}); } });
+    req.on('end', () => { try { resolve(JSON.parse(body) || {}); } catch { resolve({}); } });
+    req.on('error', () => resolve({}));
   });
 }
 
@@ -115,36 +116,33 @@ function handleApi(req, res, method, urlPath) {
 
   // ── Menu admin: add item ──
   if (method === 'POST' && urlPath === '/api/menu') {
-    readBody(req).then(function(body) {
+    return readBody(req).then(function(body) {
       var name = body.name, description = body.description, price = body.price, category = body.category;
       if (!name || !price || !category) return json(res, { error: 'missing fields' }, 400);
       var r = db.prepare('INSERT INTO menu_items (name,description,price,category) VALUES (?,?,?,?)').run(name, description || '', parseFloat(price), category);
       json(res, { success: true, id: r.lastInsertRowid }, 201);
     });
-    return;
   }
 
   var menuIdMatch = urlPath.match(/^\/api\/menu\/(\d+)$/);
 
   // ── Menu admin: update item ──
   if (method === 'PUT' && menuIdMatch) {
-    readBody(req).then(function(body) {
+    return readBody(req).then(function(body) {
       var name = body.name, description = body.description, price = body.price, category = body.category;
       if (!name || !price || !category) return json(res, { error: 'missing fields' }, 400);
       db.prepare('UPDATE menu_items SET name=?,description=?,price=?,category=? WHERE id=?').run(name, description || '', parseFloat(price), category, menuIdMatch[1]);
       json(res, { success: true });
     });
-    return;
   }
 
   // ── Menu admin: toggle available ──
   var menuAvailMatch = urlPath.match(/^\/api\/menu\/(\d+)\/available$/);
   if (method === 'PATCH' && menuAvailMatch) {
-    readBody(req).then(function(body) {
+    return readBody(req).then(function(body) {
       db.prepare('UPDATE menu_items SET available=? WHERE id=?').run(body.available ? 1 : 0, menuAvailMatch[1]);
       json(res, { success: true });
     });
-    return;
   }
 
   // ── Menu admin: delete item ──
@@ -177,28 +175,38 @@ function handleApi(req, res, method, urlPath) {
 
   // ── Create order ──
   if (method === 'POST' && urlPath === '/api/orders') {
-    readBody(req).then(function(body) {
+    return readBody(req).then(function(body) {
       var table_number = body.table_number, items = body.items, notes = body.notes;
       if (!table_number || !items || !items.length) return json(res, { error: 'missing fields' }, 400);
-      var r = db.prepare('INSERT INTO orders (table_number,notes) VALUES (?,?)').run(table_number, notes || '');
-      var orderId = r.lastInsertRowid;
+      if (items.some(function(it) { return !it || !Number.isInteger(Number(it.menu_item_id)); })) {
+        return json(res, { error: 'invalid items' }, 400);
+      }
       var insItem = db.prepare('INSERT INTO order_items (order_id,menu_item_id,quantity,special_request) VALUES (?,?,?,?)');
-      items.forEach(function(it) { insItem.run(orderId, it.menu_item_id, it.quantity, it.special_request || ''); });
+      var orderId;
+      db.exec('BEGIN');
+      try {
+        orderId = db.prepare('INSERT INTO orders (table_number,notes) VALUES (?,?)').run(table_number, notes || '').lastInsertRowid;
+        items.forEach(function(it) {
+          insItem.run(orderId, Number(it.menu_item_id), Math.max(1, parseInt(it.quantity, 10) || 1), it.special_request || '');
+        });
+        db.exec('COMMIT');
+      } catch (e) {
+        db.exec('ROLLBACK');
+        throw e;
+      }
       json(res, { success: true, order_id: orderId }, 201);
     });
-    return;
   }
 
   // ── Update order status ──
   var patchMatch = urlPath.match(/^\/api\/orders\/(\d+)\/status$/);
   if (method === 'PATCH' && patchMatch) {
-    readBody(req).then(function(body) {
+    return readBody(req).then(function(body) {
       var valid = ['new','seen','preparing','ready','served','cancelled'];
       if (valid.indexOf(body.status) === -1) return json(res, { error: 'invalid status' }, 400);
       db.prepare("UPDATE orders SET status=?,updated_at=datetime('now') WHERE id=?").run(body.status, patchMatch[1]);
       json(res, { success: true });
     });
-    return;
   }
 
   json(res, { error: 'Not found' }, 404);
@@ -208,7 +216,18 @@ function handleApi(req, res, method, urlPath) {
 http.createServer(function(req, res) {
   var urlPath = req.url.split('?')[0];
   var method = req.method.toUpperCase();
-  if (urlPath.startsWith('/api/')) return handleApi(req, res, method, urlPath);
+  if (urlPath.startsWith('/api/')) {
+    // שגיאה בבקשה אחת לא תפיל את כל השרת
+    var fail = function(err) {
+      console.error('❌', method, urlPath, err && err.message);
+      if (!res.headersSent) json(res, { error: 'server error' }, 500);
+    };
+    try {
+      var p = handleApi(req, res, method, urlPath);
+      if (p && typeof p.catch === 'function') p.catch(fail);
+    } catch (err) { fail(err); }
+    return;
+  }
 
   var filePath = path.join(PUBLIC, urlPath === '/' ? 'restaurant.html' : urlPath);
   if (!filePath.startsWith(PUBLIC)) { res.writeHead(403); return res.end(); }
