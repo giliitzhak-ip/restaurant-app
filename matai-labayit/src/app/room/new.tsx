@@ -1,10 +1,13 @@
-import { router } from 'expo-router';
-import React, { useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { PhotoReview } from '@/components/PhotoReview';
 import { Screen } from '@/components/Screen';
+import { useDraft } from '@/components/useDraft';
+import type { QualityIssue } from '@/imaging/quality';
 import { StoredImage } from '@/components/StoredImage';
 import { ROOM_TIPS, Tips } from '@/components/Tips';
-import { Button, Chip, Field, H2, P } from '@/components/ui';
+import { Banner, Button, Chip, Field, H2, P } from '@/components/ui';
 import { usePhotoPicker } from '@/components/usePhotoPicker';
 import type { ImportedPhoto } from '@/services/media';
 import { saveDesign, saveRoom, updateSettings } from '@/storage/db';
@@ -20,22 +23,36 @@ const num = (s: string) => {
 };
 
 export default function NewRoom() {
-  const [name, setName] = useState('');
-  const [photo, setPhoto] = useState<ImportedPhoto | null>(null);
+  const params = useLocalSearchParams<{ pendingRef?: string; pendingW?: string; pendingH?: string }>();
+  // טיוטה: שם, תמונה ומידות נשמרים אוטומטית עד שהחדר נשמר
+  const [draft, setDraft, draftInfo] = useDraft('room', { name: '', photo: null as ImportedPhoto | null, dims: { w: '', l: '', h: '' }, issues: [] as string[] });
+  const { name, photo, dims } = draft;
+  const setName = (v: string) => setDraft((d) => ({ ...d, name: v }));
+  const setDims = (v: typeof dims) => setDraft((d) => ({ ...d, dims: v }));
   const [showDims, setShowDims] = useState(false);
-  const [dims, setDims] = useState({ w: '', l: '', h: '' });
+  const [review, setReview] = useState<ImportedPhoto | null>(null);
+  const [issues, setIssues] = useState<QualityIssue[]>([]);
   const { pick, busy } = usePhotoPicker();
 
+  useEffect(() => {
+    if (params.pendingRef) setReview({ ref: params.pendingRef, width: Number(params.pendingW), height: Number(params.pendingH) });
+  }, [params.pendingRef]);
+
   const take = async (src: 'camera' | 'library') => {
-    const p = await pick(src);
-    if (p) {
-      if (photo) deleteImage(photo.ref);
-      setPhoto(p);
-    }
+    const p = await pick(src, 2048, { purpose: 'room', params: {} });
+    if (p) setReview(p);
+  };
+
+  const confirmReview = (p: ImportedPhoto, found: QualityIssue[]) => {
+    if (photo && photo.ref !== p.ref) deleteImage(photo.ref);
+    setDraft((d) => ({ ...d, photo: p, issues: found.map((i) => i.code) }));
+    setIssues(found.filter((i) => i.severity === 'warn'));
+    setReview(null);
   };
 
   const save = (next: 'product' | 'room') => {
     if (!photo) return;
+    draftInfo.clear();
     const now = Date.now();
     const roomId = uid();
     saveRoom({
@@ -76,17 +93,20 @@ export default function NewRoom() {
       {photo ? (
         <View style={{ gap: space.sm }}>
           <H2>תמונת החדר</H2>
+          {draftInfo.restored && <Banner kind="info" text="שחזרנו את התמונה מהפעם הקודמת." />}
           <StoredImage refId={photo.ref} style={{ width: '100%', aspectRatio: photo.width / photo.height, borderRadius: radius.lg }} resizeMode="cover" label="תמונת החדר שצולמה" />
+          {issues[0] && <Banner kind="warning" text={`${issues[0].message}. ${issues[0].tip}`} />}
           <View style={{ flexDirection: ROW, gap: space.sm }}>
-            <Button label="צילום מחדש" icon="camera-outline" variant="secondary" onPress={() => take('camera')} style={{ flex: 1 }} loading={busy} />
+            <Button label="צלם חדר מחדש" icon="camera-outline" variant="secondary" onPress={() => take('camera')} style={{ flex: 1 }} loading={busy} />
             <Button label="תמונה אחרת" icon="image-outline" variant="secondary" onPress={() => take('library')} style={{ flex: 1 }} />
           </View>
+          <Button label="סיבוב / חיתוך" icon="crop" variant="ghost" onPress={() => setReview(photo)} />
         </View>
       ) : (
         <>
           <Tips title="טיפים לצילום טוב של החדר" tips={ROOM_TIPS} />
-          <Button label="צילום החדר" icon="camera-outline" size="lg" onPress={() => take('camera')} loading={busy} testID="room-camera" />
-          <Button label="בחירה מהגלריה" icon="image-outline" variant="secondary" size="lg" onPress={() => take('library')} testID="room-library" />
+          <Button label="צלם חדר" icon="camera-outline" size="lg" onPress={() => take('camera')} loading={busy} testID="room-camera" />
+          <Button label="העלה תמונת חדר" icon="image-outline" variant="secondary" size="lg" onPress={() => take('library')} testID="room-library" />
           <P muted>התמונה נשמרת רק בטלפון שלכם.</P>
         </>
       )}
@@ -111,6 +131,29 @@ export default function NewRoom() {
           <P muted>טיפ: לדיוק הכי טוב, בעורך אפשר לסמן על התמונה קו של חפץ שמידתו ידועה (״קנה מידה״).</P>
         </View>
       )}
+      <PhotoReview
+        photo={review}
+        kind="room"
+        title="בדיקת תמונת החדר"
+        onConfirm={confirmReview}
+        onChange={(p) => {
+          setReview(p);
+          // אם עורכים את התמונה שכבר נבחרה – מעדכנים גם אותה
+          if (photo && review && photo.ref === review.ref) setDraft((d) => ({ ...d, photo: p }));
+        }}
+        onCancel={() => {
+          if (review && review.ref !== photo?.ref) deleteImage(review.ref);
+          setReview(null);
+        }}
+        onReplace={async (src) => {
+          const old = review;
+          const p = await pick(src, 2048, { purpose: 'room', params: {} });
+          if (p) {
+            if (old && old.ref !== photo?.ref) deleteImage(old.ref);
+            setReview(p);
+          }
+        }}
+      />
     </Screen>
   );
 }

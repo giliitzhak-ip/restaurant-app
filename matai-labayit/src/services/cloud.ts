@@ -5,7 +5,15 @@ import { getState } from '@/storage/db';
 import { readImageBase64 } from '@/storage/imageStore';
 import type { ImageRef } from '@/model/types';
 
-export type CloudCapabilities = { removeBackground: boolean; segmentSurface: boolean; mock?: boolean };
+export type CloudCapabilities = {
+  removeBackground: boolean;
+  segmentSurface: boolean;
+  segment?: boolean;
+  depth?: boolean;
+  harmonize?: boolean;
+  models?: { sam: boolean; isnet: boolean; midas: boolean };
+  mock?: boolean;
+};
 
 export class CloudError extends Error {}
 
@@ -46,16 +54,42 @@ export async function checkServer(url: string): Promise<CloudCapabilities> {
   return r.capabilities;
 }
 
-/** הסרת רקע בענן – שולח רק את תמונת המוצר. מחזיר PNG שקוף (base64). */
-export async function removeBackgroundCloud(photo: ImageRef): Promise<string> {
+let caps: CloudCapabilities | null = null;
+/** יכולות השרת (נשמר בזיכרון אחרי בדיקה ראשונה). */
+export async function serverCapabilities(): Promise<CloudCapabilities | null> {
+  if (!cloudConfigured()) return null;
+  if (caps) return caps;
+  try {
+    caps = await checkServer(base());
+  } catch {
+    caps = null;
+  }
+  return caps;
+}
+export const resetCapabilities = () => (caps = null);
+
+type NBox = { x: number; y: number; w: number; h: number };
+
+/**
+ * הסרת רקע בשרת – שולח רק את תמונת המוצר. box (מנורמל 0..1) = המלבן שסימן המשתמש;
+ * בשרת עם מודלים מקומיים: SAM בוחר את האובייקט ו-ISNet מעדן שוליים. מחזיר PNG שקוף (base64).
+ */
+export async function removeBackgroundCloud(photo: ImageRef, box?: NBox): Promise<{ image: string; method?: string }> {
   const image = await readImageBase64(photo);
-  const r = await call<{ image: string }>('/v1/remove-background', { image, mime: 'image/jpeg' });
-  return r.image;
+  return call<{ image: string; method?: string }>('/v1/remove-background', { image, mime: 'image/jpeg', box }, 90000);
 }
 
-/** זיהוי משטח בענן – שולח את תמונת החדר ונקודה. מחזיר מסכה (PNG, base64). */
-export async function segmentSurfaceCloud(photo: ImageRef, point: { x: number; y: number }, target: string): Promise<string> {
+/** בחירה בנגיעה (SAM): נקודות מנורמלות, label 1 = כלול, 0 = לא כלול. מחזיר מסכה (PNG אלפא). */
+export async function segmentCloud(photo: ImageRef, points: { x: number; y: number; label: number }[], box?: NBox): Promise<{ mask: string; score?: number }> {
   const image = await readImageBase64(photo);
-  const r = await call<{ mask: string }>('/v1/segment-surface', { image, mime: 'image/jpeg', point, target });
-  return r.mask;
+  return call<{ mask: string; score?: number }>('/v1/segment', { image, mime: 'image/jpeg', points, box }, 90000);
+}
+
+/**
+ * השתלבות בעזרת מודל יצירת תמונה (אם חובר בשרת). protect = מסכת המוצרים – השרת מחזיר
+ * את פיקסלי המוצר המקוריים אחרי העיבוד, כך שהדגם לא יכול להשתנות. strength מוגבל בשרת ל-0.6.
+ */
+export async function harmonizeCloud(imageJpeg: string, protectPng: string, strength: number): Promise<string> {
+  const r = await call<{ image: string }>('/v1/harmonize', { image: imageJpeg, protect: protectPng, strength }, 120000);
+  return r.image;
 }

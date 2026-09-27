@@ -2,12 +2,19 @@
   "name": "matai-labayit-server",
   "version": "1.0.0",
   "private": true,
-  "description": "שרת Proxy אופציונלי לשירותי AI (מפתחות API נשמרים רק כאן)",
+  "description": "שרת עיבוד אופציונלי: מודלי AI מקומיים (SAM, ISNet, MiDaS) וספקים חיצוניים – מפתחות רק כאן",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "mock": "MOCK=1 node index.js",
+    "models": "node scripts/download-models.js",
     "test": "node test.js"
   },
-  "engines": { "node": ">=18" }
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "onnxruntime-node": "^1.30.0",
+    "sharp": "^0.35.5"
+  }
 }

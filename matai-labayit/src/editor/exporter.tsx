@@ -6,6 +6,7 @@ import { encode, loadSkImage, loadSkImageFromUri, resizeImage, saveSkImage } fro
 import type { Design, ImageRef, Product, Room } from '@/model/types';
 import { deleteImage } from '@/storage/imageStore';
 import { getState, saveDesign } from '@/storage/db';
+import { harmonizeCloud } from '@/services/cloud';
 import { Composition, designImageRefs } from './Composition';
 
 const LABELS = {
@@ -29,8 +30,8 @@ async function label(k: LabelKey): Promise<SkImage> {
   return img;
 }
 
-export async function loadDesignImages(layers: Design['layers'], products: Record<string, Product>) {
-  const refs = [...new Set(designImageRefs(layers, products))];
+export async function loadDesignImages(layers: Design['layers'], products: Record<string, Product>, room?: Room) {
+  const refs = [...new Set(designImageRefs(layers, products, room))];
   const images: Record<string, SkImage> = {};
   await Promise.all(
     refs.map(async (r) => {
@@ -60,7 +61,7 @@ function Tag({ img, W, H, corner, rel = 0.045 }: { img: SkImage; W: number; H: n
 async function renderOne(room: Room, design: Pick<Design, 'layers' | 'ambient'>, maxDim: number, opts: { before?: boolean; tag?: LabelKey; watermark?: boolean }) {
   const products = getState().products;
   const roomImg = await loadSkImage(room.photo);
-  const images = await loadDesignImages(design.layers, products);
+  const images = await loadDesignImages(design.layers, products, room);
   const s = Math.min(1, maxDim / Math.max(room.photoW, room.photoH));
   const W = Math.round(room.photoW * s);
   const H = Math.round(room.photoH * s);
@@ -70,7 +71,7 @@ async function renderOne(room: Room, design: Pick<Design, 'layers' | 'ambient'>,
   const el = (
     <Group>
       <Group transform={[{ scale: s }]}>
-        <Composition room={roomImg} roomW={room.photoW} roomH={room.photoH} layers={design.layers} ambient={design.ambient} products={products} images={images} before={opts.before} />
+        <Composition room={roomImg} roomW={room.photoW} roomH={room.photoH} layers={design.layers} ambient={design.ambient} products={products} images={images} planes={room.planes} occluders={room.occluders} before={opts.before} />
       </Group>
       {tag && <Tag img={tag} W={W} H={H} corner="tr" rel={0.06} />}
       {wm && <Tag img={wm} W={W} H={H} corner="bl" rel={0.04} />}
@@ -119,6 +120,29 @@ export async function exportComparison(room: Room, a: Design, b: Design, maxDim 
   const ia = await renderOne(room, a, maxDim, { tag: 'optionA', watermark: true });
   const ib = await renderOne(room, b, maxDim, { tag: 'optionB', watermark: true });
   return combine(ia, ib);
+}
+
+/**
+ * שיפור השתלבות בעזרת מודל יצירת תמונה בשרת (אם חובר ספק): שולחים את ההדמיה ומסכת הגנה
+ * של המוצרים. השרת מחזיר את פיקסלי המוצר המקוריים אחרי העיבוד – המודל משנה רק סביבה/צל/שוליים.
+ */
+export async function exportHarmonizedAI(room: Room, design: Design, strength = 0.3): Promise<string> {
+  const products = getState().products;
+  const roomImg = await loadSkImage(room.photo);
+  const images = await loadDesignImages(design.layers, products, room);
+  const s = Math.min(1, 1536 / Math.max(room.photoW, room.photoH));
+  const W = Math.round(room.photoW * s);
+  const H = Math.round(room.photoH * s);
+  const comp = (protect: boolean) => (
+    <Group transform={[{ scale: s }]}>
+      <Composition room={roomImg} roomW={room.photoW} roomH={room.photoH} layers={design.layers} ambient={design.ambient} products={products} images={images} planes={room.planes} occluders={room.occluders} protect={protect} />
+    </Group>
+  );
+  const base = await drawAsImage(comp(false), { width: W, height: H });
+  const prot = await drawAsImage(comp(true), { width: W, height: H });
+  if (!base || !prot) throw new Error('הרינדור נכשל');
+  const out = await harmonizeCloud(encode(base, 'jpg', 92), encode(prot, 'png'), strength);
+  return out;
 }
 
 /** תמונה ממוזערת לגרסה (לרשימות ולמסך הבית). */

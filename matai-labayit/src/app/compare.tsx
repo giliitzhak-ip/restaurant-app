@@ -30,7 +30,7 @@ export default function Compare() {
   const A = designs.find((d) => d.id === aId);
   const B = designs.find((d) => d.id === bId);
   const roomImg = useSkImage(room?.photo);
-  const refs = useMemo(() => [...designImageRefs(A?.layers ?? [], products), ...designImageRefs(B?.layers ?? [], products)], [A, B, products]);
+  const refs = useMemo(() => [...designImageRefs(A?.layers ?? [], products, room), ...designImageRefs(B?.layers ?? [], products)], [A, B, products, room]);
   const images = useSkImages(refs);
 
   if (!room) return <Banner kind="danger" text="החדר לא נמצא" />;
@@ -134,7 +134,7 @@ function Preview({ room, roomImg, design, products, images }: { room: Room; room
       {w > 0 && (
         <Canvas style={StyleSheet.absoluteFill} accessibilityLabel={`הדמיה של ${design.name}`}>
           <Group transform={[{ scale: s }]}>
-            <Composition room={roomImg} roomW={room.photoW} roomH={room.photoH} layers={design.layers} ambient={design.ambient} products={products} images={images} />
+            <Composition room={roomImg} roomW={room.photoW} roomH={room.photoH} layers={design.layers} ambient={design.ambient} products={products} images={images} planes={room.planes} occluders={room.occluders} />
           </Group>
         </Canvas>
       )}
@@ -157,7 +157,7 @@ function BeforeAfter({ room, roomImg, design, products, images, split, onSplit }
         {w > 0 && (
           <Canvas style={StyleSheet.absoluteFill}>
             <Group transform={[{ scale: s }]}>
-              <Composition room={roomImg} roomW={room.photoW} roomH={room.photoH} layers={design.layers} ambient={design.ambient} products={products} images={images} />
+              <Composition room={roomImg} roomW={room.photoW} roomH={room.photoH} layers={design.layers} ambient={design.ambient} products={products} images={images} planes={room.planes} occluders={room.occluders} />
             </Group>
             <Group clip={{ x, y: 0, width: w - x, height: H }}>
               <Group transform={[{ scale: s }]}>

@@ -81,6 +81,11 @@ function erode(m: Uint8Array, w: number, h: number, r: number): Uint8Array {
 function dilate(m: Uint8Array, w: number, h: number, r: number): Uint8Array {
   return morph(m, w, h, r, false);
 }
+/** סגירה מורפולוגית במקום: סוגרת תפרים דקים בין מסכות שאוחדו (למשל רצפה + כתם שמש). */
+export function closeSeams(m: Uint8Array, w: number, h: number, r: number): void {
+  const closed = erode(dilate(m, w, h, r), w, h, r);
+  for (let i = 0; i < m.length; i++) m[i] = Math.max(m[i], closed[i]);
+}
 function morph(m: Uint8Array, w: number, h: number, r: number, isErode: boolean): Uint8Array {
   // שני מעברים נפרדים (אופקי ואנכי) של מינימום/מקסימום
   const tmp = new Uint8Array(m.length);
@@ -315,6 +320,13 @@ export function alphaToMask(px: Pixels): Mask {
   return { data: m, width: px.width, height: px.height };
 }
 
+/** חלק התמונה (0..1) שהמסכה מכסה. */
+export function maskArea(mask: Mask, threshold = 128): number {
+  let n = 0;
+  for (let i = 0; i < mask.data.length; i++) if (mask.data[i] >= threshold) n++;
+  return n / Math.max(1, mask.data.length);
+}
+
 export function maskBounds(mask: Mask, threshold = 20): Rect | null {
   const { data, width: w, height: h } = mask;
   let minX = w;
@@ -433,4 +445,104 @@ export function pointInPoly(x: number, y: number, poly: { x: number; y: number }
     if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
   }
   return inside;
+}
+
+/**
+ * הסרת צל הרצפה של החנות מהחיתוך: בחלק התחתון של המוצר, פיקסלים שדומים בגוון לרצפה
+ * שמסביב אבל כהים ממנה (צל), מוסרים. הצל האמיתי ייווצר מחדש בחדר לפי התאורה שלו.
+ * שומר על רגליים/חלקים צבעוניים (שונים בגוון מהרצפה).
+ */
+export function removeGroundShadow(px: Pixels, mask: Mask, strength = 1): Mask {
+  const { width: w, height: h } = mask;
+  const b = maskBounds(mask, 128);
+  if (!b) return mask;
+  const lab = toLab(px);
+  // דגימת צבע הרצפה: רצועה מתחת ולצדי החלק התחתון של המוצר, מחוץ למסכה
+  const y0 = Math.floor(b.y + b.h * 0.75);
+  const y1 = Math.min(h - 1, Math.ceil(b.y + b.h * 1.15));
+  const x0 = Math.max(0, Math.floor(b.x - b.w * 0.1));
+  const x1 = Math.min(w - 1, Math.ceil(b.x + b.w * 1.1));
+  let n = 0;
+  const f = [0, 0, 0];
+  for (let y = y0; y <= y1; y++)
+    for (let x = x0; x <= x1; x++) {
+      const i = y * w + x;
+      if (mask.data[i] > 40) continue;
+      f[0] += lab[i * 3];
+      f[1] += lab[i * 3 + 1];
+      f[2] += lab[i * 3 + 2];
+      n++;
+    }
+  if (n < 50) return mask;
+  f[0] /= n;
+  f[1] /= n;
+  f[2] /= n;
+  const out = new Uint8Array(mask.data);
+  const top = Math.floor(b.y + b.h * 0.55);
+  const bottom = Math.min(h, b.y + b.h + 1);
+  const TC = 7 * strength; // סף שוני בגוון (a,b) מהרצפה
+  // שלב 1: מועמדים = ניטרליים בגוון הרצפה וכהים ממנה; צבע "ליבת הצל" = חציון המועמדים ברצפים רחבים
+  const cand = new Uint8Array(w * h);
+  for (let y = top; y < bottom; y++)
+    for (let x = b.x; x < b.x + b.w; x++) {
+      const i = y * w + x;
+      if (out[i] < 20) continue;
+      const da = lab[i * 3 + 1] - f[1];
+      const db = lab[i * 3 + 2] - f[2];
+      if (Math.sqrt(da * da + db * db) < TC + 2 && lab[i * 3] - f[0] < 4) cand[i] = 1;
+    }
+  const minRun = Math.max(10, Math.round(b.w * 0.06));
+  const core: number[] = [];
+  for (let y = top; y < bottom; y++) {
+    let x = b.x;
+    while (x < b.x + b.w) {
+      if (!cand[y * w + x]) {
+        x++;
+        continue;
+      }
+      let e = x;
+      while (e < b.x + b.w && cand[y * w + e]) e++;
+      if (e - x >= minRun) for (let k = x; k < e; k += 2) core.push(y * w + k);
+      x = e;
+    }
+  }
+  const sc = [0, 0, 0];
+  if (core.length > 30) {
+    for (let c = 0; c < 3; c++) {
+      const vals = core.map((i) => lab[i * 3 + c]).sort((p, q) => p - q);
+      sc[c] = vals[vals.length >> 1];
+    }
+  }
+  // שלב 2: מסירים פיקסלים קרובים לצבע הצל, או לגוון הרצפה בהכהיה מתונה. רגליים (בהירות/חמות מעט יותר) נשארות.
+  let removed = 0;
+  for (let y = top; y < bottom; y++)
+    for (let x = b.x; x < b.x + b.w; x++) {
+      const i = y * w + x;
+      if (out[i] < 20) continue;
+      const da = lab[i * 3 + 1] - f[1];
+      const db = lab[i * 3 + 2] - f[2];
+      const chroma = Math.sqrt(da * da + db * db);
+      const dl = lab[i * 3] - f[0];
+      let t = 0;
+      if (chroma < TC && dl < 4 && dl > -22) t = Math.min(1, (TC - chroma) / (TC * 0.5));
+      if (core.length > 30) {
+        const dc = Math.hypot(lab[i * 3] - sc[0], (lab[i * 3 + 1] - sc[1]) * 1.5, (lab[i * 3 + 2] - sc[2]) * 1.5);
+        if (dc < 4 * strength) t = Math.max(t, Math.min(1, (4 * strength - dc) / 2));
+      }
+      if (t > 0) {
+        out[i] = Math.round(out[i] * (1 - t));
+        removed++;
+      }
+    }
+  if (!removed) return mask;
+  // ניקוי פירורים ברצועה התחתונה (פתיחה מורפולוגית) ושמירת הרכיב הראשי
+  const opened = dilate(erode(out, w, h, 1), w, h, 1);
+  for (let y = top; y < bottom; y++) for (let x = b.x; x < b.x + b.w; x++) out[y * w + x] = Math.min(out[y * w + x], opened[y * w + x] > 0 ? 255 : 0);
+  let m = keepMainComponents(out, w, h, 0.02);
+  for (let i = 0; i < m.length; i++) m[i] = Math.min(m[i], out[i]);
+  m = blur(m, w, h, 1);
+  // הגנה על צורת המוצר: אם "הצל" שזוהה גדול מדי – כנראה זה חלק מהמוצר (תחתית כהה), לא נוגעים
+  const before = maskArea(mask);
+  if (before > 0 && 1 - maskArea({ data: m, width: w, height: h }) / before > 0.2) return mask;
+  return { data: m, width: w, height: h };
 }

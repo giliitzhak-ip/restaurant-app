@@ -6,7 +6,7 @@ import { Banner, Button, Chip, Segmented, Slider } from '@/components/ui';
 import { pxPerCm } from '@/imaging/geometry';
 import type { Product, Room, SurfaceLayer } from '@/model/types';
 import { updateProduct } from '@/storage/db';
-import { ROW, rtl, space, type } from '@/theme';
+import { colors, radius, ROW, rtl, space, type } from '@/theme';
 import type { DesignEditor } from '../useDesignEditor';
 import type { EditorMode } from '../EditorCanvas';
 import { ColorPicker } from './ColorPicker';
@@ -23,15 +23,19 @@ type Props = {
   brushSize: number;
   setBrushSize: (n: number) => void;
   onResetArea: () => void;
-  onCloudDetect?: () => void;
+  aiAvailable: boolean;
+  useAi: boolean;
+  setUseAi: (v: boolean) => void;
   wandTolerance: number;
   setWandTolerance: (v: number) => void;
   onWandToleranceEnd: () => void;
+  addRegion: boolean;
+  setAddRegion: (v: boolean) => void;
 };
 
 const GROUT = ['#F2EEE6', '#D9D4CB', '#9A948A', '#4A4640'];
 
-export function SurfacePanel({ layer, product, room, ed, mode, setMode, brushSize, setBrushSize, onResetArea, onCloudDetect, wandTolerance, setWandTolerance, onWandToleranceEnd }: Props) {
+export function SurfacePanel({ layer, product, room, ed, mode, setMode, brushSize, setBrushSize, onResetArea, aiAvailable, useAi, setUseAi, wandTolerance, setWandTolerance, onWandToleranceEnd, addRegion, setAddRegion }: Props) {
   const [tab, setTab] = useState<Tab>('area');
   const W = room.photoW;
   const cp = ed.checkpoint;
@@ -55,17 +59,72 @@ export function SurfacePanel({ layer, product, room, ed, mode, setMode, brushSiz
       />
       {tab === 'area' && (
         <>
-          <Text style={[type.tiny, rtl]}>גררו את ארבע הפינות כך שיתאימו לקיר או לרצפה – כך גם הפרספקטיבה של הדוגמה תתאים. אפשר גם לגרור את כל האזור.</Text>
-          <View style={styles.row}>
-            <Button
-              label={mode === 'wand' ? 'הקישו על המשטח…' : 'זיהוי לפי צבע'}
-              icon="magic-staff"
-              variant={mode === 'wand' ? 'primary' : 'secondary'}
-              onPress={() => setMode(mode === 'wand' ? 'select' : 'wand')}
-              style={{ flex: 1 }}
-              testID="wand"
+          <Text style={[type.tiny, rtl]}>
+            {layer.regionMask
+              ? 'מכוסה רק מה שגם זוהה וגם בתוך ארבע הפינות. גררו את הפינות לפינות הקיר/הרצפה – הן קובעות גם את הפרספקטיבה (ברצפה הן יכולות להיות מחוץ לתמונה).'
+              : 'גררו את ארבע הפינות כך שיתאימו לקיר או לרצפה – כך גם הפרספקטיבה של הדוגמה תתאים. אפשר גם לגרור את כל האזור.'}
+          </Text>
+          {aiAvailable && (
+            <Segmented
+              options={[
+                { id: 'ai', label: 'זיהוי AI (בשרת)' },
+                { id: 'local', label: 'זיהוי לפי צבע' },
+              ]}
+              value={useAi ? 'ai' : 'local'}
+              onChange={(v) => setUseAi(v === 'ai')}
             />
-            {onCloudDetect && <Button label="זיהוי בענן" icon="cloud-outline" variant="secondary" onPress={onCloudDetect} style={{ flex: 1 }} />}
+          )}
+          <Button
+            label={mode === 'wand' && !addRegion ? 'הקישו על המשטח…' : aiAvailable && useAi ? 'זיהוי המשטח בנגיעה' : 'זיהוי לפי צבע'}
+            icon="magic-staff"
+            variant={mode === 'wand' && !addRegion ? 'primary' : 'secondary'}
+            onPress={() => {
+              setAddRegion(false);
+              setMode(mode === 'wand' && !addRegion ? 'select' : 'wand');
+            }}
+            testID="wand"
+          />
+          {!!layer.regionMask && (
+            <Button
+              label={addRegion ? 'סיום הוספת אזורים' : 'הוספת אזור בנגיעה (כתם אור, פינה שחסרה)'}
+              icon="plus"
+              variant={addRegion ? 'primary' : 'secondary'}
+              onPress={() => {
+                setAddRegion(!addRegion);
+                setMode(addRegion ? 'select' : 'wand');
+              }}
+              testID="add-region"
+            />
+          )}
+          {!!room.planes?.length && (
+            <View style={[styles.row, { alignItems: 'center' }]}>
+              <Text style={[type.tiny, rtl]}>התאמה למישור:</Text>
+              {room.planes!.map((pl) => (
+                <Chip key={pl.id} label={pl.name} selected={layer.planeId === pl.id} onPress={() => ed.updateLayer(layer.id, { quad: pl.quad.map((q) => ({ ...q })) as SurfaceLayer['quad'], planeId: pl.id }, true)} />
+              ))}
+            </View>
+          )}
+          <View style={styles.box}>
+            <Text style={[type.small, rtl, { fontWeight: '700' }]}>חלונות ודלתות</Text>
+            <Text style={[type.tiny, rtl]}>הוסיפו פתח וגררו את 4 הפינות (בכחול) על החלון או הדלת – הם לא ייצבעו ולא יחופו.</Text>
+            <View style={styles.row}>
+              <Button
+                label="הוספת חלון/דלת"
+                icon="shape-square-plus"
+                variant="secondary"
+                onPress={() => {
+                  const c = layer.quad.reduce((a, q) => ({ x: a.x + q.x / 4, y: a.y + q.y / 4 }), { x: 0, y: 0 });
+                  const d = W * 0.08;
+                  const q: SurfaceLayer['quad'] = [{ x: c.x - d, y: c.y - d * 1.3 }, { x: c.x + d, y: c.y - d * 1.3 }, { x: c.x + d, y: c.y + d * 1.3 }, { x: c.x - d, y: c.y + d * 1.3 }];
+                  ed.updateLayer(layer.id, { openings: [...(layer.openings ?? []), q] }, true);
+                }}
+                style={{ flex: 1 }}
+                testID="add-opening"
+              />
+              {!!layer.openings?.length && (
+                <Button label="מחיקת פתח אחרון" variant="ghost" onPress={() => ed.updateLayer(layer.id, { openings: layer.openings!.slice(0, -1) }, true)} style={{ flex: 1 }} />
+              )}
+            </View>
           </View>
           {(mode === 'wand' || layer.regionMask) && (
             <Slider
@@ -169,6 +228,26 @@ export function SurfacePanel({ layer, product, room, ed, mode, setMode, brushSiz
               ))}
             </View>
           )}
+          <Slider
+            label="שונות טבעית בין לוחות/אריחים"
+            value={layer.pattern.variation ?? 0}
+            min={0}
+            max={1}
+            onStart={cp}
+            onChange={(v) => setPat({ variation: v })}
+            format={(v) => (v < 0.02 ? 'ללא (חזרה מדויקת)' : `${Math.round(v * 100)}%`)}
+          />
+          {layer.match && (
+            <Slider
+              label="נאמנות לצבע שצולם ↔ התאמה לתאורת החדר"
+              value={layer.harmonize ?? 0.5}
+              min={0}
+              max={1}
+              onStart={cp}
+              onChange={(v) => set({ harmonize: v })}
+              format={(v) => (v < 0.05 ? 'כמו בחנות' : `${Math.round(v * 100)}%`)}
+            />
+          )}
           <Slider label="שמירת צללי החדר" value={layer.pattern.shading} min={0} max={1} onStart={cp} onChange={(v) => setPat({ shading: v })} format={(v) => `${Math.round(v * 100)}%`} />
           <Slider label="אטימות" value={layer.opacity} min={0.2} max={1} onStart={cp} onChange={(v) => set({ opacity: v })} format={(v) => `${Math.round(v * 100)}%`} />
         </>
@@ -179,4 +258,5 @@ export function SurfacePanel({ layer, product, room, ed, mode, setMode, brushSiz
 
 const styles = StyleSheet.create({
   row: { flexDirection: ROW, gap: space.sm, flexWrap: 'wrap' },
+  box: { gap: space.sm, backgroundColor: colors.accentSoft, borderRadius: radius.md, padding: space.md },
 });

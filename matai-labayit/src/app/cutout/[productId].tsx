@@ -11,11 +11,16 @@ import { Banner, Button, Segmented, Slider } from '@/components/ui';
 import { frameOutside, strokePath } from '@/editor/paths';
 import { openEditorWithProduct } from '@/editor/flow';
 import { rgbToHex, sampleColor } from '@/imaging/color';
-import { alphaToMask, autoMask, maskCoverage, rectMask, stampStroke, type Mask, type Rect as R } from '@/imaging/cutout';
+import { alphaToMask, autoMask, maskCoverage, rectMask, removeGroundShadow, stampStroke, type Mask, type Rect as R } from '@/imaging/cutout';
+import { categoryById } from '@/model/categories';
 import { checkerTile, previewCutout, saveCutout, saveSwatch } from '@/imaging/process';
 import { forgetSkImage, loadSkImage, loadSkImageFromUri, readPixels, type Pixels } from '@/imaging/skiaImage';
 import type { Placement } from '@/model/types';
-import { cloudConfigured, removeBackgroundCloud } from '@/services/cloud';
+import { removeBackgroundCloud, serverCapabilities } from '@/services/cloud';
+import { analyzeCutout, type QualityIssue } from '@/imaging/quality';
+import { sceneStats } from '@/imaging/harmonize';
+import { resampleMask } from '@/editor/roomTools';
+import { STATS_DIM } from '@/editor/realism';
 import { getState, updateProduct, useDB } from '@/storage/db';
 import { deleteImage } from '@/storage/imageStore';
 import { colors, ROW, rtl, space, type, LTR } from '@/theme';
@@ -44,6 +49,27 @@ export default function Cutout() {
   const tolRef = useRef(0.5);
   const [showOrig, setShowOrig] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [aiBg, setAiBg] = useState(false);
+  const [cutIssues, setCutIssues] = useState<QualityIssue[]>([]);
+  const [swatchOpts, setSwatchOpts] = useState({ flatten: true, seamless: false });
+  // מוצרים שעומדים על רצפה: מסירים את צל הרצפה של החנות (הצל ייווצר מחדש בחדר)
+  const standing = product ? ['furniture', 'appliance', 'decor', 'lighting'].includes(product.category) && !categoryById(product.category).liesFlat : false;
+  const [stripShadow, setStripShadow] = useState(true);
+  const rawMask = useRef<Mask | null>(null);
+  /** קובע מסכה חדשה מתוצאת זיהוי (מקומי/AI), כולל הסרת צל הרצפה אם צריך. */
+  // מודל ה-AI מפריד כבר את המוצר מצל הרצפה – שם ההסרה כבויה כברירת מחדל (היא עלולה לפגוע בחלק התחתון)
+  const setDetected = (m: Mask, strip = stripShadow) => {
+    rawMask.current = m;
+    const out = standing && strip && px ? removeGroundShadow(px, m) : m;
+    history.current = [];
+    setMask(out);
+    setCutIssues(analyzeCutout(out));
+    setPhase('refine');
+    return out;
+  };
+  useEffect(() => {
+    serverCapabilities().then((c) => setAiBg(!!c?.removeBackground && !c.mock));
+  }, []);
   const [stroke, setStroke] = useState<number[] | null>(null);
   const [picked, setPicked] = useState<string | null>(product?.color ?? null);
   const [size, setSize] = useState({ w: 1, h: 1 });
@@ -193,11 +219,9 @@ export default function Cutout() {
     setBusy('מסירים את הרקע…');
     setTimeout(() => {
       try {
-        const m = autoMask(px, sel, tol, true);
+        setStripShadow(true);
+        const m = setDetected(autoMask(px, sel, tol, true), true);
         const cov = maskCoverage(m);
-        history.current = [];
-        setMask(m);
-        setPhase('refine');
         if (cov < 0.01) toast('לא זוהה מוצר בבירור. נסו להגדיל את הרגישות או להשתמש במברשת "שחזור".', 'error');
       } catch (e) {
         toast(`הסרת הרקע נכשלה: ${(e as Error).message}. אפשר להשתמש בתמונה כמו שהיא.`, 'error');
@@ -217,20 +241,19 @@ export default function Cutout() {
   const runCloud = async () => {
     if (!px || !product?.photo) return;
     const ok = await confirm(
-      'הסרת רקע בענן',
-      'תמונת המוצר בלבד (לא תמונות הבית) תישלח לשרת העיבוד שהגדרתם, לצורך הסרת הרקע. השרת לא שומר את התמונה. להמשיך?',
+      'הסרת רקע AI בשרת',
+      'תמונת המוצר בלבד (לא תמונות הבית) תישלח לשרת העיבוד שהגדרתם, יחד עם המלבן שסימנתם. השרת מזהה את המוצר שבתוך המלבן, מסיר את הרקע ולא שומר את התמונה. להמשיך?',
       'שליחה',
     );
     if (!ok) return;
-    setBusy('שולחים לעיבוד בענן…');
+    setBusy('מסירים רקע ב-AI…');
     try {
-      const b64 = await removeBackgroundCloud(product.photo);
-      const img = await loadSkImageFromUri(`data:image/png;base64,${b64}`);
+      const box = sel ? { x: sel.x / px.width, y: sel.y / px.height, w: sel.w / px.width, h: sel.h / px.height } : undefined;
+      const r = await removeBackgroundCloud(product.photo, box);
+      const img = await loadSkImageFromUri(`data:image/png;base64,${r.image}`);
       const p = readPixels(img, Math.max(px.width, px.height));
-      if (p.width !== px.width || p.height !== px.height) throw new Error('מידות התוצאה לא תואמות');
-      history.current = [];
-      setMask(alphaToMask(p));
-      setPhase('refine');
+      setStripShadow(false);
+      setDetected(resampleMask(alphaToMask(p), px.width, px.height), false);
     } catch (e) {
       toast(`${(e as Error).message} עוברים להסרה מקומית.`, 'error');
       runAuto();
@@ -245,7 +268,9 @@ export default function Cutout() {
     try {
       const old = { cutout: product.cutout, mask: product.mask };
       const res = await saveCutout(photo, mask);
-      updateProduct(product.id, { ...res, selection: sel ?? undefined });
+      // מאפייני התאורה של צילום החנות – להתאמת המוצר לתאורת החדר
+      const stats = sceneStats(readPixels(photo, STATS_DIM));
+      updateProduct(product.id, { ...res, selection: sel ?? undefined, sceneStats: stats });
       if (old.cutout) {
         forgetSkImage(old.cutout);
         deleteImage(old.cutout);
@@ -263,7 +288,7 @@ export default function Cutout() {
     if (!photo || !sel || !px || !product) return;
     setBusy('שומרים את הדוגמה…');
     try {
-      const res = await saveSwatch(photo, sel, px.width);
+      const res = await saveSwatch(photo, sel, px.width, swatchOpts);
       if (product.swatch && product.swatch !== product.photo) deleteImage(product.swatch);
       updateProduct(product.id, { ...res, selection: sel });
       done();
@@ -314,7 +339,7 @@ export default function Cutout() {
     hint = brush === 'erase' ? 'מברשת מחיקה: העבירו אצבע על שאריות רקע.' : 'מברשת שחזור: העבירו אצבע על חלקי מוצר שנמחקו.';
   } else if (mode === 'swatch') {
     title = 'בחרו אזור דוגמה';
-    hint = 'סמנו אזור ישר ונקי של האריח / הפרקט / הטפט. הוא יחזור על עצמו על המשטח.';
+    hint = 'לאריחים ולפרקט: סמנו אריח אחד או לוח אחד מקצה לקצה. לטפט: חזרה אחת של הדוגמה. לאבן/טיח: אזור אחיד. האזור יחזור על עצמו על המשטח.';
   } else {
     title = 'דגימת צבע';
     hint = 'הקישו על הצבע בתמונה (למשל על דוגמת הצבע או הפחית).';
@@ -381,12 +406,15 @@ export default function Cutout() {
             <Button label="הסרת רקע אוטומטית" icon="magic-staff" size="lg" onPress={() => runAuto()} disabled={!px} testID="auto-remove" />
             <View style={styles.row}>
               <Button label="תמונה נקייה – בלי הסרה" variant="secondary" onPress={useAsIs} style={{ flex: 1 }} disabled={!px} />
-              {cloudConfigured() && <Button label="הסרה בענן" icon="cloud-outline" variant="secondary" onPress={runCloud} style={{ flex: 1 }} />}
+              {aiBg && <Button label="הסרת רקע AI" icon="cloud-outline" variant="secondary" onPress={runCloud} style={{ flex: 1 }} testID="ai-remove" />}
             </View>
           </>
         )}
         {mode === 'object' && phase === 'refine' && (
           <>
+            {cutIssues.filter((i) => i.severity === 'warn').slice(0, 1).map((i) => (
+              <Banner key={i.code} kind="warning" text={`${i.message}. ${i.tip}`} />
+            ))}
             <View style={styles.row}>
               <View style={{ flex: 1 }}>
                 <Segmented
@@ -412,6 +440,20 @@ export default function Cutout() {
                   onEnd={() => runAuto(tolRef.current)} format={(v) => `${Math.round(v * 100)}%`} />
               </View>
             </View>
+            {standing && (
+              <Segmented
+                options={[
+                  { id: 'on', label: 'הסרת צל הרצפה מהחנות' },
+                  { id: 'off', label: 'השארת הצל' },
+                ]}
+                value={stripShadow ? 'on' : 'off'}
+                onChange={(v) => {
+                  const on = v === 'on';
+                  setStripShadow(on);
+                  if (rawMask.current) setDetected(rawMask.current, on);
+                }}
+              />
+            )}
             <View style={styles.row}>
               <Button label={showOrig ? 'הסתר מקור' : 'הצג מקור'} variant="ghost" onPress={() => setShowOrig(!showOrig)} style={{ flex: 1 }} />
               <Button label="בחירה מחדש" variant="ghost" onPress={() => setPhase('select')} style={{ flex: 1 }} />
@@ -419,7 +461,27 @@ export default function Cutout() {
             <Button label={editing ? 'שמירת החיתוך' : 'סיום – להדמיה'} icon="check" size="lg" onPress={finishObject} disabled={!!busy} testID="cutout-done" />
           </>
         )}
-        {mode === 'swatch' && <Button label="שימוש כדוגמה חוזרת" icon="check" size="lg" onPress={finishSwatch} disabled={!px || !!busy} testID="swatch-done" />}
+        {mode === 'swatch' && (
+          <>
+            <Segmented
+              options={[
+                { id: 'unit', label: 'יחידה (אריח/לוח/רפפות)' },
+                { id: 'cont', label: 'משטח רציף (אבן/טיח/בד)' },
+              ]}
+              value={swatchOpts.seamless ? 'cont' : 'unit'}
+              onChange={(v) => setSwatchOpts({ ...swatchOpts, seamless: v === 'cont' })}
+            />
+            <Segmented
+              options={[
+                { id: 'flat', label: 'ניקוי תאורת החנות' },
+                { id: 'raw', label: 'כמו בצילום' },
+              ]}
+              value={swatchOpts.flatten ? 'flat' : 'raw'}
+              onChange={(v) => setSwatchOpts({ ...swatchOpts, flatten: v === 'flat' })}
+            />
+            <Button label="שימוש כדוגמה חוזרת" icon="check" size="lg" onPress={finishSwatch} disabled={!px || !!busy} testID="swatch-done" />
+          </>
+        )}
         {mode === 'color' && (
           <View style={styles.row}>
             <View style={[styles.swatch, { backgroundColor: picked ?? '#ccc' }]} accessibilityLabel={picked ? `הצבע שנבחר ${picked}` : 'עוד לא נבחר צבע'} />

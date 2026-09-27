@@ -6,7 +6,7 @@ import { colors } from '@/theme';
 import { Icon } from './ui';
 
 /** הצגת תמונה מהמאגר המקומי לפי הפניה. */
-export function StoredImage({ refId, style, resizeMode = 'cover', label }: { refId?: ImageRef; style?: StyleProp<ImageStyle>; resizeMode?: 'cover' | 'contain'; label?: string }) {
+export function StoredImage({ refId, style, resizeMode = 'cover', label }: { refId?: ImageRef; style?: StyleProp<ImageStyle>; resizeMode?: 'cover' | 'contain' | 'stretch'; label?: string }) {
   const [uri, setUri] = useState<string | null>(null);
   useEffect(() => {
     let alive = true;

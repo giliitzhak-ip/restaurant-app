@@ -28,9 +28,9 @@ export const CATEGORIES: CategoryDef[] = [
   { id: 'rug', label: 'שטיחים', examples: 'שטיח מונח על הרצפה', kind: 'object', icon: 'rug', defaultPlacement: 'floor', placements: ['floor', 'free'], liesFlat: true, needsPhoto: true },
   { id: 'lighting', label: 'גופי תאורה', examples: 'מנורות תלייה, עומדות, מנורות קיר', kind: 'object', icon: 'ceiling-light-outline', defaultPlacement: 'ceiling', placements: ['ceiling', 'wall', 'table', 'floor', 'free'], emitsLight: true, needsPhoto: true },
   { id: 'curtains', label: 'וילונות', examples: 'וילונות ותריסי בד', kind: 'object', icon: 'curtains', defaultPlacement: 'wall', placements: ['wall', 'free'], needsPhoto: true },
-  { id: 'mirrorArt', label: 'מראות ותמונות', examples: 'מראות, תמונות, הדפסים', kind: 'object', icon: 'mirror-rectangle', defaultPlacement: 'wall', placements: ['wall', 'free'], needsPhoto: true },
+  { id: 'mirrorArt', label: 'מראות, תמונות ומדפים', examples: 'מראות, תמונות, הדפסים, מדפי קיר', kind: 'object', icon: 'mirror-rectangle', defaultPlacement: 'wall', placements: ['wall', 'free'], needsPhoto: true },
   { id: 'decor', label: 'אביזרי נוי', examples: 'עציצים, אגרטלים, פסלים', kind: 'object', icon: 'flower-tulip-outline', defaultPlacement: 'table', placements: ['table', 'floor', 'wall', 'free'], needsPhoto: true },
-  { id: 'appliance', label: 'מוצרי חשמל', examples: 'טלוויזיה, מקרר, מכונת כביסה', kind: 'object', icon: 'television', defaultPlacement: 'floor', placements: ['floor', 'wall', 'table', 'free'], needsPhoto: true },
+  { id: 'appliance', label: 'מוצרי חשמל', examples: 'טלוויזיה (על הקיר או על מזנון), מקרר, מכונת כביסה', kind: 'object', icon: 'television', defaultPlacement: 'floor', placements: ['floor', 'wall', 'table', 'free'], needsPhoto: true },
 ];
 
 export const categoryById = (id: CategoryId): CategoryDef =>

@@ -90,11 +90,13 @@ export function imageFromPixels(p: Pixels): SkImage {
 
 /** שינוי גודל ו/או חיתוך תמונה. */
 export function resizeImage(img: SkImage, w: number, h: number, src?: { x: number; y: number; w: number; h: number }): SkImage {
-  const surface = Skia.Surface.Make(Math.round(w), Math.round(h));
+  const W = Math.max(1, Math.round(w));
+  const H = Math.max(1, Math.round(h));
+  const surface = Skia.Surface.Make(W, H);
   if (!surface) throw new Error('יצירת משטח עבודה נכשלה');
   const s = src ?? { x: 0, y: 0, w: img.width(), h: img.height() };
   const paint = Skia.Paint();
-  surface.getCanvas().drawImageRect(img, Skia.XYWHRect(s.x, s.y, s.w, s.h), Skia.XYWHRect(0, 0, w, h), paint);
+  surface.getCanvas().drawImageRect(img, Skia.XYWHRect(s.x, s.y, s.w, s.h), Skia.XYWHRect(0, 0, W, H), paint);
   surface.flush();
   return surface.makeImageSnapshot();
 }

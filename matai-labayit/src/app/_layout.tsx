@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { FeedbackProvider } from '@/components/Feedback';
 import { IconButton, Loading } from '@/components/ui';
+import { recoverPendingCapture } from '@/services/media';
 import { isLoaded, loadDB } from '@/storage/db';
 import { colors, type } from '@/theme';
 
@@ -24,7 +25,20 @@ export default function RootLayout() {
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     loadDB()
-      .then(() => setReady(true))
+      .then(() => {
+        setReady(true);
+        // אנדרואיד: אם המערכת סגרה את האפליקציה בזמן הצילום – מחזירים את המשתמש לאותו מסך עם התמונה
+        recoverPendingCapture()
+          .then((r) => {
+            if (!r) return;
+            const pending = { pendingRef: r.photo.ref, pendingW: String(r.photo.width), pendingH: String(r.photo.height) };
+            setTimeout(() => {
+              if (r.ctx.purpose === 'room') router.push({ pathname: '/room/new', params: pending });
+              else router.push({ pathname: '/add-product', params: { ...r.ctx.params, ...pending } });
+            }, 300);
+          })
+          .catch(() => undefined);
+      })
       .catch((e) => setError(String(e?.message ?? e)));
   }, []);
 
