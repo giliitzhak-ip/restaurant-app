@@ -1,0 +1,13 @@
+{
+  "name": "matai-labayit-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "שרת Proxy אופציונלי לשירותי AI (מפתחות API נשמרים רק כאן)",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "mock": "MOCK=1 node index.js",
+    "test": "node test.js"
+  },
+  "engines": { "node": ">=18" }
+}

@@ -1,0 +1,79 @@
+{
+  "expo": {
+    "name": "מתאים לבית",
+    "slug": "matai-labayit",
+    "scheme": "mataylabayit",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F6F3EE"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.example.mataylabayit",
+      "infoPlist": {
+        "CFBundleDevelopmentRegion": "he",
+        "CFBundleAllowMixedLocalizations": true
+      }
+    },
+    "android": {
+      "package": "com.example.mataylabayit",
+      "adaptiveIcon": {
+        "backgroundColor": "#F6F3EE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "blockedPermissions": [
+        "android.permission.READ_MEDIA_AUDIO",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sharing",
+      "expo-asset",
+      [
+        "expo-localization",
+        {
+          "supportsRTL": true,
+          "forcesRTL": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "האפליקציה משתמשת במצלמה כדי לצלם את החדר ואת המוצרים בחנות. התמונות נשמרות רק בטלפון.",
+          "photosPermission": "האפליקציה ניגשת לתמונה שבחרתם כדי להציג אותה בהדמיה. התמונות נשמרות רק בטלפון.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "כדי לשמור את ההדמיה בגלריה.",
+          "savePhotosPermission": "כדי לשמור את ההדמיה בגלריה.",
+          "isAccessMediaLocationEnabled": false,
+          "granularPermissions": [
+            "photo"
+          ]
+        }
+      ],
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
