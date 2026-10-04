@@ -5,8 +5,21 @@ import { StoreProvider } from './state/store';
 import { STANDALONE } from './lib/config';
 import './styles/global.css';
 
-const saved = localStorage.getItem('theme');
-document.documentElement.dataset.theme = saved === 'dark' ? 'dark' : 'light';
+/**
+ * האפליקציה קובעת בעצמה שפה וכיוון, ולא מסתמכת על המסמך המארח.
+ * כך היא נשארת RTL מלא גם כשהיא מוגשת כקובץ סטטי או מוטמעת בעמוד אחר.
+ */
+const root = document.documentElement;
+root.lang = 'he';
+root.dir = 'rtl';
+
+let savedTheme: string | null = null;
+try {
+  savedTheme = localStorage.getItem('theme');
+} catch {
+  /* אחסון חסום – נשארים בברירת המחדל הבהירה */
+}
+root.dataset.theme = savedTheme === 'dark' ? 'dark' : 'light';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

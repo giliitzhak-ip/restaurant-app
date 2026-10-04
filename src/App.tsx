@@ -44,7 +44,11 @@ export function App() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem('theme', theme);
+    try {
+      localStorage.setItem('theme', theme);
+    } catch {
+      /* אחסון חסום – הבחירה תקפה לסשן הנוכחי בלבד */
+    }
   }, [theme]);
 
   useEffect(() => {
@@ -58,7 +62,7 @@ export function App() {
 
   if (!ready) {
     return (
-      <div className="app-shell">
+      <div className="app-shell" dir="rtl" lang="he">
         <main className="page"><p className="muted">טוען נתונים…</p></main>
       </div>
     );
@@ -85,7 +89,7 @@ export function App() {
   const isDoc = name === 'doc';
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" dir="rtl" lang="he">
       {!isDoc && (
         <header className="topbar no-print">
           <div className="topbar-inner">
