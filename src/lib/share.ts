@@ -9,7 +9,7 @@ export function buildShareText(full: FullJournal, state: AppState): string {
   const lines: string[] = [];
 
   lines.push(`יצחק הדברות · ${journalNumberText(journal.journalNumber)}`);
-  lines.push(`תאריך: ${formatDateTime(journal.startedAt)}`);
+  lines.push(`תאריך ביצוע: ${formatDateTime(journal.startedAt)}`);
   if (customer) lines.push(`לקוח: ${customer.name}`);
   if (journal.siteAddress) lines.push(`כתובת: ${journal.siteAddress}`);
   lines.push(`מדביר: ${journal.exterminatorName} · רישיון ${journal.licenseNumber || 'לא הוזן'}`);

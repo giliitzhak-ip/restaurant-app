@@ -82,7 +82,7 @@ export function JournalDocument({ journalId }: { journalId?: string }) {
           </div>
           <div style={{ textAlign: 'start' }}>
             <div><strong>{journalNumberText(journal.journalNumber)}</strong></div>
-            <div>{formatDateTime(journal.startedAt)}</div>
+            <div>תאריך ביצוע: {formatDateTime(journal.startedAt)}</div>
             <div>סטטוס: {JOURNAL_STATUS_LABEL[journal.status]}</div>
           </div>
         </header>

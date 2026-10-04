@@ -228,6 +228,7 @@ export interface Journal {
   status: JournalStatus;
 
   /* שלב 1 */
+  /** מועד ביצוע העבודה בפועל (תאריך ושעה). ניתן לעריכה ואינו מועד פתיחת היומן. */
   startedAt: string;
   workKind: WorkKind;
   visitKind: VisitKind;

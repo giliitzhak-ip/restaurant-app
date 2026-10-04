@@ -20,17 +20,21 @@ export function Step1Work({ journalId }: StepProps) {
       </div>
 
       <div className="row">
-        <Field label="תאריך התחלה" htmlFor="start-date">
+        <Field
+          label="תאריך ביצוע העבודה"
+          htmlFor="work-date"
+          hint="התאריך שבו בוצעה העבודה בפועל."
+        >
           <input
-            id="start-date"
+            id="work-date"
             type="date"
             value={date}
             onChange={(e) => updateJournal(journal.id, { startedAt: fromDateTimeInputs(e.target.value, time) })}
           />
         </Field>
-        <Field label="שעת התחלה" htmlFor="start-time">
+        <Field label="שעת ביצוע" htmlFor="work-time">
           <input
-            id="start-time"
+            id="work-time"
             type="time"
             value={time}
             onChange={(e) => updateJournal(journal.id, { startedAt: fromDateTimeInputs(date, e.target.value) })}
