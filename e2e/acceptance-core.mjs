@@ -31,8 +31,12 @@ await page.goto(BASE, { waitUntil: 'networkidle' });
 // מסך בית
 check('מסך הבית נטען עם "שלום, יצחק"', await page.getByRole('heading', { name: 'שלום, יצחק' }).isVisible());
 check('כרטיס "היום שלי" מוצג', await page.getByRole('heading', { name: 'היום שלי' }).isVisible());
-const tiles = await page.locator('.home-tile').count();
-check('גריד 3x3 – 9 פעולות', tiles === 9, `נמצאו ${tiles}`);
+const tiles = await page.locator('.group-tile').count();
+const hasPrimary = await page.locator('.start-journal').isVisible();
+check('תשע פעולות: שמונה בקבוצות ופעולה ראשית נפרדת',
+  tiles === 8 && hasPrimary, `אריחים=${tiles} פעולה ראשית=${hasPrimary}`);
+const groups = await page.locator('.home-group h2').allTextContents();
+check('הפעולות מקובצות לפי שימוש', groups.length === 3, groups.join(' | '));
 check('פס ניווט תחתון קיים', await page.locator('.bottom-nav').isVisible());
 check('כיוון RTL', await page.evaluate(() => document.documentElement.dir) === 'rtl');
 

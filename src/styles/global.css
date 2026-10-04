@@ -205,40 +205,134 @@ a { color: var(--green-deep); }
 .btn-lg { min-height: 54px; font-size: 1.06rem; }
 .btn-sm { min-height: 38px; font-size: 0.88rem; padding: 0 var(--sp-3); }
 
-/* ───────────── גריד מסך הבית ───────────── */
+/* ───────────── מסך הבית ───────────── */
 
-.home-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--sp-3);
-  margin-top: var(--sp-4);
+/* כרטיס "היום שלי": התחנה הבאה היא הגיבור, הנתונים כשורת שבבים דקה */
+.today-card {
+  background: linear-gradient(145deg, var(--green-deep) 0%, #0f6a4d 100%);
+  color: #fff;
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  box-shadow: var(--shadow-lg);
+  animation: card-in 240ms ease both;
 }
 
-.home-tile {
+.today-head { display: flex; align-items: baseline; gap: var(--sp-3); }
+.today-head h2 { font-size: 1.1rem; }
+.today-date { font-size: 0.82rem; opacity: 0.8; margin-inline-start: auto; font-variant-numeric: tabular-nums; }
+
+.today-hero {
+  display: flex; flex-direction: column; gap: 2px;
+  margin-top: var(--sp-4);
+  padding-inline-start: var(--sp-3);
+  border-inline-start: 3px solid var(--green-action);
+}
+.today-eyebrow { font-size: 0.76rem; letter-spacing: 0.03em; opacity: 0.8; }
+.today-name { font-size: 1.35rem; font-weight: 800; line-height: 1.2; }
+.today-meta { font-size: 0.86rem; opacity: 0.9; }
+
+.today-chips {
+  list-style: none; margin: var(--sp-4) 0 var(--sp-4); padding: 0;
+  display: flex; flex-wrap: wrap; gap: var(--sp-2);
+}
+.today-chips li {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: var(--r-pill);
+  padding: 4px 10px;
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+.today-chips b { font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+
+@media (min-width: 760px) {
+  /* במסך רחב הכרטיס נפרס לשתי עמודות, כדי שלא יישאר חלל ריק */
+  .today-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 320px);
+    grid-template-areas: 'head head' 'hero chips' 'hero action';
+    column-gap: var(--sp-6);
+    align-items: center;
+  }
+  .today-head { grid-area: head; }
+  .today-hero { grid-area: hero; margin-top: var(--sp-4); align-self: center; }
+  .today-card .today-chips { grid-area: chips; margin: var(--sp-4) 0 var(--sp-2); align-self: end; }
+  .today-card .btn-block { grid-area: action; align-self: start; }
+}
+
+/* פעולה ראשית: שורה רחבה, לא תא בגריד */
+.start-journal {
+  width: 100%; margin-top: var(--sp-3);
+  display: flex; align-items: center; gap: var(--sp-3);
+  padding: var(--sp-4);
+  min-height: 72px;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: linear-gradient(140deg, var(--green-action), #0f9c55);
+  color: #04231a;
+  font-family: inherit; cursor: pointer; text-align: start;
+  box-shadow: var(--shadow-md);
+  transition: transform 130ms ease, box-shadow 160ms ease;
+}
+.start-journal:active { transform: scale(0.985); }
+
+.start-mark {
+  width: 46px; height: 46px; border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92); color: #0a5c43;
+  display: grid; place-items: center; flex: none;
+}
+.start-mark svg { width: 24px; height: 24px; }
+.start-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.start-title { font-weight: 800; font-size: 1.05rem; }
+.start-hint { font-size: 0.8rem; opacity: 0.78; }
+.start-go { flex: none; opacity: 0.7; }
+.start-go svg { width: 20px; height: 20px; }
+
+/* קבוצות לפי שימוש, במקום רשת אייקונים אחידה */
+.home-group { margin-top: var(--sp-6); }
+
+.group-head { display: flex; align-items: baseline; gap: var(--sp-2); margin-bottom: var(--sp-2); }
+.group-head h2 { font-size: 0.95rem; }
+.group-hint { font-size: 0.78rem; color: var(--muted); }
+
+.group-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2);
+}
+
+/* בטלפון: אריח אחרון יתום נפרס לכל הרוחב, כדי שלא יישאר חלל ריק */
+.group-grid > .group-tile:last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+@media (min-width: 760px) {
+  /* במסך רחב קבוצה של שלושה נכנסת בשורה אחת, ואין יתום לפרוס */
+  .group-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .group-grid > .group-tile:last-child:nth-child(odd) { grid-column: auto; }
+}
+
+.group-tile {
+  display: flex; align-items: center; gap: var(--sp-3);
+  min-height: 64px; padding: var(--sp-3);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  min-height: 108px;
-  padding: var(--sp-3) var(--sp-2);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2);
-  cursor: pointer; font-family: inherit; color: var(--text);
-  transition: transform 130ms ease, box-shadow 160ms ease, border-color 160ms ease;
   box-shadow: var(--shadow-sm);
+  font-family: inherit; color: var(--text); cursor: pointer; text-align: start;
+  transition: transform 130ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
-.home-tile:active { transform: scale(0.97); }
-.home-tile:hover { border-color: var(--green-action); box-shadow: var(--shadow-md); }
+.group-tile:active { transform: scale(0.98); }
+.group-tile:hover { border-color: var(--green-action); box-shadow: var(--shadow-md); }
 
-.home-tile .ring {
-  width: 54px; height: 54px; border-radius: var(--r-pill);
+.tile-icon {
+  width: 38px; height: 38px; border-radius: 12px; flex: none;
   background: var(--green-light); color: var(--green-deep);
-  display: grid; place-items: center; font-size: 1.4rem;
+  display: grid; place-items: center;
 }
-:root[data-theme='dark'] .home-tile .ring { color: #7FE3AE; }
-.home-tile .label { font-size: 0.84rem; font-weight: 600; text-align: center; }
+:root[data-theme='dark'] .tile-icon { color: #7FE3AE; }
+.tile-icon svg { width: 21px; height: 21px; }
 
-.home-tile.primary { background: linear-gradient(140deg, var(--green-action), #0f9c55); border-color: transparent; }
-.home-tile.primary .label { color: #04231a; }
-.home-tile.primary .ring { background: rgba(255,255,255,0.9); color: #0a5c43; }
+.tile-text { display: flex; flex-direction: column; min-width: 0; }
+.tile-label { font-weight: 700; font-size: 0.92rem; }
+.tile-hint { font-size: 0.74rem; color: var(--muted); }
 
 /* ───────────── שדות ───────────── */
 
@@ -407,16 +501,19 @@ input:focus, select:focus, textarea:focus {
 :root[data-theme='dark'] .nav-item[aria-current='page'] { color: #7FE3AE; }
 .nav-item .nav-icon { font-size: 1.16rem; }
 
+/* פעולה ראשית מתויגת – לא עיגול צף אלמוני */
 .nav-fab {
-  width: 56px; height: 56px; border-radius: var(--r-pill);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  min-width: 64px; min-height: 52px; padding: 4px 10px;
+  margin: 0 auto;
+  border: none; border-radius: 16px;
   background: var(--green-action); color: #04231a;
-  border: 4px solid var(--bg);
-  display: grid; place-items: center; font-size: 1.6rem; font-weight: 700;
-  margin: 0 auto; cursor: pointer; box-shadow: var(--shadow-md);
-  transform: translateY(-14px);
-  transition: transform 140ms ease;
+  font-family: inherit; cursor: pointer;
+  box-shadow: var(--shadow-md);
+  transition: transform 140ms ease, background 160ms ease;
 }
-.nav-fab:active { transform: translateY(-14px) scale(0.97); }
+.nav-fab:active { transform: scale(0.97); }
+.nav-fab-label { font-size: 0.66rem; font-weight: 800; }
 
 /* ───────────── ניווט צד במחשב ───────────── */
 
@@ -572,10 +669,9 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* אייקונים */
-.home-tile .ring svg { width: 26px; height: 26px; }
 .nav-item .nav-icon { display: inline-flex; }
 .nav-item .nav-icon svg { width: 22px; height: 22px; }
-.nav-fab svg { width: 26px; height: 26px; }
+.nav-fab svg { width: 20px; height: 20px; }
 .icon-btn svg { width: 20px; height: 20px; }
 .list-row .row-icon { display: inline-flex; color: var(--green-deep); }
 :root[data-theme='dark'] .list-row .row-icon { color: #7FE3AE; }

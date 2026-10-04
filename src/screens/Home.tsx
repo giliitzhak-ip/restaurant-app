@@ -1,22 +1,43 @@
 import { useMemo } from 'react';
 import { navigate } from '../router';
 import { useStore } from '../state/store';
-import { Card, EmptyState } from '../components/ui';
 import {
-  IconCalendar, IconCustomers, IconJournal, IconMaterials, IconPlus,
-  IconProfile, IconRoute, IconTasks, IconTemplates,
+  IconCalendar, IconChevron, IconCustomers, IconJournal, IconMaterials,
+  IconPlus, IconProfile, IconRoute, IconTasks, IconTemplates,
 } from '../components/icons';
 import { formatDate, toDateInput } from '../lib/format';
 
-const TILES = [
-  { key: 'journals', Icon: IconJournal, label: 'יומנים', path: '#/journals' },
-  { key: 'customers', Icon: IconCustomers, label: 'לקוחות', path: '#/customers' },
-  { key: 'route', Icon: IconRoute, label: 'מסלול עבודה', path: '#/route' },
-  { key: 'templates', Icon: IconTemplates, label: 'תבניות', path: '#/templates' },
-  { key: 'tasks', Icon: IconTasks, label: 'משימות', path: '#/tasks' },
-  { key: 'calendar', Icon: IconCalendar, label: 'לוח שנה', path: '#/calendar' },
-  { key: 'materials', Icon: IconMaterials, label: 'חומרים', path: '#/materials' },
-  { key: 'profile', Icon: IconProfile, label: 'פרופיל', path: '#/profile' },
+/**
+ * מסך הבית מסודר לפי מהלך העבודה של המדביר ולא כרשת אייקונים אחידה:
+ * קודם מה שקורה היום, אחר כך פתיחת יומן, ואז הקבוצות לפי שימוש.
+ */
+const GROUPS = [
+  {
+    title: 'בשטח',
+    hint: 'מה שפתוח עכשיו',
+    items: [
+      { key: 'route', Icon: IconRoute, label: 'מסלול עבודה', hint: 'תחנות היום', path: '#/route' },
+      { key: 'tasks', Icon: IconTasks, label: 'משימות', hint: 'מעקב וביקורות', path: '#/tasks' },
+      { key: 'calendar', Icon: IconCalendar, label: 'לוח שנה', hint: 'תכנון קדימה', path: '#/calendar' },
+    ],
+  },
+  {
+    title: 'התיק',
+    hint: 'תיעוד ולקוחות',
+    items: [
+      { key: 'journals', Icon: IconJournal, label: 'יומנים', hint: 'חיפוש והפקה', path: '#/journals' },
+      { key: 'customers', Icon: IconCustomers, label: 'לקוחות', hint: 'כרטיס והיסטוריה', path: '#/customers' },
+      { key: 'templates', Icon: IconTemplates, label: 'תבניות', hint: 'חומרים ולקוחות', path: '#/templates' },
+    ],
+  },
+  {
+    title: 'מאגר והגדרות',
+    hint: '',
+    items: [
+      { key: 'materials', Icon: IconMaterials, label: 'חומרים', hint: 'תוויות ומינונים', path: '#/materials' },
+      { key: 'profile', Icon: IconProfile, label: 'פרופיל', hint: 'רישיון וסנכרון', path: '#/profile' },
+    ],
+  },
 ];
 
 export function Home({ onNewJournal }: { onNewJournal: () => void }) {
@@ -45,80 +66,73 @@ export function Home({ onNewJournal }: { onNewJournal: () => void }) {
 
   return (
     <>
-      <section className="card today-card" aria-labelledby="today-title">
-        <h2 id="today-title">היום שלי</h2>
-        <div className="small" style={{ opacity: 0.85 }}>{formatDate(new Date().toISOString())}</div>
-        <div className="today-row mt-3">
-          <div className="today-stat">
-            <span className="num">{stops.length}</span>
-            <span className="lbl">טיפולים להיום</span>
-          </div>
-          <div className="today-stat">
-            <span className="num">{doneCount}</span>
-            <span className="lbl">הושלמו</span>
-          </div>
-          <div className="today-stat">
-            <span className="num">{openTasks}</span>
-            <span className="lbl">משימות פתוחות</span>
-          </div>
-          <div className="today-stat">
-            <span className="num">{drafts}</span>
-            <span className="lbl">טיוטות</span>
-          </div>
+      <section className="today-card" aria-labelledby="today-title">
+        <div className="today-head">
+          <h2 id="today-title">היום שלי</h2>
+          <span className="today-date">{formatDate(new Date().toISOString())}</span>
         </div>
 
-        <div className="today-next">
-          {nextCustomer ? (
-            <>
-              <div className="small" style={{ opacity: 0.8 }}>הלקוח הבא</div>
-              <div className="bold">{nextCustomer.name}</div>
-              <div className="small">
-                {nextStop?.plannedTime ? `${nextStop.plannedTime} · ` : ''}
-                {nextSite?.address ?? nextCustomer.address}
-              </div>
-            </>
-          ) : (
-            <div className="small">אין תחנות מתוכננות להיום. אפשר לבנות מסלול עבודה.</div>
-          )}
-        </div>
+        {nextCustomer ? (
+          <div className="today-hero">
+            <span className="today-eyebrow">התחנה הבאה</span>
+            <span className="today-name">{nextCustomer.name}</span>
+            <span className="today-meta">
+              {nextStop?.plannedTime ? `${nextStop.plannedTime} · ` : ''}
+              {nextSite?.address ?? nextCustomer.address}
+            </span>
+          </div>
+        ) : (
+          <div className="today-hero">
+            <span className="today-eyebrow">אין תחנות להיום</span>
+            <span className="today-meta">אפשר לבנות מסלול עבודה ולהתחיל.</span>
+          </div>
+        )}
 
-        <button
-          type="button"
-          className="btn btn-primary btn-lg btn-block mt-4"
-          onClick={() => navigate('#/route')}
-        >
+        <ul className="today-chips">
+          <li><b>{stops.length}</b> טיפולים</li>
+          <li><b>{doneCount}</b> הושלמו</li>
+          <li><b>{openTasks}</b> משימות</li>
+          <li><b>{drafts}</b> טיוטות</li>
+        </ul>
+
+        <button type="button" className="btn btn-primary btn-lg btn-block" onClick={() => navigate('#/route')}>
           התחל מסלול
         </button>
       </section>
 
-      <h2 className="section-title">פעולות</h2>
-      <div className="home-grid">
-        {TILES.map((tile) => (
-          <button
-            key={tile.key}
-            type="button"
-            className="home-tile"
-            onClick={() => navigate(tile.path)}
-          >
-            <span className="ring" aria-hidden="true"><tile.Icon /></span>
-            <span className="label">{tile.label}</span>
-          </button>
-        ))}
-        <button type="button" className="home-tile primary" onClick={onNewJournal}>
-          <span className="ring" aria-hidden="true"><IconPlus /></span>
-          <span className="label">יומן חדש</span>
-        </button>
-      </div>
+      <button type="button" className="start-journal" onClick={onNewJournal}>
+        <span className="start-mark" aria-hidden="true"><IconPlus /></span>
+        <span className="start-text">
+          <span className="start-title">פתיחת יומן חדש</span>
+          <span className="start-hint">אשף בשמונה שלבים · נשמר אוטומטית</span>
+        </span>
+        <span className="start-go" aria-hidden="true"><IconChevron /></span>
+      </button>
 
-      {state.journals.length === 0 && (
-        <Card className="mt-4">
-          <EmptyState
-            icon="❑"
-            title="עוד לא נפתח יומן. אפשר להתחיל ביומן חדש – הכול נשמר אוטומטית."
-            action={<button type="button" className="btn btn-primary" onClick={onNewJournal}>פתח יומן חדש</button>}
-          />
-        </Card>
-      )}
+      {GROUPS.map((group) => (
+        <section className="home-group" key={group.title} aria-labelledby={`g-${group.title}`}>
+          <div className="group-head">
+            <h2 id={`g-${group.title}`}>{group.title}</h2>
+            {group.hint && <span className="group-hint">{group.hint}</span>}
+          </div>
+          <div className="group-grid">
+            {group.items.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                className="group-tile"
+                onClick={() => navigate(item.path)}
+              >
+                <span className="tile-icon" aria-hidden="true"><item.Icon /></span>
+                <span className="tile-text">
+                  <span className="tile-label">{item.label}</span>
+                  <span className="tile-hint">{item.hint}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+      ))}
     </>
   );
 }

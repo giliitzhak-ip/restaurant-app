@@ -52,7 +52,7 @@ const info = await page.evaluate(() => {
   const html = document.documentElement;
   const shell = document.querySelector('.app-shell');
   const title = document.querySelector('.topbar h1');
-  const tile = document.querySelector('.home-tile');
+  const tile = document.querySelector('.group-tile');
   const vw = window.innerWidth;
   return {
     htmlDir: html.getAttribute('dir'),
@@ -74,7 +74,7 @@ check('כיוון הטקסט המחושב הוא rtl', info.bodyDirection === 'r
 check('הכותרת צמודה לימין ולא לשמאל',
   info.titleGapRight !== null && info.titleGapRight < info.titleGapLeft,
   `ימין=${info.titleGapRight} שמאל=${info.titleGapLeft}`);
-check('האריח הראשון בגריד מתחיל מימין',
+check('האריח הראשון בקבוצה מתחיל מימין',
   info.tileGapRight !== null && info.tileGapRight <= 24, String(info.tileGapRight));
 check('רקע האפליקציה גובר על רקע המארח',
   info.bodyBackground === 'rgb(244, 247, 245)' || info.bodyBackground === 'rgb(13, 23, 20)',

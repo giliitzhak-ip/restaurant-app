@@ -1,9 +1,13 @@
 import { navigate, useRoute } from '../router';
-import { IconCustomers, IconHome, IconJournal, IconMore, IconPlus } from './icons';
+import { IconCustomers, IconHome, IconMore, IconPlus, IconRoute } from './icons';
 
+/**
+ * סדר הפס נגזר ממהלך יום העבודה: מסלול לפני תיעוד.
+ * הפעולה הראשית אינה עיגול צף אלא לחצן מתויג, כדי שיהיה ברור מה הוא עושה.
+ */
 const BOTTOM = [
   { key: 'home', path: '#/', Icon: IconHome, label: 'בית' },
-  { key: 'journals', path: '#/journals', Icon: IconJournal, label: 'יומנים' },
+  { key: 'route', path: '#/route', Icon: IconRoute, label: 'מסלול' },
 ];
 
 const BOTTOM_END = [
@@ -13,12 +17,12 @@ const BOTTOM_END = [
 
 const DESKTOP = [
   { path: '#/', label: 'בית' },
-  { path: '#/journals', label: 'יומנים' },
-  { path: '#/customers', label: 'לקוחות' },
   { path: '#/route', label: 'מסלול עבודה' },
-  { path: '#/templates', label: 'תבניות' },
   { path: '#/tasks', label: 'משימות' },
   { path: '#/calendar', label: 'לוח שנה' },
+  { path: '#/journals', label: 'יומנים' },
+  { path: '#/customers', label: 'לקוחות' },
+  { path: '#/templates', label: 'תבניות' },
   { path: '#/materials', label: 'חומרים' },
   { path: '#/profile', label: 'פרופיל' },
 ];
@@ -44,8 +48,9 @@ export function BottomNav({ onNewJournal }: { onNewJournal: () => void }) {
           {item.label}
         </button>
       ))}
-      <button type="button" className="nav-fab" onClick={onNewJournal} aria-label="יומן חדש">
+      <button type="button" className="nav-fab" onClick={onNewJournal}>
         <IconPlus />
+        <span className="nav-fab-label">יומן חדש</span>
       </button>
       {BOTTOM_END.map((item) => (
         <button
