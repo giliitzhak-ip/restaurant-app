@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { StoreProvider } from './state/store';
-import { STANDALONE } from './lib/config';
+import { STANDALONE, isNativeShell } from './lib/config';
 import './styles/global.css';
 
 /**
@@ -29,7 +29,11 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 );
 
-if ('serviceWorker' in navigator && import.meta.env.PROD && !STANDALONE) {
+/**
+ * service worker נדרש רק בהגשה מהדפדפן (PWA).
+ * באפליקציה מקומפלת הקבצים כבר על המכשיר, ורישום SW רק מוסיף שכבת מטמון מיותרת.
+ */
+if ('serviceWorker' in navigator && import.meta.env.PROD && !STANDALONE && !isNativeShell()) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {
       /* עבודה ללא service worker עדיין אפשרית */

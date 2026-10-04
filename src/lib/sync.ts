@@ -1,7 +1,7 @@
 import type { SyncOp } from '../types';
 import { kvGet, kvSet } from './storage';
 import { newId } from './id';
-import { STANDALONE } from './config';
+import { STANDALONE, apiUrl } from './config';
 
 /**
  * תור סנכרון מול השרת. כל שינוי נשמר מקומית מיד ונכנס לתור.
@@ -62,7 +62,7 @@ class SyncQueue {
       while (this.queue.length > 0) {
         const op = this.queue[0];
         try {
-          const res = await fetch('/api/sync', {
+          const res = await fetch(apiUrl('/api/sync'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ entity: op.entity, entityId: op.entityId, payload: op.payload }),

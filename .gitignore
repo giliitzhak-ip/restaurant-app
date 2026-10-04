@@ -8,3 +8,7 @@ data/
 *.db
 e2e/screenshots/
 dist-demo/
+
+# פרויקטים מקומיים של Capacitor – נוצרים מחדש בפקודה אחת
+android/
+ios/

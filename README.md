@@ -69,6 +69,70 @@ e2e/                    בדיקות קבלה בדפדפן (Playwright)
 public/                 manifest, service worker ואייקונים
 ```
 
+## ייצוא לאפליקציה לנייד
+
+יש שני מסלולים. שניהם מריצים את אותו קוד.
+
+### מסלול א': התקנה מהדפדפן (PWA) — מהיר, בלי חנויות
+
+האפליקציה כבר PWA מלא: manifest, service worker, אייקונים ועבודה אופליין.
+צריך רק לארח אותה בכתובת **HTTPS**:
+
+```bash
+npm run build
+npm start          # או כל אירוח סטטי של dist/ מול שרת ה-API
+```
+
+אחרי שהאתר באוויר:
+
+- **אנדרואיד (Chrome):** תפריט ⋮ ← "התקנת אפליקציה".
+- **אייפון (Safari):** שיתוף ← "הוספה למסך הבית". חובה Safari; בכרום באייפון אין התקנה.
+
+מה מקבלים: אייקון על מסך הבית, פתיחה במסך מלא בלי סרגל הדפדפן, ועבודה אופליין
+מלאה. מה לא מקבלים: נוכחות ב-Google Play / App Store, והתראות דחיפה באייפון
+מוגבלות.
+
+### מסלול ב': אפליקציה מקומפלת לחנויות (Capacitor)
+
+הפרויקט מוגדר ומוכן. תיקיות `android/` ו-`ios/` אינן נשמרות בגיט ונוצרות בפקודה אחת.
+
+```bash
+npm install
+VITE_API_BASE=https://your-server npm run build   # כתובת השרת, חובה כאן
+npm run mobile:add:android                        # פעם אחת
+npm run mobile:assets                             # אייקונים ומסכי פתיחה
+npm run mobile:open:android                       # נפתח ב-Android Studio
+```
+
+מתוך Android Studio: Build ← Build APK, או Generate Signed Bundle להעלאה ל-Play.
+
+ל-iOS נדרש Mac עם Xcode:
+
+```bash
+npm run mobile:add:ios
+npm run mobile:assets
+npm run mobile:open:ios
+```
+
+אחרי כל שינוי בקוד: `npm run mobile:sync`.
+
+**חשוב — כתובת השרת:** באפליקציה מקומפלת ה-webview רץ מ-`capacitor://localhost`,
+ולכן נתיב יחסי כמו `/api/sync` לא יגיע לשרת. חובה לבנות עם `VITE_API_BASE`
+שמצביע על כתובת השרת האמיתית. לאפליקציה ללא שרת כלל:
+`VITE_STANDALONE=1 npm run build` — אז הנתונים נשמרים במכשיר בלבד.
+
+### מה צריך בנוסף לפרסום בחנויות
+
+| דרישה | אנדרואיד | iOS |
+| --- | --- | --- |
+| חשבון מפתח | Google Play, תשלום חד-פעמי | Apple Developer, תשלום שנתי |
+| מכונת בנייה | כל מחשב עם Android Studio | Mac עם Xcode בלבד |
+| חתימה | keystore משלך | תעודות ו-provisioning של Apple |
+| מדיניות פרטיות | נדרשת | נדרשת |
+
+הערה: האפליקציה אוספת שמות לקוחות, כתובות, טלפונים וחתימות. לפני פרסום בחנות
+יש להצהיר על כך, ולוודא עמידה בחוק הגנת הפרטיות.
+
 ## מצב נתוני התוויות — חשוב
 
 מספרי הרישום, החומרים הפעילים והקישורים לתוויות הוזנו לפי מה שנמסר על ידי המשתמש.

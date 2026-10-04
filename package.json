@@ -17,13 +17,23 @@
     "lint": "eslint .",
     "test": "vitest run",
     "e2e": "node e2e/acceptance-core.mjs && node e2e/acceptance-flows.mjs && node e2e/route-order.mjs && node e2e/rtl.mjs && node e2e/accessibility.mjs",
-    "verify": "npm run typecheck && npm run lint && npm run test && npm run build"
+    "verify": "npm run typecheck && npm run lint && npm run test && npm run build",
+    "mobile:add:android": "npx cap add android",
+    "mobile:add:ios": "npx cap add ios",
+    "mobile:sync": "npm run build && npx cap sync",
+    "mobile:assets": "npx @capacitor/assets generate --iconBackgroundColor '#0B3D2E' --iconBackgroundColorDark '#0B3D2E' --splashBackgroundColor '#F4F7F5' --splashBackgroundColorDark '#0D1714'",
+    "mobile:open:android": "npx cap open android",
+    "mobile:open:ios": "npx cap open ios"
   },
   "dependencies": {
+    "@capacitor/core": "^8.5.2",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/ios": "^8.5.2",
     "@eslint/js": "^10.0.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",
