@@ -1,4 +1,5 @@
 import { chromium, devices } from 'playwright';
+import { authenticate } from './helpers.mjs';
 import { mkdirSync } from 'node:fs';
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:3000';
@@ -16,6 +17,7 @@ function check(name, pass, detail = '') {
 
 const browser = await chromium.launch(LAUNCH);
 const context = await browser.newContext({ ...devices['iPhone 12'], locale: 'he-IL' });
+await authenticate(context, BASE);
 const page = await context.newPage();
 page.on('console', (m) => {
   if (m.type() !== 'error') return;
@@ -228,6 +230,7 @@ await page.screenshot({ path: SHOTS + '/home-mobile.png', fullPage: true });
 
 // שולחן עבודה
 const desktop = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: 'he-IL' });
+await authenticate(desktop, BASE);
 const dpage = await desktop.newPage();
 dpage.on('console', (m) => {
   if (m.type() !== 'error') return;
@@ -243,7 +246,7 @@ check('בדיקה 14: תצוגת מחשב – פס תחתון מוסתר', !(awa
 await dpage.screenshot({ path: SHOTS + '/home-desktop.png', fullPage: true });
 
 // מצב כהה
-await dpage.locator('.icon-btn').last().click();
+await dpage.getByRole('button', { name: /מעבר למצב/ }).click();
 await dpage.waitForTimeout(400);
 check('מצב כהה נדלק', await dpage.evaluate(() => document.documentElement.dataset.theme) === 'dark');
 await dpage.screenshot({ path: SHOTS + '/home-dark.png', fullPage: true });

@@ -46,4 +46,6 @@ export const IconMoon = () => wrap(<path d="M20 14.2A8 8 0 0 1 9.8 4 8.2 8.2 0 1
 
 export const IconSun = () => wrap(<><circle cx="12" cy="12" r="4" /><path d="M12 2.8v2.1M12 19.1v2.1M21.2 12h-2.1M4.9 12H2.8M18.5 5.5l-1.5 1.5M7 17l-1.5 1.5M18.5 18.5 17 17M7 7 5.5 5.5" /></>);
 
+export const IconLogout = () => wrap(<><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4" /><path d="M10 16l-4-4 4-4" /><path d="M6 12h10" /></>);
+
 export const IconChevron = () => wrap(<path d="M14 6l-6 6 6 6" />);

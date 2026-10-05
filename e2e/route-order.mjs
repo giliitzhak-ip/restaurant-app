@@ -1,4 +1,5 @@
 import { chromium, devices } from 'playwright';
+import { authenticate } from './helpers.mjs';
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:3000';
 /** אפשר להצביע על דפדפן מותקן מראש: CHROME_PATH=/path/to/chrome */
@@ -9,6 +10,7 @@ const check = (n, p, d = '') => { results.push(p); console.log(`${p ? 'PASS' : '
 
 const browser = await chromium.launch(LAUNCH);
 const ctx = await browser.newContext({ ...devices['iPhone 12'], locale: 'he-IL' });
+await authenticate(ctx, BASE);
 const page = await ctx.newPage();
 const errs = [];
 page.on('pageerror', (e) => errs.push(e.message));

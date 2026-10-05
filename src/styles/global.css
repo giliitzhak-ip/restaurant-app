@@ -345,7 +345,8 @@ a { color: var(--green-deep); }
 .field .err { font-size: 0.82rem; color: var(--error); margin-top: var(--sp-1); font-weight: 600; }
 
 input[type='text'], input[type='tel'], input[type='email'], input[type='number'],
-input[type='date'], input[type='time'], input[type='search'], select, textarea {
+input[type='date'], input[type='time'], input[type='search'], input[type='password'],
+input[type='datetime-local'], input[type='url'], select, textarea {
   width: 100%;
   min-height: var(--tap);
   padding: var(--sp-2) var(--sp-3);
@@ -718,3 +719,42 @@ input[type='search']::-webkit-search-decoration {
 }
 .reorder-row.dragging { border-color: var(--green-action); background: var(--green-light); }
 .reorder-row .grow { flex: 1; min-width: 0; }
+
+/* ───────────── מסכי כניסה ───────────── */
+
+.auth-shell {
+  min-height: 100dvh;
+  display: grid; place-items: center;
+  padding: calc(var(--safe-top) + var(--sp-4)) var(--sp-4) calc(var(--safe-bottom) + var(--sp-6));
+  background: linear-gradient(170deg, var(--green-deep) 0%, #0d4a37 45%, var(--bg) 45%);
+}
+
+.auth-card {
+  width: 100%; max-width: 440px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  padding: var(--sp-5);
+  animation: card-in 260ms ease both;
+}
+
+.auth-brand { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-4); }
+.auth-brand h1 { font-size: 1.25rem; }
+.auth-mark { flex: none; display: grid; place-items: center; }
+.auth-sub { margin: 2px 0 0; font-size: 0.86rem; color: var(--muted); }
+
+.auth-foot {
+  display: flex; align-items: center; justify-content: center; gap: var(--sp-2);
+  flex-wrap: wrap; margin-top: var(--sp-4);
+  border-top: 1px solid var(--border); padding-top: var(--sp-3);
+}
+
+/* ───────────── קונסולת ניהול ───────────── */
+
+.admin-meta {
+  display: grid; grid-template-columns: auto 1fr; gap: 3px var(--sp-3);
+  margin: 0 0 var(--sp-3);
+}
+.admin-meta dt { color: var(--muted); }
+.admin-meta dd { margin: 0; }

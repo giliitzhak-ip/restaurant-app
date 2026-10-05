@@ -15,6 +15,11 @@ import { isoNow } from '../lib/format';
 
 const STATE_KEY = 'app-state-v1';
 
+/** מפתח האחסון המקומי, מופרד לפי משתמש כדי שלא יתערבבו נתונים במכשיר משותף. */
+function stateKeyFor(scope?: string): string {
+  return scope ? `${STATE_KEY}:${scope}` : STATE_KEY;
+}
+
 export type SaveState = 'idle' | 'saving' | 'saved';
 
 interface StoreValue {
@@ -98,7 +103,8 @@ export function emptyExecution(): JournalMaterial['execution'] {
   };
 }
 
-export function StoreProvider({ children }: { children: ReactNode }) {
+export function StoreProvider({ children, scope }: { children: ReactNode; scope?: string }) {
+  const storageKey = stateKeyFor(scope);
   const [state, setState] = useState<AppState>(() => seedState());
   const [ready, setReady] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>('idle');
@@ -112,7 +118,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const stored = await kvGet<AppState>(STATE_KEY);
+      const stored = await kvGet<AppState>(storageKey);
       if (!cancelled && stored) {
         // מיזוג מאגר החומרים והתבניות של המערכת כדי שעדכוני קוד יגיעו למשתמש קיים
         const seeded = seedState();
@@ -144,7 +150,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       unsub();
     };
-  }, []);
+  }, [storageKey]);
 
   /* שמירה אוטומטית משוהה – בלי toast בכל שדה */
   useEffect(() => {
@@ -153,10 +159,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setSaveState('saving');
     window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
-      void kvSet(STATE_KEY, state).then(() => setSaveState('saved'));
+      void kvSet(storageKey, state).then(() => setSaveState('saved'));
     }, 350);
     return () => window.clearTimeout(saveTimer.current);
-  }, [state, ready]);
+  }, [state, ready, storageKey]);
 
   /**
    * סגירת האפליקציה או מעבר לרקע מיד אחרי שינוי עלולים לתפוס את השמירה
@@ -165,7 +171,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const flush = (): void => {
       window.clearTimeout(saveTimer.current);
-      if (loadedRef.current) void kvSet(STATE_KEY, stateRef.current);
+      if (loadedRef.current) void kvSet(storageKey, stateRef.current);
     };
     const onVisibility = (): void => {
       if (document.visibilityState === 'hidden') flush();
@@ -177,7 +183,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       document.removeEventListener('visibilitychange', onVisibility);
       flush();
     };
-  }, []);
+  }, [storageKey]);
 
   const currentUser = useMemo(
     () => state.users.find((u) => u.id === state.currentUserId) ?? state.users[0],

@@ -1,7 +1,8 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
-import { StoreProvider } from './state/store';
+import { AuthProvider } from './state/auth';
+import { AuthGate } from './AuthGate';
 import { STANDALONE, isNativeShell } from './lib/config';
 import './styles/global.css';
 
@@ -23,9 +24,11 @@ root.dataset.theme = savedTheme === 'dark' ? 'dark' : 'light';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <StoreProvider>
-      <App />
-    </StoreProvider>
+    <AuthProvider>
+      <AuthGate>
+        <App />
+      </AuthGate>
+    </AuthProvider>
   </StrictMode>,
 );
 

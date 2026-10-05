@@ -3,7 +3,7 @@ import { matchRoute, navigate, useRoute } from './router';
 import { useStore } from './state/store';
 import { BottomNav, DesktopNav } from './components/Nav';
 import { SaveIndicator } from './components/ui';
-import { IconMoon, IconSun } from './components/icons';
+import { IconLogout, IconMoon, IconSun } from './components/icons';
 import { Home } from './screens/Home';
 import { JournalsScreen } from './screens/Journals';
 import { CustomersScreen } from './screens/Customers';
@@ -17,6 +17,10 @@ import { ProfileScreen } from './screens/Profile';
 import { MoreScreen } from './screens/More';
 import { JournalWizard } from './screens/wizard/JournalWizard';
 import { JournalDocument } from './screens/JournalDocument';
+import { AdminConsole } from './screens/AdminConsole';
+import { TeamScreen } from './screens/Team';
+import { useAuth } from './state/auth';
+import { Notice } from './components/ui';
 
 const TITLES: Record<string, string> = {
   '': 'שלום, יצחק',
@@ -32,12 +36,15 @@ const TITLES: Record<string, string> = {
   profile: 'פרופיל',
   more: 'עוד',
   doc: 'מסמך יומן',
+  admin: 'ניהול עסקים',
+  team: 'עובדים',
 };
 
 export function App() {
   const route = useRoute();
   const { name, params } = matchRoute(route);
   const { createJournal, saveState, pendingSync, online, ready } = useStore();
+  const { user, organization, access, logout } = useAuth();
   const [theme, setTheme] = useState<'light' | 'dark'>(
     () => (document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'),
   );
@@ -83,6 +90,12 @@ export function App() {
     case 'materials': screen = <MaterialsScreen />; break;
     case 'profile': screen = <ProfileScreen />; break;
     case 'more': screen = <MoreScreen onNewJournal={startJournal} />; break;
+    case 'admin':
+      screen = user?.isSuperAdmin
+        ? <AdminConsole />
+        : <Notice kind="error">אין לך הרשאה למסך זה.</Notice>;
+      break;
+    case 'team': screen = <TeamScreen />; break;
     default: screen = <Home onNewJournal={startJournal} />;
   }
 
@@ -94,8 +107,15 @@ export function App() {
         <header className="topbar no-print">
           <div className="topbar-inner">
             <div>
-              <h1>{name === '' ? 'שלום, יצחק' : TITLES[name] ?? 'יומן הדברה'}</h1>
-              <div className="sub">יצחק הדברות · יומן הדברה דיגיטלי</div>
+              <h1>
+                {name === ''
+                  ? `שלום, ${user?.name ?? 'יצחק'}`
+                  : TITLES[name] ?? 'יומן הדברה'}
+              </h1>
+              <div className="sub">
+                {organization?.name ?? 'יומן הדברה דיגיטלי'}
+                {user?.isSuperAdmin ? ' · מנהל מערכת' : ''}
+              </div>
             </div>
             <div className="topbar-actions">
               <SaveIndicator state={saveState} pending={pendingSync} online={online} />
@@ -107,11 +127,24 @@ export function App() {
               >
                 {theme === 'dark' ? <IconSun /> : <IconMoon />}
               </button>
+              {user && (
+                <button type="button" className="icon-btn" aria-label="יציאה מהחשבון"
+                  onClick={() => void logout()}>
+                  <IconLogout />
+                </button>
+              )}
             </div>
           </div>
         </header>
       )}
       {!isDoc && <DesktopNav />}
+      {!isDoc && access.level === 'read_only' && (
+        <div className="page no-print" style={{ paddingBottom: 0 }}>
+          <Notice kind="warn" title="קריאה בלבד">
+            {access.reason} ניתן לצפות בכל הנתונים ולהפיק מסמכים, אך לא לתעד עבודות חדשות.
+          </Notice>
+        </div>
+      )}
       <main className="page" id="main">{screen}</main>
       {!isDoc && <BottomNav onNewJournal={startJournal} />}
     </div>

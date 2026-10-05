@@ -1,9 +1,11 @@
 import { chromium } from 'playwright';
+import { authenticate } from './helpers.mjs';
 const BASE = process.env.BASE_URL ?? 'http://localhost:3000';
 /** אפשר להצביע על דפדפן מותקן מראש: CHROME_PATH=/path/to/chrome */
 const LAUNCH = process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {};
 const browser = await chromium.launch(LAUNCH);
 const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, locale: 'he-IL' });
+await authenticate(context, BASE);
 const page = await context.newPage();
 const problems = [];
 
