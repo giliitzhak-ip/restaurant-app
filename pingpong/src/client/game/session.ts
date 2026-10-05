@@ -15,6 +15,22 @@ export interface ScoreView {
   bestOf: number;
 }
 
+export interface SimStats {
+  /** Hits in the rally in progress. */
+  rally: number;
+  longestRally: number;
+  rallies: number;
+  totalHits: number;
+  hits: [number, number];
+  /** Current ball speed, km/h. */
+  ballSpeed: number;
+  topSpeed: number;
+  /** Topspin(+)/backspin(-) of the last stroke, revolutions per minute. */
+  lastSpinRpm: number;
+  reasons: Record<string, number>;
+  speed: number;
+}
+
 export interface NetStatus {
   state: 'connecting' | 'open' | 'reconnecting' | 'closed';
   ping: number | null;
@@ -25,7 +41,7 @@ export interface NetStatus {
 
 /** A running game, local (vs AI / practice) or online. The UI and renderer only talk to this. */
 export interface Session {
-  readonly kind: 'ai' | 'practice' | 'online';
+  readonly kind: 'ai' | 'practice' | 'online' | 'sim';
   readonly mySide: Side;
   names: [string, string];
   styles: [string, string];
@@ -37,6 +53,10 @@ export interface Session {
   score(): ScoreView;
   drainEvents(): GameEvent[];
   practiceStats(): PracticeStats | null;
+  /** Live statistics in simulator (AI vs AI) mode. */
+  simStats(): SimStats | null;
+  /** Simulation speed multiplier (simulator mode only). */
+  setSpeed(x: number): void;
   net(): NetStatus | null;
   setPaused(p: boolean): void;
   rematch(): void;

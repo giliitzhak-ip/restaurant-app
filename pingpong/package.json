@@ -20,7 +20,9 @@
     "sim": "tsx scripts/aivsai.ts",
     "e2e:online": "node scripts/online-e2e.mjs screenshots",
     "e2e:visual": "node scripts/visual-check.mjs screenshots",
-    "e2e:bot": "node scripts/botplay.mjs screenshots"
+    "e2e:bot": "node scripts/botplay.mjs screenshots",
+    "build:demo": "VITE_STANDALONE=1 vite build --outDir dist/standalone --sourcemap false",
+    "e2e:sim": "node scripts/sim-check.mjs screenshots"
   },
   "dependencies": {
     "react": "^19.3.0",

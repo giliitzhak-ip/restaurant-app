@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Side } from '../../shared/constants';
 import type { GameEvent, PracticeStats } from '../../shared/game';
 import { sound } from '../audio/sound';
-import type { NetStatus, ScoreView, Session } from '../game/session';
+import type { NetStatus, ScoreView, Session, SimStats } from '../game/session';
 import { InputController } from '../input/InputController';
 import { GameRenderer } from '../render/GameRenderer';
 import { isTouchDevice, toggleFullscreen, useSettings, useT } from './common';
@@ -14,7 +14,10 @@ interface HudState {
   res: string;
   tilt: number;
   stats: PracticeStats | null;
+  sim: SimStats | null;
 }
+
+type CamMode = GameRenderer['cameraMode'];
 
 export function GameView(props: { session: Session; tutorial: boolean; onExit: () => void; onTutorialDone: () => void }) {
   const { session } = props;
@@ -34,6 +37,7 @@ export function GameView(props: { session: Session; tutorial: boolean; onExit: (
   useEffect(() => {
     const host = hostRef.current!;
     const renderer = new GameRenderer(host, settingsRef.current.quality);
+    if (session.kind === 'sim') renderer.cameraMode = 'tv';
     rendererRef.current = renderer;
     const input = new InputController(host);
     inputRef.current = input;
@@ -89,6 +93,7 @@ export function GameView(props: { session: Session; tutorial: boolean; onExit: (
           res: `${rs.w}×${rs.h}`,
           tilt: input.getTilt(),
           stats: session.practiceStats(),
+          sim: session.simStats(),
         });
       }
     };
@@ -118,10 +123,11 @@ export function GameView(props: { session: Session; tutorial: boolean; onExit: (
   const me = session.mySide;
   const opp: Side = me === 0 ? 1 : 0;
   const isPractice = session.kind === 'practice';
+  const isSim = session.kind === 'sim';
 
   return (
     <div className="game">
-      <div className="game-host" ref={hostRef} />
+      <div className={isSim ? 'game-host spectate' : 'game-host'} ref={hostRef} />
       {sc && (
         <div className="hud" aria-live="polite">
           <div className="topbar">
@@ -143,9 +149,9 @@ export function GameView(props: { session: Session; tutorial: boolean; onExit: (
               </button>
             </div>
           </div>
-          <TiltGauge tilt={hud?.tilt ?? 0} />
-          <Banner sc={sc} me={me} names={session.names} practice={isPractice} />
-          {sc.phase === 'serve' && sc.server === me && !paused && (
+          {!isSim && <TiltGauge tilt={hud?.tilt ?? 0} />}
+          <Banner sc={sc} me={isSim ? -1 : me} names={session.names} practice={isPractice} />
+          {!isSim && sc.phase === 'serve' && sc.server === me && !paused && (
             <div className="serve-hint">{touch ? t.serve : t.yourServe}</div>
           )}
           {hud?.net?.pausedUntil && <DisconnectNotice until={hud.net.pausedUntil} />}
@@ -153,9 +159,19 @@ export function GameView(props: { session: Session; tutorial: boolean; onExit: (
             <Tutorial stats={hud.stats} tilt={hud.tilt} onDone={props.onTutorialDone} />
           )}
           {isPractice && !props.tutorial && hud?.stats && <PracticeStatsBox stats={hud.stats} />}
+          {isSim && hud?.sim && (
+            <SimPanel
+              stats={hud.sim}
+              camera={rendererRef.current?.cameraMode ?? 'tv'}
+              onSpeed={(x) => session.setSpeed(x)}
+              onCamera={(m) => {
+                if (rendererRef.current) rendererRef.current.cameraMode = m;
+              }}
+            />
+          )}
         </div>
       )}
-      {touch && inputRef.current && <TouchControls input={inputRef.current} leftHanded={settings.leftHanded} />}
+      {touch && !isSim && inputRef.current && <TouchControls input={inputRef.current} leftHanded={settings.leftHanded} />}
       {paused && (
         <div className="overlay">
           <div className="panel">
@@ -259,7 +275,7 @@ function TiltGauge({ tilt }: { tilt: number }) {
   );
 }
 
-function Banner(props: { sc: ScoreView; me: Side; names: [string, string]; practice: boolean }) {
+function Banner(props: { sc: ScoreView; me: Side | -1; names: [string, string]; practice: boolean }) {
   const t = useT();
   const { sc, me, names } = props;
   if (sc.phase === 'countdown') {
@@ -271,7 +287,7 @@ function Banner(props: { sc: ScoreView; me: Side; names: [string, string]; pract
     if ('let' in sc.lastPoint) return <div className="banner">{t.let}</div>;
     const lp = sc.lastPoint;
     return (
-      <div className={`banner ${lp.winner === me ? 'good' : 'bad'}`}>
+      <div className={`banner ${me === -1 ? '' : lp.winner === me ? 'good' : 'bad'}`}>
         <div className="reason">{t.reasons[lp.reason]}</div>
         {!props.practice && (
           <div className="small">
@@ -370,7 +386,8 @@ function Tutorial(props: { stats: PracticeStats; tilt: number; onDone: () => voi
 function EndScreen(props: { sc: ScoreView; me: Side; opp: Side; session: Session; onExit: () => void }) {
   const t = useT();
   const { sc, me, session } = props;
-  const won = sc.winner === me;
+  const sim = session.kind === 'sim';
+  const won = sim || sc.winner === me;
   const [asked, setAsked] = useState(false);
   const net = session.net();
   const oppWants = net?.rematch[props.opp] ?? false;
@@ -378,7 +395,7 @@ function EndScreen(props: { sc: ScoreView; me: Side; opp: Side; session: Session
   return (
     <div className="overlay">
       <div className={`panel end ${won ? 'won' : 'lost'}`}>
-        <h2>{won ? t.youWin : t.youLose}</h2>
+        <h2>{sim ? `${session.names[sc.winner!]} ${t.wins}` : won ? t.youWin : t.youLose}</h2>
         <div className="final-score" dir="ltr">
           {showGames ? `${sc.games[me]} – ${sc.games[props.opp]}` : `${sc.points[me]} – ${sc.points[props.opp]}`}
         </div>
@@ -396,7 +413,7 @@ function EndScreen(props: { sc: ScoreView; me: Side; opp: Side; session: Session
               session.rematch();
             }}
           >
-            {t.rematch}
+            {sim ? t.runAgain : t.rematch}
           </button>
           <button className="btn big" onClick={props.onExit}>
             {t.mainMenu}
@@ -482,6 +499,102 @@ function TouchControls(props: { input: InputController; leftHanded: boolean }) {
       >
         <div className="pad-dot" style={{ left: `${dot.x * 100}%`, bottom: `${dot.y * 100}%` }} />
       </div>
+    </div>
+  );
+}
+
+const SPEEDS = [0.25, 0.5, 1, 2, 4];
+
+function SimPanel(props: { stats: SimStats; camera: CamMode; onSpeed: (x: number) => void; onCamera: (m: CamMode) => void }) {
+  const t = useT();
+  const { stats } = props;
+  const [cam, setCam] = useState<CamMode>(props.camera);
+  const avg = stats.rallies ? stats.totalHits / stats.rallies : 0;
+  const reasons = Object.entries(stats.reasons).sort((a, b) => b[1] - a[1]);
+  const cams: [CamMode, string][] = [
+    ['tv', t.camTv],
+    ['side', t.camSide],
+    ['top', t.camTop],
+    ['player', t.camPlayer],
+  ];
+  return (
+    <div className="sim-panel" onPointerDown={(e) => e.stopPropagation()}>
+      <div className="sim-row">
+        <span className="sim-label">{t.speed}</span>
+        <div className="sim-seg" role="radiogroup" aria-label={t.speed} dir="ltr">
+          {SPEEDS.map((x) => (
+            <button key={x} role="radio" aria-checked={stats.speed === x} className={stats.speed === x ? 'on' : ''} onClick={() => props.onSpeed(x)} dir="ltr">
+              {x}x
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="sim-row">
+        <span className="sim-label">{t.camera}</span>
+        <div className="sim-seg" role="radiogroup" aria-label={t.camera}>
+          {cams.map(([m, label]) => (
+            <button
+              key={m}
+              role="radio"
+              aria-checked={cam === m}
+              className={cam === m ? 'on' : ''}
+              onClick={() => {
+                setCam(m);
+                props.onCamera(m);
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <dl className="sim-stats">
+        <div>
+          <dt>{t.ballSpeed}</dt>
+          <dd>
+            {Math.round(stats.ballSpeed)} <small>{t.kmh}</small>
+          </dd>
+        </div>
+        <div>
+          <dt>{t.topSpeed}</dt>
+          <dd>
+            {Math.round(stats.topSpeed)} <small>{t.kmh}</small>
+          </dd>
+        </div>
+        <div>
+          <dt>
+            {t.lastSpin}
+            {stats.lastSpinRpm > 30 ? ` · ${t.topspin}` : stats.lastSpinRpm < -30 ? ` · ${t.backspin}` : ''}
+          </dt>
+          <dd>
+            {Math.round(Math.abs(stats.lastSpinRpm))} <small>{t.rpm}</small>
+          </dd>
+        </div>
+        <div>
+          <dt>{t.rallyNow}</dt>
+          <dd>{stats.rally}</dd>
+        </div>
+        <div>
+          <dt>{t.longestRally}</dt>
+          <dd>{stats.longestRally}</dd>
+        </div>
+        <div>
+          <dt>{t.avgRally}</dt>
+          <dd>{avg.toFixed(1)}</dd>
+        </div>
+      </dl>
+      {reasons.length > 0 && (
+        <div className="sim-reasons">
+          <div className="sim-label">{t.pointsBy}</div>
+          {reasons.map(([r, n]) => (
+            <div key={r} className="sim-reason">
+              <span>{t.reasons[r as keyof typeof t.reasons] ?? r}</span>
+              <span className="bar" style={{ width: `${(n / reasons[0][1]) * 100}%` }} />
+              <b>{n}</b>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

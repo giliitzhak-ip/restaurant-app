@@ -10,7 +10,7 @@ import { type Settings, loadSettings, saveSettings } from './settings';
 import { sound } from './audio/sound';
 import { SettingsCtx } from './ui/common';
 import { GameView } from './ui/GameView';
-import { type AiChoice, FirstTimePrompt, MainMenu, PracticeSetup, SettingsScreen, VsComputerSetup } from './ui/Menus';
+import { type AiChoice, FirstTimePrompt, MainMenu, PracticeSetup, STANDALONE, SettingsScreen, type SimChoice, SimulatorSetup, VsComputerSetup } from './ui/Menus';
 import { FriendsScreen, Lobby } from './ui/Online';
 
 type Screen =
@@ -18,6 +18,7 @@ type Screen =
   | { k: 'vsai' }
   | { k: 'firstTime'; choice: AiChoice }
   | { k: 'practice' }
+  | { k: 'simulator' }
   | { k: 'settings'; from: Screen }
   | { k: 'friends' }
   | { k: 'lobby' }
@@ -36,7 +37,7 @@ export function App() {
   }, []);
   const t = STRINGS[settings.lang];
   const inviteCode = useMemo(() => normalizeCode(new URLSearchParams(location.search).get('room') ?? '') ?? '', []);
-  const [screen, setScreen] = useState<Screen>(inviteCode || storedSession() ? { k: 'friends' } : { k: 'menu' });
+  const [screen, setScreen] = useState<Screen>(!STANDALONE && (inviteCode || storedSession()) ? { k: 'friends' } : { k: 'menu' });
   const [session, setSession] = useState<Session | null>(null);
   const [net, setNet] = useState<NetClient | null>(null);
   const [room, setRoom] = useState<RoomMsg | null>(null);
@@ -124,7 +125,7 @@ export function App() {
   // Page reload during an online game: resume our seat.
   useEffect(() => {
     const st = storedSession();
-    if (!st || inviteCode) return;
+    if (STANDALONE || !st || inviteCode) return;
     const n = getNet();
     n.connect()
       .then(() => n.resume(st.code, st.token))
@@ -147,6 +148,22 @@ export function App() {
     setScreen({ k: 'game', tutorial, after: tutorial ? c : undefined });
   };
 
+  const startSimulator = (c: SimChoice) => {
+    sound.unlock();
+    const s = new LocalSession({
+      practice: false,
+      spectate: true,
+      difficulty0: c.near,
+      difficulty: c.far,
+      assist: 'arcade',
+      bestOf: c.bestOf,
+      names: [`${t.simNearName} (${t[c.near]})`, `${t.simFarName} (${t[c.far]})`],
+      styles: ['blue', 'red'],
+    });
+    setSession(s);
+    setScreen({ k: 'game', tutorial: false });
+  };
+
   const exitGame = () => {
     const wasOnline = session?.kind === 'online';
     endSession();
@@ -165,6 +182,7 @@ export function App() {
           onVsAi={() => setScreen({ k: 'vsai' })}
           onFriend={() => setScreen({ k: 'friends' })}
           onPractice={() => setScreen({ k: 'practice' })}
+          onSimulator={() => setScreen({ k: 'simulator' })}
           onSettings={() => setScreen({ k: 'settings', from: screen })}
         />
       );
@@ -190,6 +208,9 @@ export function App() {
       break;
     case 'practice':
       content = <PracticeSetup onBack={() => setScreen({ k: 'menu' })} onStart={(tut) => startLocal(true, tut)} />;
+      break;
+    case 'simulator':
+      content = <SimulatorSetup onBack={() => setScreen({ k: 'menu' })} onStart={startSimulator} />;
       break;
     case 'settings':
       content = <SettingsScreen onBack={() => setScreen(screen.from)} />;

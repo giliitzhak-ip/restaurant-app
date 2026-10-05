@@ -4,7 +4,10 @@ import type { AssistMode } from '../../shared/paddle';
 import type { Quality } from '../settings';
 import { Panel, Segmented, toggleFullscreen, useSettings, useT } from './common';
 
-export function MainMenu(props: { onVsAi: () => void; onFriend: () => void; onPractice: () => void; onSettings: () => void }) {
+/** Built without a game server (e.g. the static demo): hide online play. */
+export const STANDALONE = import.meta.env.VITE_STANDALONE === '1';
+
+export function MainMenu(props: { onVsAi: () => void; onFriend: () => void; onPractice: () => void; onSimulator: () => void; onSettings: () => void }) {
   const t = useT();
   const { settings, update } = useSettings();
   return (
@@ -19,16 +22,22 @@ export function MainMenu(props: { onVsAi: () => void; onFriend: () => void; onPr
           <button className="btn primary big" onClick={props.onVsAi}>
             {t.vsComputer}
           </button>
-          <button className="btn primary big" onClick={props.onFriend}>
-            {t.playFriend}
-          </button>
+          {!STANDALONE && (
+            <button className="btn primary big" onClick={props.onFriend}>
+              {t.playFriend}
+            </button>
+          )}
           <button className="btn big" onClick={props.onPractice}>
             {t.practice}
+          </button>
+          <button className="btn big" onClick={props.onSimulator}>
+            {t.simulator}
           </button>
           <button className="btn big" onClick={props.onSettings}>
             {t.settings}
           </button>
         </div>
+        {STANDALONE && <p className="muted standalone-note">{t.standaloneNote}</p>}
         <div className="menu-foot">
           <button className="btn ghost" onClick={() => update({ lang: settings.lang === 'he' ? 'en' : 'he' })}>
             {settings.lang === 'he' ? 'English' : 'עברית'}
@@ -189,5 +198,40 @@ function Check(props: { label: string; checked: boolean; onChange: (v: boolean) 
       <input type="checkbox" checked={props.checked} onChange={(e) => props.onChange(e.target.checked)} />
       <span>{props.label}</span>
     </label>
+  );
+}
+
+export interface SimChoice {
+  near: Difficulty;
+  far: Difficulty;
+  bestOf: 1 | 3;
+}
+
+export function SimulatorSetup(props: { onStart: (c: SimChoice) => void; onBack: () => void }) {
+  const t = useT();
+  const [c, setC] = useState<SimChoice>({ near: 'hard', far: 'medium', bestOf: 1 });
+  const levels = [
+    { value: 'easy' as const, label: t.easy },
+    { value: 'medium' as const, label: t.medium },
+    { value: 'hard' as const, label: t.hard },
+  ];
+  return (
+    <Panel title={t.simulator} onBack={props.onBack}>
+      <p className="lead">{t.simIntro}</p>
+      <Segmented label={t.simNear} value={c.near} onChange={(near) => setC({ ...c, near })} options={levels} />
+      <Segmented label={t.simFar} value={c.far} onChange={(far) => setC({ ...c, far })} options={levels} />
+      <Segmented
+        label={t.format}
+        value={c.bestOf}
+        onChange={(bestOf) => setC({ ...c, bestOf })}
+        options={[
+          { value: 1, label: t.singleGame },
+          { value: 3, label: t.bestOf3 },
+        ]}
+      />
+      <button className="btn primary big wide" onClick={() => props.onStart(c)}>
+        {t.start}
+      </button>
+    </Panel>
   );
 }

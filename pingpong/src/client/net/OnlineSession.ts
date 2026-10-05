@@ -275,6 +275,14 @@ export class OnlineSession implements Session {
     return null;
   }
 
+  simStats(): null {
+    return null;
+  }
+
+  setSpeed(): void {
+    /* Online games run in real time. */
+  }
+
   net(): NetStatus | null {
     const room = this.client.room;
     const opp = room?.players[this.mySide === 0 ? 1 : 0];

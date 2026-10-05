@@ -129,6 +129,8 @@ export class GameRenderer {
   private fpsTime = 0;
   fps = 0;
   reduceEffects = false;
+  /** player: behind your end (gameplay) · tv: high broadcast · side: courtside · top: overhead. */
+  cameraMode: 'player' | 'tv' | 'side' | 'top' = 'player';
   dynamicRes = true;
 
   constructor(
@@ -339,8 +341,23 @@ export class GameRenderer {
     const sgn = view.mySide === 0 ? 1 : -1;
     const follow = this.reduceEffects ? 0 : view.pads[view.mySide].p.x * 0.16;
     this.camX += (follow - this.camX) * Math.min(1, dt * 2.5);
-    this.camera.position.set(this.camX, 1.62, sgn * 3.0);
-    this.camera.lookAt(this.camX * 0.4, TABLE.height + 0.02, -sgn * 0.55);
+    switch (this.cameraMode) {
+      case 'tv':
+        this.camera.position.set(0, 3.1, sgn * 5.0);
+        this.camera.lookAt(0, TABLE.height - 0.1, -sgn * 0.2);
+        break;
+      case 'side':
+        this.camera.position.set(3.3, 1.75, 0);
+        this.camera.lookAt(0, TABLE.height + 0.05, 0);
+        break;
+      case 'top':
+        this.camera.position.set(0, 5.2, sgn * 0.9);
+        this.camera.lookAt(0, TABLE.height, 0);
+        break;
+      default:
+        this.camera.position.set(this.camX, 1.62, sgn * 3.0);
+        this.camera.lookAt(this.camX * 0.4, TABLE.height + 0.02, -sgn * 0.55);
+    }
 
     // Ball.
     const b = view.ball;

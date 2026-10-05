@@ -199,3 +199,29 @@ input[type='range'] { width: 100%; accent-color: var(--accent); }
   .pts { font-size: 1.2rem; }
   .tilt-gauge { display: none; }
 }
+
+/* ── Simulator ── */
+.game-host.spectate { cursor: default; }
+.sim-panel { position: absolute; inset-inline-end: 10px; top: 64px; width: min(300px, 42vw); pointer-events: auto; display: grid; gap: 10px;
+  background: rgba(8, 12, 22, 0.8); border: 1px solid var(--line); border-radius: 14px; padding: 12px; backdrop-filter: blur(6px); font-size: 0.86rem; max-height: calc(100% - 80px); overflow: auto; }
+.sim-row { display: grid; gap: 4px; }
+.sim-label { color: var(--muted); font-size: 0.74rem; letter-spacing: 0.04em; text-transform: uppercase; }
+.sim-seg { display: flex; gap: 4px; background: rgba(0, 0, 0, 0.3); border-radius: 9px; padding: 3px; }
+.sim-seg button { flex: 1; border: 0; background: transparent; color: var(--muted); padding: 6px 2px; border-radius: 7px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.sim-seg button.on { background: var(--accent2); color: #04121f; font-weight: 700; }
+.sim-seg button:focus-visible { outline: 2px solid var(--accent); }
+.sim-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 0; }
+.sim-stats div { background: rgba(255, 255, 255, 0.04); border-radius: 8px; padding: 6px 8px; min-width: 0; }
+.sim-stats dt { color: var(--muted); font-size: 0.7rem; line-height: 1.2; }
+.sim-stats dd { margin: 2px 0 0; font-size: 1.15rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sim-stats small { font-size: 0.65rem; font-weight: 500; color: var(--muted); }
+.sim-reasons { display: grid; gap: 3px; }
+.sim-reason { display: grid; grid-template-columns: 7.5em 1fr 2em; align-items: center; gap: 6px; font-size: 0.78rem; }
+.sim-reason .bar { height: 6px; border-radius: 3px; background: var(--accent); min-width: 4px; }
+.sim-reason b { text-align: end; font-variant-numeric: tabular-nums; }
+.standalone-note { max-width: 40ch; margin: 14px auto 0; }
+@media (max-width: 760px), (max-height: 500px) {
+  .sim-panel { top: 52px; width: min(250px, 46vw); padding: 8px; gap: 6px; font-size: 0.78rem; }
+  .sim-stats dd { font-size: 0.95rem; }
+  .sim-reasons { display: none; }
+}
