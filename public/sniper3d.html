@@ -775,6 +775,8 @@ class Bullet {
    the reticle, the drop ladder and the firing solution need no changes at all.
    ═══════════════════════════════════════════════════════════════════════ */
 
+const BUILD_T0 = performance.now();
+
 /* ── Seeded noise, shared by the terrain, its textures and the scatter ──── */
 const RW = mulberry32(20261005);
 const PERM = new Uint8Array(512);
@@ -817,7 +819,7 @@ const glCanvas = document.getElementById('gl');
 const renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: false, powerPreference: 'high-performance' });
 renderer.setPixelRatio(1);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;   // PCFSoft was removed in r186
 
 const scene = new THREE.Scene();
 const FOG_COLOR = 0xa6aa90;
@@ -894,12 +896,12 @@ scene.add(new THREE.HemisphereLight(0x9ebbd4, 0x5c5636, 0.62));
 
 /* ── Ground ────────────────────────────────────────────────────────────── */
 function groundTexture() {
-  const S = 512, c = document.createElement('canvas');
+  const S = 256, c = document.createElement('canvas');
   c.width = c.height = S;
   const g = c.getContext('2d'), img = g.createImageData(S, S);
   for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
-    const n = fbm(x * 0.045, y * 0.045, 4) * 0.5 + 0.5;
-    const m = fbm(x * 0.21 + 40, y * 0.21 + 40, 3) * 0.5 + 0.5;
+    const n = fbm(x * 0.09, y * 0.09, 3) * 0.5 + 0.5;
+    const m = fbm(x * 0.42 + 40, y * 0.42 + 40, 2) * 0.5 + 0.5;
     const dry = clamp(n * 1.4 - 0.18, 0, 1);
     const i = (y * S + x) * 4;
     img.data[i] = lerp(96, 165, dry) + m * 20 - 10;
@@ -916,10 +918,10 @@ function groundTexture() {
   return tex;
 }
 function groundNormalTexture() {
-  const S = 512, c = document.createElement('canvas');
+  const S = 256, c = document.createElement('canvas');
   c.width = c.height = S;
   const g = c.getContext('2d'), img = g.createImageData(S, S);
-  const h = (x, y) => fbm(x * 0.085, y * 0.085, 3) * 0.6 + fbm(x * 0.34, y * 0.34, 2) * 0.4;
+  const h = (x, y) => fbm(x * 0.17, y * 0.17, 2) * 0.6 + fbm(x * 0.68, y * 0.68, 1) * 0.4;
   for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
     const nx = -(h(x + 1, y) - h(x - 1, y)) * 2.4;
     const ny = -(h(x, y + 1) - h(x, y - 1)) * 2.4;
@@ -2256,7 +2258,11 @@ function render(t) {
     drawHUD();
   }
 
-  if (!booted) { booted = true; document.body.classList.add('ready'); }
+  if (!booted) {
+    booted = true;
+    window.LONGSHOT.buildMs = Math.round(performance.now() - BUILD_T0);
+    document.body.classList.add('ready');
+  }
 }
 
 let lastTs = 0;
