@@ -1,0 +1,27 @@
+# Fly.io config (run `fly launch --copy-config --no-deploy` then `fly deploy` from this folder).
+app = "pingpong-3d-CHANGE-ME"
+primary_region = "fra"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8080"
+  TRUST_PROXY = "1"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  # Rooms live in memory: keep exactly one machine so both friends reach the same server.
+  min_machines_running = 1
+  [http_service.concurrency]
+    type = "connections"
+    soft_limit = 800
+    hard_limit = 1000
+
+[[http_service.checks]]
+  path = "/healthz"
+  interval = "30s"
+  timeout = "3s"

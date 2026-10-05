@@ -1,0 +1,14 @@
+# Render.com Blueprint: one web service (HTTPS + WSS are provided by Render automatically).
+services:
+  - type: web
+    name: pingpong-3d
+    runtime: docker
+    rootDir: pingpong
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    healthCheckPath: /healthz
+    envVars:
+      - key: TRUST_PROXY
+        value: "1"
+      - key: MAX_ROOMS
+        value: "500"
