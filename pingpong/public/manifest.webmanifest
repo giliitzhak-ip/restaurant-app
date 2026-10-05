@@ -1,0 +1,10 @@
+{
+  "name": "Ping Pong 3D",
+  "short_name": "Ping Pong",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0b0f18",
+  "theme_color": "#0b0f18",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
