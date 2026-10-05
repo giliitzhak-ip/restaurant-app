@@ -17,6 +17,10 @@ class SyncQueue {
   private listeners = new Set<SyncListener>();
   private flushing = false;
   private loaded = false;
+  /** אסימון ההתחברות הנוכחי. ללא אסימון אין סנכרון, אך גם אין אובדן נתונים. */
+  private token: string | null = null;
+  /** true כאשר השרת דחה מחוסר הרשאה – התור ממתין ואינו נזרק. */
+  private blocked = false;
 
   async load(): Promise<void> {
     if (this.loaded) return;
@@ -43,6 +47,17 @@ class SyncQueue {
     return this.queue.length;
   }
 
+  get isBlocked(): boolean {
+    return this.blocked;
+  }
+
+  /** נקרא בהתחברות ובהתנתקות. החלפת משתמש מחדשת את ניסיון הסנכרון. */
+  setToken(token: string | null): void {
+    this.token = token;
+    this.blocked = false;
+    if (token) void this.flush();
+  }
+
   async enqueue(entity: string, entityId: string, payload: unknown): Promise<void> {
     // בבנייה ללא שרת אין למי לסנכרן; הנתונים נשמרים במכשיר בלבד.
     if (STANDALONE) return;
@@ -57,6 +72,7 @@ class SyncQueue {
 
   async flush(): Promise<void> {
     if (this.flushing || !this.isOnline() || this.queue.length === 0) return;
+    if (!this.token || this.blocked) return;  // אין למי לשלוח – התור ממתין
     this.flushing = true;
     try {
       while (this.queue.length > 0) {
@@ -64,10 +80,20 @@ class SyncQueue {
         try {
           const res = await fetch(apiUrl('/api/sync'), {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+            },
             body: JSON.stringify({ entity: op.entity, entityId: op.entityId, payload: op.payload }),
           });
           if (!res.ok) {
+            /* 401/403: אין התחברות, או שהעסק ממתין לאישור / המנוי פג.
+               התור נשמר כפי שהוא – שום רשומה אינה נזרקת, והסנכרון
+               יתחדש מעצמו ברגע שתהיה גישה. */
+            if (res.status === 401 || res.status === 403) {
+              this.blocked = true;
+              break;
+            }
             if (res.status >= 400 && res.status < 500) {
               // ולידציה נכשלה בצד שרת – מוציאים מהתור כדי לא להיתקע, המידע נשמר מקומית
               this.queue.shift();
@@ -77,6 +103,7 @@ class SyncQueue {
             }
             break;
           }
+          this.blocked = false;
           this.queue.shift();
           await kvSet(QUEUE_KEY, this.queue);
           this.emit();

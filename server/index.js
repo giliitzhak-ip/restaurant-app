@@ -14,6 +14,8 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { validatePayload, isDeletionAllowed } from './validate.js';
+import { createAuthRoutes } from './routes-auth.js';
+import { ACCESS, organizationAccess } from './auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -29,6 +31,7 @@ const db = new DatabaseSync(DB_PATH);
 db.exec('PRAGMA journal_mode = WAL;');
 db.exec('PRAGMA foreign_keys = ON;');
 db.exec(fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8'));
+db.exec(fs.readFileSync(path.join(__dirname, 'tenancy.sql'), 'utf8'));
 
 /**
  * טבלת הסנכרון הגולמית: כל ישות נשמרת גם כמסמך JSON מלא.
@@ -44,6 +47,18 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_sync_entity ON sync_documents(entity);
 `);
+
+/* כל מסמך שייך לעסק. מסמך ללא בעלים אינו נגיש לאיש. */
+const syncColumns = db.prepare('PRAGMA table_info(sync_documents)').all().map((c) => c.name);
+if (!syncColumns.includes('org_id')) {
+  db.exec('ALTER TABLE sync_documents ADD COLUMN org_id TEXT');
+}
+if (!syncColumns.includes('updated_by')) {
+  db.exec('ALTER TABLE sync_documents ADD COLUMN updated_by TEXT');
+}
+db.exec('CREATE INDEX IF NOT EXISTS idx_sync_org ON sync_documents(org_id, entity)');
+
+const auth = createAuthRoutes(db);
 
 const ALLOWED_ENTITIES = new Set([
   'customers', 'customer_sites', 'journals', 'journal_pests', 'journal_actions',
@@ -90,21 +105,32 @@ function readBody(req) {
 }
 
 const upsertDoc = db.prepare(`
-  INSERT INTO sync_documents (entity, entity_id, payload, received_at)
-  VALUES (?, ?, ?, ?)
-  ON CONFLICT(entity, entity_id) DO UPDATE SET payload = excluded.payload, received_at = excluded.received_at
+  INSERT INTO sync_documents (entity, entity_id, payload, received_at, org_id, updated_by)
+  VALUES (?, ?, ?, ?, ?, ?)
+  ON CONFLICT(entity, entity_id) DO UPDATE SET
+    payload = excluded.payload, received_at = excluded.received_at, updated_by = excluded.updated_by
 `);
-const selectDoc = db.prepare('SELECT payload FROM sync_documents WHERE entity = ? AND entity_id = ?');
-const selectByEntity = db.prepare('SELECT entity_id, payload FROM sync_documents WHERE entity = ? ORDER BY received_at DESC LIMIT ?');
+const selectDoc = db.prepare('SELECT payload, org_id FROM sync_documents WHERE entity = ? AND entity_id = ?');
+const selectByEntity = db.prepare(
+  'SELECT entity_id, payload FROM sync_documents WHERE entity = ? AND org_id = ? ORDER BY received_at DESC LIMIT ?',
+);
 const insertAudit = db.prepare(`
   INSERT INTO audit_log (id, entity, entity_id, action, field, before, after, user_id, user_name, at)
   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 
-/** POST /api/sync – מקבל ישות בודדת מהתור של הלקוח. */
-async function handleSync(req, res) {
+/** POST /api/sync – מקבל ישות בודדת מהתור של הלקוח. דורש התחברות. */
+async function handleSync(req, res, session) {
   const body = await readBody(req);
   const { entity, entityId, payload } = body;
+
+  if (!session.user.org_id) {
+    return json(res, 403, { ok: false, errors: ['למשתמש זה אין עסק משויך.'] });
+  }
+  const access = organizationAccess(session.org);
+  if (access.level !== ACCESS.FULL) {
+    return json(res, 403, { ok: false, errors: [access.reason], access: access.level });
+  }
 
   if (!ALLOWED_ENTITIES.has(entity)) {
     return json(res, 400, { ok: false, errors: [`ישות לא מוכרת: ${entity}`] });
@@ -119,6 +145,10 @@ async function handleSync(req, res) {
   }
 
   const existingRow = selectDoc.get(entity, entityId);
+  // מסמך של עסק אחר לעולם אינו נכתב מחדש על ידי עסק אחר
+  if (existingRow && existingRow.org_id && existingRow.org_id !== session.user.org_id) {
+    return json(res, 403, { ok: false, errors: ['הרשומה שייכת לעסק אחר.'] });
+  }
   const existing = existingRow ? JSON.parse(existingRow.payload) : null;
 
   if (!isDeletionAllowed(entity, existing) && payload.status === 'cancelled' && !payload.cancelledReason) {
@@ -126,7 +156,7 @@ async function handleSync(req, res) {
   }
 
   const now = new Date().toISOString();
-  upsertDoc.run(entity, entityId, JSON.stringify(payload), now);
+  upsertDoc.run(entity, entityId, JSON.stringify(payload), now, session.user.org_id, session.user.id);
 
   insertAudit.run(
     crypto.randomUUID(),
@@ -136,8 +166,8 @@ async function handleSync(req, res) {
     null,
     existing ? JSON.stringify(existing).slice(0, 2000) : null,
     JSON.stringify(payload).slice(0, 2000),
-    payload.userId ?? null,
-    payload.userName ?? null,
+    session.user.id,
+    session.user.name,
     now,
   );
 
@@ -202,8 +232,71 @@ const server = http.createServer((req, res) => {
       return json(res, 200, { ok: true, time: new Date().toISOString() });
     }
 
+    /* ───── נתיבים פתוחים: הרשמה והתחברות ───── */
+
+    const send = (result) => json(res, result.status, result.body);
+
+    if (url.pathname === '/api/auth/register' && req.method === 'POST') {
+      return readBody(req)
+        .then((body) => send(auth.register(body)))
+        .catch((err) => json(res, 400, { ok: false, errors: [err.message] }));
+    }
+
+    if (url.pathname === '/api/auth/login' && req.method === 'POST') {
+      return readBody(req)
+        .then((body) => send(auth.login(body)))
+        .catch((err) => json(res, 400, { ok: false, errors: [err.message] }));
+    }
+
+    /* ───── מכאן ואילך נדרשת התחברות ───── */
+
+    const session = auth.currentUser(req);
+    if (!session) {
+      return json(res, 401, { ok: false, errors: ['נדרשת התחברות.'] });
+    }
+
+    if (url.pathname === '/api/auth/me' && req.method === 'GET') {
+      return send(auth.me(session));
+    }
+
+    if (url.pathname === '/api/auth/logout' && req.method === 'POST') {
+      return send(auth.logout(session));
+    }
+
+    if (url.pathname === '/api/auth/users' && req.method === 'GET') {
+      return send(auth.listEmployees(session));
+    }
+
+    if (url.pathname === '/api/auth/users' && req.method === 'POST') {
+      return readBody(req)
+        .then((body) => send(auth.createEmployee(session, body)))
+        .catch((err) => json(res, 400, { ok: false, errors: [err.message] }));
+    }
+
+    if (url.pathname.startsWith('/api/auth/users/') && req.method === 'PATCH') {
+      const targetId = decodeURIComponent(url.pathname.split('/')[4] ?? '');
+      return readBody(req)
+        .then((body) => send(auth.updateEmployee(session, targetId, body)))
+        .catch((err) => json(res, 400, { ok: false, errors: [err.message] }));
+    }
+
+    /* ───── קונסולת מנהל המערכת ───── */
+
+    if (url.pathname === '/api/admin/organizations' && req.method === 'GET') {
+      return send(auth.listOrganizations(session));
+    }
+
+    if (url.pathname.startsWith('/api/admin/organizations/') && req.method === 'POST') {
+      const orgId = decodeURIComponent(url.pathname.split('/')[4] ?? '');
+      return readBody(req)
+        .then((body) => send(auth.decideOrganization(session, orgId, body)))
+        .catch((err) => json(res, 400, { ok: false, errors: [err.message] }));
+    }
+
+    /* ───── נתוני העסק ───── */
+
     if (url.pathname === '/api/sync' && req.method === 'POST') {
-      return handleSync(req, res).catch((err) =>
+      return handleSync(req, res, session).catch((err) =>
         json(res, 400, { ok: false, errors: [err.message] }),
       );
     }
@@ -213,8 +306,11 @@ const server = http.createServer((req, res) => {
       if (!ALLOWED_ENTITIES.has(entity)) {
         return json(res, 404, { ok: false, errors: ['ישות לא מוכרת'] });
       }
+      if (!session.user.org_id) {
+        return json(res, 403, { ok: false, errors: ['למשתמש זה אין עסק משויך.'] });
+      }
       const limit = Math.min(Number(url.searchParams.get('limit')) || 100, 500);
-      const rows = selectByEntity.all(entity, limit);
+      const rows = selectByEntity.all(entity, session.user.org_id, limit);
       return json(res, 200, {
         ok: true,
         items: rows.map((r) => ({ id: r.entity_id, ...JSON.parse(r.payload) })),
