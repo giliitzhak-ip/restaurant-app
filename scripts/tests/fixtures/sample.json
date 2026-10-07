@@ -1,0 +1,9 @@
+{
+  "total": 2,
+  "results": [
+    { "Data": { "shem_hatachshir": "בדיקה דלתא", "mispar_rishum": "9005",
+      "homer_paeil": "Testoxaflor 24%", "toarit": "תרחיף", "mazikim": ["כנימות", "זבובים"] } },
+    { "Data": { "shem_hatachshir": "בדיקה אפסילון", "mispar_rishum": "9006",
+      "homer_paeil": "Testaprid", "rikuz": "17.8%", "toarit": "תרכיז" } }
+  ]
+}
