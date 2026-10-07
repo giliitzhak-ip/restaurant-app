@@ -34,9 +34,16 @@ npm run e2e       # בדיקות קבלה בדפדפן (דורש: npm i -D playw
 VITE_STANDALONE=1 npx vite build --base=./ --outDir=dist-demo
 ```
 
-משתני סביבה: `PORT` (ברירת מחדל 3000), `DATA_DIR` (ברירת מחדל `./data`),
-`VITE_STANDALONE=1` (בנייה ללא שרת).
+משתני סביבה: ראו `.env.example` – הוא מתעד את `PORT`, `DATA_DIR`,
+`VITE_STANDALONE` ו-`VITE_API_BASE`, ואינו מכיל סודות.
+להרצה מקומית: `cp .env.example .env`. הקובץ `.env` עצמו אינו נשמר בגיט.
 ל-`npm run e2e` אפשר להגדיר `BASE_URL` ו-`CHROME_PATH`.
+
+סיסמת מנהל המערכת אינה משתנה סביבה; היא נקבעת בהרצת
+`npm run create-admin` ונשמרת כגיבוב scrypt.
+
+מה תוקן בעקבות הביקורת, ומה עדיין פתוח:
+[docs/דוח-תיקוני-ביקורת.md](docs/דוח-תיקוני-ביקורת.md).
 
 ## ארכיטקטורה
 

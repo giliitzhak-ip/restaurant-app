@@ -3,6 +3,11 @@ dist/
 /data/
 *.tsbuildinfo
 *.local
+
+# סודות מקומיים. הדוגמה (.env.example) כן נשמרת בגיט.
+.env
+.env.*
+!.env.example
 .DS_Store
 *.log
 *.db
