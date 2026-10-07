@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { navigate } from '../../router';
 import { useStore } from '../../state/store';
-import { Card, EmptyState } from '../../components/ui';
+import { Card, EmptyState, Notice } from '../../components/ui';
+import { JOURNAL_LOCK_REASON } from '../../lib/journalLock';
 import { SaveStatus } from '../../components/SaveStatus';
 import { journalNumberText } from '../../lib/format';
 import { Step1Work } from './Step1Work';
@@ -25,13 +26,14 @@ export const STEPS = [
 ];
 
 export function JournalWizard({ journalId, step }: { journalId?: string; step: number }) {
-  const { state, updateJournal } = useStore();
+  const { state, updateJournal, isLocked } = useStore();
   const journal = state.journals.find((j) => j.id === journalId);
   const [direction, setDirection] = useState<'fwd' | 'back'>('fwd');
   const lastStep = useRef(step);
   const tabsRef = useRef<HTMLDivElement>(null);
 
   const current = Math.min(Math.max(step || 1, 1), STEPS.length);
+  const locked = isLocked(journalId ?? '');
 
   useEffect(() => {
     setDirection(step >= lastStep.current ? 'fwd' : 'back');
@@ -106,7 +108,19 @@ export function JournalWizard({ journalId, step }: { journalId?: string; step: n
         </div>
       </div>
 
-      <div className={`step-panel ${direction === 'back' ? 'back' : ''}`} key={current}>
+      {locked && current < STEPS.length && (
+        <Card>
+          <Notice kind="info" title="היומן נעול לעריכה">{JOURNAL_LOCK_REASON}</Notice>
+        </Card>
+      )}
+
+      {/* יומן נעול מוצג לקריאה בלבד. fieldset מנטרל את כל השדות שבתוכו
+          בבת אחת, כך שלא נשאר שדה פתוח בטעות בשלב כלשהו. */}
+      <fieldset
+        className={`step-panel ${direction === 'back' ? 'back' : ''}`}
+        key={current}
+        disabled={locked && current < STEPS.length}
+      >
         {current === 1 && <Step1Work {...props} />}
         {current === 2 && <Step2Customer {...props} />}
         {current === 3 && <Step3Findings {...props} />}
@@ -115,7 +129,7 @@ export function JournalWizard({ journalId, step }: { journalId?: string; step: n
         {current === 6 && <Step6Instructions {...props} />}
         {current === 7 && <Step7Summary {...props} />}
         {current === 8 && <Step8Signatures {...props} />}
-      </div>
+      </fieldset>
 
       <div className="wizard-footer no-print">
         <button

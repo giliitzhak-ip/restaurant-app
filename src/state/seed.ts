@@ -44,6 +44,7 @@ export function seedState(): AppState {
     baitStations: [],
     attachments: [],
     signatures: [],
+    journalSnapshots: [],
     auditLog: [
       {
         id: 'aud_seed',

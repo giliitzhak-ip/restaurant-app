@@ -4,10 +4,12 @@ interface Props {
   label: string;
   value?: string;
   onChange: (dataUrl: string | undefined) => void;
+  /** יומן נעול: החתימה מוצגת כראיה ואינה ניתנת לשינוי או לניקוי. */
+  readOnly?: boolean;
 }
 
 /** לוח חתימה דיגיטלית – עכבר, מגע ועט. */
-export function SignaturePad({ label, value, onChange }: Props) {
+export function SignaturePad({ label, value, onChange, readOnly = false }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const [hasInk, setHasInk] = useState(Boolean(value));
@@ -39,6 +41,7 @@ export function SignaturePad({ label, value, onChange }: Props) {
   }
 
   function start(e: React.PointerEvent<HTMLCanvasElement>): void {
+    if (readOnly) return;
     e.preventDefault();
     const ctx = canvasRef.current?.getContext('2d');
     if (!ctx) return;
@@ -67,6 +70,7 @@ export function SignaturePad({ label, value, onChange }: Props) {
   }
 
   function clear(): void {
+    if (readOnly) return;
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
@@ -90,8 +94,12 @@ export function SignaturePad({ label, value, onChange }: Props) {
         onPointerCancel={end}
       />
       <div className="spread mt-2">
-        <span className="small muted">{hasInk ? 'נחתם' : 'חתום באצבע או בעכבר'}</span>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={clear}>נקה חתימה</button>
+        <span className="small muted">
+          {hasInk ? 'נחתם' : readOnly ? 'לא נחתם' : 'חתום באצבע או בעכבר'}
+        </span>
+        {!readOnly && (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={clear}>נקה חתימה</button>
+        )}
       </div>
     </div>
   );

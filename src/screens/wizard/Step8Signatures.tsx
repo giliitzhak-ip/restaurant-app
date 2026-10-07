@@ -3,6 +3,7 @@ import { useStore } from '../../state/store';
 import { Card, Dialog, Notice } from '../../components/ui';
 import { SignaturePad } from '../../components/SignaturePad';
 import { validateJournal, blockingIssues } from '../../lib/validation';
+import { JOURNAL_LOCK_REASON, isJournalLocked } from '../../lib/journalLock';
 import { journalNumberText } from '../../lib/format';
 import { buildShareText } from '../../lib/share';
 import { navigate } from '../../router';
@@ -12,6 +13,7 @@ export function Step8Signatures({ journalId, goToStep }: StepProps) {
   const {
     state, updateJournal, saveSignature, removeSignature, completeJournal, getFullJournal,
   } = useStore();
+  const [failed, setFailed] = useState(false);
   const journal = state.journals.find((j) => j.id === journalId)!;
   const signatures = state.signatures.filter((s) => s.journalId === journalId);
   const customer = state.customers.find((c) => c.id === journal.customerId);
@@ -24,14 +26,18 @@ export function Step8Signatures({ journalId, goToStep }: StepProps) {
   const issues = useMemo(() => (full ? validateJournal(full) : []), [full]);
   const blocking = blockingIssues(issues);
 
+  const locked = isJournalLocked(journal);
   const extSig = signatures.find((s) => s.role === 'exterminator');
   const custSig = signatures.find((s) => s.role === 'customer');
 
   function finish(): void {
     if (submitting || blocking.length > 0) return;   // מניעת שמירה כפולה
     setSubmitting(true);
-    completeJournal(journalId);
-    setDone(true);
+    /* השמירה הסופית מאושרת רק אם החנות סגרה את היומן בפועל.
+       כך המסך לא מכריז "נשמר" כשהוולידציה בצד החנות מנעה את הסיום. */
+    const closed = completeJournal(journalId);
+    setDone(closed);
+    setFailed(!closed);
     window.setTimeout(() => setSubmitting(false), 800);
   }
 
@@ -39,12 +45,19 @@ export function Step8Signatures({ journalId, goToStep }: StepProps) {
 
   return (
     <>
+      {locked && (
+        <Card>
+          <Notice kind="info" title="היומן נעול">{JOURNAL_LOCK_REASON}</Notice>
+        </Card>
+      )}
+
       <Card>
         <div className="card-title"><h2>חתימות וסיום</h2></div>
 
         <SignaturePad
           label={`חתימת המדביר · ${journal.exterminatorName || '—'}`}
           value={extSig?.image}
+          readOnly={locked}
           onChange={(img) => {
             // ניקוי החתימה מוחק את הרשומה, ואינו מותיר חתימה ישנה
             if (!img) { removeSignature(journalId, 'exterminator'); return; }
@@ -61,6 +74,7 @@ export function Step8Signatures({ journalId, goToStep }: StepProps) {
             id="cust-signer"
             type="text"
             value={customerName}
+            disabled={locked}
             onChange={(e) => setCustomerName(e.target.value)}
           />
         </div>
@@ -68,6 +82,7 @@ export function Step8Signatures({ journalId, goToStep }: StepProps) {
         <SignaturePad
           label="חתימת הלקוח"
           value={custSig?.image}
+          readOnly={locked}
           onChange={(img) => {
             if (!img) { removeSignature(journalId, 'customer'); return; }
             saveSignature({
@@ -81,6 +96,7 @@ export function Step8Signatures({ journalId, goToStep }: StepProps) {
           <input
             type="checkbox"
             checked={journal.customerAcknowledged}
+            disabled={locked}
             onChange={(e) => updateJournal(journalId, { customerAcknowledged: e.target.checked })}
           />
           הלקוח קיבל את ההנחיות והוסברו לו
@@ -107,6 +123,12 @@ export function Step8Signatures({ journalId, goToStep }: StepProps) {
 
       <Card>
         <div className="card-title"><h3>סיום והפקה</h3></div>
+
+        {failed && (
+          <Notice kind="error" title="היומן לא נסגר">
+            חסרים נתונים לסיום היומן, או שהיומן נעול. הטיוטה נשמרה כפי שהיא.
+          </Notice>
+        )}
 
         {done && (
           <div className="mb-3">

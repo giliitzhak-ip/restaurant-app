@@ -38,6 +38,12 @@ chk "יומן שהושלם נשמר" '"ok":true' "$(j POST /api/sync "$T" '{"ent
 chk "מחיקת יומן שהושלם נדחית" 'אינו נמחק' "$(j POST /api/sync "$T" '{"entity":"journals","entityId":"jr-done","deleted":true}')"
 chk "היומן שהושלם נשאר בשרת" 'jr-done' "$(j GET /api/entities/journals "$T")"
 
+echo "─── צילום יומן אינו נמחק ───"
+chk "צילום יומן נשמר" '"ok":true' "$(j POST /api/sync "$T" '{"entity":"journal_snapshots","entityId":"snp-1","payload":{"journalId":"jr-done","journalNumber":102,"takenAt":"2026-01-01T10:00:00.000Z","schemaVersion":1}}')"
+chk "מחיקת צילום נדחית" 'צילום יומן אינו נמחק' "$(j POST /api/sync "$T" '{"entity":"journal_snapshots","entityId":"snp-1","deleted":true}')"
+chk "הצילום נשאר בשרת" 'snp-1' "$(j GET /api/entities/journal_snapshots "$T")"
+chk "צילום ללא תאריך נדחה" 'שדה חובה חסר: takenAt' "$(j POST /api/sync "$T" '{"entity":"journal_snapshots","entityId":"snp-2","payload":{"journalId":"jr-done","schemaVersion":1}}')"
+
 echo "─── מחיקה חוצה-עסקים ───"
 T2=$(j POST /api/auth/login '' '{"email":"ronit@south.example","password":"Secret12345"}' | tok)
 chk "עסק אחר אינו מוחק את הרשומה שלי" 'שייכת לעסק אחר' "$(j POST /api/sync "$T2" '{"entity":"signatures","entityId":"sgn-1","deleted":true}')"

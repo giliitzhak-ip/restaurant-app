@@ -25,6 +25,7 @@ export const SYNCED_COLLECTIONS: readonly { key: keyof AppState; entity: string 
   { key: 'routes', entity: 'routes' },
   { key: 'routeStops', entity: 'route_stops' },
   { key: 'tasks', entity: 'tasks' },
+  { key: 'journalSnapshots', entity: 'journal_snapshots' },
   { key: 'auditLog', entity: 'audit_log' },
 ];
 

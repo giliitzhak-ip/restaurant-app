@@ -6,6 +6,7 @@ import type {
   AppState, AuditEntry, BaitStationRecord, Customer, CustomerSite, CustomerTemplate, Exterminator,
   FullJournal, ID, Journal, JournalAction, JournalMaterial, JournalPest, Material,
   MaterialLabel, Route, RouteStop, Signature, Task, TreatmentTemplate, Attachment,
+  JournalSnapshot,
 } from '../types';
 import { seedState } from './seed';
 import { kvGet, kvSet } from '../lib/storage';
@@ -15,6 +16,9 @@ import {
 } from './syncMap';
 import { newId } from '../lib/id';
 import { isoNow } from '../lib/format';
+import { buildJournalSnapshot, fullJournalFromState } from '../lib/snapshot';
+import { isJournalLocked } from '../lib/journalLock';
+import { blockingIssues, validateJournal } from '../lib/validation';
 
 const STATE_KEY = 'app-state-v1';
 
@@ -56,7 +60,8 @@ interface StoreValue {
   /* יומן */
   createJournal: () => Journal;
   updateJournal: (id: ID, patch: Partial<Journal>) => void;
-  completeJournal: (id: ID) => void;
+  /** מחזיר true רק אם היומן נסגר בפועל. */
+  completeJournal: (id: ID) => boolean;
   cancelJournal: (id: ID, reason: string) => void;
   duplicateJournal: (id: ID) => Journal | null;
   loadFromLastJournal: (journalId: ID, customerId: ID) => { copied: string[]; cleared: string[] } | null;
@@ -100,6 +105,10 @@ interface StoreValue {
 
   /* עזר */
   getFullJournal: (id: ID) => FullJournal | null;
+  /** הצילום שנלקח בעת סיום היומן, אם נלקח. המסמך מופק ממנו. */
+  getJournalSnapshot: (id: ID) => JournalSnapshot | undefined;
+  /** האם היומן נעול לעריכה (הושלם או נשלח). */
+  isLocked: (id: ID) => boolean;
   labelFor: (materialId: ID) => MaterialLabel | undefined;
   resetAll: () => void;
 }
@@ -309,6 +318,14 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
     [currentUser],
   );
 
+  /**
+   * שומר על יומן נעול: פעולה על יומן שהושלם אינה משנה דבר.
+   * זו הגנה במצב עצמו, ולא רק בממשק, כדי שגם מסך או קישור ישן
+   * לא יוכלו לערוך תיעוד שנמסר ללקוח.
+   */
+  const lockedJournal = (s: AppState, journalId: ID | undefined): boolean =>
+    isJournalLocked(s.journals.find((j) => j.id === journalId));
+
   /* ───────── מדביר ───────── */
 
   const updateExterminator = useCallback<StoreValue['updateExterminator']>(
@@ -406,6 +423,8 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
       setState((s) => {
         const before = s.journals.find((j) => j.id === id);
         if (!before) return s;
+        // יומן שהושלם אינו נערך. ביטול מתועד נעשה ב-cancelJournal.
+        if (isJournalLocked(before)) return s;
         const after = { ...before, ...patch, updatedAt: isoNow() };
         const entries: AuditEntry[] = [];
         if (before.status === 'completed' || before.status === 'sent') {
@@ -430,32 +449,58 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
     [audit],
   );
 
+  /**
+   * סיום יומן: עובר את אותה ולידציה שבמסך (ולא מסתמך על כך שהכפתור
+   * היה מושבת), ולוקח צילום בלתי-משתנה של המסמך שנמסר ללקוח.
+   * מחזיר false כשחסרים נתונים, כדי שהמסך לא יציג "נשמר" בלי שנשמר.
+   */
   const completeJournal = useCallback<StoreValue['completeJournal']>(
     (id) => {
+      const journal = state.journals.find((x) => x.id === id);
+      if (!journal || isJournalLocked(journal)) return false;   // מניעת שמירה כפולה
+
+      const full = fullJournalFromState(state, id);
+      if (!full) return false;
+      if (blockingIssues(validateJournal(full)).length > 0) return false;
+
       setState((s) => {
         const j = s.journals.find((x) => x.id === id);
-        if (!j || j.status === 'completed' || j.status === 'sent') return s; // מניעת שמירה כפולה
-        const after: Journal = { ...j, status: 'completed', completedAt: isoNow(), updatedAt: isoNow() };
+        if (!j || isJournalLocked(j)) return s;
+        const at = isoNow();
+        const after: Journal = { ...j, status: 'completed', completedAt: at, updatedAt: at };
+        const completed: AppState = { ...s, journals: s.journals.map((x) => (x.id === id ? after : x)) };
+        const snapshot = buildJournalSnapshot(completed, id);
         return {
-          ...s,
-          journals: s.journals.map((x) => (x.id === id ? after : x)),
+          ...completed,
+          journalSnapshots: snapshot
+            ? [...completed.journalSnapshots.filter((sn) => sn.journalId !== id), snapshot]
+            : completed.journalSnapshots,
           auditLog: [...s.auditLog, audit({ entity: 'journals', entityId: id, action: 'complete' })],
         };
       });
+      return true;
     },
-    [audit],
+    [audit, state],
   );
 
+  /**
+   * ביטול יומן – הדרך היחידה "לבטל" תיעוד. היומן נשאר במערכת
+   * עם סטטוס מבוטל וסיבה מתועדת, ואינו נמחק. ללא סיבה אין ביטול.
+   */
   const cancelJournal = useCallback<StoreValue['cancelJournal']>(
     (id, reason) => {
+      const documented = reason.trim();
+      if (!documented) return;
       setState((s) => ({
         ...s,
         journals: s.journals.map((j) =>
-          j.id === id ? { ...j, status: 'cancelled', cancelledReason: reason, updatedAt: isoNow() } : j,
+          j.id === id
+            ? { ...j, status: 'cancelled', cancelledReason: documented, updatedAt: isoNow() }
+            : j,
         ),
         auditLog: [
           ...s.auditLog,
-          audit({ entity: 'journals', entityId: id, action: 'cancel', after: reason }),
+          audit({ entity: 'journals', entityId: id, action: 'cancel', after: documented }),
         ],
       }));
     },
@@ -463,19 +508,7 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
   );
 
   const getFullJournal = useCallback<StoreValue['getFullJournal']>(
-    (id) => {
-      const journal = state.journals.find((j) => j.id === id);
-      if (!journal) return null;
-      return {
-        journal,
-        pests: state.journalPests.filter((p) => p.journalId === id),
-        actions: state.journalActions.filter((a) => a.journalId === id),
-        materials: state.journalMaterials.filter((m) => m.journalId === id),
-        baitStations: state.baitStations.filter((b) => b.journalId === id),
-        signatures: state.signatures.filter((sg) => sg.journalId === id),
-        attachments: state.attachments.filter((a) => a.journalId === id),
-      };
-    },
+    (id) => fullJournalFromState(state, id),
     [state],
   );
 
@@ -483,6 +516,7 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
 
   const setJournalPest = useCallback<StoreValue['setJournalPest']>((journalId, pestId, patch) => {
     setState((s) => {
+      if (lockedJournal(s, journalId)) return s;
       const existing = s.journalPests.find((p) => p.journalId === journalId && p.pestId === pestId);
       if (existing) {
         return {
@@ -498,7 +532,7 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
   }, []);
 
   const removeJournalPest = useCallback<StoreValue['removeJournalPest']>((journalId, pestId) => {
-    setState((s) => ({
+    setState((s) => (lockedJournal(s, journalId) ? s : {
       ...s,
       journalPests: s.journalPests.filter((p) => !(p.journalId === journalId && p.pestId === pestId)),
     }));
@@ -506,6 +540,7 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
 
   const toggleJournalAction = useCallback<StoreValue['toggleJournalAction']>((journalId, kind) => {
     setState((s) => {
+      if (lockedJournal(s, journalId)) return s;
       const existing = s.journalActions.find((a) => a.journalId === journalId && a.kind === kind);
       if (existing) {
         return { ...s, journalActions: s.journalActions.filter((a) => a.id !== existing.id) };
@@ -516,10 +551,11 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
   }, []);
 
   const updateJournalAction = useCallback<StoreValue['updateJournalAction']>((id, patch) => {
-    setState((s) => ({
-      ...s,
-      journalActions: s.journalActions.map((a) => (a.id === id ? { ...a, ...patch } : a)),
-    }));
+    setState((s) => {
+      const action = s.journalActions.find((a) => a.id === id);
+      if (!action || lockedJournal(s, action.journalId)) return s;
+      return { ...s, journalActions: s.journalActions.map((a) => (a.id === id ? { ...a, ...patch } : a)) };
+    });
   }, []);
 
   /* ───────── חומרים ביומן ───────── */
@@ -539,7 +575,9 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
         conditionAnswers: {},
         execution: emptyExecution(),
       };
-      setState((s) => ({ ...s, journalMaterials: [...s.journalMaterials, record] }));
+      setState((s) => (lockedJournal(s, journalId) ? s : {
+        ...s, journalMaterials: [...s.journalMaterials, record],
+      }));
       return record;
     },
     [],
@@ -548,7 +586,9 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
   /** החלפת חומר: מנקה מינון ונתוני ביצוע של החומר שהוחלף בלבד. */
   const replaceJournalMaterial = useCallback<StoreValue['replaceJournalMaterial']>(
     (journalMaterialId, material, templateId) => {
-      setState((s) => ({
+      setState((s) => (lockedJournal(
+        s, s.journalMaterials.find((m) => m.id === journalMaterialId)?.journalId,
+      ) ? s : {
         ...s,
         journalMaterials: s.journalMaterials.map((m) =>
           m.id === journalMaterialId
@@ -572,6 +612,8 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
   const updateJournalMaterial = useCallback<StoreValue['updateJournalMaterial']>(
     (id, patch) => {
       setState((s) => {
+        const before = s.journalMaterials.find((m) => m.id === id);
+        if (!before || lockedJournal(s, before.journalId)) return s;
         const materials = s.journalMaterials.map((m) => (m.id === id ? { ...m, ...patch } : m));
         return { ...s, journalMaterials: materials };
       });
@@ -580,13 +622,18 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
   );
 
   const removeJournalMaterial = useCallback<StoreValue['removeJournalMaterial']>((id) => {
-    setState((s) => ({ ...s, journalMaterials: s.journalMaterials.filter((m) => m.id !== id) }));
+    setState((s) => {
+      const material = s.journalMaterials.find((m) => m.id === id);
+      if (!material || lockedJournal(s, material.journalId)) return s;
+      return { ...s, journalMaterials: s.journalMaterials.filter((m) => m.id !== id) };
+    });
   }, []);
 
   /* ───────── תיבות, חתימות, קבצים ───────── */
 
   const upsertBaitStation = useCallback<StoreValue['upsertBaitStation']>((rec) => {
     setState((s) => {
+      if (lockedJournal(s, rec.journalId)) return s;
       if (rec.id && s.baitStations.some((b) => b.id === rec.id)) {
         return {
           ...s,
@@ -598,12 +645,17 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
   }, []);
 
   const removeBaitStation = useCallback<StoreValue['removeBaitStation']>((id) => {
-    setState((s) => ({ ...s, baitStations: s.baitStations.filter((b) => b.id !== id) }));
+    setState((s) => {
+      const station = s.baitStations.find((b) => b.id === id);
+      if (!station || lockedJournal(s, station.journalId)) return s;
+      return { ...s, baitStations: s.baitStations.filter((b) => b.id !== id) };
+    });
   }, []);
 
   const saveSignature = useCallback<StoreValue['saveSignature']>(
     (sig) => {
       setState((s) => {
+        if (lockedJournal(s, sig.journalId)) return s;
         const existing = s.signatures.find((x) => x.journalId === sig.journalId && x.role === sig.role);
         const record: Signature = { ...sig, id: existing?.id ?? newId('sgn') };
         // תמונת החתימה היא הראיה עצמה ונשלחת במלואה, לא כמציין מקום
@@ -622,6 +674,7 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
   const removeSignature = useCallback<StoreValue['removeSignature']>(
     (journalId, role) => {
       setState((s) => {
+        if (lockedJournal(s, journalId)) return s;
         const existing = s.signatures.find((x) => x.journalId === journalId && x.role === role);
         if (!existing) return s;
         return { ...s, signatures: s.signatures.filter((x) => x.id !== existing.id) };
@@ -631,14 +684,18 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
   );
 
   const addAttachment = useCallback<StoreValue['addAttachment']>((att) => {
-    setState((s) => ({
+    setState((s) => (lockedJournal(s, att.journalId) ? s : {
       ...s,
       attachments: [...s.attachments, { ...att, id: newId('att'), createdAt: isoNow() }],
     }));
   }, []);
 
   const removeAttachment = useCallback<StoreValue['removeAttachment']>((id) => {
-    setState((s) => ({ ...s, attachments: s.attachments.filter((a) => a.id !== id) }));
+    setState((s) => {
+      const file = s.attachments.find((a) => a.id === id);
+      if (!file || lockedJournal(s, file.journalId)) return s;
+      return { ...s, attachments: s.attachments.filter((a) => a.id !== id) };
+    });
   }, []);
 
   /* ───────── תבניות ───────── */
@@ -721,6 +778,7 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
    */
   const loadFromLastJournal = useCallback<StoreValue['loadFromLastJournal']>(
     (journalId, customerId) => {
+      if (isJournalLocked(state.journals.find((j) => j.id === journalId))) return null;
       const previous = state.journals
         .filter((j) => j.customerId === customerId && j.id !== journalId && j.status !== 'cancelled')
         .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))[0];
@@ -730,6 +788,7 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
       const cleared = ['תאריך ושעה', 'ממצאים ורמת נגיעות', 'מספר אצווה', 'תפוגת אריזה', 'כמויות בפועל', 'חתימות'];
 
       setState((s) => {
+        if (lockedJournal(s, journalId)) return s;
         const journals = s.journals.map((j) =>
           j.id === journalId
             ? {
@@ -868,6 +927,16 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
     setState((s) => ({ ...s, tasks: s.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)) }));
   }, []);
 
+  const getJournalSnapshot = useCallback<StoreValue['getJournalSnapshot']>(
+    (id) => state.journalSnapshots.find((sn) => sn.journalId === id),
+    [state.journalSnapshots],
+  );
+
+  const isLocked = useCallback<StoreValue['isLocked']>(
+    (id) => isJournalLocked(state.journals.find((j) => j.id === id)),
+    [state.journals],
+  );
+
   const labelFor = useCallback<StoreValue['labelFor']>(
     (materialId) => state.materialLabels.find((l) => l.materialId === materialId),
     [state.materialLabels],
@@ -898,7 +967,7 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
       saveCustomerTemplate, updateTreatmentTemplate, duplicateTreatmentTemplate,
       archiveTreatmentTemplate, archiveCustomerTemplate,
       createRoute, addRouteStop, updateRouteStop, moveRouteStop, reorderRouteStops, removeRouteStop,
-      createTask, updateTask, getFullJournal, labelFor, resetAll,
+      createTask, updateTask, getFullJournal, getJournalSnapshot, isLocked, labelFor, resetAll,
     }),
     [
       state, saveState, saveErrors, retrySave, pendingSync, online, ready,
@@ -913,7 +982,7 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
       saveCustomerTemplate, updateTreatmentTemplate, duplicateTreatmentTemplate,
       archiveTreatmentTemplate, archiveCustomerTemplate,
       createRoute, addRouteStop, updateRouteStop, moveRouteStop, reorderRouteStops, removeRouteStop,
-      createTask, updateTask, getFullJournal, labelFor, resetAll,
+      createTask, updateTask, getFullJournal, getJournalSnapshot, isLocked, labelFor, resetAll,
     ],
   );
 

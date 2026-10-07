@@ -16,23 +16,32 @@ import { NOT_ENTERED } from '../types';
  * ההפקה נעשית דרך הדפסת הדפדפן ("שמור כ-PDF"), כך שהעברית נשמרת תקינה ובכיוון RTL נכון.
  */
 export function JournalDocument({ journalId }: { journalId?: string }) {
-  const { state, getFullJournal, labelFor } = useStore();
-  const full = journalId ? getFullJournal(journalId) : null;
+  const { state, getFullJournal, getJournalSnapshot, labelFor } = useStore();
+
+  /* יומן שהושלם מופק מהצילום שנלקח בעת הסיום, ולא מהמצב הנוכחי.
+     כך המסמך שיודפס מחר זהה למסמך שנמסר ללקוח, גם אם שם תכשיר
+     התעדכן, תווית אומתה או פרטי הלקוח נערכו. */
+  const snapshot = journalId ? getJournalSnapshot(journalId) : undefined;
+  const full = snapshot?.full ?? (journalId ? getFullJournal(journalId) : null);
 
   const rows = useMemo(() => {
     if (!full) return [];
+    const materials = snapshot ? snapshot.materials : state.materials;
+    const templates = snapshot ? snapshot.treatmentTemplates : state.treatmentTemplates;
     return full.materials.map((jm) => {
-      const material = state.materials.find((m) => m.id === jm.materialId);
-      const template = state.treatmentTemplates.find((t) => t.id === jm.templateId);
+      const material = materials.find((m) => m.id === jm.materialId);
+      const template = templates.find((t) => t.id === jm.templateId);
       return {
         jm,
         name: material?.tradeName ?? jm.materialNameSnapshot,
         material,
-        label: labelFor(jm.materialId),
+        label: snapshot
+          ? snapshot.materialLabels.find((l) => l.materialId === jm.materialId)
+          : labelFor(jm.materialId),
         revealed: revealedInstructions(template, jm.conditionAnswers),
       };
     });
-  }, [full, state.materials, state.treatmentTemplates, labelFor]);
+  }, [full, snapshot, state.materials, state.treatmentTemplates, labelFor]);
 
   const reEntry = useMemo(
     () => computeReEntry(
@@ -55,7 +64,9 @@ export function JournalDocument({ journalId }: { journalId?: string }) {
   }
 
   const { journal, pests, actions, baitStations, signatures, attachments } = full;
-  const customer = state.customers.find((c) => c.id === journal.customerId);
+  const customer = snapshot
+    ? snapshot.customer
+    : state.customers.find((c) => c.id === journal.customerId);
   const extSig = signatures.find((s) => s.role === 'exterminator');
   const custSig = signatures.find((s) => s.role === 'customer');
 
@@ -74,6 +85,16 @@ export function JournalDocument({ journalId }: { journalId?: string }) {
         <Notice kind="info">
           להפקת PDF: לחצו "הדפסה / שמירה כ-PDF" ובחרו יעד "שמירה כ-PDF". העברית והחתימות נשמרות במסמך כפי שהן מוצגות כאן.
         </Notice>
+        {snapshot ? (
+          <Notice kind="info" title="מסמך סופי">
+            המסמך מופק מצילום שנשמר בעת סיום היומן ב-{formatDateTime(snapshot.takenAt)},
+            ואינו משתנה עם עדכונים מאוחרים במאגר או בכרטיס הלקוח.
+          </Notice>
+        ) : (
+          <Notice kind="warn" title="טיוטה">
+            היומן טרם הושלם. המסמך מופק מהנתונים הנוכחיים והוא עשוי להשתנות.
+          </Notice>
+        )}
       </div>
 
       <article className="doc" lang="he" dir="rtl">

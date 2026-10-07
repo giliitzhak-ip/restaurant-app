@@ -282,6 +282,29 @@ export interface FullJournal {
   attachments: Attachment[];
 }
 
+/**
+ * צילום היומן ברגע הסיום. זו הראיה שנמסרה ללקוח, ולכן היא אינה
+ * משתנה אחר כך: לא כששם תכשיר מתעדכן, לא כשתווית מאומתת ולא
+ * כשפרטי הלקוח נערכים. המסמך וה-PDF מופקים ממנה.
+ */
+export interface JournalSnapshot {
+  id: ID;
+  journalId: ID;
+  journalNumber: number;
+  /** מתי נלקח הצילום – זמן הסיום. */
+  takenAt: string;
+  /** גרסת מבנה הצילום, לקריאה נכונה של צילומים ישנים. */
+  schemaVersion: number;
+  full: FullJournal;
+  customer?: Customer;
+  site?: CustomerSite;
+  exterminator?: Exterminator;
+  /** התכשירים והתוויות כפי שהיו, לפי מזהה. */
+  materials: Material[];
+  materialLabels: MaterialLabel[];
+  treatmentTemplates: TreatmentTemplate[];
+}
+
 /* ───────────────── תבניות ───────────────── */
 
 export interface TemplateConditionField {
@@ -414,6 +437,7 @@ export interface AppState {
   baitStations: BaitStationRecord[];
   attachments: Attachment[];
   signatures: Signature[];
+  journalSnapshots: JournalSnapshot[];
   auditLog: AuditEntry[];
   currentUserId: ID;
   counters: { journalNumber: number; customerNumber: number };

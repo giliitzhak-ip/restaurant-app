@@ -13,7 +13,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
-import { validatePayload, isDeletionAllowed } from './validate.js';
+import { validatePayload, isDeletionAllowed, deletionRefusal } from './validate.js';
 import { createAuthRoutes } from './routes-auth.js';
 import { ACCESS, organizationAccess } from './auth.js';
 
@@ -92,7 +92,7 @@ const ALLOWED_ENTITIES = new Set([
   'exterminators', 'customers', 'customer_sites', 'journals', 'journal_pests',
   'journal_actions', 'journal_materials', 'materials', 'material_labels',
   'treatment_templates', 'customer_templates', 'routes', 'route_stops', 'tasks',
-  'bait_stations', 'signatures', 'attachments', 'audit_log',
+  'bait_stations', 'signatures', 'attachments', 'journal_snapshots', 'audit_log',
 ]);
 
 const MAX_BODY = 8 * 1024 * 1024;
@@ -253,11 +253,9 @@ async function handleSync(req, res, session) {
   }
 
   if (isDelete) {
-    if (!isDeletionAllowed(entity, existing)) {
-      return json(res, 422, {
-        ok: false,
-        errors: ['יומן שהושלם אינו נמחק. יש לארכב אותו או לבטלו עם סיבה מתועדת.'],
-      });
+    const refusal = deletionRefusal(entity, existing);
+    if (refusal) {
+      return json(res, 422, { ok: false, errors: [refusal] });
     }
     if (!existingRow) {
       // אין מה למחוק – המחיקה הושלמה מבחינת הלקוח, ואין להחזיר אותו לתור

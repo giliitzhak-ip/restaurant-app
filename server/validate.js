@@ -13,6 +13,7 @@ const REQUIRED = {
   tasks: ['title', 'dueDate'],
   customer_templates: ['name', 'customerId'],
   signatures: ['journalId', 'role'],
+  journal_snapshots: ['journalId', 'takenAt', 'schemaVersion'],
 };
 
 /** שדות ביצוע שחייבים להתמלא לפני שיומן מסומן כהושלם. */
@@ -56,9 +57,24 @@ export function validatePayload(entity, payload) {
   return errors;
 }
 
-/** יומן שהושלם לעולם לא נמחק – רק מארכב או מבוטל בתיעוד. */
+/**
+ * סירוב מחיקה, עם הנימוק שיוצג למשתמש. null = מותר למחוק.
+ *
+ * יומן שהושלם לעולם לא נמחק – רק מארכב או מבוטל בתיעוד.
+ * צילום היומן הוא המסמך שנמסר ללקוח, ואינו נמחק בכלל.
+ */
+export function deletionRefusal(entity, current) {
+  if (entity === 'journal_snapshots') {
+    return 'צילום יומן אינו נמחק: זה המסמך שנמסר ללקוח.';
+  }
+  if (entity === 'journals' && current && ['completed', 'sent'].includes(current.status)) {
+    return 'יומן שהושלם אינו נמחק. יש לארכב אותו או לבטלו עם סיבה מתועדת.';
+  }
+  return null;
+}
+
+/** נוחות לקוד קיים: האם המחיקה מותרת. */
 export function isDeletionAllowed(entity, current) {
-  if (entity !== 'journals') return true;
-  return !current || !['completed', 'sent'].includes(current.status);
+  return deletionRefusal(entity, current) === null;
 }
 

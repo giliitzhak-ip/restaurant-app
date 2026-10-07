@@ -463,7 +463,12 @@ input:focus, select:focus, textarea:focus {
 .step-tab.done { border-color: var(--green-action); color: var(--green-deep); }
 :root[data-theme='dark'] .step-tab.done { color: #7FE3AE; }
 
-.step-panel { animation: step-in 260ms ease both; }
+/* fieldset כמעטפת שלב: מאפס את עיצוב ברירת המחדל של הדפדפן */
+.step-panel {
+  animation: step-in 260ms ease both;
+  border: 0; margin: 0; padding: 0; min-width: 0;
+}
+.step-panel[disabled] { opacity: 0.92; }
 @keyframes step-in {
   from { opacity: 0; transform: translateX(-14px); }
   to { opacity: 1; transform: none; }
