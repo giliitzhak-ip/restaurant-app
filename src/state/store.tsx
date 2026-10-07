@@ -9,7 +9,10 @@ import type {
 } from '../types';
 import { seedState } from './seed';
 import { kvGet, kvSet } from '../lib/storage';
-import { syncQueue, startSyncWatchers } from '../lib/sync';
+import { syncQueue, startSyncWatchers, type RejectedOp } from '../lib/sync';
+import {
+  diffSnapshots, mergePulled, snapshotState, type SyncSnapshot,
+} from './syncMap';
 import { newId } from '../lib/id';
 import { isoNow } from '../lib/format';
 
@@ -35,6 +38,12 @@ interface StoreValue {
   pendingSync: number;
   online: boolean;
   ready: boolean;
+  /** שינויים שהשרת דחה מטעמי תוכן. אינם נזרקים ואינם מוסתרים. */
+  syncRejected: RejectedOp[];
+  retrySync: () => Promise<void>;
+  dismissSyncRejection: (opId: string) => Promise<void>;
+  /** מושך שינויים מהשרת וממזג אותם. מחזיר את מספר השינויים שהוחלו. */
+  pullFromServer: () => Promise<number>;
 
   /* מדביר */
   updateExterminator: (id: ID, patch: Partial<Exterminator>) => void;
@@ -119,9 +128,13 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
   const [saveErrors, setSaveErrors] = useState<string[]>([]);
   const [pendingSync, setPendingSync] = useState(0);
   const [online, setOnline] = useState(true);
+  const [syncRejected, setSyncRejected] = useState<RejectedOp[]>([]);
   const saveTimer = useRef<number | undefined>(undefined);
   const loadedRef = useRef(false);
   const stateRef = useRef<AppState>(state);
+  /* צילום המצב שכבר נרשם בתור הסנכרון. null = עוד לא נקבע קו בסיס. */
+  const syncedRef = useRef<SyncSnapshot | null>(null);
+  const lastPullRef = useRef(0);
 
   /* טעינה ראשונית מהאחסון המקומי */
   useEffect(() => {
@@ -151,9 +164,10 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
       }
     })();
     startSyncWatchers();
-    const unsub = syncQueue.subscribe((p, o) => {
-      setPendingSync(p);
-      setOnline(o);
+    const unsub = syncQueue.subscribe((status) => {
+      setPendingSync(status.pending);
+      setOnline(status.online);
+      setSyncRejected(status.rejected);
     });
     return () => {
       cancelled = true;
@@ -175,6 +189,88 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
     }, 350);
     return () => window.clearTimeout(saveTimer.current);
   }, [state, ready, storageKey]);
+
+  /**
+   * רישום כל שינוי בתור הסנכרון, נגזר מהפרש המצב.
+   *
+   * זה רץ אחרי שהמצב התקבע, ולכן אינו תלוי בכך שכל פעולה בחנות תזכור
+   * לשלוח בעצמה, ואינו נרשם פעמיים כשריאקט מריץ מעדכן פעמיים (StrictMode).
+   * פעולה שנרשמה כבר מאוחדת בתור לפי ישות ומזהה, ולכן רישום חוזר של
+   * אותה רשומה אינו יוצר פעולה נוספת.
+   */
+  useEffect(() => {
+    if (!ready || !loadedRef.current) return;
+    const snapshot = snapshotState(state);
+    const base = syncedRef.current;
+    syncedRef.current = snapshot;
+    // הטעינה הראשונה אינה שינוי של המשתמש ואינה נשלחת לשרת
+    if (!base) return;
+    const { upserts, deletes } = diffSnapshots(base, snapshot);
+    for (const { entity, id, record } of upserts) void syncQueue.enqueue(entity, id, record);
+    for (const { entity, id } of deletes) void syncQueue.enqueueDelete(entity, id);
+  }, [state, ready]);
+
+  /**
+   * משיכת שינויים מהשרת אל המכשיר. בלעדיה מכשיר שני לא רואה מה נעשה
+   * במכשיר הראשון, ומחיקה לא מגיעה אליו כלל.
+   *
+   * שינוי מקומי שעדיין ממתין בתור גובר, כדי שלא יימחק מידע שהוקלד בשטח.
+   */
+  const pullFromServer = useCallback<StoreValue['pullFromServer']>(async () => {
+    let applied = 0;
+    lastPullRef.current = Date.now();
+    // דף חלקי: ממשיכים מאותה נקודה. התקרה מונעת לופ אם השרת חוזר על עצמו.
+    for (let page = 0; page < 20; page += 1) {
+      const pulled = await syncQueue.pull();
+      if (!pulled) break;
+      setState((s) => {
+        const outcome = mergePulled(s, pulled, (entity, id) => syncQueue.hasPending(entity, id));
+        const changed = outcome.added + outcome.updated + outcome.removed;
+        if (changed === 0) return s;
+        applied += changed;
+        /* המצב שהגיע מהשרת כבר נמצא בשרת, ולכן הוא נכנס לקו הבסיס
+           ואינו נשלח בחזרה כשינוי חדש. */
+        if (syncedRef.current) syncedRef.current = snapshotState(outcome.state);
+        return outcome.state;
+      });
+      await syncQueue.writeCursor(pulled.cursor);
+      if (!pulled.truncated) break;
+    }
+    return applied;
+  }, []);
+
+  const retrySync = useCallback<StoreValue['retrySync']>(async () => {
+    await syncQueue.retryRejected();
+  }, []);
+
+  const dismissSyncRejection = useCallback<StoreValue['dismissSyncRejection']>(async (opId) => {
+    await syncQueue.dismissRejection(opId);
+  }, []);
+
+  /**
+   * מתי מושכים מהשרת: בפתיחה, בחזרה לחזית, במעבר בין מסכים ובמרווחים קבועים.
+   * המעבר בין מסכים חסום בזמן מינימלי, כדי שדפדוף מהיר לא יהפוך לרעש רשת.
+   */
+  useEffect(() => {
+    if (!ready) return;
+    void pullFromServer();
+    const onVisible = (): void => {
+      if (document.visibilityState === 'visible') void pullFromServer();
+    };
+    const onNavigate = (): void => {
+      if (Date.now() - lastPullRef.current > 10000) void pullFromServer();
+    };
+    const timer = window.setInterval(() => void pullFromServer(), 60000);
+    window.addEventListener('online', onVisible);
+    window.addEventListener('hashchange', onNavigate);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('online', onVisible);
+      window.removeEventListener('hashchange', onNavigate);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [ready, pullFromServer]);
 
   /**
    * סגירת האפליקציה או מעבר לרקע מיד אחרי שינוי עלולים לתפוס את השמירה
@@ -213,27 +309,16 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
     [currentUser],
   );
 
-  const push = useCallback((entity: string, entityId: ID, payload: unknown) => {
-    void syncQueue.enqueue(entity, entityId, payload);
-  }, []);
-
-  /** מחיקה נרשמת בתור הסנכרון, אחרת היא נשארת במכשיר אחד בלבד. */
-  const pushDelete = useCallback((entity: string, entityId: ID) => {
-    void syncQueue.enqueueDelete(entity, entityId);
-  }, []);
-
   /* ───────── מדביר ───────── */
 
   const updateExterminator = useCallback<StoreValue['updateExterminator']>(
     (id, patch) => {
       setState((s) => {
         const exterminators = s.exterminators.map((e) => (e.id === id ? { ...e, ...patch } : e));
-        const updated = exterminators.find((e) => e.id === id);
-        if (updated) push('exterminators', id, updated);
         return { ...s, exterminators };
       });
     },
-    [push],
+    [],
   );
 
   /* ───────── לקוחות ───────── */
@@ -254,10 +339,9 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
         counters: { ...s.counters, customerNumber: s.counters.customerNumber + 1 },
         auditLog: [...s.auditLog, audit({ entity: 'customers', entityId: customer.id, action: 'create' })],
       }));
-      push('customers', customer.id, customer);
       return customer;
     },
-    [state.counters.customerNumber, audit, push],
+    [state.counters.customerNumber, audit],
   );
 
   const updateCustomer = useCallback<StoreValue['updateCustomer']>(
@@ -266,8 +350,6 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
         const customers = s.customers.map((c) =>
           c.id === id ? { ...c, ...patch, updatedAt: isoNow() } : c,
         );
-        const updated = customers.find((c) => c.id === id);
-        if (updated) push('customers', id, updated);
         return {
           ...s,
           customers,
@@ -275,17 +357,16 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
         };
       });
     },
-    [audit, push],
+    [audit],
   );
 
   const createSite = useCallback<StoreValue['createSite']>(
     (draft) => {
       const site: CustomerSite = { ...draft, id: newId('sit') };
       setState((s) => ({ ...s, sites: [...s.sites, site] }));
-      push('customer_sites', site.id, site);
       return site;
     },
-    [push],
+    [],
   );
 
   /* ───────── יומן ───────── */
@@ -317,9 +398,8 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
       counters: { ...s.counters, journalNumber: s.counters.journalNumber + 1 },
       auditLog: [...s.auditLog, audit({ entity: 'journals', entityId: journal.id, action: 'create' })],
     }));
-    push('journals', journal.id, journal);
     return journal;
-  }, [state.exterminators, state.counters.journalNumber, audit, push]);
+  }, [state.exterminators, state.counters.journalNumber, audit]);
 
   const updateJournal = useCallback<StoreValue['updateJournal']>(
     (id, patch) => {
@@ -340,7 +420,6 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
             }
           }
         }
-        push('journals', id, after);
         return {
           ...s,
           journals: s.journals.map((j) => (j.id === id ? after : j)),
@@ -348,7 +427,7 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
         };
       });
     },
-    [audit, push],
+    [audit],
   );
 
   const completeJournal = useCallback<StoreValue['completeJournal']>(
@@ -357,7 +436,6 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
         const j = s.journals.find((x) => x.id === id);
         if (!j || j.status === 'completed' || j.status === 'sent') return s; // מניעת שמירה כפולה
         const after: Journal = { ...j, status: 'completed', completedAt: isoNow(), updatedAt: isoNow() };
-        push('journals', id, after);
         return {
           ...s,
           journals: s.journals.map((x) => (x.id === id ? after : x)),
@@ -365,7 +443,7 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
         };
       });
     },
-    [audit, push],
+    [audit],
   );
 
   const cancelJournal = useCallback<StoreValue['cancelJournal']>(
@@ -462,10 +540,9 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
         execution: emptyExecution(),
       };
       setState((s) => ({ ...s, journalMaterials: [...s.journalMaterials, record] }));
-      push('journal_materials', record.id, record);
       return record;
     },
-    [push],
+    [],
   );
 
   /** החלפת חומר: מנקה מינון ונתוני ביצוע של החומר שהוחלף בלבד. */
@@ -496,12 +573,10 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
     (id, patch) => {
       setState((s) => {
         const materials = s.journalMaterials.map((m) => (m.id === id ? { ...m, ...patch } : m));
-        const updated = materials.find((m) => m.id === id);
-        if (updated) push('journal_materials', id, updated);
         return { ...s, journalMaterials: materials };
       });
     },
-    [push],
+    [],
   );
 
   const removeJournalMaterial = useCallback<StoreValue['removeJournalMaterial']>((id) => {
@@ -532,7 +607,6 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
         const existing = s.signatures.find((x) => x.journalId === sig.journalId && x.role === sig.role);
         const record: Signature = { ...sig, id: existing?.id ?? newId('sgn') };
         // תמונת החתימה היא הראיה עצמה ונשלחת במלואה, לא כמציין מקום
-        push('signatures', record.id, record);
         return {
           ...s,
           signatures: existing
@@ -541,7 +615,7 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
         };
       });
     },
-    [push],
+    [],
   );
 
   /** מחיקת חתימה: גם מקומית וגם בשרת, כך שרענון לא יחזיר אותה. */
@@ -550,13 +624,10 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
       setState((s) => {
         const existing = s.signatures.find((x) => x.journalId === journalId && x.role === role);
         if (!existing) return s;
-        /* ב-StrictMode המעדכן מורץ פעמיים; תור הסנכרון מאחד פעולות
-           על אותה ישות, ולכן תירשם פעולת מחיקה אחת בלבד. */
-        pushDelete('signatures', existing.id);
         return { ...s, signatures: s.signatures.filter((x) => x.id !== existing.id) };
       });
     },
-    [pushDelete],
+    [],
   );
 
   const addAttachment = useCallback<StoreValue['addAttachment']>((att) => {
@@ -576,10 +647,9 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
     (tpl) => {
       const created: CustomerTemplate = { ...tpl, id: newId('ctp'), createdAt: isoNow() };
       setState((s) => ({ ...s, customerTemplates: [...s.customerTemplates, created] }));
-      push('customer_templates', created.id, created);
       return created;
     },
-    [push],
+    [],
   );
 
   const updateTreatmentTemplate = useCallback<StoreValue['updateTreatmentTemplate']>((id, patch) => {
@@ -721,10 +791,9 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
     (draft) => {
       const route: Route = { ...draft, id: newId('rte'), createdAt: isoNow() };
       setState((s) => ({ ...s, routes: [...s.routes, route] }));
-      push('routes', route.id, route);
       return route;
     },
-    [push],
+    [],
   );
 
   const addRouteStop = useCallback<StoreValue['addRouteStop']>((routeId, customerId, siteId) => {
@@ -741,12 +810,10 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
     (id, patch) => {
       setState((s) => {
         const stops = s.routeStops.map((st) => (st.id === id ? { ...st, ...patch } : st));
-        const updated = stops.find((st) => st.id === id);
-        if (updated) push('route_stops', id, updated);
         return { ...s, routeStops: stops };
       });
     },
-    [push],
+    [],
   );
 
   const moveRouteStop = useCallback<StoreValue['moveRouteStop']>((routeId, stopId, direction) => {
@@ -792,10 +859,9 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
     (draft) => {
       const task: Task = { ...draft, id: newId('tsk'), createdAt: isoNow() };
       setState((s) => ({ ...s, tasks: [...s.tasks, task] }));
-      push('tasks', task.id, task);
       return task;
     },
-    [push],
+    [],
   );
 
   const updateTask = useCallback<StoreValue['updateTask']>((id, patch) => {
@@ -821,6 +887,7 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
   const value = useMemo<StoreValue>(
     () => ({
       state, saveState, saveErrors, retrySave, pendingSync, online, ready,
+      syncRejected, retrySync, dismissSyncRejection, pullFromServer,
       updateExterminator,
       createCustomer, updateCustomer, createSite,
       createJournal, updateJournal, completeJournal, cancelJournal, duplicateJournal, loadFromLastJournal,
@@ -835,6 +902,7 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
     }),
     [
       state, saveState, saveErrors, retrySave, pendingSync, online, ready,
+      syncRejected, retrySync, dismissSyncRejection, pullFromServer,
       updateExterminator,
       createCustomer, updateCustomer, createSite,
       createJournal, updateJournal, completeJournal, cancelJournal, duplicateJournal, loadFromLastJournal,

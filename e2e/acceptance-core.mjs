@@ -1,10 +1,14 @@
 import { chromium, devices } from 'playwright';
-import { authenticate } from './helpers.mjs';
+import { authenticate, createFreshBusiness } from './helpers.mjs';
 import { mkdirSync } from 'node:fs';
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:3000';
 /** אפשר להצביע על דפדפן מותקן מראש: CHROME_PATH=/path/to/chrome */
 const LAUNCH = process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {};
+
+/* עסק חדש ומאושר לכל הרצה: האפליקציה מסנכרנת נתונים מהשרת,
+   ובלי עסק נפרד הבדיקה הייתה רואה נתונים של הרצות קודמות. */
+const BIZ = await createFreshBusiness(BASE);
 /** צילומי המסך נשמרים בתיקייה שאינה נכנסת לגיט */
 const SHOTS = process.env.SHOTS_DIR ?? 'e2e/screenshots';
 mkdirSync(SHOTS, { recursive: true });
@@ -17,7 +21,7 @@ function check(name, pass, detail = '') {
 
 const browser = await chromium.launch(LAUNCH);
 const context = await browser.newContext({ ...devices['iPhone 12'], locale: 'he-IL' });
-await authenticate(context, BASE);
+await authenticate(context, BASE, BIZ);
 const page = await context.newPage();
 page.on('console', (m) => {
   if (m.type() !== 'error') return;
@@ -31,7 +35,8 @@ page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
 await page.goto(BASE, { waitUntil: 'networkidle' });
 
 // מסך בית
-check('מסך הבית נטען עם "שלום, יצחק"', await page.getByRole('heading', { name: 'שלום, יצחק' }).isVisible());
+check(`מסך הבית נטען עם "שלום, ${BIZ.contactName}"`,
+  await page.getByRole('heading', { name: `שלום, ${BIZ.contactName}` }).isVisible());
 check('כרטיס "היום שלי" מוצג', await page.getByRole('heading', { name: 'היום שלי' }).isVisible());
 const tiles = await page.locator('.group-tile').count();
 const hasPrimary = await page.locator('.start-journal').isVisible();

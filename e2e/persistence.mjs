@@ -5,10 +5,14 @@
  */
 
 import { chromium, devices } from 'playwright';
-import { authenticate } from './helpers.mjs';
+import { authenticate, createFreshBusiness } from './helpers.mjs';
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:3000';
 const LAUNCH = process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {};
+
+/* עסק חדש ומאושר לכל הרצה: האפליקציה מסנכרנת נתונים מהשרת,
+   ובלי עסק נפרד הבדיקה הייתה רואה נתונים של הרצות קודמות. */
+const BIZ = await createFreshBusiness(BASE);
 
 const results = [];
 const check = (name, pass, detail = '') => {
@@ -35,7 +39,7 @@ const savePill = (page) => page.locator(".save-pill").first();
 /* ───── א: כשל אחסון אינו מתחזה לשמירה ───── */
 {
   const ctx = await browser.newContext(phone);
-  await authenticate(ctx, BASE);
+  await authenticate(ctx, BASE, BIZ);
   await ctx.addInitScript(BREAK_STORAGE);
   const page = await ctx.newPage();
   page.on('pageerror', (e) => appErrors.push('pageerror: ' + e.message));
@@ -74,7 +78,7 @@ const savePill = (page) => page.locator(".save-pill").first();
 /* ───── ד: ניקוי חתימה נשאר נקי אחרי רענון וסנכרון ───── */
 {
   const ctx = await browser.newContext(phone);
-  const auth = await authenticate(ctx, BASE);
+  const auth = await authenticate(ctx, BASE, BIZ);
   const page = await ctx.newPage();
   page.on('pageerror', (e) => appErrors.push('pageerror: ' + e.message));
 

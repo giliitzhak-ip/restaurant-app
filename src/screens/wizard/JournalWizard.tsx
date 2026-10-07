@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { navigate } from '../../router';
 import { useStore } from '../../state/store';
-import { Card, EmptyState, SaveIndicator } from '../../components/ui';
+import { Card, EmptyState } from '../../components/ui';
+import { SaveStatus } from '../../components/SaveStatus';
 import { journalNumberText } from '../../lib/format';
 import { Step1Work } from './Step1Work';
 import { Step2Customer } from './Step2Customer';
@@ -24,7 +25,7 @@ export const STEPS = [
 ];
 
 export function JournalWizard({ journalId, step }: { journalId?: string; step: number }) {
-  const { state, updateJournal, saveState, saveErrors, retrySave, pendingSync, online } = useStore();
+  const { state, updateJournal } = useStore();
   const journal = state.journals.find((j) => j.id === journalId);
   const [direction, setDirection] = useState<'fwd' | 'back'>('fwd');
   const lastStep = useRef(step);
@@ -73,8 +74,7 @@ export function JournalWizard({ journalId, step }: { journalId?: string; step: n
             <div className="bold">{journalNumberText(journal.journalNumber)}</div>
             <div className="small muted">שלב {current} מתוך {STEPS.length} · {STEPS[current - 1]}</div>
           </div>
-          <SaveIndicator state={saveState} pending={pendingSync} online={online}
-            errors={saveErrors} onRetry={() => void retrySave()} />
+          <SaveStatus />
         </div>
         <div
           className="progress-track"

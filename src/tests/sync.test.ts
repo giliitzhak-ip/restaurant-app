@@ -15,10 +15,14 @@ interface SentBody {
 
 const sent: SentBody[] = [];
 
-function mockFetch(status = 200): void {
+function mockFetch(status = 200, errors: string[] = []): void {
   vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
     sent.push(JSON.parse(String(init.body)) as SentBody);
-    return { ok: status < 400, status } as Response;
+    return {
+      ok: status < 400,
+      status,
+      json: async () => ({ ok: status < 400, errors }),
+    } as Response;
   }));
 }
 
@@ -38,6 +42,7 @@ describe('תור הסנכרון', () => {
     syncQueue.setToken('test-token');
     mockFetch();
     await settle();
+    for (const r of syncQueue.rejections) await syncQueue.dismissRejection(r.op.id);
     sent.length = 0;
   });
 
@@ -86,5 +91,56 @@ describe('תור הסנכרון', () => {
     await settle();
     expect(syncQueue.pending).toBe(0);
     expect(sent.at(-1)).toMatchObject({ entityId: 'sgn_4', deleted: true });
+  });
+
+  it('כל פעולה נושאת מזהה, כדי שהשרת יזהה שליחה חוזרת', async () => {
+    await syncQueue.enqueue('customers', 'cus_op', { id: 'cus_op', name: 'א', address: 'ב' });
+    await settle();
+    expect(sent[0]).toHaveProperty('opId');
+    expect(String((sent[0] as unknown as { opId: string }).opId)).toMatch(/^op_/);
+  });
+
+  it('דחיית תוכן (422) אינה נזרקת בשקט אלא עוברת לרשימת הדחיות', async () => {
+    mockFetch(422, ['שדה חובה חסר: name']);
+    await syncQueue.enqueueDelete('customers', 'cus_bad');
+    await settle();
+    expect(syncQueue.pending).toBe(0);              // אינה חוסמת את התור
+    expect(syncQueue.rejections).toHaveLength(1);   // ואינה נעלמת
+    expect(syncQueue.rejections[0].status).toBe(422);
+    expect(syncQueue.rejections[0].errors).toEqual(['שדה חובה חסר: name']);
+  });
+
+  it('רשומה שנדחתה נחשבת כשינוי מקומי ממתין, ולא נדרסת ממשיכה מהשרת', async () => {
+    mockFetch(400, ['ישות לא מוכרת']);
+    await syncQueue.enqueue('customers', 'cus_pend', { id: 'cus_pend' });
+    await settle();
+    expect(syncQueue.hasPending('customers', 'cus_pend')).toBe(true);
+  });
+
+  it('שינוי חדש על אותה רשומה מחליף דחייה קודמת', async () => {
+    mockFetch(422, ['שדה חובה חסר: name']);
+    await syncQueue.enqueue('customers', 'cus_fix', { id: 'cus_fix' });
+    await settle();
+    expect(syncQueue.rejections).toHaveLength(1);
+
+    mockFetch();
+    await syncQueue.enqueue('customers', 'cus_fix', { id: 'cus_fix', name: 'תוקן', address: 'ג' });
+    await settle();
+    expect(syncQueue.rejections).toHaveLength(0);
+    expect(syncQueue.pending).toBe(0);
+  });
+
+  it('"נסה שוב" מחזיר דחיות לתור', async () => {
+    mockFetch(422, ['נדחה']);
+    await syncQueue.enqueue('tasks', 'tsk_retry', { id: 'tsk_retry' });
+    await settle();
+    expect(syncQueue.rejections).toHaveLength(1);
+
+    mockFetch();
+    await syncQueue.retryRejected();
+    await settle();
+    expect(syncQueue.rejections).toHaveLength(0);
+    expect(syncQueue.pending).toBe(0);
+    expect(sent.at(-1)).toMatchObject({ entityId: 'tsk_retry' });
   });
 });

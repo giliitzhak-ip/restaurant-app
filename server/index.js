@@ -59,6 +59,9 @@ const syncMigrations = [
   // deleted_at: מצבה (tombstone). מסמך שנמחק נשאר בטבלה עם חותמת זמן,
   // כך שהמחיקה מתועדת וניתן לשחזר את הנתון מתוך payload.
   ['deleted_at', 'ALTER TABLE sync_documents ADD COLUMN deleted_at TEXT'],
+  // last_op_id: מזהה הפעולה האחרונה שהוחלה על המסמך. שליחה חוזרת של
+  // אותה פעולה (למשל אחרי שהתשובה אבדה ברשת) אינה נכתבת ואינה מתועדת שוב.
+  ['last_op_id', 'ALTER TABLE sync_documents ADD COLUMN last_op_id TEXT'],
 ];
 const pendingMigrations = syncMigrations.filter(([col]) => !syncColumns.includes(col));
 
@@ -86,10 +89,10 @@ db.exec('CREATE INDEX IF NOT EXISTS idx_sync_org ON sync_documents(org_id, entit
 const auth = createAuthRoutes(db);
 
 const ALLOWED_ENTITIES = new Set([
-  'customers', 'customer_sites', 'journals', 'journal_pests', 'journal_actions',
-  'journal_materials', 'materials', 'material_labels', 'treatment_templates',
-  'customer_templates', 'routes', 'route_stops', 'tasks', 'bait_stations',
-  'signatures', 'audit_log',
+  'exterminators', 'customers', 'customer_sites', 'journals', 'journal_pests',
+  'journal_actions', 'journal_materials', 'materials', 'material_labels',
+  'treatment_templates', 'customer_templates', 'routes', 'route_stops', 'tasks',
+  'bait_stations', 'signatures', 'attachments', 'audit_log',
 ]);
 
 const MAX_BODY = 8 * 1024 * 1024;
@@ -130,19 +133,21 @@ function readBody(req) {
 }
 
 const upsertDoc = db.prepare(`
-  INSERT INTO sync_documents (entity, entity_id, payload, received_at, org_id, updated_by, deleted_at)
-  VALUES (?, ?, ?, ?, ?, ?, NULL)
+  INSERT INTO sync_documents
+    (entity, entity_id, payload, received_at, org_id, updated_by, deleted_at, last_op_id)
+  VALUES (?, ?, ?, ?, ?, ?, NULL, ?)
   ON CONFLICT(entity, entity_id) DO UPDATE SET
     payload = excluded.payload, received_at = excluded.received_at,
-    updated_by = excluded.updated_by, deleted_at = NULL
+    updated_by = excluded.updated_by, deleted_at = NULL, last_op_id = excluded.last_op_id
 `);
 /** מחיקה מסומנת ואינה מוחקת את ה-payload: הראיה נשמרת לביקורת. */
 const tombstoneDoc = db.prepare(`
-  UPDATE sync_documents SET deleted_at = ?, received_at = ?, updated_by = ?
+  UPDATE sync_documents SET deleted_at = ?, received_at = ?, updated_by = ?, last_op_id = ?
   WHERE entity = ? AND entity_id = ?
 `);
 const selectDoc = db.prepare(
-  'SELECT payload, org_id, deleted_at FROM sync_documents WHERE entity = ? AND entity_id = ?',
+  `SELECT payload, org_id, deleted_at, last_op_id
+   FROM sync_documents WHERE entity = ? AND entity_id = ?`,
 );
 const selectByEntity = db.prepare(
   `SELECT entity_id, payload FROM sync_documents
@@ -153,12 +158,58 @@ const insertAudit = db.prepare(`
   INSERT INTO audit_log (id, entity, entity_id, action, field, before, after, user_id, user_name, at)
   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
+/* משיכה: כל מה שהשתנה בעסק מאז חותמת זמן, כולל מצבות של רשומות שנמחקו,
+   כדי שמחיקה במכשיר אחד תגיע גם למכשירים האחרים. */
+const selectChanged = db.prepare(
+  `SELECT entity, entity_id, payload, received_at, deleted_at
+   FROM sync_documents
+   WHERE org_id = ? AND received_at > ?
+   ORDER BY received_at ASC
+   LIMIT ?`,
+);
+
+const PULL_LIMIT = 2000;
+
+/** GET /api/sync/pull?since=<iso> – שינויים מהשרת למכשיר. */
+function handlePull(url, res, session) {
+  if (!session.user.org_id) {
+    return json(res, 403, { ok: false, errors: ['למשתמש זה אין עסק משויך.'] });
+  }
+  // קריאה מותרת גם כשהכתיבה חסומה (מנוי שפג), כדי שלא ייאבד מידע מהמכשיר
+  const access = organizationAccess(session.org);
+  if (access.level === ACCESS.NONE) {
+    return json(res, 403, { ok: false, errors: [access.reason], access: access.level });
+  }
+
+  const since = url.searchParams.get('since') || '';
+  const limit = Math.min(Number(url.searchParams.get('limit')) || PULL_LIMIT, PULL_LIMIT);
+  const rows = selectChanged.all(session.user.org_id, since, limit + 1);
+  const truncated = rows.length > limit;
+  const page = truncated ? rows.slice(0, limit) : rows;
+
+  const items = {};
+  const deleted = {};
+  for (const row of page) {
+    if (!ALLOWED_ENTITIES.has(row.entity)) continue;
+    if (row.deleted_at) {
+      (deleted[row.entity] ??= []).push(row.entity_id);
+    } else {
+      (items[row.entity] ??= []).push({ id: row.entity_id, ...JSON.parse(row.payload) });
+    }
+  }
+
+  /* הסמן הוא חותמת הרשומה האחרונה שנשלחה בפועל. בדף חלקי הוא נשאר
+     מאחור בכוונה, כדי שהמשיכה הבאה תמשיך בדיוק מאותה נקודה. */
+  const cursor = page.length > 0 ? page[page.length - 1].received_at : since;
+  return json(res, 200, { ok: true, items, deleted, cursor, truncated });
+}
 
 /** POST /api/sync – מקבל ישות בודדת מהתור של הלקוח. דורש התחברות. */
 async function handleSync(req, res, session) {
   const body = await readBody(req);
   const { entity, entityId, payload } = body;
   const isDelete = body.deleted === true;
+  const opId = typeof body.opId === 'string' ? body.opId : null;
 
   if (!session.user.org_id) {
     return json(res, 403, { ok: false, errors: ['למשתמש זה אין עסק משויך.'] });
@@ -191,6 +242,16 @@ async function handleSync(req, res, session) {
   const existing = existingRow ? JSON.parse(existingRow.payload) : null;
   const now = new Date().toISOString();
 
+  /* אותה פעולה בדיוק הוחלה כבר. קורה כשהתשובה אבדה ברשת והלקוח שלח שוב.
+     מחזירים הצלחה בלי לכתוב שוב ובלי רשומת ביקורת כפולה. */
+  if (opId && existingRow && existingRow.last_op_id === opId) {
+    return json(res, 200, {
+      ok: true, entity, entityId, duplicate: true,
+      ...(isDelete ? { deleted: true } : {}),
+      receivedAt: now,
+    });
+  }
+
   if (isDelete) {
     if (!isDeletionAllowed(entity, existing)) {
       return json(res, 422, {
@@ -202,7 +263,7 @@ async function handleSync(req, res, session) {
       // אין מה למחוק – המחיקה הושלמה מבחינת הלקוח, ואין להחזיר אותו לתור
       return json(res, 200, { ok: true, entity, entityId, deleted: true, receivedAt: now });
     }
-    tombstoneDoc.run(now, now, session.user.id, entity, entityId);
+    tombstoneDoc.run(now, now, session.user.id, opId, entity, entityId);
     insertAudit.run(
       crypto.randomUUID(), entity, entityId, 'delete', null,
       JSON.stringify(existing).slice(0, 2000), null,
@@ -215,7 +276,10 @@ async function handleSync(req, res, session) {
     return json(res, 422, { ok: false, errors: ['ביטול יומן שהושלם מחייב סיבה מתועדת.'] });
   }
 
-  upsertDoc.run(entity, entityId, JSON.stringify(payload), now, session.user.org_id, session.user.id);
+  upsertDoc.run(
+    entity, entityId, JSON.stringify(payload), now,
+    session.user.org_id, session.user.id, opId,
+  );
 
   insertAudit.run(
     crypto.randomUUID(),
@@ -353,6 +417,10 @@ const server = http.createServer((req, res) => {
     }
 
     /* ───── נתוני העסק ───── */
+
+    if (url.pathname === '/api/sync/pull' && req.method === 'GET') {
+      return handlePull(url, res, session);
+    }
 
     if (url.pathname === '/api/sync' && req.method === 'POST') {
       return handleSync(req, res, session).catch((err) =>

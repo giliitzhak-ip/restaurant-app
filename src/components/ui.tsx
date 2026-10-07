@@ -136,13 +136,16 @@ export function Dialog({
 }
 
 export function SaveIndicator({
-  state, pending, online, errors = [], onRetry,
+  state, pending, online, errors = [], onRetry, rejected = 0, onShowRejected,
 }: {
   state: string;
   pending: number;
   online: boolean;
   errors?: string[];
   onRetry?: () => void;
+  /** מספר השינויים שהשרת דחה. אינם מוסתרים מהמשתמש. */
+  rejected?: number;
+  onShowRejected?: () => void;
 }) {
   /* שמירה במכשיר וסנכרון לשרת הם שני דברים נפרדים, ומוצגים בנפרד.
      לעולם אין להסיק שמירה מוצלחת ממצב החיבור לרשת. */
@@ -157,6 +160,22 @@ export function SaveIndicator({
           </button>
         )}
       </span>
+    );
+  }
+
+  /* דחייה מצד השרת אינה נבלעת: היא מוצגת עד שהמשתמש מטפל בה.
+     הנתון עצמו נשמר במכשיר, ולכן לא אבד. */
+  if (rejected > 0) {
+    return (
+      <button
+        type="button"
+        className="save-pill save-pill-rejected"
+        onClick={onShowRejected}
+        aria-label={`${rejected} שינויים לא נקלטו בשרת – לפרטים`}
+      >
+        <span className="save-dot failed" aria-hidden="true" />
+        {rejected === 1 ? 'שינוי לא נקלט בשרת' : `${rejected} שינויים לא נקלטו`}
+      </button>
     );
   }
 

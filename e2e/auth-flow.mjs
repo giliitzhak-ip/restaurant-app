@@ -130,19 +130,35 @@ const newEmail = `biz${Date.now()}@dev.local`;
   await page.waitForTimeout(900);
   check('הלקוח נשמר אצל הבעלים', await page.getByText('לקוח פרטי של יצחק').first().isVisible());
 
-  await page.getByRole('button', { name: 'יציאה מהחשבון' }).click();
-  await page.waitForTimeout(1200);
+  const logout = async () => {
+    await page.getByRole('button', { name: 'יציאה מהחשבון' }).click();
+    await page.waitForTimeout(1200);
+  };
+  const loginAs = async (email, password) => {
+    await page.getByLabel('דוא״ל').fill(email);
+    await page.getByLabel('סיסמה').fill(password);
+    await page.getByRole('button', { name: 'כניסה' }).click();
+    await page.waitForTimeout(1500);
+    await page.goto(`${BASE}/#/customers`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(2500);   // טעינה מקומית ואחריה משיכה מהשרת
+    return page.locator('.page').textContent();
+  };
+
+  await logout();
   check('יציאה מחזירה למסך הכניסה', await page.getByRole('button', { name: 'כניסה' }).isVisible());
 
-  await page.getByLabel('דוא״ל').fill(ACCOUNTS.worker.email);
-  await page.getByLabel('סיסמה').fill(ACCOUNTS.worker.password);
-  await page.getByRole('button', { name: 'כניסה' }).click();
-  await page.waitForTimeout(1200);
-  await page.goto(`${BASE}/#/customers`, { waitUntil: 'networkidle' });
-  await page.waitForTimeout(900);
-  const workerSees = await page.locator('.page').textContent();
-  check('משתמש אחר על אותו מכשיר אינו רואה את הנתונים המקומיים של קודמו',
-    !workerSees.includes('לקוח פרטי של יצחק'));
+  /* עסק אחר על אותו מכשיר: אינו רואה את הנתונים, לא מהאחסון המקומי
+     של קודמו ולא מהשרת. זו ההפרדה שחייבת להחזיק. */
+  const otherBusinessSees = await loginAs(newEmail, 'Tester12345');
+  check('עסק אחר על אותו מכשיר אינו רואה את נתוני העסק הקודם',
+    !otherBusinessSees.includes('לקוח פרטי של יצחק'));
+
+  /* עובד של אותו עסק כן רואה – הנתון מגיע מהשרת, לא מהמכשיר של הבעלים.
+     כך הרשאה שנשללת מפסיקה את הגישה, ועובד חדש אינו צריך העברת מכשיר. */
+  await logout();
+  const workerSees = await loginAs(ACCOUNTS.worker.email, ACCOUNTS.worker.password);
+  check('עובד של אותו עסק רואה את נתוני העסק מהשרת',
+    workerSees.includes('לקוח פרטי של יצחק'));
   await ctx.close();
 }
 

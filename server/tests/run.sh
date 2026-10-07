@@ -35,3 +35,5 @@ echo
 bash "$HERE/employees.sh" || exit 1
 echo
 bash "$HERE/deletion.sh" || exit 1
+echo
+bash "$HERE/pull.sh" || exit 1

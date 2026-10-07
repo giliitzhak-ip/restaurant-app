@@ -130,7 +130,17 @@ a { color: var(--green-deep); }
 .topbar h1 { font-size: 1.22rem; }
 .topbar .sub { font-size: 0.82rem; opacity: 0.82; }
 
-.topbar-actions { margin-inline-start: auto; display: flex; gap: var(--sp-2); align-items: center; }
+/* שם עסק ארוך מתקצר בשלוש נקודות ואינו דוחף את הכותרת מהמסך */
+.topbar-title { flex: 1 1 auto; min-width: 0; }
+.topbar-title h1,
+.topbar-title .sub {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.topbar-actions {
+  margin-inline-start: auto; display: flex; gap: var(--sp-2);
+  align-items: center; flex: 0 0 auto;
+}
 
 .icon-btn {
   min-width: var(--tap); min-height: var(--tap);
@@ -763,7 +773,14 @@ input[type='search']::-webkit-search-decoration {
 .save-sep { opacity: 0.45; }
 .save-pending { color: var(--warn); font-weight: 600; }
 .save-pill-failed { color: #fff; font-weight: 700; }
+.save-pill-rejected {
+  color: #fff; font-weight: 700; cursor: pointer;
+  border: 1px solid var(--error); font-family: inherit;
+}
 .save-dot.failed { background: var(--error); }
+.sync-reject-item { border-top: 1px solid var(--line); padding: var(--sp-3) 0; }
+.sync-reject-item:first-child { border-top: 0; }
+.sync-reject-why { color: var(--error); font-weight: 600; }
 .save-retry {
   min-height: 28px; padding: 0 10px; margin-inline-start: 6px;
   border-radius: var(--r-pill); border: 1px solid currentColor;

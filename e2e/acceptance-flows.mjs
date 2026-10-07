@@ -1,9 +1,13 @@
 import { chromium, devices } from 'playwright';
-import { authenticate } from './helpers.mjs';
+import { authenticate, createFreshBusiness } from './helpers.mjs';
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:3000';
 /** אפשר להצביע על דפדפן מותקן מראש: CHROME_PATH=/path/to/chrome */
 const LAUNCH = process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {};
+
+/* עסק חדש ומאושר לכל הרצה: האפליקציה מסנכרנת נתונים מהשרת,
+   ובלי עסק נפרד הבדיקה הייתה רואה נתונים של הרצות קודמות. */
+const BIZ = await createFreshBusiness(BASE);
 const appErrors = [];   // שגיאות שמקורן בקוד האפליקציה
 const netErrors = [];   // כשלי רשת חיצוניים (פונטים) – ארטיפקט של הסביבה
 const results = [];
@@ -14,7 +18,7 @@ const check = (name, pass, detail = '') => {
 
 const browser = await chromium.launch(LAUNCH);
 const context = await browser.newContext({ ...devices['iPhone 12'], locale: 'he-IL' });
-await authenticate(context, BASE);
+await authenticate(context, BASE, BIZ);
 const page = await context.newPage();
 page.on('console', (m) => {
   if (m.type() !== 'error') return;

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { matchRoute, navigate, useRoute } from './router';
 import { useStore } from './state/store';
 import { BottomNav, DesktopNav } from './components/Nav';
-import { SaveIndicator } from './components/ui';
+import { SaveStatus } from './components/SaveStatus';
 import { IconLogout, IconMoon, IconSun } from './components/icons';
 import { Home } from './screens/Home';
 import { JournalsScreen } from './screens/Journals';
@@ -43,7 +43,7 @@ const TITLES: Record<string, string> = {
 export function App() {
   const route = useRoute();
   const { name, params } = matchRoute(route);
-  const { createJournal, saveState, saveErrors, retrySave, pendingSync, online, ready } = useStore();
+  const { createJournal, ready } = useStore();
   const { user, organization, access, logout } = useAuth();
   const [theme, setTheme] = useState<'light' | 'dark'>(
     () => (document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'),
@@ -106,7 +106,7 @@ export function App() {
       {!isDoc && (
         <header className="topbar no-print">
           <div className="topbar-inner">
-            <div>
+            <div className="topbar-title">
               <h1>
                 {name === ''
                   ? `שלום, ${user?.name ?? 'יצחק'}`
@@ -118,8 +118,7 @@ export function App() {
               </div>
             </div>
             <div className="topbar-actions">
-              <SaveIndicator state={saveState} pending={pendingSync} online={online}
-                errors={saveErrors} onRetry={() => void retrySave()} />
+              <SaveStatus />
               <button
                 type="button"
                 className="icon-btn"
