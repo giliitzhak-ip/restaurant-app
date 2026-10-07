@@ -250,6 +250,12 @@ export interface Journal {
   /* שלב 4 */
   preTreatmentActions: string[];
 
+  /* שלב 5 */
+  /** ביקור שבו הוחלט במפורש לא להשתמש בתכשיר (ניטור, איטום, מלכודות). */
+  noProductUsed?: boolean;
+  /** התיעוד מדוע לא נעשה שימוש בתכשיר. חובה כשהסימון דלוק. */
+  noProductReason?: string;
+
   /* שלב 6 */
   exterminatorNote?: string;
 

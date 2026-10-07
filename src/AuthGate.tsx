@@ -1,5 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { useAuth } from './state/auth';
+import { matchRoute, useRoute } from './router';
+import { SharedDocument } from './screens/SharedDocument';
 import { StoreProvider } from './state/store';
 import { LoginScreen, RegisterScreen, BlockedScreen } from './screens/auth/AuthScreens';
 
@@ -11,6 +13,15 @@ import { LoginScreen, RegisterScreen, BlockedScreen } from './screens/auth/AuthS
 export function AuthGate({ children }: { children: ReactNode }) {
   const { status, access, user, scopeKey } = useAuth();
   const [showRegister, setShowRegister] = useState(false);
+  const route = useRoute();
+
+  /* מסמך שנשלח ללקוח בקישור. הנתיב הזה פתוח בכוונה: הלקוח אינו
+     משתמש במערכת. ההגנה היא באסימון שבקישור, בתוקף שלו ובכך
+     שהוא מצביע על מסמך אחד בלבד. אין כאן חנות מקומית. */
+  const shared = matchRoute(route);
+  if (shared.name === 'shared') {
+    return <SharedDocument token={shared.params[0]} />;
+  }
 
   if (status === 'loading') {
     return (

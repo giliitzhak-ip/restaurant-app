@@ -1,15 +1,33 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { useStore } from '../state/store';
 import { Card, EmptyState, Notice } from '../components/ui';
 import { navigate } from '../router';
 import { pestName } from '../data/pests';
 import { revealedInstructions } from './wizard/Step6Instructions';
 import { computeReEntry, hasSprayAction, reEntryHeadline } from '../lib/reEntry';
+import { isPastDate } from '../../shared/journalRules.mjs';
 import {
   ACTION_LABEL, JOURNAL_STATUS_LABEL, SEVERITY_LABEL, SITE_KIND_LABEL,
   VISIT_KIND_LABEL, WORK_KIND_LABEL, formatDate, formatDateTime, journalNumberText,
 } from '../lib/format';
 import { NOT_ENTERED } from '../types';
+import type {
+  Customer, FullJournal, JournalSnapshot, Material, MaterialLabel, TreatmentTemplate,
+} from '../types';
+
+/**
+ * מקורות הנתונים למסמך. כשיש צילום – הוא המקור, ושאר השדות
+ * נגזרים ממנו. כך אותו רכיב מציג גם מסמך מקומי וגם מסמך
+ * שהתקבל מקישור ללקוח, בלי עותק שני של הפריסה.
+ */
+export interface DocumentSources {
+  full: FullJournal;
+  snapshot?: JournalSnapshot;
+  materials: Material[];
+  treatmentTemplates: TreatmentTemplate[];
+  findLabel: (materialId: string) => MaterialLabel | undefined;
+  customer?: Customer;
+}
 
 /**
  * מסמך היומן להדפסה ולהפקת PDF.
@@ -24,34 +42,28 @@ export function JournalDocument({ journalId }: { journalId?: string }) {
   const snapshot = journalId ? getJournalSnapshot(journalId) : undefined;
   const full = snapshot?.full ?? (journalId ? getFullJournal(journalId) : null);
 
-  const rows = useMemo(() => {
-    if (!full) return [];
-    const materials = snapshot ? snapshot.materials : state.materials;
-    const templates = snapshot ? snapshot.treatmentTemplates : state.treatmentTemplates;
-    return full.materials.map((jm) => {
-      const material = materials.find((m) => m.id === jm.materialId);
-      const template = templates.find((t) => t.id === jm.templateId);
+  const sources = useMemo<DocumentSources | null>(() => {
+    if (!full) return null;
+    if (snapshot) {
       return {
-        jm,
-        name: material?.tradeName ?? jm.materialNameSnapshot,
-        material,
-        label: snapshot
-          ? snapshot.materialLabels.find((l) => l.materialId === jm.materialId)
-          : labelFor(jm.materialId),
-        revealed: revealedInstructions(template, jm.conditionAnswers),
+        full,
+        snapshot,
+        materials: snapshot.materials,
+        treatmentTemplates: snapshot.treatmentTemplates,
+        findLabel: (id) => snapshot.materialLabels.find((l) => l.materialId === id),
+        customer: snapshot.customer,
       };
-    });
-  }, [full, snapshot, state.materials, state.treatmentTemplates, labelFor]);
+    }
+    return {
+      full,
+      materials: state.materials,
+      treatmentTemplates: state.treatmentTemplates,
+      findLabel: labelFor,
+      customer: state.customers.find((c) => c.id === full.journal.customerId),
+    };
+  }, [full, snapshot, state.materials, state.treatmentTemplates, state.customers, labelFor]);
 
-  const reEntry = useMemo(
-    () => computeReEntry(
-      rows.map((r) => ({ name: r.name, label: r.label })),
-      { sprayPerformed: hasSprayAction(full?.actions ?? []) },
-    ),
-    [rows, full],
-  );
-
-  if (!full) {
+  if (!sources) {
     return (
       <Card>
         <EmptyState
@@ -63,19 +75,42 @@ export function JournalDocument({ journalId }: { journalId?: string }) {
     );
   }
 
+  return <DocumentView sources={sources} />;
+}
+
+/** פריסת המסמך עצמה. אינה נוגעת בחנות, ולכן משמשת גם קישור ללקוח. */
+export function DocumentView({ sources, toolbar }: { sources: DocumentSources; toolbar?: ReactNode }) {
+  const { full, snapshot, materials: catalog, treatmentTemplates, findLabel, customer } = sources;
+
+  const rows = full.materials.map((jm) => {
+    const material = catalog.find((m) => m.id === jm.materialId);
+    const template = treatmentTemplates.find((t) => t.id === jm.templateId);
+    return {
+      jm,
+      name: material?.tradeName ?? jm.materialNameSnapshot,
+      material,
+      label: findLabel(jm.materialId),
+      revealed: revealedInstructions(template, jm.conditionAnswers),
+    };
+  });
+
+  const reEntry = computeReEntry(
+    rows.map((r) => ({ name: r.name, label: r.label })),
+    { sprayPerformed: hasSprayAction(full.actions) },
+  );
+
   const { journal, pests, actions, baitStations, signatures, attachments } = full;
-  const customer = snapshot
-    ? snapshot.customer
-    : state.customers.find((c) => c.id === journal.customerId);
   const extSig = signatures.find((s) => s.role === 'exterminator');
   const custSig = signatures.find((s) => s.role === 'customer');
 
   return (
     <>
       <div className="row no-print mb-3">
-        <button type="button" className="btn btn-ghost" onClick={() => navigate(`#/journal/${journal.id}/8`)}>
-          חזרה ליומן
-        </button>
+        {toolbar ?? (
+          <button type="button" className="btn btn-ghost" onClick={() => navigate(`#/journal/${journal.id}/8`)}>
+            חזרה ליומן
+          </button>
+        )}
         <button type="button" className="btn btn-primary" onClick={() => window.print()}>
           הדפסה / שמירה כ-PDF
         </button>
@@ -184,7 +219,11 @@ export function JournalDocument({ journalId }: { journalId?: string }) {
                   <td>{r.material?.activeIngredients.map((a) => `${a.name} ${a.concentration}`).join(', ') || NOT_ENTERED}</td>
                   <td>{r.material?.registrationNumber ?? NOT_ENTERED}</td>
                   <td>{r.jm.execution.batchNumber || NOT_ENTERED}</td>
-                  <td>{r.jm.execution.packageExpiry || NOT_ENTERED}</td>
+                  <td>
+                    {r.jm.execution.packageExpiry || NOT_ENTERED}
+                    {isPastDate(r.jm.execution.packageExpiry, new Date(journal.startedAt))
+                      && ' · פג תוקף'}
+                  </td>
                   <td>{r.jm.execution.chosenDoseText || NOT_ENTERED}</td>
                   <td>{r.jm.execution.materialAmount || NOT_ENTERED}</td>
                   <td>{r.jm.execution.waterAmount || '—'}</td>
@@ -197,7 +236,14 @@ export function JournalDocument({ journalId }: { journalId?: string }) {
               ))}
             </tbody>
           </table></div>
-        ) : <p>לא נעשה שימוש בתכשיר.</p>}
+        ) : (
+          <p>
+            לא נעשה שימוש בתכשיר.
+            {journal.noProductUsed && journal.noProductReason
+              ? ` סיבה: ${journal.noProductReason}`
+              : ''}
+          </p>
+        )}
 
         {baitStations.length > 0 && (
           <>

@@ -170,6 +170,36 @@ check('ג: המסמך ממשיך להציג את הפרטים שבצילום',
   docAfter.includes(CONTACT_BEFORE) && !docAfter.includes(CONTACT_AFTER),
   docAfter.includes(CONTACT_AFTER) ? 'המסמך הושפע מעריכה מאוחרת' : 'ללא שינוי');
 
+/* ───── קישור מוגן ללקוח ───── */
+await page.goto(`${BASE}/#/journal/${journalId}/8`, { waitUntil: 'networkidle' });
+await page.waitForTimeout(700);
+await page.getByRole('button', { name: 'קישור מוגן ללקוח' }).click();
+await page.waitForTimeout(1200);
+const linkText = (await page.locator('.wrap-anywhere').first().textContent() ?? '').trim();
+check('ג: נוצר קישור ללקוח', linkText.includes('#/shared/'), linkText.slice(0, 60));
+
+const guest = await browser.newContext({ ...devices['iPhone 12'], locale: 'he-IL' });
+const guestPage = await guest.newPage();
+guestPage.on('pageerror', (e) => appErrors.push('pageerror(guest): ' + e.message));
+await guestPage.goto(linkText, { waitUntil: 'networkidle' });
+await guestPage.waitForTimeout(1500);
+const guestText = await guestPage.locator('.page').textContent();
+check('ג: לקוח ללא חשבון רואה את המסמך',
+  guestText.includes(CUSTOMER) && guestText.includes('לקריאה בלבד'));
+check('ג: הלקוח אינו מקבל ניווט לאפליקציה',
+  (await guestPage.locator('.bottom-nav').count()) === 0);
+check('ג: הלקוח אינו רואה כפתור עריכה או חזרה ליומן',
+  (await guestPage.getByRole('button', { name: 'חזרה ליומן' }).count()) === 0);
+
+await page.getByRole('button', { name: 'בטל קישורים' }).click();
+await page.waitForTimeout(1200);
+// טעינה מחדש ולא goto לאותה כתובת: ניווט לאותו hash אינו טוען את העמוד
+await guestPage.reload({ waitUntil: 'networkidle' });
+await guestPage.waitForTimeout(1500);
+check('ג: אחרי ביטול הקישור אינו נפתח',
+  (await guestPage.locator('.page').textContent()).includes('הקישור אינו פעיל'));
+await guest.close();
+
 check('אין שגיאות דף', appErrors.length === 0, appErrors.join(' | '));
 
 await browser.close();

@@ -30,7 +30,8 @@ export function visibleDoses(
 
 export function Step5Materials({ journalId }: StepProps) {
   const {
-    state, selectMaterial, updateJournalMaterial, removeJournalMaterial, replaceJournalMaterial, labelFor,
+    state, selectMaterial, updateJournalMaterial, removeJournalMaterial, replaceJournalMaterial,
+    updateJournal, labelFor,
   } = useStore();
   const journal = state.journals.find((j) => j.id === journalId);
   const journalMaterials = state.journalMaterials.filter((m) => m.journalId === journalId);
@@ -112,6 +113,42 @@ export function Step5Materials({ journalId }: StepProps) {
 
         {journalMaterials.length === 0 && (
           <p className="muted">לא נבחר חומר. אפשר לבחור כמה חומרים לאותו יומן – לכל חומר ייפתח כרטיס נפרד.</p>
+        )}
+
+        {/* ביקור ללא תכשיר הוא מצב חוקי ושכיח: ניטור, איטום, מלכודות.
+            הסימון המוצהר מונע "יומן חסר" ומתועד במסמך. */}
+        <label className="check-line">
+          <input
+            type="checkbox"
+            checked={Boolean(journal?.noProductUsed)}
+            onChange={(e) => updateJournal(journalId, {
+              noProductUsed: e.target.checked,
+              ...(e.target.checked ? {} : { noProductReason: '' }),
+            })}
+          />
+          לא נעשה שימוש בתכשיר בביקור זה
+        </label>
+
+        {journal?.noProductUsed && (
+          <>
+            <Field
+              label="מדוע לא נעשה שימוש בתכשיר"
+              htmlFor="no-product-reason"
+              hint="התיעוד מופיע במסמך שנמסר ללקוח. לדוגמה: ביקור ניטור, איטום בלבד, או שהלקוח ביקש לדחות."
+            >
+              <input
+                id="no-product-reason"
+                type="text"
+                value={journal.noProductReason ?? ''}
+                onChange={(e) => updateJournal(journalId, { noProductReason: e.target.value })}
+              />
+            </Field>
+            {journalMaterials.length > 0 && (
+              <Notice kind="error" title="סתירה ביומן">
+                סומן שלא נעשה שימוש בתכשיר, אבל יש תכשיר ביומן. יש להסיר את הסימון או את התכשיר.
+              </Notice>
+            )}
+          </>
         )}
       </Card>
 

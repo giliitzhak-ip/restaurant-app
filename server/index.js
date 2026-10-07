@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { validatePayload, isDeletionAllowed, deletionRefusal } from './validate.js';
 import { createAuthRoutes } from './routes-auth.js';
+import { createDocLinkRoutes } from './routes-doclinks.js';
 import { ACCESS, organizationAccess } from './auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -87,6 +88,7 @@ if (pendingMigrations.length > 0) {
 db.exec('CREATE INDEX IF NOT EXISTS idx_sync_org ON sync_documents(org_id, entity)');
 
 const auth = createAuthRoutes(db);
+const docLinks = createDocLinkRoutes(db);
 
 const ALLOWED_ENTITIES = new Set([
   'exterminators', 'customers', 'customer_sites', 'journals', 'journal_pests',
@@ -353,9 +355,16 @@ const server = http.createServer((req, res) => {
       return json(res, 200, { ok: true, time: new Date().toISOString() });
     }
 
-    /* ───── נתיבים פתוחים: הרשמה והתחברות ───── */
+    /* ───── נתיבים פתוחים: הרשמה, התחברות ומסמך בקישור ───── */
 
     const send = (result) => json(res, result.status, result.body);
+
+    /* מסמך בקישור ללקוח: בכוונה ללא התחברות, ולכן מוגן באסימון
+       אקראי עם תוקף. מחזיר צילום של יומן שהושלם בלבד. */
+    if (url.pathname.startsWith('/api/doc/') && req.method === 'GET') {
+      const token = decodeURIComponent(url.pathname.slice('/api/doc/'.length));
+      return send(docLinks.read(token));
+    }
 
     if (url.pathname === '/api/auth/register' && req.method === 'POST') {
       return readBody(req)
@@ -415,6 +424,22 @@ const server = http.createServer((req, res) => {
     }
 
     /* ───── נתוני העסק ───── */
+
+    if (url.pathname === '/api/doc-links' && req.method === 'POST') {
+      return readBody(req)
+        .then((body) => send(docLinks.create(session, body)))
+        .catch((err) => json(res, 400, { ok: false, errors: [err.message] }));
+    }
+
+    if (url.pathname === '/api/doc-links' && req.method === 'GET') {
+      return send(docLinks.list(session, url.searchParams.get('journalId')));
+    }
+
+    if (url.pathname === '/api/doc-links/revoke' && req.method === 'POST') {
+      return readBody(req)
+        .then((body) => send(docLinks.revoke(session, body)))
+        .catch((err) => json(res, 400, { ok: false, errors: [err.message] }));
+    }
 
     if (url.pathname === '/api/sync/pull' && req.method === 'GET') {
       return handlePull(url, res, session);

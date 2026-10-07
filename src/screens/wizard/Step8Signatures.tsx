@@ -2,10 +2,12 @@ import { useMemo, useState } from 'react';
 import { useStore } from '../../state/store';
 import { Card, Dialog, Notice } from '../../components/ui';
 import { SignaturePad } from '../../components/SignaturePad';
+import { CustomerLink } from '../../components/CustomerLink';
 import { validateJournal, blockingIssues } from '../../lib/validation';
 import { JOURNAL_LOCK_REASON, isJournalLocked } from '../../lib/journalLock';
 import { journalNumberText } from '../../lib/format';
 import { buildShareText } from '../../lib/share';
+import { normalizeIsraeliPhone, whatsappLink } from '../../lib/phone';
 import { navigate } from '../../router';
 import type { StepProps } from './JournalWizard';
 
@@ -14,6 +16,7 @@ export function Step8Signatures({ journalId, goToStep }: StepProps) {
     state, updateJournal, saveSignature, removeSignature, completeJournal, getFullJournal,
   } = useStore();
   const [failed, setFailed] = useState(false);
+  const [copied, setCopied] = useState(false);
   const journal = state.journals.find((j) => j.id === journalId)!;
   const signatures = state.signatures.filter((s) => s.journalId === journalId);
   const customer = state.customers.find((c) => c.id === journal.customerId);
@@ -42,6 +45,34 @@ export function Step8Signatures({ journalId, goToStep }: StepProps) {
   }
 
   const shareText = full ? buildShareText(full, state) : '';
+  const docUrl = `${window.location.origin}${window.location.pathname}#/doc/${journalId}`;
+  const phone = normalizeIsraeliPhone(customer?.phone ?? '');
+  const whatsapp = whatsappLink(customer?.phone, shareText);
+  /* שיתוף מקורי זמין במכשירים ניידים. בלעדיו נשארים WhatsApp,
+     דוא״ל והעתקת קישור – ואין כפתור שלא יעשה דבר. */
+  const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+
+  async function shareNative(): Promise<void> {
+    try {
+      await navigator.share({
+        title: journalNumberText(journal.journalNumber),
+        text: shareText,
+        url: docUrl,
+      });
+    } catch {
+      /* המשתמש ביטל, או שהמכשיר דחה – אין מה לדווח */
+    }
+  }
+
+  async function copyLink(): Promise<void> {
+    try {
+      await navigator.clipboard?.writeText(docUrl);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  }
 
   return (
     <>
@@ -158,32 +189,42 @@ export function Step8Signatures({ journalId, goToStep }: StepProps) {
           </button>
 
           <div className="row">
-            <a
-              className="btn btn-soft"
-              href={`https://wa.me/${(customer?.phone ?? '').replace(/\D/g, '')}?text=${encodeURIComponent(shareText)}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              שיתוף ב-WhatsApp
-            </a>
-            <a
-              className="btn btn-soft"
-              href={`mailto:${customer?.email ?? ''}?subject=${encodeURIComponent(journalNumberText(journal.journalNumber))}&body=${encodeURIComponent(shareText)}`}
-            >
-              שליחה בדוא״ל
-            </a>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => {
-                const url = `${window.location.origin}/#/doc/${journalId}`;
-                void navigator.clipboard?.writeText(url);
-              }}
-            >
-              העתק קישור למסמך
+            {whatsapp ? (
+              <a className="btn btn-soft" href={whatsapp} target="_blank" rel="noreferrer">
+                שיתוף ב-WhatsApp
+              </a>
+            ) : (
+              <span className="small muted">
+                אין מספר טלפון תקין ללקוח – {phone.reason ?? 'יש להשלים בכרטיס הלקוח'}.
+              </span>
+            )}
+            {customer?.email ? (
+              <a
+                className="btn btn-soft"
+                href={`mailto:${customer.email}?subject=${encodeURIComponent(journalNumberText(journal.journalNumber))}&body=${encodeURIComponent(shareText)}`}
+              >
+                שליחה בדוא״ל
+              </a>
+            ) : (
+              <span className="small muted">אין דוא״ל ללקוח.</span>
+            )}
+            {canShare && (
+              <button type="button" className="btn btn-soft" onClick={() => void shareNative()}>
+                שיתוף במכשיר
+              </button>
+            )}
+            <button type="button" className="btn btn-ghost" onClick={() => void copyLink()}>
+              {copied ? 'הקישור הועתק' : 'העתק קישור למסמך'}
             </button>
           </div>
         </div>
+
+        <CustomerLink journalId={journalId} enabled={done || locked} />
+
+        <Notice kind="info">
+          שיתוף אינו משנה את מצב היומן. סימון "נשלח" נשמר לפעולה מתועדת,
+          ואינו נגזר מפתיחת WhatsApp או מהעתקת קישור.
+        </Notice>
 
         <Notice kind="info">
           המערכת מתעדת את העבודה לפי הנתונים שהוזנו. האחריות לפעול לפי הדין, תנאי הרישיון

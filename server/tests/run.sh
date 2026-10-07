@@ -37,3 +37,5 @@ echo
 bash "$HERE/deletion.sh" || exit 1
 echo
 bash "$HERE/pull.sh" || exit 1
+echo
+bash "$HERE/doclinks.sh" || exit 1

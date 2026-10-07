@@ -52,6 +52,24 @@ CREATE TABLE IF NOT EXISTS login_attempts (
   locked_until TEXT
 );
 
+/* קישורי מסמך ללקוח.
+   נשמר גיבוב בלבד, כמו באסימוני התחברות: מי שמשיג גישה למסד
+   אינו מקבל קישורים פעילים. לכל קישור תוקף, והוא ניתן לביטול. */
+CREATE TABLE IF NOT EXISTS doc_links (
+  token_hash TEXT PRIMARY KEY,
+  journal_id TEXT NOT NULL,
+  org_id TEXT NOT NULL REFERENCES organizations(id),
+  created_by TEXT REFERENCES app_users(id),
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  revoked_at TEXT,
+  views INTEGER NOT NULL DEFAULT 0,
+  last_viewed_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_doc_links_journal ON doc_links(journal_id);
+CREATE INDEX IF NOT EXISTS idx_doc_links_org ON doc_links(org_id);
+
 CREATE INDEX IF NOT EXISTS idx_users_org ON app_users(org_id);
 CREATE INDEX IF NOT EXISTS idx_users_email ON app_users(email_normalized);
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);

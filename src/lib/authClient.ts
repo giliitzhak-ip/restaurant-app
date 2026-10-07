@@ -149,6 +149,28 @@ export const authApi = {
       body: JSON.stringify(patch),
     }),
 
+  /* קישור מסמך ללקוח: נוצר ליומן שהושלם, עם תוקף, וניתן לביטול. */
+  createDocLink: (journalId: string, days?: number) =>
+    request<{ ok: true; token: string; path: string; expiresAt: string; days: number }>(
+      '/api/doc-links',
+      { method: 'POST', body: JSON.stringify({ journalId, days }) },
+    ),
+
+  listDocLinks: (journalId: string) =>
+    request<{
+      ok: true;
+      links: {
+        createdAt: string; expiresAt: string; revokedAt: string | null;
+        views: number; lastViewedAt: string | null; active: boolean;
+      }[];
+    }>(`/api/doc-links?journalId=${encodeURIComponent(journalId)}`),
+
+  revokeDocLinks: (journalId: string) =>
+    request<{ ok: true; revoked: boolean }>('/api/doc-links/revoke', {
+      method: 'POST',
+      body: JSON.stringify({ journalId }),
+    }),
+
   listOrganizations: () =>
     request<{ ok: true; organizations: AdminOrganization[] }>('/api/admin/organizations'),
 
