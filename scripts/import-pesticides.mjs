@@ -17,48 +17,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseCsv } from './lib/csv.mjs';
+import { readXlsxRows, rowsToRecords } from './lib/xlsx.mjs';
+import { parseActiveIngredients } from './lib/ingredients.mjs';
 import { detectColumns, findRecords, flattenRecord } from './lib/fields.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
 const OUT = path.join(ROOT, 'src', 'data', 'pesticides.generated.json');
 const NOT_ENTERED = 'לא הוזן';
-
-/* ───────── פענוח חומר פעיל (זהה ללוגיקה שבאפליקציה) ───────── */
-
-const SEPARATOR = /\s*[,;|]\s*|\s+\+\s+/;
-const CONCENTRATION = /(\d+(?:[.,]\d+)?)\s*(%|g\/l|gr\/l|גר'?\/ליטר|מ"?ג\/ק"?ג|mg\/kg|ppm)/i;
-
-function parseIngredient(raw) {
-  const text = String(raw ?? '').trim();
-  if (!text) return null;
-  const match = text.match(CONCENTRATION);
-  const name = text
-    .replace(CONCENTRATION, ' ')
-    .replace(/\(\s*\)/g, ' ')
-    .replace(/[\s ]+/g, ' ')
-    .replace(/^[\s\-–—:·•]+|[\s\-–—:·•,;]+$/g, '')
-    .trim();
-  if (!name) return null;
-  if (!match) return { name, concentration: NOT_ENTERED };
-  const value = match[1].replace(',', '.');
-  const unit = match[2].toLowerCase() === 'gr/l' ? 'g/l' : match[2];
-  return { name, concentration: unit === '%' ? `${value}%` : `${value} ${unit}` };
-}
-
-function parseActiveIngredients(raw, hint) {
-  const text = String(raw ?? '').trim();
-  if (!text) return [];
-  const parsed = text.split(SEPARATOR).map((p) => p.trim()).filter(Boolean)
-    .map(parseIngredient).filter(Boolean);
-  if (parsed.length === 1 && parsed[0].concentration === NOT_ENTERED && hint) {
-    const fromHint = parseIngredient(`x ${hint}`);
-    if (fromHint && fromHint.concentration !== NOT_ENTERED) {
-      return [{ name: parsed[0].name, concentration: fromHint.concentration }];
-    }
-  }
-  return parsed;
-}
 
 /* ───────── קריאת הקלט ───────── */
 
@@ -86,10 +52,17 @@ function parseMapping(raw) {
   return mapping;
 }
 
+function isXlsx(filePath) {
+  return /\.xlsx?$/i.test(filePath);
+}
+
 async function readInput({ file, url }) {
   if (file) {
-    const text = fs.readFileSync(path.resolve(file), 'utf8');
-    return { text, source: path.basename(file) };
+    const resolved = path.resolve(file);
+    if (isXlsx(resolved)) {
+      return { rows: readXlsxRows(resolved), source: path.basename(file) };
+    }
+    return { text: fs.readFileSync(resolved, 'utf8'), source: path.basename(file) };
   }
   if (url) {
     const res = await fetch(url, { headers: { Accept: 'application/json, text/csv, */*' } });
@@ -113,6 +86,16 @@ function toRecords(text) {
 function slug(value, index) {
   const base = String(value ?? '').replace(/[^0-9A-Za-z֐-׿]+/g, '').slice(0, 24);
   return `gov_${base || 'x'}_${index}`;
+}
+
+/** תאריך תוקף לתקן YYYY-MM-DD. ערך שאינו ניתן לפענוח מוחזר ריק. */
+function toIsoDate(value) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return undefined;
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
+  const dmy = raw.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/);
+  if (dmy) return `${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}`;
+  return undefined;
 }
 
 function splitPests(raw) {
@@ -178,7 +161,7 @@ function convert(records, overrides = {}) {
       activeIngredients: ingredients,
       holder: holder || undefined,
       approvedPestNames: pests,
-      validUntil: (cols.validUntil ? String(row[cols.validUntil] ?? '').trim() : '') || undefined,
+      validUntil: toIsoDate(cols.validUntil ? row[cols.validUntil] : ''),
       labelUrl: /^https?:\/\//i.test(labelUrl) ? labelUrl : undefined,
     });
   });
@@ -190,8 +173,9 @@ function convert(records, overrides = {}) {
 
 const opts = args();
 try {
-  const { text, source } = await readInput(opts);
-  const records = toRecords(text);
+  const input = await readInput(opts);
+  const source = input.source;
+  const records = input.rows ? rowsToRecords(input.rows) : toRecords(input.text);
   if (records.length === 0) throw new Error('לא נמצאו רשומות בקובץ.');
 
   if (opts.inspect) {

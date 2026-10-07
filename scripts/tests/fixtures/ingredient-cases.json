@@ -1,0 +1,144 @@
+[
+  {
+    "why": "אחוז פשוט באנגלית",
+    "input": "Bifenthrin 9.6%",
+    "expect": [
+      {
+        "name": "Bifenthrin",
+        "concentration": "9.6%"
+      }
+    ]
+  },
+  {
+    "why": "אחוז בעברית",
+    "input": "ציפרמתרין 10%",
+    "expect": [
+      {
+        "name": "ציפרמתרין",
+        "concentration": "10%"
+      }
+    ]
+  },
+  {
+    "why": "רווח לפני סימן האחוז",
+    "input": "Brodifacoum 0.005 %",
+    "expect": [
+      {
+        "name": "Brodifacoum",
+        "concentration": "0.005%"
+      }
+    ]
+  },
+  {
+    "why": "פסיק עשרוני",
+    "input": "Deltamethrin 2,5%",
+    "expect": [
+      {
+        "name": "Deltamethrin",
+        "concentration": "2.5%"
+      }
+    ]
+  },
+  {
+    "why": "יחידה שאינה אחוז",
+    "input": "Imidacloprid 200 g/l",
+    "expect": [
+      {
+        "name": "Imidacloprid",
+        "concentration": "200 g/l"
+      }
+    ]
+  },
+  {
+    "why": "ללא ריכוז – אין לנחש",
+    "input": "Fipronil",
+    "expect": [
+      {
+        "name": "Fipronil",
+        "concentration": "לא הוזן"
+      }
+    ]
+  },
+  {
+    "why": "פסיק בתוך שם כימי אינו מפצל",
+    "input": "N-[[(4-chlorophenyl)amino]carbonyl]-2,6-difluorobenzamide 0.250%",
+    "expect": [
+      {
+        "name": "N-[[(4-chlorophenyl)amino]carbonyl]-2,6-difluorobenzamide",
+        "concentration": "0.250%"
+      }
+    ]
+  },
+  {
+    "why": "שני חומרים מופרדים בפסיק ובשורה חדשה",
+    "input": "deltamethrin (ISO) 0.051%,\nimiprothrin \n 0.100%",
+    "expect": [
+      {
+        "name": "deltamethrin (ISO)",
+        "concentration": "0.051%"
+      },
+      {
+        "name": "imiprothrin",
+        "concentration": "0.100%"
+      }
+    ]
+  },
+  {
+    "why": "שלושה חומרים עם שורות חדשות",
+    "input": "1R-TRANS-Phenothrin\n 0.140%,\nPiperonyl Butoxide 0.600%,\nprallethrin (ISO) 0.100%",
+    "expect": [
+      {
+        "name": "1R-TRANS-Phenothrin",
+        "concentration": "0.140%"
+      },
+      {
+        "name": "Piperonyl Butoxide",
+        "concentration": "0.600%"
+      },
+      {
+        "name": "prallethrin (ISO)",
+        "concentration": "0.100%"
+      }
+    ]
+  },
+  {
+    "why": "חומר אחרון ללא ריכוז נשמר",
+    "input": "A 1%, B",
+    "expect": [
+      {
+        "name": "A",
+        "concentration": "1%"
+      },
+      {
+        "name": "B",
+        "concentration": "לא הוזן"
+      }
+    ]
+  },
+  {
+    "why": "ריכוז מעמודה נפרדת",
+    "input": "Imidacloprid",
+    "hint": "17.8%",
+    "expect": [
+      {
+        "name": "Imidacloprid",
+        "concentration": "17.8%"
+      }
+    ]
+  },
+  {
+    "why": "סימן אחוז יתום במקור אינו נשאר בשם החומר",
+    "input": "bacillus thuringiensis var israelensis\n %",
+    "expect": [
+      {
+        "name": "bacillus thuringiensis var israelensis",
+        "concentration": "לא הוזן"
+      }
+    ]
+  },
+  {
+    "why": "טקסט ריק",
+    "input": "   ",
+    "expect": []
+  }
+]

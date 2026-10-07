@@ -1,39 +1,32 @@
 /**
- * פענוח חומרים פעילים וריכוזם מטקסט חופשי, כפי שהוא מופיע במאגר הרשמי.
+ * פענוח חומרים פעילים וריכוזם — מימוש יחיד, משותף ליבואן ולאפליקציה.
  *
  * האלגוריתם סורק את הריכוזים ולוקח כשם החומר את הטקסט שלפני כל ריכוז.
- * אסור לפצל לפי פסיקים: שמות כימיים מכילים פסיקים בעצמם, למשל
+ * פיצול לפי פסיקים אינו אפשרי, משום ששמות כימיים מכילים פסיקים בעצמם:
  *   "N-[[(4-chlorophenyl)amino]carbonyl]-2,6-difluorobenzamide 0.250%"
- * שהוא חומר אחד ולא שניים.
- *
- * הלוגיקה זהה ל-scripts/lib/ingredients.mjs, ושתיהן נבדקות מול אותה
- * טבלת מקרים: scripts/tests/fixtures/ingredient-cases.json.
+ * הוא חומר אחד, לא שניים.
  */
 
-import { NOT_ENTERED } from '../types';
+export const NOT_ENTERED = 'לא הוזן';
 
-export interface ParsedIngredient {
-  name: string;
-  /** הריכוז כפי שנקרא מהמקור, למשל "9.6%" או "200 g/l". NOT_ENTERED אם לא נמצא. */
-  concentration: string;
-}
-
+/** מספר ואחריו אחוז או יחידת ריכוז. הדגל g נדרש לסריקה חוזרת. */
 const CONCENTRATION_G = /(\d+(?:[.,]\d+)?)\s*(%|g\/l|gr\/l|mg\/kg|ppm)/gi;
 
-function normalizeUnit(unit: string): string {
-  const u = unit.toLowerCase();
+function normalizeUnit(unit) {
+  const u = String(unit).toLowerCase();
   if (u === '%') return '%';
   if (u === 'gr/l') return 'g/l';
   return u;
 }
 
-function formatConcentration(value: string, unit: string): string {
-  const number = value.replace(',', '.');
+function formatConcentration(value, unit) {
+  const number = String(value).replace(',', '.');
   const u = normalizeUnit(unit);
   return u === '%' ? `${number}%` : `${number} ${u}`;
 }
 
-function cleanName(raw: string): string {
+/** מנקה שם חומר משאריות מפרידים, רווחים ושורות חדשות. */
+function cleanName(raw) {
   return String(raw ?? '')
     .replace(/\s+/gu, ' ')
     // סימן יחידה יתום ללא מספר לפניו: במקור יש ריכוז חסר, ואין להשאירו בשם
@@ -45,32 +38,35 @@ function cleanName(raw: string): string {
 }
 
 /**
- * מפענח רשימת חומרים פעילים.
+ * מפענח רשימת חומרים פעילים מטקסט חופשי.
  * `concentrationHint` משמש כשהריכוז מגיע בעמודה נפרדת, ורק כשיש חומר יחיד.
  */
-export function parseActiveIngredients(raw: string, concentrationHint?: string): ParsedIngredient[] {
+export function parseActiveIngredients(raw, concentrationHint) {
   const text = String(raw ?? '').trim();
   if (!text) return [];
 
-  const found: ParsedIngredient[] = [];
+  const found = [];
   let cursor = 0;
   CONCENTRATION_G.lastIndex = 0;
   let match = CONCENTRATION_G.exec(text);
 
   while (match !== null) {
     const name = cleanName(text.slice(cursor, match.index));
-    if (name) found.push({ name, concentration: formatConcentration(match[1], match[2]) });
+    if (name) {
+      found.push({ name, concentration: formatConcentration(match[1], match[2]) });
+    }
     cursor = match.index + match[0].length;
     match = CONCENTRATION_G.exec(text);
   }
 
+  // שארית אחרי הריכוז האחרון: חומר נוסף שצוין ללא ריכוז
   const tail = cleanName(text.slice(cursor));
   if (tail) found.push({ name: tail, concentration: NOT_ENTERED });
 
   if (found.length === 0) {
     const name = cleanName(text);
     if (!name) return [];
-    const single: ParsedIngredient = { name, concentration: NOT_ENTERED };
+    const single = { name, concentration: NOT_ENTERED };
     if (concentrationHint) {
       const hint = parseActiveIngredients(`x ${concentrationHint}`);
       if (hint.length === 1 && hint[0].concentration !== NOT_ENTERED) {
@@ -91,7 +87,7 @@ export function parseActiveIngredients(raw: string, concentrationHint?: string):
 }
 
 /** תצוגה אחידה: "Bifenthrin 9.6% · Tetramethrin 2%" */
-export function formatIngredients(list: ParsedIngredient[]): string {
-  if (list.length === 0) return NOT_ENTERED;
+export function formatIngredients(list) {
+  if (!list || list.length === 0) return NOT_ENTERED;
   return list.map((i) => `${i.name} ${i.concentration}`).join(' · ');
 }

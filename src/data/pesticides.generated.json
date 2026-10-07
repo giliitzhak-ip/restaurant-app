@@ -1,7 +1,3328 @@
 {
-  "generatedAt": "",
-  "source": "",
+  "generatedAt": "2026-10-07T19:35:06.034Z",
+  "source": "pesticides.xlsx",
   "officialSource": "https://www.gov.il/he/Departments/DynamicCollectors/pesticides-database",
-  "count": 0,
-  "materials": []
+  "count": 157,
+  "materials": [
+    {
+      "id": "gov_678_0",
+      "tradeName": "טרמיטקס",
+      "registrationNumber": "678",
+      "formulation": "אבקה",
+      "activeIngredients": [
+        {
+          "name": "N-[[(4-chlorophenyl)amino]carbonyl]-2,6-difluorobenzamide",
+          "concentration": "0.250%"
+        }
+      ],
+      "holder": "א.ע יזמות ופרוייקטים",
+      "approvedPestNames": [
+        "טרמיטים"
+      ],
+      "validUntil": "2032-08-01"
+    },
+    {
+      "id": "gov_567_1",
+      "tradeName": "למבדה סטאר אולטרה קאפ - CS",
+      "registrationNumber": "567",
+      "formulation": "תרכיז רחיף מיקרוקפסולרי (CS)",
+      "activeIngredients": [
+        {
+          "name": "lambda-cyhalothrin (ISO)",
+          "concentration": "9.700%"
+        }
+      ],
+      "holder": "חברת רימי כימיקלים בע\"מ",
+      "approvedPestNames": [
+        "חרקים זוחלים אחרים",
+        "נמלים",
+        "פישפשי מיטה",
+        "פרעושים",
+        "קרציות קשות",
+        "תיקנים"
+      ],
+      "validUntil": "2032-03-06"
+    },
+    {
+      "id": "gov_688_2",
+      "tradeName": "זירו-פליי לתברואה",
+      "registrationNumber": "688",
+      "formulation": "תרכיז נוזלי",
+      "activeIngredients": [
+        {
+          "name": "Dinotefuran",
+          "concentration": "18.000%"
+        }
+      ],
+      "holder": "תפזול תעשיות כימיות בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "חרקים זוחלים אחרים",
+        "נמלים",
+        "פישפשי מיטה",
+        "פרעושים",
+        "תיקנים"
+      ],
+      "validUntil": "2028-02-15"
+    },
+    {
+      "id": "gov_1074_3",
+      "tradeName": "שובל",
+      "registrationNumber": "1074",
+      "formulation": "שמן",
+      "activeIngredients": [
+        {
+          "name": "White mineral oil (petroleum)",
+          "concentration": "97.000%"
+        }
+      ],
+      "holder": "דור.קי פיתוח ושיווק בע\"מ",
+      "approvedPestNames": [
+        "זחלי יתושים"
+      ],
+      "validUntil": "2027-06-04"
+    },
+    {
+      "id": "gov_655_4",
+      "tradeName": "וולקנו",
+      "registrationNumber": "655",
+      "formulation": "פיתיון מוכן לשימוש גרגירים",
+      "activeIngredients": [
+        {
+          "name": "fipronil",
+          "concentration": "0.050%"
+        }
+      ],
+      "holder": "דורקי פיתוח ושיווק בע\"מ",
+      "approvedPestNames": [
+        "נמלים",
+        "נמלת האש הקטנה"
+      ],
+      "validUntil": "2031-03-23",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_802.pdf"
+    },
+    {
+      "id": "gov_440_5",
+      "tradeName": "רייד מקס דלתא - גוקים",
+      "registrationNumber": "440",
+      "formulation": "אירוסול",
+      "activeIngredients": [
+        {
+          "name": "deltamethrin (ISO)",
+          "concentration": "0.051%"
+        },
+        {
+          "name": "imiprothrin",
+          "concentration": "0.100%"
+        }
+      ],
+      "holder": "אס.סי. גונסון ישראל בע\"מ",
+      "approvedPestNames": [
+        "חרקים זוחלים אחרים",
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2026-09-06"
+    },
+    {
+      "id": "gov_457_6",
+      "tradeName": "ברודיטופ וקס בלוק",
+      "registrationNumber": "457",
+      "formulation": "פתיון מוכן לשימוש בלוקים",
+      "activeIngredients": [
+        {
+          "name": "brodifacoum",
+          "concentration": "0.005%"
+        }
+      ],
+      "holder": "תפזול תעשיות כימיות בע\"מ",
+      "approvedPestNames": [
+        "חולדות",
+        "עכברים"
+      ],
+      "validUntil": "2031-05-20",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_521.pdf"
+    },
+    {
+      "id": "gov_658_7",
+      "tradeName": "ברודיטופ ג'ל",
+      "registrationNumber": "658",
+      "formulation": "פתיון ג'ל",
+      "activeIngredients": [
+        {
+          "name": "brodifacoum",
+          "concentration": "0.005%"
+        }
+      ],
+      "holder": "תפזול תעשיות כימיות בע\"מ",
+      "approvedPestNames": [
+        "חולדות",
+        "עכברים"
+      ],
+      "validUntil": "2031-04-02",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_822.pdf"
+    },
+    {
+      "id": "gov_599_8",
+      "tradeName": "סנו K 4000",
+      "registrationNumber": "599",
+      "formulation": "מיקרואמולסיה",
+      "activeIngredients": [
+        {
+          "name": "1R-TRANS-Phenothrin",
+          "concentration": "0.140%"
+        },
+        {
+          "name": "Piperonyl Butoxide",
+          "concentration": "0.600%"
+        },
+        {
+          "name": "prallethrin (ISO)",
+          "concentration": "0.100%"
+        }
+      ],
+      "holder": "סנו מפעלי ברונוס בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "חרקים מעופפים אחרים",
+        "יתושים בוגרים"
+      ],
+      "validUntil": "2031-05-04",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_709.pdf"
+    },
+    {
+      "id": "gov_668_9",
+      "tradeName": "גוליבר תיקנים",
+      "registrationNumber": "668",
+      "formulation": "פיתיון מוכן לשימוש ג'ל",
+      "activeIngredients": [
+        {
+          "name": "fipronil",
+          "concentration": "0.050%"
+        }
+      ],
+      "holder": "אפקטיבי הדברות",
+      "approvedPestNames": [
+        "תיקנים"
+      ],
+      "validUntil": "2031-08-08"
+    },
+    {
+      "id": "gov_684_10",
+      "tradeName": "בנגל החדש סלילים לבעירה איטית קוטל יתושים",
+      "registrationNumber": "684",
+      "formulation": "סלילים",
+      "activeIngredients": [
+        {
+          "name": "prallethrin (ISO)",
+          "concentration": "0.100%"
+        }
+      ],
+      "holder": "גורי ע.ע.ע. בע\"מ",
+      "approvedPestNames": [
+        "יתושים בוגרים"
+      ],
+      "validUntil": "2027-01-29",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_845.pdf"
+    },
+    {
+      "id": "gov_654_11",
+      "tradeName": "רעם",
+      "registrationNumber": "654",
+      "formulation": "תרכיז רחיף",
+      "activeIngredients": [
+        {
+          "name": "bifenthrin (ISO); (2-methylbiphenyl-3-yl)methyl rel-(1R,3R)-3-[(1Z)-2-chloro-3,3,3-trifluoroprop-1-en-1-yl]-2,2-dimethylcyclopropanecarboxylate",
+          "concentration": "10.000%"
+        }
+      ],
+      "holder": "אר.פי.סי החברה להדברה - נס הרים",
+      "approvedPestNames": [
+        "נמלים"
+      ],
+      "validUntil": "2030-10-08",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_775.pdf"
+    },
+    {
+      "id": "gov_583_12",
+      "tradeName": "כופתיון פלוס",
+      "registrationNumber": "583",
+      "formulation": "פתיון מוכן לשימוש כופתיות",
+      "activeIngredients": [
+        {
+          "name": "brodifacoum",
+          "concentration": "0.005%"
+        }
+      ],
+      "holder": "אר.פי.סי החברה להדברה - נס הרים",
+      "approvedPestNames": [
+        "חולדות",
+        "עכברים"
+      ],
+      "validUntil": "2030-06-07",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_702.pdf"
+    },
+    {
+      "id": "gov_585_13",
+      "tradeName": "בלוקיון פלוס",
+      "registrationNumber": "585",
+      "formulation": "פתיון מוכן לשימוש בלוקים",
+      "activeIngredients": [
+        {
+          "name": "brodifacoum",
+          "concentration": "0.005%"
+        }
+      ],
+      "holder": "אר.פי.סי החברה להדברה - נס הרים",
+      "approvedPestNames": [
+        "חולדות",
+        "עכברים"
+      ],
+      "validUntil": "2031-04-02",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_700.pdf"
+    },
+    {
+      "id": "gov_584_14",
+      "tradeName": "פסטיון פלוס פסטה",
+      "registrationNumber": "584",
+      "formulation": "פיתיון מוכן לשימוש בצורת פסטה",
+      "activeIngredients": [
+        {
+          "name": "brodifacoum",
+          "concentration": "0.005%"
+        }
+      ],
+      "holder": "אר.פי.סי החברה להדברה - נס הרים",
+      "approvedPestNames": [
+        "חולדות",
+        "עכברים"
+      ],
+      "validUntil": "2030-06-07",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_701.pdf"
+    },
+    {
+      "id": "gov_587_15",
+      "tradeName": "פרו ג'ל נמלת האש הקטנה",
+      "registrationNumber": "587",
+      "formulation": "פתיון ג'ל",
+      "activeIngredients": [
+        {
+          "name": "fipronil",
+          "concentration": "0.010%"
+        }
+      ],
+      "holder": "תפזול תעשיות כימיות בע\"מ",
+      "approvedPestNames": [
+        "נמלת האש הקטנה"
+      ],
+      "validUntil": "2030-03-11",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_704.pdf"
+    },
+    {
+      "id": "gov_487_16",
+      "tradeName": "דלתא סופר",
+      "registrationNumber": "487",
+      "formulation": "תרכיז מתחלב",
+      "activeIngredients": [
+        {
+          "name": "deltamethrin (ISO)",
+          "concentration": "2.500%"
+        },
+        {
+          "name": "s- bioallethrin",
+          "concentration": "2.000%"
+        }
+      ],
+      "holder": "תפזול תעשיות כימיות בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "חרקים זוחלים אחרים",
+        "חרקים מעופפים אחרים",
+        "פישפשי מיטה",
+        "תיקנים"
+      ],
+      "validUntil": "2030-03-11",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_575.pdf"
+    },
+    {
+      "id": "gov_641_17",
+      "tradeName": "אדוויון 20",
+      "registrationNumber": "641",
+      "formulation": "גרגרים רחיפים",
+      "activeIngredients": [
+        {
+          "name": "indoxacarb (ISO); methyl (4aS)-7-chloro-2-{(methoxycarbonyl)[4-(trifluoromethoxy)phenyl]carbamoyl}-2,5-dihydroindeno[1,2-e][1,3,4]oxadiazine-4a(3H)-carboxylate",
+          "concentration": "20.000%"
+        }
+      ],
+      "holder": "זרעים גדרה בע\"מ",
+      "approvedPestNames": [
+        "נמלים"
+      ],
+      "validUntil": "2031-03-18",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_774.pdf"
+    },
+    {
+      "id": "gov_607_18",
+      "tradeName": "קומנדו 313",
+      "registrationNumber": "607",
+      "formulation": "תמיסה",
+      "activeIngredients": [
+        {
+          "name": "bifenthrin (ISO); (2-methylbiphenyl-3-yl)methyl rel-(1R,3R)-3-[(1Z)-2-chloro-3,3,3-trifluoroprop-1-en-1-yl]-2,2-dimethylcyclopropanecarboxylate",
+          "concentration": "0.050%"
+        }
+      ],
+      "holder": "סאסאטק אגש\"ח בע\"מ",
+      "approvedPestNames": [
+        "חרקים זוחלים אחרים",
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2028-11-24",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_736.pdf"
+    },
+    {
+      "id": "gov_595_19",
+      "tradeName": "K 300 פלוס 8",
+      "registrationNumber": "595",
+      "formulation": "אירוסול",
+      "activeIngredients": [
+        {
+          "name": "lambda-cyhalothrin (ISO)",
+          "concentration": "0.030%"
+        },
+        {
+          "name": "novaluron",
+          "concentration": "0.100%"
+        },
+        {
+          "name": "prallethrin (ISO)",
+          "concentration": "0.100%"
+        }
+      ],
+      "holder": "סנו מפעלי ברונוס בע\"מ",
+      "approvedPestNames": [
+        "חרקים זוחלים אחרים",
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2027-02-22"
+    },
+    {
+      "id": "gov_676_20",
+      "tradeName": "in2care",
+      "registrationNumber": "676",
+      "formulation": "פתיון מרוכז אבקה",
+      "activeIngredients": [
+        {
+          "name": "Beauveria bassiana",
+          "concentration": "10.000%"
+        },
+        {
+          "name": "Pyriproxyfen",
+          "concentration": "75.000%"
+        }
+      ],
+      "holder": "גדות אגרו בע\"מ",
+      "approvedPestNames": [
+        "זחלי יתושים",
+        "יתושים בוגרים"
+      ],
+      "validUntil": "2026-05-09",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_796.pdf"
+    },
+    {
+      "id": "gov_479_21",
+      "tradeName": "ספיר",
+      "registrationNumber": "479",
+      "formulation": "מיקרואמולסיה",
+      "activeIngredients": [
+        {
+          "name": "MGK 264",
+          "concentration": "6.400%"
+        },
+        {
+          "name": "cypermethrin cis/trans +/- 40/60",
+          "concentration": "20.000%"
+        }
+      ],
+      "holder": "חברת רימי כימיקלים בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "יתושים בוגרים",
+        "נמלים",
+        "פרוקי רגלים אחרים",
+        "פרעושים",
+        "תיקנים"
+      ],
+      "validUntil": "2027-02-19",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_552.pdf"
+    },
+    {
+      "id": "gov_473_22",
+      "tradeName": "פרמיס 350",
+      "registrationNumber": "473",
+      "formulation": "תרכיז רחיף",
+      "activeIngredients": [
+        {
+          "name": "imidacloprid (ISO)",
+          "concentration": "30.400%"
+        },
+        {
+          "name": "imidacloprid (ISO)",
+          "concentration": "30.500%"
+        }
+      ],
+      "holder": "לידור אלמנטס בע\"מ- ירושלים",
+      "approvedPestNames": [
+        "טרמיטים"
+      ],
+      "validUntil": "2026-01-22",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_547.pdf"
+    },
+    {
+      "id": "gov_385_23",
+      "tradeName": "טאצ' די תוש ספריי קוטל חרקים מעופפים",
+      "registrationNumber": "385",
+      "formulation": "אירוסול",
+      "activeIngredients": [
+        {
+          "name": "Bioallethrin",
+          "concentration": "0.150%"
+        },
+        {
+          "name": "Piperonyl Butoxide",
+          "concentration": "0.600%"
+        },
+        {
+          "name": "TETRAMETHRIN",
+          "concentration": "0.150%"
+        }
+      ],
+      "holder": "סאסאטק אגש\"ח בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "חרקים מעופפים אחרים",
+        "יתושים בוגרים"
+      ],
+      "validUntil": "2030-02-12",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_421.pdf"
+    },
+    {
+      "id": "gov_604_24",
+      "tradeName": "מאסטר פליי",
+      "registrationNumber": "604",
+      "formulation": "נוזל",
+      "activeIngredients": [
+        {
+          "name": "Dinotefuran",
+          "concentration": "12.000%"
+        }
+      ],
+      "holder": "סאסאטק אגש\"ח בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים"
+      ],
+      "validUntil": "2027-02-18"
+    },
+    {
+      "id": "gov_614_25",
+      "tradeName": "פליי - אוף",
+      "registrationNumber": "614",
+      "formulation": "תרסיס",
+      "activeIngredients": [
+        {
+          "name": "Dinotefuran",
+          "concentration": "0.300%"
+        }
+      ],
+      "holder": "סאסאטק אגש\"ח בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים"
+      ],
+      "validUntil": "2026-10-27"
+    },
+    {
+      "id": "gov_574_26",
+      "tradeName": "קינג ג'ל",
+      "registrationNumber": "574",
+      "formulation": "ג'ל",
+      "activeIngredients": [
+        {
+          "name": "fipronil",
+          "concentration": "0.050%"
+        }
+      ],
+      "holder": "א.ע יזמות ופרוייקטים",
+      "approvedPestNames": [
+        "תיקנים"
+      ],
+      "validUntil": "2026-01-01",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_695.pdf"
+    },
+    {
+      "id": "gov_575_27",
+      "tradeName": "קווין ג'ל פיתיון",
+      "registrationNumber": "575",
+      "formulation": "ג'ל",
+      "activeIngredients": [
+        {
+          "name": "fipronil",
+          "concentration": "0.010%"
+        }
+      ],
+      "holder": "א.ע יזמות ופרוייקטים",
+      "approvedPestNames": [
+        "נמלים"
+      ],
+      "validUntil": "2026-01-01",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_694.pdf"
+    },
+    {
+      "id": "gov_362_28",
+      "tradeName": "סולו בלוק",
+      "registrationNumber": "362",
+      "formulation": "פתיון מוכן לשימוש בלוקים",
+      "activeIngredients": [
+        {
+          "name": "brodifacoum",
+          "concentration": "0.005%"
+        }
+      ],
+      "holder": "חברת רימי כימיקלים בע\"מ",
+      "approvedPestNames": [
+        "חולדות",
+        "עכברים"
+      ],
+      "validUntil": "2028-12-26",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_400.pdf"
+    },
+    {
+      "id": "gov_646_29",
+      "tradeName": "אלמוג",
+      "registrationNumber": "646",
+      "formulation": "תרכיז רחיף",
+      "activeIngredients": [
+        {
+          "name": "deltamethrin (ISO)",
+          "concentration": "4.750%"
+        }
+      ],
+      "holder": "חברת רימי כימיקלים בע\"מ",
+      "approvedPestNames": [
+        "חרקים זוחלים אחרים",
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2029-02-28",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_794.pdf"
+    },
+    {
+      "id": "gov_640_30",
+      "tradeName": "דרגון",
+      "registrationNumber": "640",
+      "formulation": "תרכיז רחיף",
+      "activeIngredients": [
+        {
+          "name": "bifenthrin (ISO); (2-methylbiphenyl-3-yl)methyl rel-(1R,3R)-3-[(1Z)-2-chloro-3,3,3-trifluoroprop-1-en-1-yl]-2,2-dimethylcyclopropanecarboxylate",
+          "concentration": "9.600%"
+        }
+      ],
+      "holder": "אר.פי.סי החברה להדברה - נס הרים",
+      "approvedPestNames": [
+        "חרקים זוחלים אחרים",
+        "פישפשי מיטה",
+        "תיקנים"
+      ],
+      "validUntil": "2030-06-18",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_781.pdf"
+    },
+    {
+      "id": "gov_627_31",
+      "tradeName": "פרו ג'ל נמלים וטרמיטים",
+      "registrationNumber": "627",
+      "formulation": "ג'ל",
+      "activeIngredients": [
+        {
+          "name": "fipronil",
+          "concentration": "0.010%"
+        }
+      ],
+      "holder": "תפזול תעשיות כימיות בע\"מ",
+      "approvedPestNames": [
+        "טרמיטים",
+        "נמלים"
+      ],
+      "validUntil": "2025-12-22",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_743.pdf"
+    },
+    {
+      "id": "gov_642_32",
+      "tradeName": "K3 פתיון ג'ל - קוטל נמלים בבית ובחצר",
+      "registrationNumber": "642",
+      "formulation": "ג'ל",
+      "activeIngredients": [
+        {
+          "name": "fipronil",
+          "concentration": "0.010%"
+        }
+      ],
+      "holder": "סנו מפעלי ברונוס בע\"מ",
+      "approvedPestNames": [
+        "נמלים"
+      ],
+      "validUntil": "2028-12-05",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_785.pdf"
+    },
+    {
+      "id": "gov_564_33",
+      "tradeName": "נוזל ניקוי רצפות דוחה תיקנים \"המותג/מג'יק פואוור\"",
+      "registrationNumber": "564",
+      "formulation": "נוזל",
+      "activeIngredients": [
+        {
+          "name": "Perfume Citronella",
+          "concentration": "2.000%"
+        }
+      ],
+      "holder": "סאסאטק אגש\"ח בע\"מ",
+      "approvedPestNames": [
+        "תיקנים"
+      ],
+      "validUntil": "2028-11-27"
+    },
+    {
+      "id": "gov_597_34",
+      "tradeName": "דלתא מקס",
+      "registrationNumber": "597",
+      "formulation": "נוזל מתחלב",
+      "activeIngredients": [
+        {
+          "name": "Piperonyl Butoxide",
+          "concentration": "5.000%"
+        },
+        {
+          "name": "Pyriproxyfen",
+          "concentration": "1.000%"
+        },
+        {
+          "name": "deltamethrin (ISO)",
+          "concentration": "1.600%"
+        }
+      ],
+      "holder": "סיקמקס בע\"מ",
+      "approvedPestNames": [
+        "פרעושים",
+        "תיקנים"
+      ],
+      "validUntil": "2026-01-20",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_713.pdf"
+    },
+    {
+      "id": "gov_569_35",
+      "tradeName": "דרקר 10.2",
+      "registrationNumber": "569",
+      "formulation": "תרכיז רחיף מיקרוקפסולרי",
+      "activeIngredients": [
+        {
+          "name": "Piperonyl Butoxide",
+          "concentration": "10.000%"
+        },
+        {
+          "name": "TETRAMETHRIN",
+          "concentration": "2.000%"
+        },
+        {
+          "name": "cypermethrin cis/trans +/- 40/60",
+          "concentration": "10.000%"
+        }
+      ],
+      "holder": "אר.פי.סי החברה להדברה - נס הרים",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "חרקים זוחלים אחרים",
+        "חרקים מעופפים אחרים",
+        "יתושים בוגרים",
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2028-06-21",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_679.pdf"
+    },
+    {
+      "id": "gov_683_36",
+      "tradeName": "ספירה נוזל דוחה יתושים",
+      "registrationNumber": "683",
+      "formulation": "נוזל/אדים",
+      "activeIngredients": [
+        {
+          "name": "prallethrin (ISO)",
+          "concentration": "1.200%"
+        }
+      ],
+      "holder": "גורי ע.ע.ע. בע\"מ",
+      "approvedPestNames": [
+        "יתושים בוגרים"
+      ],
+      "validUntil": "2027-02-20",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_839.pdf"
+    },
+    {
+      "id": "gov_417_37",
+      "tradeName": "פירתרון",
+      "registrationNumber": "417",
+      "formulation": "תרכיז לערפול",
+      "activeIngredients": [
+        {
+          "name": "MGK 264",
+          "concentration": "10.000%"
+        },
+        {
+          "name": "Piperonyl Butoxide",
+          "concentration": "6.000%"
+        },
+        {
+          "name": "pyrethrum",
+          "concentration": "3.000%"
+        }
+      ],
+      "holder": "נורון חברה לייבוא ולייצור בע\"מ",
+      "approvedPestNames": [
+        "יתושים בוגרים",
+        "מזיקי מזון"
+      ],
+      "validUntil": "2028-03-14",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_470.pdf"
+    },
+    {
+      "id": "gov_325_38",
+      "tradeName": "פרמקס 20",
+      "registrationNumber": "325",
+      "formulation": "תרכיז מתחלב",
+      "activeIngredients": [
+        {
+          "name": "Permethrin",
+          "concentration": "20.000%"
+        }
+      ],
+      "holder": "חברת רימי כימיקלים בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "יתושים בוגרים"
+      ],
+      "validUntil": "2028-02-21",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_362.pdf"
+    },
+    {
+      "id": "gov_423_39",
+      "tradeName": "ברודיטופ פסטה לתברואה",
+      "registrationNumber": "423",
+      "formulation": "פיתיון מוכן לשימוש בצורת פסטה",
+      "activeIngredients": [
+        {
+          "name": "brodifacoum",
+          "concentration": "0.005%"
+        }
+      ],
+      "holder": "תפזול תעשיות כימיות בע\"מ",
+      "approvedPestNames": [
+        "חולדות",
+        "עכברים"
+      ],
+      "validUntil": "2028-02-17",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_474.pdf"
+    },
+    {
+      "id": "gov_534_40",
+      "tradeName": "שוהם",
+      "registrationNumber": "534",
+      "formulation": "תרכיז רחיף",
+      "activeIngredients": [
+        {
+          "name": "bifenthrin (ISO); (2-methylbiphenyl-3-yl)methyl rel-(1R,3R)-3-[(1Z)-2-chloro-3,3,3-trifluoroprop-1-en-1-yl]-2,2-dimethylcyclopropanecarboxylate",
+          "concentration": "10.000%"
+        }
+      ],
+      "holder": "חברת רימי כימיקלים בע\"מ",
+      "approvedPestNames": [
+        "חרקים זוחלים אחרים",
+        "טרמיטים",
+        "נמלים",
+        "פרעושים",
+        "תיקנים"
+      ],
+      "validUntil": "2027-12-31",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_646.pdf"
+    },
+    {
+      "id": "gov_306_41",
+      "tradeName": "רטרים בלוק",
+      "registrationNumber": "306",
+      "formulation": "פתיון מוכן לשימוש בלוקים",
+      "activeIngredients": [
+        {
+          "name": "bromadiolone",
+          "concentration": "0.005%"
+        }
+      ],
+      "holder": "חברת רימי כימיקלים בע\"מ",
+      "approvedPestNames": [
+        "חולדות",
+        "עכברים"
+      ],
+      "validUntil": "2028-02-14",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_356.pdf"
+    },
+    {
+      "id": "gov_568_42",
+      "tradeName": "טאצ' די תיקן פורטה",
+      "registrationNumber": "568",
+      "formulation": "אירוסול",
+      "activeIngredients": [
+        {
+          "name": "Piperonyl Butoxide",
+          "concentration": "0.340%"
+        },
+        {
+          "name": "TETRAMETHRIN",
+          "concentration": "0.200%"
+        },
+        {
+          "name": "cyfluthrin (ISO)",
+          "concentration": "0.100%"
+        },
+        {
+          "name": "cypermethrin cis/trans +/- 40/60",
+          "concentration": "0.170%"
+        }
+      ],
+      "holder": "סאסאטק אגש\"ח בע\"מ",
+      "approvedPestNames": [
+        "חרקים זוחלים אחרים",
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2029-03-09",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_658.pdf"
+    },
+    {
+      "id": "gov_675_43",
+      "tradeName": "פאלקון",
+      "registrationNumber": "675",
+      "formulation": "תרכיז מתחלב",
+      "activeIngredients": [
+        {
+          "name": "bifenthrin (ISO); (2-methylbiphenyl-3-yl)methyl rel-(1R,3R)-3-[(1Z)-2-chloro-3,3,3-trifluoroprop-1-en-1-yl]-2,2-dimethylcyclopropanecarboxylate",
+          "concentration": "5.000%"
+        },
+        {
+          "name": "imidacloprid (ISO)",
+          "concentration": "10.000%"
+        }
+      ],
+      "holder": "אר.פי.סי החברה להדברה - נס הרים",
+      "approvedPestNames": [
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2026-05-14",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_828.pdf"
+    },
+    {
+      "id": "gov_672_44",
+      "tradeName": "סיפ 20",
+      "registrationNumber": "672",
+      "formulation": "תרכיז מתחלב",
+      "activeIngredients": [
+        {
+          "name": "cypermethrin cis/trans +/- 40/60",
+          "concentration": "20.000%"
+        }
+      ],
+      "holder": "אר.פי.סי החברה להדברה - נס הרים",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "זחלי יתושים",
+        "חרקים מעופפים אחרים",
+        "יתושים בוגרים",
+        "תיקנים"
+      ],
+      "validUntil": "2025-10-27",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_827.pdf"
+    },
+    {
+      "id": "gov_443_45",
+      "tradeName": "סנו רצפז פלוס ווקס נוזל להברקת רצפות דוחה תיקנים",
+      "registrationNumber": "443",
+      "formulation": "נוזל",
+      "activeIngredients": [
+        {
+          "name": "perfume",
+          "concentration": "2.000%"
+        }
+      ],
+      "holder": "סנו מפעלי ברונוס בע\"מ",
+      "approvedPestNames": [
+        "תיקנים"
+      ],
+      "validUntil": "2028-02-15",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_498.pdf"
+    },
+    {
+      "id": "gov_681_46",
+      "tradeName": "רייד בוטני קוטל זוחלים ומעופפים",
+      "registrationNumber": "681",
+      "formulation": "אירוסול",
+      "activeIngredients": [
+        {
+          "name": "Piperonyl Butoxide",
+          "concentration": "1.050%"
+        },
+        {
+          "name": "pyrethrum",
+          "concentration": "0.250%"
+        }
+      ],
+      "holder": "אס.סי. גונסון ישראל בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "חרקים זוחלים אחרים",
+        "חרקים מעופפים אחרים",
+        "יתושים בוגרים",
+        "נמלים",
+        "פרעושים",
+        "צרעות",
+        "תיקנים"
+      ],
+      "validUntil": "2027-01-21",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_817.pdf"
+    },
+    {
+      "id": "gov_606_47",
+      "tradeName": "טאץ' רב קוטל",
+      "registrationNumber": "606",
+      "formulation": "אירוסול",
+      "activeIngredients": [
+        {
+          "name": "Piperonyl Butoxide",
+          "concentration": "0.500%"
+        },
+        {
+          "name": "TETRAMETHRIN",
+          "concentration": "0.150%"
+        },
+        {
+          "name": "cyfluthrin (ISO)",
+          "concentration": "0.100%"
+        },
+        {
+          "name": "cypermethrin cis/trans +/- 40/60",
+          "concentration": "0.150%"
+        }
+      ],
+      "holder": "סאסאטק אגש\"ח בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "חרקים זוחלים אחרים",
+        "חרקים מעופפים אחרים",
+        "יתושים בוגרים",
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2031-05-20",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_732.pdf"
+    },
+    {
+      "id": "gov_544_48",
+      "tradeName": "טופז",
+      "registrationNumber": "544",
+      "formulation": "תרסיס",
+      "activeIngredients": [
+        {
+          "name": "D-limonene",
+          "concentration": "1.500%"
+        },
+        {
+          "name": "pyrethrum",
+          "concentration": "0.250%"
+        }
+      ],
+      "holder": "דע קדם פרוייקטים (1987) בע\"מ",
+      "approvedPestNames": [
+        "תיקנים"
+      ],
+      "validUntil": "2028-06-28",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_633.pdf"
+    },
+    {
+      "id": "gov_619_49",
+      "tradeName": "אנט ג'ל",
+      "registrationNumber": "619",
+      "formulation": "ג'ל",
+      "activeIngredients": [
+        {
+          "name": "fipronil",
+          "concentration": "0.010%"
+        }
+      ],
+      "holder": "סיקמקס בע\"מ",
+      "approvedPestNames": [
+        "נמלים"
+      ],
+      "validUntil": "2028-05-10"
+    },
+    {
+      "id": "gov_617_50",
+      "tradeName": "דוחה תיקנים רמי לוי",
+      "registrationNumber": "617",
+      "formulation": "נוזל",
+      "activeIngredients": [
+        {
+          "name": "perfume",
+          "concentration": "3.000%"
+        }
+      ],
+      "holder": "קומפלקס כימיקלים בע\"מ",
+      "approvedPestNames": [
+        "תיקנים"
+      ],
+      "validUntil": "2028-02-13",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_752.pdf"
+    },
+    {
+      "id": "gov_205_51",
+      "tradeName": "פרמתרול 25",
+      "registrationNumber": "205",
+      "formulation": "אבקה רטיבה",
+      "activeIngredients": [
+        {
+          "name": "Permethrin",
+          "concentration": "25.000%"
+        }
+      ],
+      "holder": "תפזול תעשיות כימיות בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "יתושים בוגרים",
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2028-02-15",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_235.pdf"
+    },
+    {
+      "id": "gov_474_52",
+      "tradeName": "מורין דיפה פסטה",
+      "registrationNumber": "474",
+      "formulation": "פיתיון מוכן לשימוש בצורת פסטה",
+      "activeIngredients": [
+        {
+          "name": "difenacoum",
+          "concentration": "0.005%"
+        }
+      ],
+      "holder": "אדמה פתרונות לחקלאות בע\"מ-ארומה",
+      "approvedPestNames": [
+        "חולדות",
+        "עכברים"
+      ],
+      "validUntil": "2028-02-22",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_550.pdf"
+    },
+    {
+      "id": "gov_542_53",
+      "tradeName": "סנטור",
+      "registrationNumber": "542",
+      "formulation": "תחליב שמן במים",
+      "activeIngredients": [
+        {
+          "name": "lambda-cyhalothrin (ISO)",
+          "concentration": "9.700%"
+        }
+      ],
+      "holder": "אדמה פתרונות לחקלאות בע\"מ-ארומה",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "חרקים זוחלים אחרים",
+        "חרקים מעופפים אחרים",
+        "יתושים בוגרים",
+        "פישפשי מיטה",
+        "קרציות קשות",
+        "תיקנים"
+      ],
+      "validUntil": "2028-02-15",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_637.pdf"
+    },
+    {
+      "id": "gov_673_54",
+      "tradeName": "סיזמיק",
+      "registrationNumber": "673",
+      "formulation": "תרכיז רחיף",
+      "activeIngredients": [
+        {
+          "name": "lambda-cyhalothrin (ISO)",
+          "concentration": "9.990%"
+        }
+      ],
+      "holder": "אדמה פתרונות לחקלאות בע\"מ-ארומה",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "חרקים זוחלים אחרים",
+        "יתושים בוגרים",
+        "נמלים",
+        "פרוקי רגלים אחרים",
+        "תיקנים"
+      ],
+      "validUntil": "2026-01-31",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_805.pdf"
+    },
+    {
+      "id": "gov_491_55",
+      "tradeName": "אנטיפליי",
+      "registrationNumber": "491",
+      "formulation": "נוזל",
+      "activeIngredients": [
+        {
+          "name": "Dinotefuran",
+          "concentration": "0.300%"
+        }
+      ],
+      "holder": "חברת רימי כימיקלים בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים"
+      ],
+      "validUntil": "2028-02-22",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_585.pdf"
+    },
+    {
+      "id": "gov_488_56",
+      "tradeName": "ברקת",
+      "registrationNumber": "488",
+      "formulation": "מיקרואמולסיה",
+      "activeIngredients": [
+        {
+          "name": "MGK 264",
+          "concentration": "6.400%"
+        },
+        {
+          "name": "Pyriproxyfen",
+          "concentration": "0.800%"
+        },
+        {
+          "name": "cypermethrin cis/trans +/- 40/60",
+          "concentration": "20.000%"
+        }
+      ],
+      "holder": "חברת רימי כימיקלים בע\"מ",
+      "approvedPestNames": [
+        "פרעושים"
+      ],
+      "validUntil": "2027-07-18",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_555.pdf"
+    },
+    {
+      "id": "gov_302_57",
+      "tradeName": "פרמנונה 200",
+      "registrationNumber": "302",
+      "formulation": "נוזל מתחלב",
+      "activeIngredients": [
+        {
+          "name": "Permethrin",
+          "concentration": "20.000%"
+        }
+      ],
+      "holder": "סיקמקס בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "חרקים זוחלים אחרים",
+        "חרקים מעופפים אחרים",
+        "יתושים בוגרים",
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2028-03-08",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_351.pdf"
+    },
+    {
+      "id": "gov_579_58",
+      "tradeName": "גרנולר - פיתיוןגרגירי לנמלת האש הקטנה ונמלים אחר",
+      "registrationNumber": "579",
+      "formulation": "פתיון מוכן לשימוש גרגירים",
+      "activeIngredients": [
+        {
+          "name": "fipronil",
+          "concentration": "0.050%"
+        }
+      ],
+      "holder": "אר.פי.סי החברה להדברה - נס הרים",
+      "approvedPestNames": [
+        "נמלים",
+        "נמלת האש הקטנה"
+      ],
+      "validUntil": "2030-06-25",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_692.pdf"
+    },
+    {
+      "id": "gov_360_59",
+      "tradeName": "פנטום פרו",
+      "registrationNumber": "360",
+      "formulation": "תרכיז רחיף מיקרוקפסולרי",
+      "activeIngredients": [
+        {
+          "name": "cyphenothrin",
+          "concentration": "10.000%"
+        }
+      ],
+      "holder": "אלמנדה ישראל בע\"מ",
+      "approvedPestNames": [
+        "פרעושים",
+        "תיקנים"
+      ],
+      "validUntil": "2029-11-23",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_403.pdf"
+    },
+    {
+      "id": "gov_489_60",
+      "tradeName": "סיפזול 20",
+      "registrationNumber": "489",
+      "formulation": "תרכיז מתחלב",
+      "activeIngredients": [
+        {
+          "name": "cypermethrin cis/trans +/- 40/60",
+          "concentration": "20.000%"
+        }
+      ],
+      "holder": "תפזול תעשיות כימיות בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "תיקנים"
+      ],
+      "validUntil": "2029-09-28",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_564.pdf"
+    },
+    {
+      "id": "gov_580_61",
+      "tradeName": "פרו ג'ל נמלים",
+      "registrationNumber": "580",
+      "formulation": "פתיון ג'ל",
+      "activeIngredients": [
+        {
+          "name": "fipronil",
+          "concentration": "0.010%"
+        }
+      ],
+      "holder": "תפזול תעשיות כימיות בע\"מ",
+      "approvedPestNames": [
+        "נמלים"
+      ],
+      "validUntil": "2029-07-31",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_699.pdf"
+    },
+    {
+      "id": "gov_329_62",
+      "tradeName": "רימקס",
+      "registrationNumber": "329",
+      "formulation": "אבקה רטיבה",
+      "activeIngredients": [
+        {
+          "name": "Permethrin",
+          "concentration": "25.000%"
+        }
+      ],
+      "holder": "חברת רימי כימיקלים בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "חרקים זוחלים אחרים",
+        "יתושים בוגרים",
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2029-01-25",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_370.pdf"
+    },
+    {
+      "id": "gov_634_63",
+      "tradeName": "דמנד",
+      "registrationNumber": "634",
+      "formulation": "תרכיז רחיף מיקרוקפסולרי",
+      "activeIngredients": [
+        {
+          "name": "lambda-cyhalothrin (ISO)",
+          "concentration": "9.600%"
+        }
+      ],
+      "holder": "זרעים גדרה בע\"מ",
+      "approvedPestNames": [
+        "נמלים",
+        "פישפשי מיטה",
+        "תיקנים"
+      ],
+      "validUntil": "2030-03-19",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_764.pdf"
+    },
+    {
+      "id": "gov_682_64",
+      "tradeName": "ספירה מאט טבליות קוטלי יתושים",
+      "registrationNumber": "682",
+      "formulation": "טבליות אידוי",
+      "activeIngredients": [
+        {
+          "name": "prallethrin (ISO)",
+          "concentration": "1.330%"
+        }
+      ],
+      "holder": "גורי ע.ע.ע. בע\"מ",
+      "approvedPestNames": [
+        "יתושים בוגרים"
+      ],
+      "validUntil": "2027-03-11",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_838.pdf"
+    },
+    {
+      "id": "gov_332_65",
+      "tradeName": "סיפרין לתברואה",
+      "registrationNumber": "332",
+      "formulation": "תרכיז מתחלב",
+      "activeIngredients": [
+        {
+          "name": "cypermethrin cis/trans +/- 40/60",
+          "concentration": "20.000%"
+        }
+      ],
+      "holder": "חברת רימי כימיקלים בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "זחלי יתושים",
+        "יתושים בוגרים",
+        "נמלים",
+        "פרעושים",
+        "תיקנים"
+      ],
+      "validUntil": "2028-04-27",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_373.pdf"
+    },
+    {
+      "id": "gov_645_66",
+      "tradeName": "טיגריס",
+      "registrationNumber": "645",
+      "formulation": "תרסיס",
+      "activeIngredients": [
+        {
+          "name": "Dinotefuran",
+          "concentration": "0.150%"
+        }
+      ],
+      "holder": "חברת רימי כימיקלים בע\"מ",
+      "approvedPestNames": [
+        "יתושים בוגרים"
+      ],
+      "validUntil": "2028-03-30",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_749.pdf"
+    },
+    {
+      "id": "gov_540_67",
+      "tradeName": "אדוויון פתיון ג'ל להדברת תיקנים",
+      "registrationNumber": "540",
+      "formulation": "ג'ל",
+      "activeIngredients": [
+        {
+          "name": "indoxacarb (ISO); methyl (4aS)-7-chloro-2-{(methoxycarbonyl)[4-(trifluoromethoxy)phenyl]carbamoyl}-2,5-dihydroindeno[1,2-e][1,3,4]oxadiazine-4a(3H)-carboxylate",
+          "concentration": "0.600%"
+        }
+      ],
+      "holder": "זרעים גדרה בע\"מ",
+      "approvedPestNames": [
+        "תיקנים"
+      ],
+      "validUntil": "2028-03-09",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_618.pdf"
+    },
+    {
+      "id": "gov_525_68",
+      "tradeName": "אדוויון פתיון ג'ל להדברת נמלים",
+      "registrationNumber": "525",
+      "formulation": "ג'ל",
+      "activeIngredients": [
+        {
+          "name": "indoxacarb (ISO); methyl (4aS)-7-chloro-2-{(methoxycarbonyl)[4-(trifluoromethoxy)phenyl]carbamoyl}-2,5-dihydroindeno[1,2-e][1,3,4]oxadiazine-4a(3H)-carboxylate",
+          "concentration": "0.050%"
+        }
+      ],
+      "holder": "זרעים גדרה בע\"מ",
+      "approvedPestNames": [
+        "נמלים"
+      ],
+      "validUntil": "2028-03-09",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_619.pdf"
+    },
+    {
+      "id": "gov_680_69",
+      "tradeName": "K3 נמלת האש פיתיון ג'ל קוטל את נמלת האש הקטנה בבית",
+      "registrationNumber": "680",
+      "formulation": "ג'ל",
+      "activeIngredients": [
+        {
+          "name": "fipronil",
+          "concentration": "0.010%"
+        }
+      ],
+      "holder": "סנו מפעלי ברונוס בע\"מ",
+      "approvedPestNames": [
+        "נמלת האש הקטנה"
+      ],
+      "validUntil": "2026-11-23",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_834.pdf"
+    },
+    {
+      "id": "gov_245_70",
+      "tradeName": "רימי 90 נוזלי",
+      "registrationNumber": "245",
+      "formulation": "תרכיז מתחלב",
+      "activeIngredients": [
+        {
+          "name": "Pyriproxyfen",
+          "concentration": "5.000%"
+        }
+      ],
+      "holder": "חברת רימי כימיקלים בע\"מ",
+      "approvedPestNames": [
+        "זחלי יתושים",
+        "זחלי פרעושים",
+        "רימות זבובים",
+        "תיקנים"
+      ],
+      "validUntil": "2026-06-23",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_274.pdf"
+    },
+    {
+      "id": "gov_247_71",
+      "tradeName": "סיפרימי",
+      "registrationNumber": "247",
+      "formulation": "אבקה רטיבה",
+      "activeIngredients": [
+        {
+          "name": "cypermethrin cis/trans +/- 40/60",
+          "concentration": "10.000%"
+        }
+      ],
+      "holder": "חברת רימי כימיקלים בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "חרקים זוחלים אחרים",
+        "חרקים מעופפים אחרים",
+        "יתושים בוגרים",
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2026-09-15",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_275.pdf"
+    },
+    {
+      "id": "gov_600_72",
+      "tradeName": "פורסטאר",
+      "registrationNumber": "600",
+      "formulation": "בלוק",
+      "activeIngredients": [
+        {
+          "name": "Bacillus sphaericus",
+          "concentration": "6.000%"
+        },
+        {
+          "name": "bacillus thuringiensis var israelensis",
+          "concentration": "1.000%"
+        }
+      ],
+      "holder": "חברת רימי כימיקלים בע\"מ",
+      "approvedPestNames": [
+        "זחלי יתושים"
+      ],
+      "validUntil": "2027-03-27",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_721.pdf"
+    },
+    {
+      "id": "gov_632_73",
+      "tradeName": "טופ גריין",
+      "registrationNumber": "632",
+      "formulation": "גרגרים",
+      "activeIngredients": [
+        {
+          "name": "fipronil",
+          "concentration": "0.050%"
+        }
+      ],
+      "holder": "חברת רימי כימיקלים בע\"מ",
+      "approvedPestNames": [
+        "נמלים",
+        "נמלת האש הקטנה"
+      ],
+      "validUntil": "2027-11-22",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_767.pdf"
+    },
+    {
+      "id": "gov_504_74",
+      "tradeName": "אינוויקט גולד",
+      "registrationNumber": "504",
+      "formulation": "ג'ל",
+      "activeIngredients": [
+        {
+          "name": "imidacloprid (ISO)",
+          "concentration": "2.150%"
+        }
+      ],
+      "holder": "חברת רימי כימיקלים בע\"מ",
+      "approvedPestNames": [
+        "תיקנים"
+      ],
+      "validUntil": "2028-04-11",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_599.pdf"
+    },
+    {
+      "id": "gov_492_75",
+      "tradeName": "אדמירל",
+      "registrationNumber": "492",
+      "formulation": "תרכיז רחיף",
+      "activeIngredients": [
+        {
+          "name": "bifenthrin (ISO); (2-methylbiphenyl-3-yl)methyl rel-(1R,3R)-3-[(1Z)-2-chloro-3,3,3-trifluoroprop-1-en-1-yl]-2,2-dimethylcyclopropanecarboxylate",
+          "concentration": "7.900%"
+        }
+      ],
+      "holder": "אדמה פתרונות לחקלאות בע\"מ",
+      "approvedPestNames": [
+        "טרמיטים",
+        "נמלים",
+        "פרעושים",
+        "תיקנים"
+      ],
+      "validUntil": "2028-06-06"
+    },
+    {
+      "id": "gov_499_76",
+      "tradeName": "מגלון בלוק לתברואה",
+      "registrationNumber": "499",
+      "formulation": "פתיון מוכן לשימוש בלוקים",
+      "activeIngredients": [
+        {
+          "name": "bromadiolone",
+          "concentration": "0.005%"
+        }
+      ],
+      "holder": "סיקמקס בע\"מ",
+      "approvedPestNames": [
+        "חולדות",
+        "עכברים"
+      ],
+      "validUntil": "2028-02-24",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_595.pdf"
+    },
+    {
+      "id": "gov_513_77",
+      "tradeName": "זאגור פסטה",
+      "registrationNumber": "513",
+      "formulation": "פיתיון מוכן לשימוש בצורת פסטה",
+      "activeIngredients": [
+        {
+          "name": "brodifacoum",
+          "concentration": "0.005%"
+        }
+      ],
+      "holder": "סיקמקס בע\"מ",
+      "approvedPestNames": [
+        "חולדות",
+        "עכברים"
+      ],
+      "validUntil": "2028-02-09",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_596.pdf"
+    },
+    {
+      "id": "gov_294_78",
+      "tradeName": "סיפרמקס",
+      "registrationNumber": "294",
+      "formulation": "נוזל מתחלב",
+      "activeIngredients": [
+        {
+          "name": "cypermethrin cis/trans +/- 40/60",
+          "concentration": "20.000%"
+        }
+      ],
+      "holder": "סיקמקס בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "זחלי יתושים",
+        "חרקים מעופפים אחרים"
+      ],
+      "validUntil": "2028-03-07",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_327.pdf"
+    },
+    {
+      "id": "gov_612_79",
+      "tradeName": "רייד זבובים ויתושים מבושם",
+      "registrationNumber": "612",
+      "formulation": "אירוסול",
+      "activeIngredients": [
+        {
+          "name": "d-phenothrin",
+          "concentration": "0.130%"
+        },
+        {
+          "name": "prallethrin (ISO)",
+          "concentration": "0.100%"
+        }
+      ],
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "יתושים בוגרים"
+      ],
+      "validUntil": "2028-02-21",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_724.pdf"
+    },
+    {
+      "id": "gov_535_80",
+      "tradeName": "רייד קוטל נמלים 2 ב-1",
+      "registrationNumber": "535",
+      "formulation": "אירוסול",
+      "activeIngredients": [
+        {
+          "name": "cypermethrin cis/trans +/- 40/60",
+          "concentration": "0.100%"
+        },
+        {
+          "name": "imiprothrin",
+          "concentration": "0.100%"
+        }
+      ],
+      "approvedPestNames": [
+        "נמלים"
+      ],
+      "validUntil": "2028-03-08",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_640.pdf"
+    },
+    {
+      "id": "gov_598_81",
+      "tradeName": "אימפקט",
+      "registrationNumber": "598",
+      "formulation": "תרכיז רחיף",
+      "activeIngredients": [
+        {
+          "name": "cypermethrin cis/trans +/- 40/60",
+          "concentration": "20.000%"
+        },
+        {
+          "name": "cyromazine",
+          "concentration": "5.000%"
+        }
+      ],
+      "approvedPestNames": [
+        "פרעושים"
+      ],
+      "validUntil": "2027-10-05",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_705.pdf"
+    },
+    {
+      "id": "gov_207_82",
+      "tradeName": "בק תוש",
+      "registrationNumber": "207",
+      "formulation": "תרכיז נוזלי",
+      "activeIngredients": [
+        {
+          "name": "bacillus thuringiensis var israelensis",
+          "concentration": "לא הוזן"
+        }
+      ],
+      "approvedPestNames": [
+        "זחלי יתושים"
+      ],
+      "validUntil": "2026-07-22",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_239.pdf"
+    },
+    {
+      "id": "gov_566_83",
+      "tradeName": "רייד נגד עש ג'ל - \"לבנדר\"",
+      "registrationNumber": "566",
+      "formulation": "ג'ל",
+      "activeIngredients": [
+        {
+          "name": "transfluthrin (ISO)",
+          "concentration": "0.150%"
+        }
+      ],
+      "approvedPestNames": [
+        "עש"
+      ],
+      "validUntil": "2029-05-15",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_675.pdf"
+    },
+    {
+      "id": "gov_563_84",
+      "tradeName": "מקספורס פורטה",
+      "registrationNumber": "563",
+      "formulation": "ג'ל",
+      "activeIngredients": [
+        {
+          "name": "fipronil",
+          "concentration": "0.050%"
+        }
+      ],
+      "holder": "לידור אלמנטס בע\"מ- ירושלים",
+      "approvedPestNames": [
+        "תיקנים"
+      ],
+      "validUntil": "2028-09-14",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_615.pdf"
+    },
+    {
+      "id": "gov_625_85",
+      "tradeName": "צרעון",
+      "registrationNumber": "625",
+      "formulation": "אירוסול",
+      "activeIngredients": [
+        {
+          "name": "Piperonyl Butoxide",
+          "concentration": "0.850%"
+        },
+        {
+          "name": "TETRAMETHRIN",
+          "concentration": "0.180%"
+        },
+        {
+          "name": "cypermethrin cis/trans +/- 40/60",
+          "concentration": "0.090%"
+        }
+      ],
+      "holder": "סאסאטק אגש\"ח בע\"מ",
+      "approvedPestNames": [
+        "צרעות"
+      ],
+      "validUntil": "2029-01-31",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_720.pdf"
+    },
+    {
+      "id": "gov_629_86",
+      "tradeName": "גרגירמקס",
+      "registrationNumber": "629",
+      "formulation": "גרגרים",
+      "activeIngredients": [
+        {
+          "name": "fipronil",
+          "concentration": "0.050%"
+        }
+      ],
+      "holder": "א.ע יזמות ופרוייקטים",
+      "approvedPestNames": [
+        "נמלים",
+        "נמלת האש הקטנה"
+      ],
+      "validUntil": "2028-02-21",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_768.pdf"
+    },
+    {
+      "id": "gov_370_87",
+      "tradeName": "תרסיפ 20",
+      "registrationNumber": "370",
+      "formulation": "תרכיז מתחלב",
+      "activeIngredients": [
+        {
+          "name": "cypermethrin cis/trans +/- 40/60",
+          "concentration": "20.000%"
+        }
+      ],
+      "holder": "תרסיס חברה לחימיקלים חקלאיים ותעשיתיים בעמ",
+      "approvedPestNames": [
+        "זחלי יתושים"
+      ],
+      "validUntil": "2028-05-10",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_411.pdf"
+    },
+    {
+      "id": "gov_549_88",
+      "tradeName": "פרו-ג'ל",
+      "registrationNumber": "549",
+      "formulation": "פתיון ג'ל",
+      "activeIngredients": [
+        {
+          "name": "fipronil",
+          "concentration": "0.050%"
+        }
+      ],
+      "holder": "תפזול תעשיות כימיות בע\"מ",
+      "approvedPestNames": [
+        "תיקנים"
+      ],
+      "validUntil": "2028-02-21",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_655.pdf"
+    },
+    {
+      "id": "gov_554_89",
+      "tradeName": "רייד זבובים ויתושים",
+      "registrationNumber": "554",
+      "formulation": "אירוסול",
+      "activeIngredients": [
+        {
+          "name": "d-phenothrin",
+          "concentration": "0.131%"
+        },
+        {
+          "name": "prallethrin (ISO)",
+          "concentration": "0.109%"
+        }
+      ],
+      "holder": "אס.סי. גונסון ישראל בע\"מ",
+      "approvedPestNames": [
+        "חרקים מעופפים אחרים"
+      ],
+      "validUntil": "2028-03-06",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_648.pdf"
+    },
+    {
+      "id": "gov_524_90",
+      "tradeName": "אדוויון פתיון גרגרי להדברת נמלת האש",
+      "registrationNumber": "524",
+      "formulation": "גרגרים",
+      "activeIngredients": [
+        {
+          "name": "indoxacarb (ISO); methyl (4aS)-7-chloro-2-{(methoxycarbonyl)[4-(trifluoromethoxy)phenyl]carbamoyl}-2,5-dihydroindeno[1,2-e][1,3,4]oxadiazine-4a(3H)-carboxylate",
+          "concentration": "0.045%"
+        }
+      ],
+      "holder": "זרעים גדרה בע\"מ",
+      "approvedPestNames": [
+        "נמלים",
+        "נמלת האש הקטנה"
+      ],
+      "validUntil": "2029-02-22",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_629.pdf"
+    },
+    {
+      "id": "gov_437_91",
+      "tradeName": "מקפז",
+      "registrationNumber": "437",
+      "formulation": "אירוסול",
+      "activeIngredients": [
+        {
+          "name": "MGK 264",
+          "concentration": "0.500%"
+        },
+        {
+          "name": "Piperonyl Butoxide",
+          "concentration": "0.500%"
+        },
+        {
+          "name": "TETRAMETHRIN",
+          "concentration": "0.400%"
+        },
+        {
+          "name": "deltamethrin (ISO)",
+          "concentration": "0.036%"
+        }
+      ],
+      "holder": "סנו מפעלי ברונוס בע\"מ",
+      "approvedPestNames": [
+        "חרקים זוחלים אחרים",
+        "תיקנים"
+      ],
+      "validUntil": "2029-02-19",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_495.pdf"
+    },
+    {
+      "id": "gov_674_92",
+      "tradeName": "טפיר",
+      "registrationNumber": "674",
+      "formulation": "תרכיז רחיף",
+      "activeIngredients": [
+        {
+          "name": "bifenthrin (ISO); (2-methylbiphenyl-3-yl)methyl rel-(1R,3R)-3-[(1Z)-2-chloro-3,3,3-trifluoroprop-1-en-1-yl]-2,2-dimethylcyclopropanecarboxylate",
+          "concentration": "5.000%"
+        },
+        {
+          "name": "imidacloprid (ISO)",
+          "concentration": "25.000%"
+        }
+      ],
+      "holder": "אדמה פתרונות לחקלאות בע\"מ-ארומה",
+      "approvedPestNames": [
+        "נמלים"
+      ],
+      "validUntil": "2026-02-07",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_809.pdf"
+    },
+    {
+      "id": "gov_442_93",
+      "tradeName": "סנו K-400",
+      "registrationNumber": "442",
+      "formulation": "אירוסול",
+      "activeIngredients": [
+        {
+          "name": "MGK 264",
+          "concentration": "1.000%"
+        },
+        {
+          "name": "Piperonyl Butoxide",
+          "concentration": "0.600%"
+        },
+        {
+          "name": "TETRAMETHRIN",
+          "concentration": "0.650%"
+        }
+      ],
+      "holder": "סנו מפעלי ברונוס בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "חרקים מעופפים אחרים",
+        "יתושים בוגרים"
+      ],
+      "validUntil": "2029-02-15",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_496.pdf"
+    },
+    {
+      "id": "gov_517_94",
+      "tradeName": "סנו K מעופפים פירטרום - קוטל  יתושים, זבובים",
+      "registrationNumber": "517",
+      "formulation": "אירוסול",
+      "activeIngredients": [
+        {
+          "name": "Piperonyl Butoxide",
+          "concentration": "1.500%"
+        },
+        {
+          "name": "pyrethrum",
+          "concentration": "0.250%"
+        }
+      ],
+      "holder": "סנו מפעלי ברונוס בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "חרקים מעופפים אחרים",
+        "יתושים בוגרים"
+      ],
+      "validUntil": "2029-02-21",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_627.pdf"
+    },
+    {
+      "id": "gov_361_95",
+      "tradeName": "סנו רצפז פלוס - נוזל לניקוי רצפה - דוחה תקנים",
+      "registrationNumber": "361",
+      "formulation": "נוזל",
+      "activeIngredients": [
+        {
+          "name": "perfume",
+          "concentration": "2.000%"
+        }
+      ],
+      "holder": "סנו מפעלי ברונוס בע\"מ",
+      "approvedPestNames": [
+        "תיקנים"
+      ],
+      "validUntil": "2029-10-23",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_377.pdf"
+    },
+    {
+      "id": "gov_686_96",
+      "tradeName": "מוריברום ברודיפקום בלוק",
+      "registrationNumber": "686",
+      "formulation": "פתיון מוכן לשימוש בלוקים",
+      "activeIngredients": [
+        {
+          "name": "brodifacoum",
+          "concentration": "0.005%"
+        }
+      ],
+      "holder": "א.ע יזמות ופרוייקטים",
+      "approvedPestNames": [
+        "חולדות",
+        "עכברים"
+      ],
+      "validUntil": "2027-03-27",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_844.pdf"
+    },
+    {
+      "id": "gov_685_97",
+      "tradeName": "מוריברום ברודיפקום פסטה",
+      "registrationNumber": "685",
+      "formulation": "פיתיון מוכן לשימוש בצורת פסטה",
+      "activeIngredients": [
+        {
+          "name": "brodifacoum",
+          "concentration": "0.005%"
+        }
+      ],
+      "holder": "א.ע יזמות ופרוייקטים",
+      "approvedPestNames": [
+        "חולדות",
+        "עכברים"
+      ],
+      "validUntil": "2027-03-19",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_843.pdf"
+    },
+    {
+      "id": "gov_602_98",
+      "tradeName": "ווינר",
+      "registrationNumber": "602",
+      "formulation": "תמיסה מוכנה לשימוש בתוארית מיקרוקפסולרית",
+      "activeIngredients": [
+        {
+          "name": "Piperonyl Butoxide",
+          "concentration": "0.300%"
+        },
+        {
+          "name": "TETRAMETHRIN",
+          "concentration": "0.060%"
+        },
+        {
+          "name": "cypermethrin cis/trans +/- 40/60",
+          "concentration": "0.300%"
+        }
+      ],
+      "holder": "אר.פי.סי החברה להדברה - נס הרים",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "חרקים זוחלים אחרים",
+        "חרקים מעופפים אחרים",
+        "יתושים בוגרים",
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2026-09-15"
+    },
+    {
+      "id": "gov_527_99",
+      "tradeName": "הדרית",
+      "registrationNumber": "527",
+      "formulation": "תרסיס",
+      "activeIngredients": [
+        {
+          "name": "D-limonene",
+          "concentration": "7.000%"
+        }
+      ],
+      "holder": "דע קדם פרוייקטים (1987) בע\"מ",
+      "approvedPestNames": [
+        "חרקים מעופפים אחרים",
+        "יתושים בוגרים",
+        "נמלים"
+      ],
+      "validUntil": "2027-11-18",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_631.pdf"
+    },
+    {
+      "id": "gov_618_100",
+      "tradeName": "טמפריד",
+      "registrationNumber": "618",
+      "formulation": "לא הוזן",
+      "activeIngredients": [
+        {
+          "name": "Beta-Cyfluthrin",
+          "concentration": "10.880%"
+        },
+        {
+          "name": "imidacloprid (ISO)",
+          "concentration": "21.650%"
+        }
+      ],
+      "holder": "לידור אלמנטס בע\"מ- ירושלים",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "חרקים זוחלים אחרים",
+        "נמלים",
+        "פישפשי מיטה",
+        "פרוקי רגלים אחרים",
+        "תיקנים"
+      ],
+      "validUntil": "2027-01-01",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_728.pdf"
+    },
+    {
+      "id": "gov_624_101",
+      "tradeName": "דיפון 100",
+      "registrationNumber": "624",
+      "formulation": "תרסיס",
+      "activeIngredients": [
+        {
+          "name": "difenacoum",
+          "concentration": "0.075%"
+        }
+      ],
+      "holder": "סאסאטק אגש\"ח בע\"מ",
+      "approvedPestNames": [
+        "חולדות",
+        "עכברים"
+      ],
+      "validUntil": "2028-08-14",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_747.pdf"
+    },
+    {
+      "id": "gov_515_102",
+      "tradeName": "סנו K-333 נוזל - קוטל תיקנים נמלים וחרקים זוחלים א",
+      "registrationNumber": "515",
+      "formulation": "תרחיף נוזלי",
+      "activeIngredients": [
+        {
+          "name": "bifenthrin (ISO); (2-methylbiphenyl-3-yl)methyl rel-(1R,3R)-3-[(1Z)-2-chloro-3,3,3-trifluoroprop-1-en-1-yl]-2,2-dimethylcyclopropanecarboxylate",
+          "concentration": "0.050%"
+        }
+      ],
+      "holder": "סנו מפעלי ברונוס בע\"מ",
+      "approvedPestNames": [
+        "חרקים זוחלים אחרים",
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2027-01-01",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_608.pdf"
+    },
+    {
+      "id": "gov_628_103",
+      "tradeName": "K3 פיתיון ג'ל",
+      "registrationNumber": "628",
+      "formulation": "ג'ל",
+      "activeIngredients": [
+        {
+          "name": "fipronil",
+          "concentration": "0.050%"
+        }
+      ],
+      "holder": "סנו מפעלי ברונוס בע\"מ",
+      "approvedPestNames": [
+        "תיקנים"
+      ],
+      "validUntil": "2027-08-08",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_765.pdf"
+    },
+    {
+      "id": "gov_596_104",
+      "tradeName": "K 500",
+      "registrationNumber": "596",
+      "formulation": "אירוסול",
+      "activeIngredients": [
+        {
+          "name": "lambda-cyhalothrin (ISO)",
+          "concentration": "0.030%"
+        },
+        {
+          "name": "prallethrin (ISO)",
+          "concentration": "0.100%"
+        }
+      ],
+      "holder": "סנו מפעלי ברונוס בע\"מ",
+      "approvedPestNames": [
+        "חרקים זוחלים אחרים",
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2027-02-22"
+    },
+    {
+      "id": "gov_621_105",
+      "tradeName": "סנו K רב קוטל",
+      "registrationNumber": "621",
+      "formulation": "אירוסול",
+      "activeIngredients": [
+        {
+          "name": "Piperonyl Butoxide",
+          "concentration": "1.000%"
+        },
+        {
+          "name": "deltamethrin (ISO)",
+          "concentration": "0.020%"
+        },
+        {
+          "name": "prallethrin (ISO)",
+          "concentration": "0.100%"
+        }
+      ],
+      "holder": "סנו מפעלי ברונוס בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "חרקים זוחלים אחרים",
+        "חרקים מעופפים אחרים",
+        "יתושים בוגרים",
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2027-05-28",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_750.pdf"
+    },
+    {
+      "id": "gov_626_106",
+      "tradeName": "סנו רצפז פלוס-מטליות",
+      "registrationNumber": "626",
+      "formulation": "לא הוזן",
+      "activeIngredients": [
+        {
+          "name": "perfume",
+          "concentration": "1.000%"
+        }
+      ],
+      "holder": "סנו מפעלי ברונוס בע\"מ",
+      "approvedPestNames": [
+        "תיקנים"
+      ],
+      "validUntil": "2027-04-30"
+    },
+    {
+      "id": "gov_538_107",
+      "tradeName": "סנו k 303 פלוס 8 - קוטל תיקנים נמלים וחרקים זוחלים",
+      "registrationNumber": "538",
+      "formulation": "אירוסול",
+      "activeIngredients": [
+        {
+          "name": "Piperonyl Butoxide",
+          "concentration": "1.200%"
+        },
+        {
+          "name": "deltamethrin (ISO)",
+          "concentration": "0.050%"
+        },
+        {
+          "name": "esbiothrin",
+          "concentration": "0.300%"
+        },
+        {
+          "name": "novaluron",
+          "concentration": "0.100%"
+        }
+      ],
+      "holder": "סנו מפעלי ברונוס בע\"מ",
+      "approvedPestNames": [
+        "חרקים זוחלים אחרים",
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2027-01-01"
+    },
+    {
+      "id": "gov_539_108",
+      "tradeName": "סנו k303 - קוטל תיקנים נמלים וחרקים זוחלים אחרים",
+      "registrationNumber": "539",
+      "formulation": "אירוסול",
+      "activeIngredients": [
+        {
+          "name": "Piperonyl Butoxide",
+          "concentration": "1.200%"
+        },
+        {
+          "name": "deltamethrin (ISO)",
+          "concentration": "0.050%"
+        },
+        {
+          "name": "esbiothrin",
+          "concentration": "0.300%"
+        }
+      ],
+      "holder": "סנו מפעלי ברונוס בע\"מ",
+      "approvedPestNames": [
+        "חרקים זוחלים אחרים",
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2027-01-01"
+    },
+    {
+      "id": "gov_622_109",
+      "tradeName": "סנו K800",
+      "registrationNumber": "622",
+      "formulation": "אירוסול",
+      "activeIngredients": [
+        {
+          "name": "Piperonyl Butoxide",
+          "concentration": "1.000%"
+        },
+        {
+          "name": "cypermethrin cis/trans +/- 40/60",
+          "concentration": "0.100%"
+        },
+        {
+          "name": "imiprothrin",
+          "concentration": "0.100%"
+        }
+      ],
+      "holder": "סנו מפעלי ברונוס בע\"מ",
+      "approvedPestNames": [
+        "נמלים"
+      ],
+      "validUntil": "2027-02-18"
+    },
+    {
+      "id": "gov_594_110",
+      "tradeName": "K 300",
+      "registrationNumber": "594",
+      "formulation": "אירוסול",
+      "activeIngredients": [
+        {
+          "name": "Piperonyl Butoxide",
+          "concentration": "1.000%"
+        },
+        {
+          "name": "lambda-cyhalothrin (ISO)",
+          "concentration": "0.030%"
+        },
+        {
+          "name": "prallethrin (ISO)",
+          "concentration": "0.100%"
+        }
+      ],
+      "holder": "סנו מפעלי ברונוס בע\"מ",
+      "approvedPestNames": [
+        "חרקים זוחלים אחרים",
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2027-02-22"
+    },
+    {
+      "id": "gov_573_111",
+      "tradeName": "ז-אפס-3",
+      "registrationNumber": "573",
+      "formulation": "אירוסול",
+      "activeIngredients": [
+        {
+          "name": "Bioallethrin",
+          "concentration": "0.200%"
+        },
+        {
+          "name": "Piperonyl Butoxide",
+          "concentration": "0.500%"
+        },
+        {
+          "name": "TETRAMETHRIN",
+          "concentration": "0.200%"
+        },
+        {
+          "name": "cyfluthrin (ISO)",
+          "concentration": "0.100%"
+        }
+      ],
+      "holder": "סאסאטק אגש\"ח בע\"מ",
+      "approvedPestNames": [
+        "חרקים זוחלים אחרים",
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2030-01-01",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_681.pdf"
+    },
+    {
+      "id": "gov_522_112",
+      "tradeName": "ז-אפס מיקרוקפסולרי",
+      "registrationNumber": "522",
+      "formulation": "תמיסה מוכנה לשימוש בתוארית מיקרוקפסולרית",
+      "activeIngredients": [
+        {
+          "name": "Piperonyl Butoxide",
+          "concentration": "0.300%"
+        },
+        {
+          "name": "TETRAMETHRIN",
+          "concentration": "0.060%"
+        },
+        {
+          "name": "cypermethrin cis/trans +/- 40/60",
+          "concentration": "0.300%"
+        }
+      ],
+      "holder": "סאסאטק אגש\"ח בע\"מ",
+      "approvedPestNames": [
+        "חרקים זוחלים אחרים",
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2028-02-16",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_604.pdf"
+    },
+    {
+      "id": "gov_520_113",
+      "tradeName": "טופג'ל לקטילת נמלת האש הקטנה נמלים אחרת",
+      "registrationNumber": "520",
+      "formulation": "ג'ל",
+      "activeIngredients": [
+        {
+          "name": "fipronil",
+          "concentration": "0.010%"
+        }
+      ],
+      "holder": "רועי נעים",
+      "approvedPestNames": [
+        "נמלים",
+        "נמלת האש הקטנה"
+      ],
+      "validUntil": "2030-05-28"
+    },
+    {
+      "id": "gov_435_114",
+      "tradeName": "דינופליי",
+      "registrationNumber": "435",
+      "formulation": "אבקה מסיסה",
+      "activeIngredients": [
+        {
+          "name": "Dinotefuran",
+          "concentration": "12.000%"
+        }
+      ],
+      "holder": "חברת רימי כימיקלים בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "פישפשי מיטה"
+      ],
+      "validUntil": "2031-03-23",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_491.pdf"
+    },
+    {
+      "id": "gov_578_115",
+      "tradeName": "טרמיט ג'ל",
+      "registrationNumber": "578",
+      "formulation": "פיתיון מוכן לשימוש ג'ל",
+      "activeIngredients": [
+        {
+          "name": "fipronil",
+          "concentration": "0.050%"
+        }
+      ],
+      "holder": "אר.פי.סי החברה להדברה - נס הרים",
+      "approvedPestNames": [
+        "טרמיטים"
+      ],
+      "validUntil": "2031-11-24"
+    },
+    {
+      "id": "gov_670_116",
+      "tradeName": "סנו מט דוחה יתושים לוחיות אידוי",
+      "registrationNumber": "670",
+      "formulation": "טבליות אידוי",
+      "activeIngredients": [
+        {
+          "name": "prallethrin (ISO)",
+          "concentration": "1.330%"
+        }
+      ],
+      "holder": "סנו מפעלי ברונוס בע\"מ",
+      "approvedPestNames": [
+        "יתושים בוגרים"
+      ],
+      "validUntil": "2031-09-04",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_829.pdf"
+    },
+    {
+      "id": "gov_493_117",
+      "tradeName": "סיפרפקט 200",
+      "registrationNumber": "493",
+      "formulation": "תרכיז מתחלב (EC)",
+      "activeIngredients": [
+        {
+          "name": "cypermethrin cis/trans +/- 40/60",
+          "concentration": "20.000%"
+        },
+        {
+          "name": "dipentene",
+          "concentration": "5.000%"
+        }
+      ],
+      "holder": "דור.קי פיתוח ושיווק בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "חרקים זוחלים אחרים",
+        "חרקים מעופפים אחרים",
+        "יתושים בוגרים",
+        "תיקנים"
+      ],
+      "validUntil": "2032-07-28"
+    },
+    {
+      "id": "gov_666_118",
+      "tradeName": "נמסיס פיתיון לטרמיטים",
+      "registrationNumber": "666",
+      "formulation": "פיתיון מרוכז אבקה",
+      "activeIngredients": [
+        {
+          "name": "N-(4-(3-chloro-5-trifluoromethyl-2-pyridinyl-oxy)- 3,5-dichloro-phenyl-aminocarbonyl)-2,6-difluorobenzamide",
+          "concentration": "0.100%"
+        }
+      ],
+      "holder": "חברת רימי כימיקלים בע\"מ",
+      "approvedPestNames": [
+        "טרמיטים"
+      ],
+      "validUntil": "2031-06-24"
+    },
+    {
+      "id": "gov_556_119",
+      "tradeName": "רמבו תיקנים ונמלים",
+      "registrationNumber": "556",
+      "formulation": "אירוסול",
+      "activeIngredients": [
+        {
+          "name": "cyfluthrin (ISO)",
+          "concentration": "0.180%"
+        },
+        {
+          "name": "cypermethrin cis/trans +/- 40/60",
+          "concentration": "0.170%"
+        }
+      ],
+      "holder": "סאסאטק אגש\"ח בע\"מ",
+      "approvedPestNames": [
+        "חרקים זוחלים אחרים",
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2031-09-21"
+    },
+    {
+      "id": "gov_557_120",
+      "tradeName": "רמבו זבובים ויתושים",
+      "registrationNumber": "557",
+      "formulation": "אירוסול",
+      "activeIngredients": [
+        {
+          "name": "cyfluthrin (ISO)",
+          "concentration": "0.150%"
+        },
+        {
+          "name": "tetramethrin",
+          "concentration": "0.150%"
+        }
+      ],
+      "holder": "סאסאטק אגש\"ח בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "חרקים מעופפים אחרים",
+        "יתושים בוגרים"
+      ],
+      "validUntil": "2031-08-19"
+    },
+    {
+      "id": "gov_667_121",
+      "tradeName": "גוליבר נמלים",
+      "registrationNumber": "667",
+      "formulation": "ג'ל",
+      "activeIngredients": [
+        {
+          "name": "fipronil",
+          "concentration": "0.010%"
+        }
+      ],
+      "holder": "אפקטיבי הדברות",
+      "approvedPestNames": [
+        "נמלים"
+      ],
+      "validUntil": "2031-08-08"
+    },
+    {
+      "id": "gov_663_122",
+      "tradeName": "סנומט דוחה יתושים - נוזלי",
+      "registrationNumber": "663",
+      "formulation": "נוזל",
+      "activeIngredients": [
+        {
+          "name": "prallethrin (ISO)",
+          "concentration": "1.200%"
+        }
+      ],
+      "holder": "סנו מפעלי ברונוס בע\"מ",
+      "approvedPestNames": [
+        "יתושים בוגרים"
+      ],
+      "validUntil": "2031-04-24",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_824.pdf"
+    },
+    {
+      "id": "gov_589_123",
+      "tradeName": "בי - 10",
+      "registrationNumber": "589",
+      "formulation": "נוזל",
+      "activeIngredients": [
+        {
+          "name": "bifenthrin (ISO); (2-methylbiphenyl-3-yl)methyl rel-(1R,3R)-3-[(1Z)-2-chloro-3,3,3-trifluoroprop-1-en-1-yl]-2,2-dimethylcyclopropanecarboxylate",
+          "concentration": "10.000%"
+        }
+      ],
+      "holder": "סיקמקס בע\"מ",
+      "approvedPestNames": [
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2031-07-08"
+    },
+    {
+      "id": "gov_553_124",
+      "tradeName": "בזלת",
+      "registrationNumber": "553",
+      "formulation": "פתיון מוכן לשימוש גרגירים",
+      "activeIngredients": [
+        {
+          "name": "hydramethylnon",
+          "concentration": "0.365%"
+        },
+        {
+          "name": "methoprene",
+          "concentration": "0.250%"
+        }
+      ],
+      "holder": "חברת רימי כימיקלים בע\"מ",
+      "approvedPestNames": [
+        "נמלים",
+        "נמלת האש הקטנה"
+      ],
+      "validUntil": "2028-03-16",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_661.pdf"
+    },
+    {
+      "id": "gov_276_125",
+      "tradeName": "פרמתרול אבוקות עשן",
+      "registrationNumber": "276",
+      "formulation": "אבוקת עשן",
+      "activeIngredients": [
+        {
+          "name": "Permethrin",
+          "concentration": "13.500%"
+        }
+      ],
+      "holder": "תפזול תעשיות כימיות בע\"מ",
+      "approvedPestNames": [
+        "תיקנים"
+      ],
+      "validUntil": "2030-06-09",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_279.pdf"
+    },
+    {
+      "id": "gov_460_126",
+      "tradeName": "רטרים פסטה",
+      "registrationNumber": "460",
+      "formulation": "פיתיון מוכן לשימוש בצורת פסטה",
+      "activeIngredients": [
+        {
+          "name": "brodifacoum",
+          "concentration": "0.005%"
+        }
+      ],
+      "holder": "חברת רימי כימיקלים בע\"מ",
+      "approvedPestNames": [
+        "חולדות",
+        "עכברים"
+      ],
+      "validUntil": "2030-09-28",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_539.pdf"
+    },
+    {
+      "id": "gov_521_127",
+      "tradeName": "טורפדו ג'ל פיתיון קוטל תיקנים",
+      "registrationNumber": "521",
+      "formulation": "ג'ל",
+      "activeIngredients": [
+        {
+          "name": "fipronil",
+          "concentration": "0.050%"
+        }
+      ],
+      "holder": "רועי נעים",
+      "approvedPestNames": [
+        "תיקנים"
+      ],
+      "validUntil": "2030-05-28",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_613.pdf"
+    },
+    {
+      "id": "gov_620_128",
+      "tradeName": "אלפא ג'ל",
+      "registrationNumber": "620",
+      "formulation": "ג'ל",
+      "activeIngredients": [
+        {
+          "name": "fipronil",
+          "concentration": "0.010%"
+        }
+      ],
+      "holder": "רועי נעים",
+      "approvedPestNames": [
+        "טרמיטים",
+        "נמלים"
+      ],
+      "validUntil": "2030-04-15",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_770.pdf"
+    },
+    {
+      "id": "gov_404_129",
+      "tradeName": "פזטוקס (חדש)",
+      "registrationNumber": "404",
+      "formulation": "אירוסול",
+      "activeIngredients": [
+        {
+          "name": "Piperonyl Butoxide",
+          "concentration": "1.000%"
+        },
+        {
+          "name": "phenothrin",
+          "concentration": "0.060%"
+        },
+        {
+          "name": "prallethrin (ISO)",
+          "concentration": "0.050%"
+        }
+      ],
+      "holder": "סנו מפעלי ברונוס בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "חרקים מעופפים אחרים",
+        "יתושים בוגרים"
+      ],
+      "validUntil": "2027-07-01",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_450.pdf"
+    },
+    {
+      "id": "gov_677_130",
+      "tradeName": "דורפליי נוזל לתברואה",
+      "registrationNumber": "677",
+      "formulation": "תרכיז נוזלי",
+      "activeIngredients": [
+        {
+          "name": "Dinotefuran",
+          "concentration": "12.000%"
+        }
+      ],
+      "holder": "דור.קי פיתוח ושיווק בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים"
+      ],
+      "validUntil": "2026-05-14",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_784.pdf"
+    },
+    {
+      "id": "gov_484_131",
+      "tradeName": "דלתא פורטה לתברואה",
+      "registrationNumber": "484",
+      "formulation": "תחליב שמן במים",
+      "activeIngredients": [
+        {
+          "name": "Pyriproxyfen",
+          "concentration": "1.000%"
+        },
+        {
+          "name": "deltamethrin (ISO)",
+          "concentration": "1.600%"
+        }
+      ],
+      "approvedPestNames": [
+        "נמלים",
+        "פרעושים",
+        "תיקנים"
+      ],
+      "validUntil": "2030-11-03",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_556.pdf"
+    },
+    {
+      "id": "gov_543_132",
+      "tradeName": "רקויאם",
+      "registrationNumber": "543",
+      "formulation": "אבקה מסיסה",
+      "activeIngredients": [
+        {
+          "name": "chlorfluazuron",
+          "concentration": "0.100%"
+        }
+      ],
+      "approvedPestNames": [
+        "טרמיטים"
+      ],
+      "validUntil": "2030-11-26",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_645.pdf"
+    },
+    {
+      "id": "gov_565_133",
+      "tradeName": "רייד נגד עש ג'ל - \"עץ ארז\"",
+      "registrationNumber": "565",
+      "formulation": "ג'ל",
+      "activeIngredients": [
+        {
+          "name": "transfluthrin (ISO)",
+          "concentration": "0.150%"
+        }
+      ],
+      "approvedPestNames": [
+        "עש"
+      ],
+      "validUntil": "2029-11-09",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_674.pdf"
+    },
+    {
+      "id": "gov_490_134",
+      "tradeName": "פלייקו 2 לתברואה",
+      "registrationNumber": "490",
+      "formulation": "תרכיז מתחלב",
+      "activeIngredients": [
+        {
+          "name": "D-limonene",
+          "concentration": "3.500%"
+        },
+        {
+          "name": "Permethrin",
+          "concentration": "20.000%"
+        },
+        {
+          "name": "Piperonyl Butoxide",
+          "concentration": "10.000%"
+        },
+        {
+          "name": "citronella oil",
+          "concentration": "3.500%"
+        }
+      ],
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "חרקים זוחלים אחרים",
+        "חרקים מעופפים אחרים",
+        "יתושים בוגרים",
+        "תיקנים"
+      ],
+      "validUntil": "2025-12-01",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_582.pdf"
+    },
+    {
+      "id": "gov_623_135",
+      "tradeName": "רייד נוזל",
+      "registrationNumber": "623",
+      "formulation": "נוזל",
+      "activeIngredients": [
+        {
+          "name": "prallethrin (ISO)",
+          "concentration": "1.200%"
+        }
+      ],
+      "approvedPestNames": [
+        "יתושים בוגרים"
+      ],
+      "validUntil": "2030-05-01",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_722.pdf"
+    },
+    {
+      "id": "gov_649_136",
+      "tradeName": "רייד נוזל בריח אקליפטוס",
+      "registrationNumber": "649",
+      "formulation": "נוזל",
+      "activeIngredients": [
+        {
+          "name": "prallethrin (ISO)",
+          "concentration": "1.200%"
+        }
+      ],
+      "approvedPestNames": [
+        "יתושים בוגרים"
+      ],
+      "validUntil": "2030-05-01",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_723.pdf"
+    },
+    {
+      "id": "gov_608_137",
+      "tradeName": "אקספרו 314",
+      "registrationNumber": "608",
+      "formulation": "תרכיז רחיף",
+      "activeIngredients": [
+        {
+          "name": "bifenthrin (ISO); (2-methylbiphenyl-3-yl)methyl rel-(1R,3R)-3-[(1Z)-2-chloro-3,3,3-trifluoroprop-1-en-1-yl]-2,2-dimethylcyclopropanecarboxylate",
+          "concentration": "9.600%"
+        }
+      ],
+      "holder": "א.ע יזמות ופרוייקטים",
+      "approvedPestNames": [
+        "חרקים זוחלים אחרים",
+        "נמלים",
+        "פישפשי מיטה",
+        "תיקנים"
+      ],
+      "validUntil": "2032-08-06"
+    },
+    {
+      "id": "gov_610_138",
+      "tradeName": "פיקס ג'ל",
+      "registrationNumber": "610",
+      "formulation": "פיתיון מוכן לשימוש ג'ל",
+      "activeIngredients": [
+        {
+          "name": "fipronil",
+          "concentration": "0.010%"
+        }
+      ],
+      "holder": "אר.פי.סי החברה להדברה",
+      "approvedPestNames": [
+        "נמלים",
+        "נמלת האש הקטנה"
+      ],
+      "validUntil": "2029-07-28"
+    },
+    {
+      "id": "gov_611_139",
+      "tradeName": "סופר ג'ל",
+      "registrationNumber": "611",
+      "formulation": "פיתיון מוכן לשימוש ג'ל",
+      "activeIngredients": [
+        {
+          "name": "fipronil",
+          "concentration": "0.050%"
+        }
+      ],
+      "holder": "אר.פי.סי החברה להדברה",
+      "approvedPestNames": [
+        "תיקנים"
+      ],
+      "validUntil": "2029-07-28"
+    },
+    {
+      "id": "gov_671_140",
+      "tradeName": "מארש",
+      "registrationNumber": "671",
+      "formulation": "נוזל",
+      "activeIngredients": [
+        {
+          "name": "emamectin benzoate",
+          "concentration": "1.920%"
+        }
+      ],
+      "holder": "אר.פי.סי החברה להדברה - נס הרים",
+      "approvedPestNames": [
+        "תהלוכן האורן"
+      ],
+      "validUntil": "2025-10-24",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_788.pdf"
+    },
+    {
+      "id": "gov_384_141",
+      "tradeName": "מדביר יתושים וזבובים",
+      "registrationNumber": "384",
+      "formulation": "אירוסול",
+      "activeIngredients": [
+        {
+          "name": "Bioallethrin",
+          "concentration": "0.150%"
+        },
+        {
+          "name": "Piperonyl Butoxide",
+          "concentration": "0.400%"
+        },
+        {
+          "name": "TETRAMETHRIN",
+          "concentration": "0.150%"
+        },
+        {
+          "name": "cypermethrin cis/trans +/- 40/60",
+          "concentration": "0.100%"
+        }
+      ],
+      "holder": "סאסאטק אגש\"ח בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "יתושים בוגרים"
+      ],
+      "validUntil": "2026-04-06",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_425.pdf"
+    },
+    {
+      "id": "gov_343_142",
+      "tradeName": "סנו K-2000",
+      "registrationNumber": "343",
+      "formulation": "תמיסה מוכנה לשימוש בתוארית מיקרוקפסולרית",
+      "activeIngredients": [
+        {
+          "name": "α-cyano-3-phenoxybenzyl 2,2-dimethyl-3-(2-methylprop-1-enyl)cyclopropanecarboxylate",
+          "concentration": "0.300%"
+        }
+      ],
+      "holder": "אלמנדה ישראל בע\"מ",
+      "approvedPestNames": [
+        "חרקים זוחלים אחרים",
+        "פרעושים",
+        "תיקנים"
+      ],
+      "validUntil": "2032-04-01"
+    },
+    {
+      "id": "gov_689_143",
+      "tradeName": "גאוטוקס",
+      "registrationNumber": "689",
+      "formulation": "אבקה",
+      "activeIngredients": [
+        {
+          "name": "2-(2-butoxyethoxy)ethyl 6-propylpiperonyl ether",
+          "concentration": "0.100%"
+        },
+        {
+          "name": "m-phenoxybenzyl 3-(2,2-dichlorovinyl)-2,2-dimethylcyclopropanecarboxylate",
+          "concentration": "0.600%"
+        }
+      ],
+      "holder": "אדמה פתרונות לחקלאות בע\"מ",
+      "approvedPestNames": [
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2029-09-14"
+    },
+    {
+      "id": "gov_653_144",
+      "tradeName": "אודם",
+      "registrationNumber": "653",
+      "formulation": "תרכיז רחיף",
+      "activeIngredients": [
+        {
+          "name": "bifenthrin (ISO); (2-methylbiphenyl-3-yl)methyl rel-(1R,3R)-3-[(1Z)-2-chloro-3,3,3-trifluoroprop-1-en-1-yl]-2,2-dimethylcyclopropanecarboxylate",
+          "concentration": "4.000%"
+        },
+        {
+          "name": "imidacloprid (ISO)",
+          "concentration": "5.000%"
+        }
+      ],
+      "holder": "חברת רימי כימיקלים בע\"מ - מחסן",
+      "approvedPestNames": [
+        "חרקים זוחלים אחרים",
+        "יתושים בוגרים",
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2030-03-21"
+    },
+    {
+      "id": "gov_552_145",
+      "tradeName": "אקואטיין AMF",
+      "registrationNumber": "552",
+      "formulation": "נוזל",
+      "activeIngredients": [
+        {
+          "name": "(חסר)",
+          "concentration": "87.500%"
+        }
+      ],
+      "holder": "לוכסמבורג תעשיות בע\"מ",
+      "approvedPestNames": [
+        "זחלי יתושים"
+      ],
+      "validUntil": "2028-08-17"
+    },
+    {
+      "id": "gov_496_146",
+      "tradeName": "סנו K-600 (חדש)",
+      "registrationNumber": "496",
+      "formulation": "אירוסול",
+      "activeIngredients": [
+        {
+          "name": "MGK 264",
+          "concentration": "1.000%"
+        },
+        {
+          "name": "Piperonyl Butoxide",
+          "concentration": "1.000%"
+        },
+        {
+          "name": "TETRAMETHRIN",
+          "concentration": "0.300%"
+        },
+        {
+          "name": "esbiothrin",
+          "concentration": "0.080%"
+        },
+        {
+          "name": "phenothrin",
+          "concentration": "0.150%"
+        }
+      ],
+      "holder": "סנו מפעלי ברונוס בע\"מ",
+      "approvedPestNames": [
+        "זבובים בוגרים",
+        "יתושים בוגרים",
+        "מזיקי בד אחרים",
+        "עש"
+      ],
+      "validUntil": "2028-01-01"
+    },
+    {
+      "id": "gov_536_147",
+      "tradeName": "קילר",
+      "registrationNumber": "536",
+      "formulation": "תרכיז רחיף",
+      "activeIngredients": [
+        {
+          "name": "bifenthrin (ISO); (2-methylbiphenyl-3-yl)methyl rel-(1R,3R)-3-[(1Z)-2-chloro-3,3,3-trifluoroprop-1-en-1-yl]-2,2-dimethylcyclopropanecarboxylate",
+          "concentration": "0.050%"
+        }
+      ],
+      "holder": "חברת רימי כימיקלים בע\"מ",
+      "approvedPestNames": [
+        "חרקים זוחלים אחרים",
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2027-12-31",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_647.pdf"
+    },
+    {
+      "id": "gov_635_148",
+      "tradeName": "K3 תחנת פתיון",
+      "registrationNumber": "635",
+      "formulation": "פתיון מוכן לשימוש בקופסת האכלה",
+      "activeIngredients": [
+        {
+          "name": "fipronil",
+          "concentration": "0.050%"
+        }
+      ],
+      "holder": "סנו מפעלי ברונוס בע\"מ",
+      "approvedPestNames": [
+        "תיקנים"
+      ],
+      "validUntil": "2028-01-24",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_756.pdf"
+    },
+    {
+      "id": "gov_603_149",
+      "tradeName": "פרפקט פרו 500",
+      "registrationNumber": "603",
+      "formulation": "אירוסול",
+      "activeIngredients": [
+        {
+          "name": "Bioallethrin",
+          "concentration": "0.200%"
+        },
+        {
+          "name": "Piperonyl Butoxide",
+          "concentration": "0.800%"
+        },
+        {
+          "name": "deltamethrin (ISO)",
+          "concentration": "0.015%"
+        }
+      ],
+      "holder": "סאסאטק אגש\"ח בע\"מ",
+      "approvedPestNames": [
+        "חרקים זוחלים אחרים",
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2030-01-29",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_733.pdf"
+    },
+    {
+      "id": "gov_591_150",
+      "tradeName": "טרמינטור",
+      "registrationNumber": "591",
+      "formulation": "לא הוזן",
+      "activeIngredients": [
+        {
+          "name": "imidacloprid (ISO)",
+          "concentration": "35.000%"
+        }
+      ],
+      "holder": "תפזול תעשיות כימיות בע\"מ",
+      "approvedPestNames": [
+        "טרמיטים"
+      ],
+      "validUntil": "2031-07-09"
+    },
+    {
+      "id": "gov_659_151",
+      "tradeName": "דוקסם PDS",
+      "registrationNumber": "659",
+      "formulation": "לא הוזן",
+      "activeIngredients": [
+        {
+          "name": "indoxacarb (ISO); methyl (4aS)-7-chloro-2-{(methoxycarbonyl)[4-(trifluoromethoxy)phenyl]carbamoyl}-2,5-dihydroindeno[1,2-e][1,3,4]oxadiazine-4a(3H)-carboxylate",
+          "concentration": "0.788%"
+        }
+      ],
+      "holder": "אדמה פתרונות לחקלאות בע\"מ-ארומה",
+      "approvedPestNames": [
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2031-08-31"
+    },
+    {
+      "id": "gov_572_152",
+      "tradeName": "דורסיד אבקה",
+      "registrationNumber": "572",
+      "formulation": "אבקה",
+      "activeIngredients": [
+        {
+          "name": "Cypermethrin cis/trans ± 80/20",
+          "concentration": "0.600%"
+        }
+      ],
+      "holder": "אר.פי.סי החברה להדברה - נס הרים",
+      "approvedPestNames": [
+        "נמלים",
+        "תיקנים"
+      ],
+      "validUntil": "2032-09-22"
+    },
+    {
+      "id": "gov_409_153",
+      "tradeName": "סנו - שמפו שטיחים פלוס -דוחה קרדית אבק הבית",
+      "registrationNumber": "409",
+      "formulation": "אירוסול",
+      "activeIngredients": [
+        {
+          "name": "(חסר)",
+          "concentration": "1.700%"
+        }
+      ],
+      "holder": "סנו מפעלי ברונוס בע\"מ",
+      "approvedPestNames": [
+        "קרדית אבק הבית"
+      ],
+      "validUntil": "2032-10-04"
+    },
+    {
+      "id": "gov_590_154",
+      "tradeName": "מגנה – פוס",
+      "registrationNumber": "590",
+      "formulation": "לא הוזן",
+      "activeIngredients": [
+        {
+          "name": "magnesium phosphide",
+          "concentration": "66.700%"
+        }
+      ],
+      "holder": "נורון חברה לייבוא ולייצור בע\"מ",
+      "approvedPestNames": [
+        "מזיקי מזון"
+      ],
+      "validUntil": "2027-10-27"
+    },
+    {
+      "id": "gov_447_155",
+      "tradeName": "קוויק פוס אבקה",
+      "registrationNumber": "447",
+      "formulation": "אבקה",
+      "activeIngredients": [
+        {
+          "name": "aluminium phosphide",
+          "concentration": "67.860%"
+        }
+      ],
+      "holder": "נורון חברה לייבוא ולייצור בע\"מ",
+      "approvedPestNames": [
+        "מזיקי בד אחרים",
+        "מזיקי מזון",
+        "עש"
+      ],
+      "validUntil": "2027-11-27"
+    },
+    {
+      "id": "gov_581_156",
+      "tradeName": "באג",
+      "registrationNumber": "581",
+      "formulation": "תרחיף נוזלי",
+      "activeIngredients": [
+        {
+          "name": "bifenthrin (ISO); (2-methylbiphenyl-3-yl)methyl rel-(1R,3R)-3-[(1Z)-2-chloro-3,3,3-trifluoroprop-1-en-1-yl]-2,2-dimethylcyclopropanecarboxylate",
+          "concentration": "4.000%"
+        },
+        {
+          "name": "imidacloprid (ISO)",
+          "concentration": "5.000%"
+        }
+      ],
+      "approvedPestNames": [
+        "יתושים בוגרים"
+      ],
+      "validUntil": "2031-05-20",
+      "labelUrl": "http://documents.sviva.gov.il/PesticideLabel_698.pdf"
+    }
+  ]
 }

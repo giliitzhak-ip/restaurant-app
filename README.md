@@ -191,15 +191,22 @@ npm run mobile:open:ios
 
 המקור הרשמי: <https://www.gov.il/he/Departments/DynamicCollectors/pesticides-database>
 
-### איך מייבאים
+מאגר הנתונים הפתוח: <https://data.gov.il/he/datasets/ministry_of_the_environment/domestic_pesticides>
 
-1. פותחים את עמוד המאגר ומורידים את הרשימה (CSV או JSON).
+**המאגר כבר מיובא: 157 תכשירים**, נכון ל-07/10/2026.
+
+### איך מעדכנים
+
+1. מורידים את הרשימה מהמאגר (XLSX, CSV או JSON).
 2. מריצים:
 
 ```bash
-npm run import:pesticides -- --file ~/Downloads/pesticides.csv
+npm run import:pesticides -- --file ~/Downloads/pesticides.xlsx
 npm run build
 ```
+
+נתמכים XLSX, CSV ו-JSON. קריאת ה-XLSX מיושמת ללא תלויות חיצוניות.
+שורות כותרת ומקור שלפני הטבלה מזוהות ומדולגות אוטומטית.
 
 הסקריפט מזהה את העמודות לפי מילות מפתח, בעברית ובתעתיק לטיני, ולכן אינו
 תלוי בשם עמודה מדויק. אם המבנה השתנה:
@@ -228,6 +235,8 @@ npm run import:pesticides -- --file <קובץ> \
 | תוארית | הוראות ללקוח |
 | מזיקים מאושרים | זמן כניסה מחדש |
 | תוקף רישום | |
+| בעל הרישום | |
+| קישור לתווית | |
 
 לכן **כל תכשיר מיובא מסומן "מידע יושלם בהמשך"**. אין בכך כדי לחסום עבודה:
 אפשר לבחור אותו, לתעד ולשמור — אך המינונים והאזהרות חייבים להיות מושלמים

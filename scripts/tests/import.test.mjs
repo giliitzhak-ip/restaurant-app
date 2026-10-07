@@ -10,6 +10,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { parseCsv } from '../lib/csv.mjs';
+import { parseActiveIngredients } from '../lib/ingredients.mjs';
 import { detectColumns, findRecords, flattenRecord } from '../lib/fields.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -23,6 +24,20 @@ const check = (name, ok, detail = '') => {
   if (ok) { pass += 1; console.log(`PASS · ${name}`); }
   else { fail += 1; console.log(`FAIL · ${name}${detail ? ` · ${detail}` : ''}`); }
 };
+
+/* ───────── פענוח חומר פעיל: אותה טבלת מקרים כמו באפליקציה ───────── */
+
+const cases = JSON.parse(fs.readFileSync(path.join(FIXTURES, 'ingredient-cases.json'), 'utf8'));
+let mismatches = 0;
+for (const c of cases) {
+  const actual = parseActiveIngredients(c.input, c.hint);
+  if (JSON.stringify(actual) !== JSON.stringify(c.expect)) {
+    mismatches += 1;
+    console.log(`   ✗ ${c.why}: קיבלתי ${JSON.stringify(actual)}`);
+  }
+}
+check(`פענוח חומר פעיל זהה לאפליקציה (${cases.length} מקרים)`, mismatches === 0,
+  mismatches ? `${mismatches} הבדלים` : '');
 
 /* ───────── פענוח CSV ───────── */
 
