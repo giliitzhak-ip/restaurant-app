@@ -18,6 +18,7 @@ import { newId } from '../lib/id';
 import { isoNow } from '../lib/format';
 import { buildJournalSnapshot, fullJournalFromState } from '../lib/snapshot';
 import { isJournalLocked } from '../lib/journalLock';
+import { buildBackup, mergeBackup, type BackupFile, type ImportPlan } from '../lib/backup';
 import { blockingIssues, validateJournal } from '../lib/validation';
 
 const STATE_KEY = 'app-state-v1';
@@ -102,6 +103,12 @@ interface StoreValue {
   removeRouteStop: (id: ID) => void;
   createTask: (draft: Omit<Task, 'id' | 'createdAt'>) => Task;
   updateTask: (id: ID, patch: Partial<Task>) => void;
+
+  /* גיבוי */
+  /** מייצר קובץ גיבוי של נתוני המכשיר. */
+  exportBackup: () => BackupFile;
+  /** ממזג גיבוי בלי לדרוס תיעוד קיים. מחזיר מה נוסף ומה דולג. */
+  importBackup: (file: BackupFile) => ImportPlan;
 
   /* עזר */
   getFullJournal: (id: ID) => FullJournal | null;
@@ -927,6 +934,21 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
     setState((s) => ({ ...s, tasks: s.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)) }));
   }, []);
 
+  const exportBackup = useCallback<StoreValue['exportBackup']>(
+    () => buildBackup(state),
+    [state],
+  );
+
+  /**
+   * ייבוא גיבוי. אינו דורס רשומה שקיימת במכשיר, ולכן אינו יכול
+   * למחוק תיעוד. התוצאה מוצגת למשתמש כמספרים, ולא כ"הצליח".
+   */
+  const importBackup = useCallback<StoreValue['importBackup']>((file) => {
+    const { plan, state: merged } = mergeBackup(stateRef.current ?? state, file);
+    if (plan.total > 0) setState(merged);
+    return plan;
+  }, [state]);
+
   const getJournalSnapshot = useCallback<StoreValue['getJournalSnapshot']>(
     (id) => state.journalSnapshots.find((sn) => sn.journalId === id),
     [state.journalSnapshots],
@@ -967,7 +989,8 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
       saveCustomerTemplate, updateTreatmentTemplate, duplicateTreatmentTemplate,
       archiveTreatmentTemplate, archiveCustomerTemplate,
       createRoute, addRouteStop, updateRouteStop, moveRouteStop, reorderRouteStops, removeRouteStop,
-      createTask, updateTask, getFullJournal, getJournalSnapshot, isLocked, labelFor, resetAll,
+      createTask, updateTask, exportBackup, importBackup,
+      getFullJournal, getJournalSnapshot, isLocked, labelFor, resetAll,
     }),
     [
       state, saveState, saveErrors, retrySave, pendingSync, online, ready,
@@ -982,7 +1005,8 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
       saveCustomerTemplate, updateTreatmentTemplate, duplicateTreatmentTemplate,
       archiveTreatmentTemplate, archiveCustomerTemplate,
       createRoute, addRouteStop, updateRouteStop, moveRouteStop, reorderRouteStops, removeRouteStop,
-      createTask, updateTask, getFullJournal, getJournalSnapshot, isLocked, labelFor, resetAll,
+      createTask, updateTask, exportBackup, importBackup,
+      getFullJournal, getJournalSnapshot, isLocked, labelFor, resetAll,
     ],
   );
 

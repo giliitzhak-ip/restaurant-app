@@ -237,9 +237,12 @@ async function handleSync(req, res, session) {
   }
 
   const existingRow = selectDoc.get(entity, entityId);
-  // מסמך של עסק אחר לעולם אינו נכתב מחדש על ידי עסק אחר
+  /* מסמך של עסק אחר לעולם אינו נכתב מחדש על ידי עסק אחר.
+     התשובה היא 409 ולא 403 בכוונה: 403 אומר ללקוח "אין לך גישה
+     בכלל" והתור ממתין, ואילו כאן הבעיה היא ברשומה אחת. 409 מוציא
+     אותה מהתור אל רשימת הדחיות, ושאר הסנכרון ממשיך. */
   if (existingRow && existingRow.org_id && existingRow.org_id !== session.user.org_id) {
-    return json(res, 403, { ok: false, errors: ['הרשומה שייכת לעסק אחר.'] });
+    return json(res, 409, { ok: false, errors: ['הרשומה שייכת לעסק אחר.'] });
   }
   const existing = existingRow ? JSON.parse(existingRow.payload) : null;
   const now = new Date().toISOString();

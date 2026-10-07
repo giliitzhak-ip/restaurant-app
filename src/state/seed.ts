@@ -2,6 +2,7 @@ import type { AppState } from '../types';
 import { MATERIALS, MATERIAL_LABELS, SYSTEM_TEMPLATES } from '../data/materials';
 import { CATALOG_LABELS, CATALOG_MATERIALS } from '../data/pesticideCatalog';
 import { isoNow } from '../lib/format';
+import { newId } from '../lib/id';
 
 /**
  * החומרים שהוזנו ידנית גוברים על המאגר המיובא: אם אותו מספר רישום
@@ -21,12 +22,20 @@ function mergedLabels() {
   return [...MATERIAL_LABELS, ...CATALOG_LABELS.filter((l) => keep.has(l.id))];
 }
 
+/**
+ * מזהי ההתחלה נוצרים אקראית ולא כקבועים.
+ *
+ * מזהה קבוע כמו 'ext_yizhak' היה זהה בכל התקנה, ולכן העסק הראשון
+ * שסינכרן אותו היה "תופס" אותו בשרת, וכל עסק אחר היה מקבל דחייה
+ * על אותה רשומה בדיוק.
+ */
 export function seedState(): AppState {
-  const userId = 'usr_yizhak';
+  const userId = newId('usr');
+  const exterminatorId = newId('ext');
   return {
     users: [{ id: userId, name: 'יצחק', role: 'admin', phone: '' }],
     exterminators: [
-      { id: 'ext_yizhak', userId, name: 'יצחק', licenseNumber: '', phone: '' },
+      { id: exterminatorId, userId, name: 'יצחק', licenseNumber: '', phone: '' },
     ],
     customers: [],
     sites: [],
@@ -47,7 +56,7 @@ export function seedState(): AppState {
     journalSnapshots: [],
     auditLog: [
       {
-        id: 'aud_seed',
+        id: newId('aud'),
         entity: 'system',
         entityId: 'system',
         action: 'create',

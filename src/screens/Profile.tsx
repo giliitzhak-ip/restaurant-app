@@ -1,5 +1,6 @@
 import { useStore } from '../state/store';
 import { Card, Field, Notice, Tag } from '../components/ui';
+import { BackupCard } from '../components/BackupCard';
 import { formatDateTime } from '../lib/format';
 import { STANDALONE } from '../lib/config';
 import type { Role } from '../types';
@@ -78,6 +79,8 @@ export function ProfileScreen() {
           </>
         )}
       </Card>
+
+      <BackupCard />
 
       <Card>
         <div className="card-title"><h3>לוג שינויים אחרון</h3></div>
