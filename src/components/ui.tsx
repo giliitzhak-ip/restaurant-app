@@ -94,16 +94,31 @@ export function Dialog({
   const ref = useRef<HTMLDivElement>(null);
   const titleId = useId();
 
+  /**
+   * onClose מגיע כפונקציה חדשה בכל רינדור של ההורה.
+   * שמירתו ב-ref מונעת מה-effects לרוץ מחדש בכל הקשה — אחרת הפוקוס היה
+   * קופץ בחזרה לאלמנט הראשון אחרי כל תו, ורווח היה מפעיל את כפתור הסגירה.
+   */
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCloseRef.current(); };
     document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
+
+  /* מיקוד ראשוני רק בעת הפתיחה, ולא בכל רינדור. */
+  useEffect(() => {
+    if (!open) return;
     const first = ref.current?.querySelector<HTMLElement>(
-      'button, input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      'input, select, textarea, [tabindex]:not([tabindex="-1"])',
     );
     first?.focus();
-    return () => document.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
   return (
