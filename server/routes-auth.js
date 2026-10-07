@@ -42,7 +42,34 @@ export function createAuthRoutes(db) {
       SET status = ?, plan = ?, paid_until = ?, notes = ?, decided_at = ?, decided_by = ? WHERE id = ?`),
     countUsers: db.prepare('SELECT COUNT(*) AS n FROM app_users WHERE org_id = ?'),
     countDocs: db.prepare('SELECT COUNT(*) AS n FROM sync_documents WHERE org_id = ? AND entity = ?'),
+
+    /* הזמנות וקביעת סיסמה */
+    insertInvite: db.prepare(`INSERT INTO invites
+      (token_hash, user_id, org_id, kind, created_by, created_at, expires_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)`),
+    inviteByHash: db.prepare('SELECT * FROM invites WHERE token_hash = ?'),
+    useInvite: db.prepare('UPDATE invites SET used_at = ? WHERE token_hash = ?'),
+    dropUserInvites: db.prepare('DELETE FROM invites WHERE user_id = ? AND used_at IS NULL'),
+    setPassword: db.prepare(
+      'UPDATE app_users SET password_hash = ?, password_salt = ?, status = ? WHERE id = ?',
+    ),
   };
+
+  const INVITE_DAYS = 7;
+
+  /** יוצר אסימון חד-פעמי לקביעת סיסמה, ומחזיר אותו פעם אחת בלבד. */
+  function issueInvite(targetUser, kind, createdBy) {
+    q.dropUserInvites.run(targetUser.id);   // הזמנה חדשה מבטלת קודמות
+    const token = newToken();
+    const now = new Date();
+    const expires = new Date(now);
+    expires.setDate(expires.getDate() + INVITE_DAYS);
+    q.insertInvite.run(
+      hashToken(token), targetUser.id, targetUser.org_id, kind,
+      createdBy, now.toISOString(), expires.toISOString(),
+    );
+    return { token, expiresAt: expires.toISOString() };
+  }
 
   /** המשתמש המחובר לפי כותרת Authorization, או null. */
   function currentUser(req) {
@@ -197,10 +224,16 @@ export function createAuthRoutes(db) {
 
   /* ───────── ניהול עובדים בתוך עסק ───────── */
 
-  function createEmployee(session, body) {
+  /**
+   * הזמנת עובד – בלי סיסמה בטקסט גלוי.
+   *
+   * נוצר משתמש מושבת ללא סיסמה שמישהו יודע, ואיתו אסימון חד-פעמי.
+   * העובד קובע את הסיסמה שלו בעצמו, ובעל העסק אינו יודע אותה.
+   */
+  function inviteEmployee(session, body) {
     const { user } = session;
     if (user.role !== 'owner' || !user.org_id) {
-      return { status: 403, body: { ok: false, errors: ['רק בעל העסק רשאי להוסיף עובדים.'] } };
+      return { status: 403, body: { ok: false, errors: ['רק בעל העסק רשאי להזמין עובדים.'] } };
     }
     const access = organizationAccess(session.org);
     if (access.level !== ACCESS.FULL) {
@@ -210,26 +243,115 @@ export function createAuthRoutes(db) {
     const email = normalizeEmail(body.email);
     const name = String(body.name ?? '').trim();
     const role = String(body.role ?? 'exterminator');
-    const password = String(body.password ?? '');
 
     const errors = [];
     if (name.length < 2) errors.push('יש להזין שם עובד.');
     if (!isValidEmail(email)) errors.push('כתובת הדוא״ל אינה תקינה.');
     if (!ORG_ROLES.has(role) || role === 'owner') errors.push('תפקיד לא חוקי.');
-    errors.push(...passwordProblems(password));
     if (errors.length) return { status: 422, body: { ok: false, errors } };
 
     if (q.userByEmail.get(email)) {
       return { status: 409, body: { ok: false, errors: ['לא ניתן להוסיף משתמש עם כתובת דוא״ל זו.'] } };
     }
 
-    const { hash, salt } = hashPassword(password);
+    /* סיסמה אקראית שאינה מוחזרת לאיש: היא קיימת רק כדי שלא תהיה
+       רשומה ללא גיבוב, ואין דרך להתחבר איתה. */
+    const { hash, salt } = hashPassword(newToken());
     const id = `usr_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`;
     q.insertUser.run(
       id, user.org_id, String(body.email ?? '').trim(), email, hash, salt, name, role, 0,
       String(body.licenseNumber ?? '').trim(), new Date().toISOString(),
     );
-    return { status: 201, body: { ok: true, user: publicUser(q.userById.get(id)) } };
+    q.setUserStatus.run('disabled', role, id, user.org_id);   // מושבת עד קביעת סיסמה
+
+    const invite = issueInvite(q.userById.get(id), 'invite', user.id);
+    return {
+      status: 201,
+      body: {
+        ok: true,
+        user: publicUser(q.userById.get(id)),
+        token: invite.token,
+        path: `#/invite/${invite.token}`,
+        expiresAt: invite.expiresAt,
+      },
+    };
+  }
+
+  /**
+   * איפוס סיסמה לעובד. בעל העסק מייצר קישור חד-פעמי ומעביר אותו
+   * לעובד; הוא אינו רואה ואינו קובע את הסיסמה החדשה.
+   */
+  function resetEmployeePassword(session, targetId) {
+    const { user } = session;
+    if (user.role !== 'owner' || !user.org_id) {
+      return { status: 403, body: { ok: false, errors: ['רק בעל העסק רשאי לאפס סיסמה.'] } };
+    }
+    const target = q.userById.get(targetId);
+    if (!target || target.org_id !== user.org_id) {
+      return { status: 404, body: { ok: false, errors: ['העובד לא נמצא.'] } };
+    }
+    if (target.id === user.id) {
+      return {
+        status: 422,
+        body: { ok: false, errors: ['לאיפוס הסיסמה שלך יש לפנות למנהל המערכת.'] },
+      };
+    }
+    /* כל הסשנים של העובד נסגרים: אם מישהו יודע את הסיסמה הקודמת,
+       הגישה שלו נפסקת מיד ולא רק אחרי שהעובד יקבע סיסמה חדשה. */
+    q.deleteUserSessions.run(target.id);
+    const invite = issueInvite(target, 'reset', user.id);
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        path: `#/invite/${invite.token}`,
+        token: invite.token,
+        expiresAt: invite.expiresAt,
+      },
+    };
+  }
+
+  /** GET – פרטי הזמנה, בלי התחברות. תשובה אחידה לכל כשל. */
+  function readInvite(token) {
+    const notFound = {
+      status: 404,
+      body: { ok: false, errors: ['הקישור אינו פעיל. ייתכן שפג תוקפו או שכבר נעשה בו שימוש.'] },
+    };
+    const row = q.inviteByHash.get(hashToken(String(token ?? '')));
+    if (!row || row.used_at) return notFound;
+    if (new Date(row.expires_at).getTime() < Date.now()) return notFound;
+    const target = q.userById.get(row.user_id);
+    if (!target) return notFound;
+    const org = target.org_id ? q.orgById.get(target.org_id) : null;
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        kind: row.kind,
+        name: target.name,
+        email: target.email,
+        organizationName: org?.name ?? '',
+      },
+    };
+  }
+
+  /** POST – קביעת הסיסמה על ידי העובד עצמו, והתחברות מיד אחריה. */
+  function acceptInvite(token, body) {
+    const read = readInvite(token);
+    if (read.status !== 200) return read;
+
+    const password = String(body.password ?? '');
+    const problems = passwordProblems(password);
+    if (problems.length) return { status: 422, body: { ok: false, errors: problems } };
+
+    const row = q.inviteByHash.get(hashToken(String(token ?? '')));
+    const target = q.userById.get(row.user_id);
+    const { hash, salt } = hashPassword(password);
+    q.setPassword.run(hash, salt, 'active', target.id);
+    q.useInvite.run(new Date().toISOString(), row.token_hash);
+    q.clearAttempts.run(target.email_normalized);
+
+    return login({ email: target.email_normalized, password });
   }
 
   function listEmployees(session) {
@@ -335,7 +457,8 @@ export function createAuthRoutes(db) {
 
   return {
     currentUser, register, login, logout, me,
-    createEmployee, listEmployees, updateEmployee,
+    inviteEmployee, resetEmployeePassword, readInvite, acceptInvite,
+    listEmployees, updateEmployee,
     listOrganizations, decideOrganization,
     publicUser, publicOrg,
   };

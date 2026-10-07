@@ -94,13 +94,13 @@ check('שדה רגיל באשף קולט הקלדה רציפה',
   (await page.getByLabel('הערות מקצועיות').inputValue()) === 'נמצאה פעילות במטבח',
   await page.getByLabel('הערות מקצועיות').inputValue());
 
-/* ───── דיאלוג עובד חדש ───── */
+/* ───── דיאלוג הזמנת עובד ───── */
 await page.goto(`${BASE}/#/team`, { waitUntil: 'networkidle' });
 await page.waitForTimeout(800);
-await page.getByRole('button', { name: '+ הוספת עובד' }).click();
+await page.getByRole('button', { name: '+ הזמנת עובד' }).click();
 await page.waitForTimeout(400);
 await typeSlowly(page.getByLabel('שם העובד'), 'דנה לוי');
-check('דיאלוג עובד חדש קולט הקלדה רציפה',
+check('דיאלוג הזמנת עובד קולט הקלדה רציפה',
   (await page.getByLabel('שם העובד').inputValue()) === 'דנה לוי',
   await page.getByLabel('שם העובד').inputValue());
 

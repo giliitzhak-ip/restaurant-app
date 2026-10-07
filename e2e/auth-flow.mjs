@@ -188,16 +188,12 @@ const newEmail = `biz${Date.now()}@dev.local`;
   page.on('pageerror', (e) => errs.push(e.message));
   await page.goto(`${BASE}/#/team`, { waitUntil: 'networkidle' });
   await page.waitForTimeout(900);
-  check('בעל העסק רואה כפתור הוספה', await page.getByRole('button', { name: '+ הוספת עובד' }).isVisible());
-  await page.getByRole('button', { name: '+ הוספת עובד' }).click();
+  /* זרימת ההזמנה המלאה נבדקת ב-e2e/invite.mjs. כאן רק שהכפתור
+     של בעל העסק קיים, ושאין בשום מקום שדה סיסמה לעובד. */
+  check('בעל העסק רואה כפתור הזמנה', await page.getByRole('button', { name: '+ הזמנת עובד' }).isVisible());
+  await page.getByRole('button', { name: '+ הזמנת עובד' }).click();
   await page.waitForTimeout(400);
-  const email = `emp${Date.now()}@dev.local`;
-  await page.getByLabel('שם העובד').fill('מדביר נוסף');
-  await page.getByLabel('דוא״ל').fill(email);
-  await page.getByLabel('סיסמה ראשונית').fill('Employee123');
-  await page.getByRole('button', { name: 'הוספה' }).click();
-  await page.waitForTimeout(1200);
-  check('העובד נוסף לרשימה', await page.getByText('מדביר נוסף').first().isVisible());
+  check('אין שדה סיסמה בהזמנת עובד', (await page.getByLabel(/סיסמה/).count()) === 0);
   await ctx.close();
 }
 

@@ -52,6 +52,23 @@ CREATE TABLE IF NOT EXISTS login_attempts (
   locked_until TEXT
 );
 
+/* הזמנות וקביעת סיסמה.
+   אין סיסמה בטקסט גלוי בשום שלב: בעל העסק יוצר הזמנה, העובד
+   קובע את הסיסמה שלו בעצמו, ובעל העסק אינו יודע אותה.
+   נשמר גיבוב האסימון בלבד, יש תוקף, והשימוש חד-פעמי. */
+CREATE TABLE IF NOT EXISTS invites (
+  token_hash TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES app_users(id),
+  org_id TEXT REFERENCES organizations(id),
+  kind TEXT NOT NULL,                  -- 'invite' | 'reset'
+  created_by TEXT REFERENCES app_users(id),
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  used_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_invites_user ON invites(user_id);
+
 /* קישורי מסמך ללקוח.
    נשמר גיבוב בלבד, כמו באסימוני התחברות: מי שמשיג גישה למסד
    אינו מקבל קישורים פעילים. לכל קישור תוקף, והוא ניתן לביטול. */

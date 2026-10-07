@@ -83,7 +83,7 @@ export function CustomerLink({ journalId, enabled }: { journalId: string; enable
 
       {url && (
         <Notice kind="info" title="הקישור נוצר">
-          <div className="small wrap-anywhere">{url}</div>
+          <div className="small wrap-anywhere doc-link">{url}</div>
           <div className="small muted mt-2">
             פעיל עד {expires ? new Date(expires).toLocaleDateString('he-IL') : ''}.
             הקישור מציג את המסמך הסופי בלבד, ואינו נותן גישה לשאר היומנים.

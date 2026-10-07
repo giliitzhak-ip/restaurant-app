@@ -175,7 +175,7 @@ await page.goto(`${BASE}/#/journal/${journalId}/8`, { waitUntil: 'networkidle' }
 await page.waitForTimeout(700);
 await page.getByRole('button', { name: 'קישור מוגן ללקוח' }).click();
 await page.waitForTimeout(1200);
-const linkText = (await page.locator('.wrap-anywhere').first().textContent() ?? '').trim();
+const linkText = (await page.locator('.doc-link').first().textContent() ?? '').trim();
 check('ג: נוצר קישור ללקוח', linkText.includes('#/shared/'), linkText.slice(0, 60));
 
 const guest = await browser.newContext({ ...devices['iPhone 12'], locale: 'he-IL' });

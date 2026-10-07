@@ -369,6 +369,18 @@ const server = http.createServer((req, res) => {
       return send(docLinks.read(token));
     }
 
+    /* הזמנה או איפוס סיסמה: העובד קובע סיסמה לפני שיש לו גישה,
+       ולכן אין כאן התחברות. ההגנה היא באסימון חד-פעמי עם תוקף. */
+    if (url.pathname.startsWith('/api/auth/invite/')) {
+      const token = decodeURIComponent(url.pathname.slice('/api/auth/invite/'.length));
+      if (req.method === 'GET') return send(auth.readInvite(token));
+      if (req.method === 'POST') {
+        return readBody(req)
+          .then((body) => send(auth.acceptInvite(token, body)))
+          .catch((err) => json(res, 400, { ok: false, errors: [err.message] }));
+      }
+    }
+
     if (url.pathname === '/api/auth/register' && req.method === 'POST') {
       return readBody(req)
         .then((body) => send(auth.register(body)))
@@ -400,10 +412,18 @@ const server = http.createServer((req, res) => {
       return send(auth.listEmployees(session));
     }
 
-    if (url.pathname === '/api/auth/users' && req.method === 'POST') {
+    if (url.pathname === '/api/auth/users/invite' && req.method === 'POST') {
       return readBody(req)
-        .then((body) => send(auth.createEmployee(session, body)))
+        .then((body) => send(auth.inviteEmployee(session, body)))
         .catch((err) => json(res, 400, { ok: false, errors: [err.message] }));
+    }
+
+    if (url.pathname.endsWith('/reset-password') && req.method === 'POST'
+        && url.pathname.startsWith('/api/auth/users/')) {
+      const targetId = decodeURIComponent(
+        url.pathname.slice('/api/auth/users/'.length, -'/reset-password'.length),
+      );
+      return send(auth.resetEmployeePassword(session, targetId));
     }
 
     if (url.pathname.startsWith('/api/auth/users/') && req.method === 'PATCH') {

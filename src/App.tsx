@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { matchRoute, navigate, useRoute } from './router';
+import { STANDALONE } from './lib/config';
 import { useStore } from './state/store';
 import { BottomNav, DesktopNav } from './components/Nav';
 import { SaveStatus } from './components/SaveStatus';
@@ -103,6 +104,15 @@ export function App() {
 
   return (
     <div className="app-shell" dir="rtl" lang="he">
+      {/* מצב הדגמה מוצהר בכל מסך ולא רק בפרופיל: בבנייה ללא שרת
+          אין התחברות, אין סנכרון ואין גיבוי מחוץ למכשיר, וחשוב
+          שלא ייראה כמו מצב עסק אמיתי. */}
+      {STANDALONE && (
+        <div className="demo-banner no-print" role="status">
+          גרסת הדגמה · ללא שרת, ללא התחברות וללא סנכרון · הנתונים במכשיר הזה בלבד
+        </div>
+      )}
+
       {!isDoc && (
         <header className="topbar no-print">
           <div className="topbar-inner">

@@ -21,7 +21,12 @@ export function TeamScreen() {
   const [errors, setErrors] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [draft, setDraft] = useState({ name: '', email: '', role: 'exterminator' as UserRole, password: '', licenseNumber: '' });
+  const [draft, setDraft] = useState({
+    name: '', email: '', role: 'exterminator' as UserRole, licenseNumber: '',
+  });
+  /** קישור חד-פעמי שנוצר כרגע. מוצג פעם אחת, ואינו נשמר באפליקציה. */
+  const [link, setLink] = useState<{ url: string; expiresAt: string; kind: 'invite' | 'reset'; who: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const isOwner = user?.role === 'owner';
 
@@ -44,17 +49,42 @@ export function TeamScreen() {
     void load();
   }, [load]);
 
-  async function create(): Promise<void> {
+  const linkUrl = (path: string) =>
+    `${window.location.origin}${window.location.pathname}${path}`;
+
+  /**
+   * הזמנת עובד. בעל העסק אינו קובע ואינו רואה סיסמה: נוצר קישור
+   * חד-פעמי שהעובד פותח וקובע בו את הסיסמה שלו.
+   */
+  async function invite(): Promise<void> {
     if (busy) return;
     setBusy(true);
     setErrors([]);
     try {
-      await authApi.createEmployee(draft);
-      setDraft({ name: '', email: '', role: 'exterminator', password: '', licenseNumber: '' });
+      const res = await authApi.inviteEmployee(draft);
+      setLink({
+        url: linkUrl(res.path), expiresAt: res.expiresAt, kind: 'invite', who: draft.name,
+      });
+      setDraft({ name: '', email: '', role: 'exterminator', licenseNumber: '' });
       setOpen(false);
       await load();
     } catch (err) {
-      setErrors(err instanceof ApiError ? err.errors : ['הוספת העובד נכשלה.']);
+      setErrors(err instanceof ApiError ? err.errors : ['ההזמנה נכשלה.']);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resetPassword(id: string, who: string): Promise<void> {
+    if (busy) return;
+    setBusy(true);
+    setErrors([]);
+    try {
+      const res = await authApi.resetEmployeePassword(id);
+      setLink({ url: linkUrl(res.path), expiresAt: res.expiresAt, kind: 'reset', who });
+      await load();
+    } catch (err) {
+      setErrors(err instanceof ApiError ? err.errors : ['איפוס הסיסמה נכשל.']);
     } finally {
       setBusy(false);
     }
@@ -98,8 +128,40 @@ export function TeamScreen() {
         {isOwner && (
           <button type="button" className="btn btn-primary" disabled={access.level !== 'full'}
             onClick={() => setOpen(true)}>
-            + הוספת עובד
+            + הזמנת עובד
           </button>
+        )}
+
+        {link && (
+          <Notice
+            kind="info"
+            title={link.kind === 'invite'
+              ? `קישור הזמנה עבור ${link.who}`
+              : `קישור לאיפוס סיסמה עבור ${link.who}`}
+          >
+            <div className="small wrap-anywhere invite-link">{link.url}</div>
+            <div className="small muted mt-2">
+              יש להעביר את הקישור לעובד. הוא קובע את הסיסמה בעצמו, והקישור
+              פעיל עד {new Date(link.expiresAt).toLocaleDateString('he-IL')} ומתבטל
+              אחרי שימוש אחד. הקישור מוצג כאן פעם אחת בלבד.
+            </div>
+            <div className="row mt-2">
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  void navigator.clipboard?.writeText(link.url);
+                  setCopied(true);
+                  window.setTimeout(() => setCopied(false), 2000);
+                }}
+              >
+                {copied ? 'הועתק' : 'העתק קישור'}
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setLink(null)}>
+                סיימתי
+              </button>
+            </div>
+          </Notice>
         )}
       </Card>
 
@@ -129,6 +191,13 @@ export function TeamScreen() {
                   נטרול גישה
                 </button>
               </div>
+              <div className="field">
+                <span className="field-label">סיסמה</span>
+                <button type="button" className="btn btn-ghost" disabled={busy}
+                  onClick={() => void resetPassword(u.id, u.name)}>
+                  איפוס סיסמה
+                </button>
+              </div>
             </div>
           )}
         </Card>
@@ -136,13 +205,13 @@ export function TeamScreen() {
 
       <Dialog
         open={open}
-        title="עובד חדש"
+        title="הזמנת עובד"
         onClose={() => setOpen(false)}
         footer={
           <>
             <button type="button" className="btn btn-ghost" onClick={() => setOpen(false)}>ביטול</button>
-            <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void create()}>
-              {busy ? 'שומר…' : 'הוספה'}
+            <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void invite()}>
+              {busy ? 'יוצר…' : 'צור קישור הזמנה'}
             </button>
           </>
         }
@@ -166,10 +235,10 @@ export function TeamScreen() {
           <input id="emp-license" type="text" value={draft.licenseNumber}
             onChange={(e) => setDraft({ ...draft, licenseNumber: e.target.value })} />
         </Field>
-        <Field label="סיסמה ראשונית" htmlFor="emp-password" hint="לפחות 8 תווים, אות וספרה. יש למסור אותה לעובד.">
-          <input id="emp-password" type="text" value={draft.password}
-            onChange={(e) => setDraft({ ...draft, password: e.target.value })} />
-        </Field>
+        <Notice kind="info">
+          לא נקבעת כאן סיסמה. בסיום ייווצר קישור חד-פעמי להעברה לעובד,
+          והוא יקבע את הסיסמה שלו בעצמו.
+        </Notice>
       </Dialog>
     </>
   );

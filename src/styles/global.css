@@ -774,6 +774,14 @@ input[type='search']::-webkit-search-decoration {
 .admin-meta dt { color: var(--muted); }
 .admin-meta dd { margin: 0; }
 
+/* מצב הדגמה – מוצהר בראש כל מסך */
+.demo-banner {
+  position: sticky; top: 0; z-index: 40;
+  padding: calc(var(--safe-top) + 6px) var(--sp-4) 6px;
+  background: var(--warn); color: #16231C;
+  font-size: 0.76rem; font-weight: 700; text-align: center;
+}
+
 /* מצב שמירה: מכשיר ושרת מוצגים בנפרד, וכשל בולט */
 .save-sep { opacity: 0.45; }
 .save-pending { color: var(--warn); font-weight: 600; }

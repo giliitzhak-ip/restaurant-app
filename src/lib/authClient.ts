@@ -137,17 +137,38 @@ export const authApi = {
 
   listEmployees: () => request<{ ok: true; users: AuthUser[] }>('/api/auth/users'),
 
-  createEmployee: (input: { name: string; email: string; role: UserRole; password: string; licenseNumber?: string }) =>
-    request<{ ok: true; user: AuthUser }>('/api/auth/users', {
-      method: 'POST',
-      body: JSON.stringify(input),
-    }),
-
   updateEmployee: (id: string, patch: { status?: 'active' | 'disabled'; role?: UserRole }) =>
     request<{ ok: true; user: AuthUser }>(`/api/auth/users/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       body: JSON.stringify(patch),
     }),
+
+  /**
+   * הזמנת עובד. אין כאן סיסמה: העובד קובע אותה בעצמו דרך הקישור,
+   * ובעל העסק אינו יודע אותה בשום שלב.
+   */
+  inviteEmployee: (input: { name: string; email: string; role: UserRole; licenseNumber?: string }) =>
+    request<{ ok: true; user: AuthUser; token: string; path: string; expiresAt: string }>(
+      '/api/auth/users/invite',
+      { method: 'POST', body: JSON.stringify(input) },
+    ),
+
+  resetEmployeePassword: (id: string) =>
+    request<{ ok: true; token: string; path: string; expiresAt: string }>(
+      `/api/auth/users/${encodeURIComponent(id)}/reset-password`,
+      { method: 'POST' },
+    ),
+
+  readInvite: (token: string) =>
+    request<{ ok: true; kind: 'invite' | 'reset'; name: string; email: string; organizationName: string }>(
+      `/api/auth/invite/${encodeURIComponent(token)}`,
+    ),
+
+  acceptInvite: (token: string, password: string) =>
+    request<{ ok: true; token: string } & SessionInfo>(
+      `/api/auth/invite/${encodeURIComponent(token)}`,
+      { method: 'POST', body: JSON.stringify({ password }) },
+    ),
 
   /* קישור מסמך ללקוח: נוצר ליומן שהושלם, עם תוקף, וניתן לביטול. */
   createDocLink: (journalId: string, days?: number) =>

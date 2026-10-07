@@ -15,16 +15,21 @@ TO=$(echo "$OWN" | python3 -c 'import sys,json;print(json.load(sys.stdin)["token
 chk "בעל העסק מתחבר" '"role":"owner"' "$OWN"
 
 echo "─── הוספת עובדים ───"
-E1=$(j POST /api/auth/users "$TO" '{"name":"עובד שטח","email":"worker@south.example","role":"field","password":"Worker12345"}')
-chk "בעל העסק מוסיף עובד" '"role":"field"' "$E1"
-chk "לא ניתן ליצור בעלים נוסף" 'תפקיד לא חוקי' "$(j POST /api/auth/users "$TO" '{"name":"x","email":"x2@south.example","role":"owner","password":"Worker12345"}')"
+# אין נתיב ליצירת עובד עם סיסמה: ההצטרפות היא דרך הזמנה בלבד,
+# והעובד קובע את הסיסמה שלו בעצמו.
+E1=$(j POST /api/auth/users/invite "$TO" '{"name":"עובד שטח","email":"worker@south.example","role":"field"}')
+chk "בעל העסק מזמין עובד" '"role":"field"' "$E1"
+chk "ההזמנה אינה מחזירה סיסמה" '"path":"#/invite/' "$E1"
+chk "לא ניתן ליצור בעלים נוסף" 'תפקיד לא חוקי' "$(j POST /api/auth/users/invite "$TO" '{"name":"x","email":"x2@south.example","role":"owner"}')"
 chk "רשימת העובדים כוללת את שניהם" 'worker@south.example' "$(j GET /api/auth/users "$TO")"
+ITOK=$(echo "$E1" | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])')
+chk "העובד קובע סיסמה" '"ok":true' "$(j POST "/api/auth/invite/$ITOK" '' '{"password":"Worker12345"}')"
 
 echo "─── העובד מוגבל ───"
 WK=$(j POST /api/auth/login '' '{"email":"worker@south.example","password":"Worker12345"}')
 TW=$(echo "$WK" | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])')
 chk "העובד מתחבר לעסק שלו" '"role":"field"' "$WK"
-chk "העובד אינו יכול להוסיף עובדים" 'רק בעל העסק' "$(j POST /api/auth/users "$TW" '{"name":"y","email":"y@south.example","role":"field","password":"Worker12345"}')"
+chk "העובד אינו יכול להזמין עובדים" 'רק בעל העסק' "$(j POST /api/auth/users/invite "$TW" '{"name":"y","email":"y@south.example","role":"field"}')"
 chk "העובד אינו מגיע לקונסולת הניהול" 'נדרשת הרשאת מנהל מערכת' "$(j GET /api/admin/organizations "$TW")"
 chk "העובד כן יכול לתעד" '"ok":true' "$(j POST /api/sync "$TW" '{"entity":"customers","entityId":"s1","payload":{"name":"לקוח דרום","address":"רחוב 5"}}')"
 

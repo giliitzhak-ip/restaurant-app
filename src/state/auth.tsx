@@ -18,6 +18,8 @@ interface AuthValue {
   /** מפתח האחסון המקומי. מפריד בין משתמשים על אותו מכשיר. */
   scopeKey: string;
   login: (email: string, password: string) => Promise<void>;
+  /** קביעת סיסמה מתוך קישור הזמנה או איפוס, והתחברות מיד אחריה. */
+  acceptInvite: (token: string, password: string) => Promise<void>;
   register: (input: RegisterInput) => Promise<string>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -88,6 +90,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [applySession],
   );
 
+  const acceptInvite = useCallback<AuthValue['acceptInvite']>(
+    async (token, password) => {
+      const result = await authApi.acceptInvite(token, password);
+      writeToken(result.token);
+      syncQueue.setToken(result.token);
+      applySession(result);
+    },
+    [applySession],
+  );
+
   const register = useCallback<AuthValue['register']>(async (input) => {
     const result = await authApi.register(input);
     return result.message;
@@ -121,8 +133,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const value = useMemo<AuthValue>(
-    () => ({ status, user, organization, access, scopeKey, login, register, logout, refresh }),
-    [status, user, organization, access, scopeKey, login, register, logout, refresh],
+    () => ({
+      status, user, organization, access, scopeKey,
+      login, acceptInvite, register, logout, refresh,
+    }),
+    [status, user, organization, access, scopeKey, login, acceptInvite, register, logout, refresh],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
