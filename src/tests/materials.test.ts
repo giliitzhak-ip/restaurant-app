@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { MATERIALS, MATERIAL_LABELS, SYSTEM_TEMPLATES } from '../data/materials';
 import { NOT_ENTERED } from '../types';
-import { computeReEntry, revealedInstructions } from '../screens/wizard/Step6Instructions';
+import { revealedInstructions } from '../screens/wizard/Step6Instructions';
+import { computeReEntry } from '../lib/reEntry';
 import { visibleDoses, isRegistrationStale } from '../screens/wizard/Step5Materials';
 
 const label = (id: string) => MATERIAL_LABELS.find((l) => l.materialId === id)!;
@@ -47,9 +48,17 @@ describe('מאגר ארבעת החומרים', () => {
     expect(pastion.reEntryHours).toBeNull();
     expect(pastion.reEntryNote).toMatch(/פיתיון/);
 
+    // התווית של פסטיון טרם אומתה, ולכן אי אפשר לקבוע זמן סופי —
+    // אך גם אז אין להציג זמן כניסה של ריסוס.
     const result = computeReEntry([{ name: 'פסטיון פלוס פסטה', label: pastion }]);
-    expect(result.hours).toBeNull();
+    expect(result.strictestKnownHours).toBeNull();
     expect(result.specialInstructions[0].material).toBe('פסטיון פלוס פסטה');
+
+    // לאחר אימות התווית, פיתיון בלבד אינו מקבל זמן כניסה של ריסוס
+    const verified = { ...pastion, verificationStatus: 'verified' as const };
+    const after = computeReEntry([{ name: 'פסטיון פלוס פסטה', label: verified }]);
+    expect(after.status).toBe('bait_only');
+    expect(after.strictestKnownHours).toBeNull();
   });
 
   it('לפסטיון יש תבנית נפרדת לעכברים ולחולדות עם תיעוד תיבות', () => {
@@ -99,9 +108,17 @@ describe('דרקר – מינון לפי סוג משטח', () => {
 
 describe('בדיקה 6: ריבוי חומרים בלי ערבוב אזהרות', () => {
   it('זמן הכניסה הוא המחמיר ביותר, והוראות הפיתיון נשארות תחת החומר שלהן', () => {
-    const spray = { ...label('mat_dragon'), reEntryHours: 4 };
-    const longer = { ...label('mat_draker'), reEntryHours: 8 };
-    const bait = label('mat_pastion_plus');
+    /* תוויות מאומתות. כשמאמתים תווית ומזינים שעות, ההערה שאמרה
+       "טרם הוזן" כבר אינה נכונה ויש לנקותה — אחרת היא תוצג כהוראה. */
+    const spray = {
+      ...label('mat_dragon'), reEntryHours: 4,
+      reEntryNote: '', verificationStatus: 'verified' as const,
+    };
+    const longer = {
+      ...label('mat_draker'), reEntryHours: 8,
+      reEntryNote: '', verificationStatus: 'verified' as const,
+    };
+    const bait = { ...label('mat_pastion_plus'), verificationStatus: 'verified' as const };
 
     const result = computeReEntry([
       { name: 'דרגון', label: spray },
@@ -109,14 +126,26 @@ describe('בדיקה 6: ריבוי חומרים בלי ערבוב אזהרות',
       { name: 'פסטיון פלוס פסטה', label: bait },
     ]);
 
-    expect(result.hours).toBe(8);
+    expect(result.status).toBe('determinate');
+    expect(result.strictestKnownHours).toBe(8);
     expect(result.specialInstructions).toHaveLength(1);
     expect(result.specialInstructions[0].material).toBe('פסטיון פלוס פסטה');
   });
 
   it('מדווח על חומר שזמן הכניסה שלו לא הוזן', () => {
     const result = computeReEntry([{ name: 'דרגון', label: label('mat_dragon') }]);
-    expect(result.hours).toBeUndefined();
+    expect(result.status).toBe('incomplete');
+    expect(result.strictestKnownHours).toBeNull();
+    expect(result.missing).toContain('דרגון');
+  });
+
+  it('חומר מאומת עם שעות יחד עם חומר שאינו מאומת אינו מניב זמן סופי', () => {
+    const verified = { ...label('mat_draker'), reEntryHours: 2, verificationStatus: 'verified' as const };
+    const result = computeReEntry([
+      { name: 'דרקר 10.2', label: verified },
+      { name: 'דרגון', label: label('mat_dragon') },
+    ]);
+    expect(result.status).toBe('incomplete');
     expect(result.missing).toContain('דרגון');
   });
 });

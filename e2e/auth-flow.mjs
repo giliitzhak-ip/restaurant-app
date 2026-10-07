@@ -26,7 +26,9 @@ const errs = [];
   check('ללא התחברות מוצג מסך כניסה', await page.getByRole('button', { name: 'כניסה' }).isVisible());
   check('אין גישה לנתונים לפני התחברות', !(await page.locator('.bottom-nav').isVisible()));
 
-  await page.getByLabel('דוא״ל').fill('nobody@dev.local');
+  // כתובת חד-פעמית לכל הרצה: נעילת הניסיונות היא לפי כתובת,
+  // ובכתובת קבועה הבדיקה הייתה נכשלת בהרצה החוזרת (429 במקום 401).
+  await page.getByLabel('דוא״ל').fill(`nobody+${Date.now()}@dev.local`);
   await page.getByLabel('סיסמה').fill('WrongPass123');
   await page.getByRole('button', { name: 'כניסה' }).click();
   await page.waitForTimeout(800);

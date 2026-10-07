@@ -43,7 +43,7 @@ const TITLES: Record<string, string> = {
 export function App() {
   const route = useRoute();
   const { name, params } = matchRoute(route);
-  const { createJournal, saveState, pendingSync, online, ready } = useStore();
+  const { createJournal, saveState, saveErrors, retrySave, pendingSync, online, ready } = useStore();
   const { user, organization, access, logout } = useAuth();
   const [theme, setTheme] = useState<'light' | 'dark'>(
     () => (document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'),
@@ -118,7 +118,8 @@ export function App() {
               </div>
             </div>
             <div className="topbar-actions">
-              <SaveIndicator state={saveState} pending={pendingSync} online={online} />
+              <SaveIndicator state={saveState} pending={pendingSync} online={online}
+                errors={saveErrors} onRetry={() => void retrySave()} />
               <button
                 type="button"
                 className="icon-btn"

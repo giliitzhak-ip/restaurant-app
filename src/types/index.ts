@@ -391,6 +391,8 @@ export interface SyncOp {
   payload: unknown;
   at: string;
   tries: number;
+  /** true = בקשת מחיקה. השרת מסמן מצבה ואינו מוחק את הראיה. */
+  deleted?: boolean;
 }
 
 export interface AppState {

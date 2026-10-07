@@ -50,11 +50,36 @@ db.exec(`
 
 /* כל מסמך שייך לעסק. מסמך ללא בעלים אינו נגיש לאיש. */
 const syncColumns = db.prepare('PRAGMA table_info(sync_documents)').all().map((c) => c.name);
-if (!syncColumns.includes('org_id')) {
-  db.exec('ALTER TABLE sync_documents ADD COLUMN org_id TEXT');
+
+/* עמודות שנוספו אחרי הגרסה הראשונה. ההוספה היא תוספתית בלבד:
+   אין מחיקת עמודה, אין שינוי טיפוס ואין כתיבה מחדש של נתונים קיימים. */
+const syncMigrations = [
+  ['org_id', 'ALTER TABLE sync_documents ADD COLUMN org_id TEXT'],
+  ['updated_by', 'ALTER TABLE sync_documents ADD COLUMN updated_by TEXT'],
+  // deleted_at: מצבה (tombstone). מסמך שנמחק נשאר בטבלה עם חותמת זמן,
+  // כך שהמחיקה מתועדת וניתן לשחזר את הנתון מתוך payload.
+  ['deleted_at', 'ALTER TABLE sync_documents ADD COLUMN deleted_at TEXT'],
+];
+const pendingMigrations = syncMigrations.filter(([col]) => !syncColumns.includes(col));
+
+/** גיבוי קובץ המסד לפני שינוי מבנה, כדי שכשל מיגרציה לא יאבד נתונים. */
+function backupDatabase(reason) {
+  try {
+    if (!fs.existsSync(DB_PATH) || fs.statSync(DB_PATH).size === 0) return null;
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const target = path.join(DATA_DIR, `pest-journal.${stamp}.${reason}.bak.db`);
+    db.exec(`VACUUM INTO '${target.replace(/'/g, "''")}'`);
+    console.log(`גיבוי לפני מיגרציה: ${target}`);
+    return target;
+  } catch (err) {
+    console.error(`גיבוי לפני מיגרציה נכשל: ${err.message}`);
+    return null;
+  }
 }
-if (!syncColumns.includes('updated_by')) {
-  db.exec('ALTER TABLE sync_documents ADD COLUMN updated_by TEXT');
+
+if (pendingMigrations.length > 0) {
+  backupDatabase('pre-migration');
+  for (const [, sql] of pendingMigrations) db.exec(sql);
 }
 db.exec('CREATE INDEX IF NOT EXISTS idx_sync_org ON sync_documents(org_id, entity)');
 
@@ -105,14 +130,24 @@ function readBody(req) {
 }
 
 const upsertDoc = db.prepare(`
-  INSERT INTO sync_documents (entity, entity_id, payload, received_at, org_id, updated_by)
-  VALUES (?, ?, ?, ?, ?, ?)
+  INSERT INTO sync_documents (entity, entity_id, payload, received_at, org_id, updated_by, deleted_at)
+  VALUES (?, ?, ?, ?, ?, ?, NULL)
   ON CONFLICT(entity, entity_id) DO UPDATE SET
-    payload = excluded.payload, received_at = excluded.received_at, updated_by = excluded.updated_by
+    payload = excluded.payload, received_at = excluded.received_at,
+    updated_by = excluded.updated_by, deleted_at = NULL
 `);
-const selectDoc = db.prepare('SELECT payload, org_id FROM sync_documents WHERE entity = ? AND entity_id = ?');
+/** מחיקה מסומנת ואינה מוחקת את ה-payload: הראיה נשמרת לביקורת. */
+const tombstoneDoc = db.prepare(`
+  UPDATE sync_documents SET deleted_at = ?, received_at = ?, updated_by = ?
+  WHERE entity = ? AND entity_id = ?
+`);
+const selectDoc = db.prepare(
+  'SELECT payload, org_id, deleted_at FROM sync_documents WHERE entity = ? AND entity_id = ?',
+);
 const selectByEntity = db.prepare(
-  'SELECT entity_id, payload FROM sync_documents WHERE entity = ? AND org_id = ? ORDER BY received_at DESC LIMIT ?',
+  `SELECT entity_id, payload FROM sync_documents
+   WHERE entity = ? AND org_id = ? AND deleted_at IS NULL
+   ORDER BY received_at DESC LIMIT ?`,
 );
 const insertAudit = db.prepare(`
   INSERT INTO audit_log (id, entity, entity_id, action, field, before, after, user_id, user_name, at)
@@ -123,6 +158,7 @@ const insertAudit = db.prepare(`
 async function handleSync(req, res, session) {
   const body = await readBody(req);
   const { entity, entityId, payload } = body;
+  const isDelete = body.deleted === true;
 
   if (!session.user.org_id) {
     return json(res, 403, { ok: false, errors: ['למשתמש זה אין עסק משויך.'] });
@@ -139,9 +175,12 @@ async function handleSync(req, res, session) {
     return json(res, 400, { ok: false, errors: ['entityId חסר או לא חוקי'] });
   }
 
-  const errors = validatePayload(entity, payload);
-  if (errors.length > 0) {
-    return json(res, 422, { ok: false, errors });
+  // מחיקה אינה נושאת payload, ולכן אינה עוברת ולידציית תוכן
+  if (!isDelete) {
+    const errors = validatePayload(entity, payload);
+    if (errors.length > 0) {
+      return json(res, 422, { ok: false, errors });
+    }
   }
 
   const existingRow = selectDoc.get(entity, entityId);
@@ -150,12 +189,32 @@ async function handleSync(req, res, session) {
     return json(res, 403, { ok: false, errors: ['הרשומה שייכת לעסק אחר.'] });
   }
   const existing = existingRow ? JSON.parse(existingRow.payload) : null;
+  const now = new Date().toISOString();
+
+  if (isDelete) {
+    if (!isDeletionAllowed(entity, existing)) {
+      return json(res, 422, {
+        ok: false,
+        errors: ['יומן שהושלם אינו נמחק. יש לארכב אותו או לבטלו עם סיבה מתועדת.'],
+      });
+    }
+    if (!existingRow) {
+      // אין מה למחוק – המחיקה הושלמה מבחינת הלקוח, ואין להחזיר אותו לתור
+      return json(res, 200, { ok: true, entity, entityId, deleted: true, receivedAt: now });
+    }
+    tombstoneDoc.run(now, now, session.user.id, entity, entityId);
+    insertAudit.run(
+      crypto.randomUUID(), entity, entityId, 'delete', null,
+      JSON.stringify(existing).slice(0, 2000), null,
+      session.user.id, session.user.name, now,
+    );
+    return json(res, 200, { ok: true, entity, entityId, deleted: true, receivedAt: now });
+  }
 
   if (!isDeletionAllowed(entity, existing) && payload.status === 'cancelled' && !payload.cancelledReason) {
     return json(res, 422, { ok: false, errors: ['ביטול יומן שהושלם מחייב סיבה מתועדת.'] });
   }
 
-  const now = new Date().toISOString();
   upsertDoc.run(entity, entityId, JSON.stringify(payload), now, session.user.org_id, session.user.id);
 
   insertAudit.run(

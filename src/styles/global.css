@@ -758,3 +758,15 @@ input[type='search']::-webkit-search-decoration {
 }
 .admin-meta dt { color: var(--muted); }
 .admin-meta dd { margin: 0; }
+
+/* מצב שמירה: מכשיר ושרת מוצגים בנפרד, וכשל בולט */
+.save-sep { opacity: 0.45; }
+.save-pending { color: var(--warn); font-weight: 600; }
+.save-pill-failed { color: #fff; font-weight: 700; }
+.save-dot.failed { background: var(--error); }
+.save-retry {
+  min-height: 28px; padding: 0 10px; margin-inline-start: 6px;
+  border-radius: var(--r-pill); border: 1px solid currentColor;
+  background: transparent; color: inherit;
+  font-family: inherit; font-size: 0.72rem; font-weight: 700; cursor: pointer;
+}

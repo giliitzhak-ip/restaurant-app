@@ -59,12 +59,35 @@ class SyncQueue {
   }
 
   async enqueue(entity: string, entityId: string, payload: unknown): Promise<void> {
+    await this.add({ entity, entityId, payload });
+  }
+
+  /**
+   * מחיקה נכנסת לאותו תור. בלעדיה המחיקה נשארת במכשיר אחד בלבד,
+   * והרשומה חוזרת בכל קריאה מהשרת.
+   */
+  async enqueueDelete(entity: string, entityId: string): Promise<void> {
+    await this.add({ entity, entityId, payload: null, deleted: true });
+  }
+
+  private async add(
+    op: { entity: string; entityId: string; payload: unknown; deleted?: boolean },
+  ): Promise<void> {
     // בבנייה ללא שרת אין למי לסנכרן; הנתונים נשמרים במכשיר בלבד.
     if (STANDALONE) return;
     await this.load();
-    // איחוד: פעולה חדשה על אותה ישות מחליפה את הקודמת (המצב המלא נשלח בכל פעם)
-    this.queue = this.queue.filter((op) => !(op.entity === entity && op.entityId === entityId));
-    this.queue.push({ id: newId('op'), entity, entityId, payload, at: new Date().toISOString(), tries: 0 });
+    /* איחוד: פעולה חדשה על אותה ישות מחליפה את הקודמת (המצב המלא נשלח בכל פעם).
+       גם מחיקה מחליפה עדכון ממתין – אין טעם לשלוח מצב של רשומה שנמחקה. */
+    this.queue = this.queue.filter((x) => !(x.entity === op.entity && x.entityId === op.entityId));
+    this.queue.push({
+      id: newId('op'),
+      entity: op.entity,
+      entityId: op.entityId,
+      payload: op.payload,
+      ...(op.deleted ? { deleted: true } : {}),
+      at: new Date().toISOString(),
+      tries: 0,
+    });
     await kvSet(QUEUE_KEY, this.queue);
     this.emit();
     void this.flush();
@@ -84,7 +107,12 @@ class SyncQueue {
               'Content-Type': 'application/json',
               ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
             },
-            body: JSON.stringify({ entity: op.entity, entityId: op.entityId, payload: op.payload }),
+            body: JSON.stringify({
+              entity: op.entity,
+              entityId: op.entityId,
+              payload: op.payload,
+              ...(op.deleted ? { deleted: true } : {}),
+            }),
           });
           if (!res.ok) {
             /* 401/403: אין התחברות, או שהעסק ממתין לאישור / המנוי פג.

@@ -16,8 +16,9 @@ fi
 cleanup() { [ -n "${PID:-}" ] && kill "$PID" 2>/dev/null; rm -rf "$TMP"; }
 trap cleanup EXIT
 
-DATA_DIR="$TMP" node "$ROOT/server/create-admin.js" yizhak@example.com 'Admin12345' 'יצחק' > /dev/null
-DATA_DIR="$TMP" PORT="$PORT" node "$ROOT/server/index.js" > "$TMP/server.log" 2>&1 &
+export DATA_DIR="$TMP"
+node "$ROOT/server/create-admin.js" yizhak@example.com 'Admin12345' 'יצחק' > /dev/null
+PORT="$PORT" node "$ROOT/server/index.js" > "$TMP/server.log" 2>&1 &
 PID=$!
 
 ready=0
@@ -32,3 +33,5 @@ fi
 bash "$HERE/tenancy.sh" || exit 1
 echo
 bash "$HERE/employees.sh" || exit 1
+echo
+bash "$HERE/deletion.sh" || exit 1

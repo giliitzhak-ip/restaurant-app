@@ -24,7 +24,7 @@ export const STEPS = [
 ];
 
 export function JournalWizard({ journalId, step }: { journalId?: string; step: number }) {
-  const { state, updateJournal, saveState, pendingSync, online } = useStore();
+  const { state, updateJournal, saveState, saveErrors, retrySave, pendingSync, online } = useStore();
   const journal = state.journals.find((j) => j.id === journalId);
   const [direction, setDirection] = useState<'fwd' | 'back'>('fwd');
   const lastStep = useRef(step);
@@ -73,7 +73,8 @@ export function JournalWizard({ journalId, step }: { journalId?: string; step: n
             <div className="bold">{journalNumberText(journal.journalNumber)}</div>
             <div className="small muted">שלב {current} מתוך {STEPS.length} · {STEPS[current - 1]}</div>
           </div>
-          <SaveIndicator state={saveState} pending={pendingSync} online={online} />
+          <SaveIndicator state={saveState} pending={pendingSync} online={online}
+            errors={saveErrors} onRetry={() => void retrySave()} />
         </div>
         <div
           className="progress-track"

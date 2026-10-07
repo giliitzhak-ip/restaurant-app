@@ -135,17 +135,42 @@ export function Dialog({
   );
 }
 
-export function SaveIndicator({ state, pending, online }: { state: string; pending: number; online: boolean }) {
-  const cls = !online ? 'offline' : state === 'saving' ? 'saving' : '';
-  const text = !online
-    ? `לא מחובר · ${pending} ממתינים לסנכרון`
-    : state === 'saving'
-      ? 'שומר…'
-      : pending > 0 ? `נשמר · ${pending} ממתינים לסנכרון` : 'נשמר';
+export function SaveIndicator({
+  state, pending, online, errors = [], onRetry,
+}: {
+  state: string;
+  pending: number;
+  online: boolean;
+  errors?: string[];
+  onRetry?: () => void;
+}) {
+  /* שמירה במכשיר וסנכרון לשרת הם שני דברים נפרדים, ומוצגים בנפרד.
+     לעולם אין להסיק שמירה מוצלחת ממצב החיבור לרשת. */
+  if (state === 'failed') {
+    return (
+      <span className="save-pill save-pill-failed" role="alert" title={errors.join(' · ')}>
+        <span className="save-dot failed" aria-hidden="true" />
+        השמירה נכשלה
+        {onRetry && (
+          <button type="button" className="save-retry" onClick={onRetry}>
+            נסה שוב
+          </button>
+        )}
+      </span>
+    );
+  }
+
+  const deviceText = state === 'saving' ? 'שומר…' : 'נשמר במכשיר';
+  const syncText = pending > 0
+    ? `${pending} ממתינים לסנכרון`
+    : online ? 'סונכרן' : 'לא מחובר';
+
   return (
     <span className="save-pill" aria-live="polite">
-      <span className={`save-dot ${cls}`} aria-hidden="true" />
-      {text}
+      <span className={`save-dot ${state === 'saving' ? 'saving' : ''}`} aria-hidden="true" />
+      {deviceText}
+      <span className="save-sep" aria-hidden="true">·</span>
+      <span className={pending > 0 || !online ? 'save-pending' : undefined}>{syncText}</span>
     </span>
   );
 }

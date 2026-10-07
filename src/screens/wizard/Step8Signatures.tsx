@@ -9,7 +9,9 @@ import { navigate } from '../../router';
 import type { StepProps } from './JournalWizard';
 
 export function Step8Signatures({ journalId, goToStep }: StepProps) {
-  const { state, updateJournal, saveSignature, completeJournal, getFullJournal } = useStore();
+  const {
+    state, updateJournal, saveSignature, removeSignature, completeJournal, getFullJournal,
+  } = useStore();
   const journal = state.journals.find((j) => j.id === journalId)!;
   const signatures = state.signatures.filter((s) => s.journalId === journalId);
   const customer = state.customers.find((c) => c.id === journal.customerId);
@@ -44,7 +46,8 @@ export function Step8Signatures({ journalId, goToStep }: StepProps) {
           label={`חתימת המדביר · ${journal.exterminatorName || '—'}`}
           value={extSig?.image}
           onChange={(img) => {
-            if (!img) return;
+            // ניקוי החתימה מוחק את הרשומה, ואינו מותיר חתימה ישנה
+            if (!img) { removeSignature(journalId, 'exterminator'); return; }
             saveSignature({
               journalId, role: 'exterminator', signerName: journal.exterminatorName,
               image: img, signedAt: new Date().toISOString(),
@@ -66,7 +69,7 @@ export function Step8Signatures({ journalId, goToStep }: StepProps) {
           label="חתימת הלקוח"
           value={custSig?.image}
           onChange={(img) => {
-            if (!img) return;
+            if (!img) { removeSignature(journalId, 'customer'); return; }
             saveSignature({
               journalId, role: 'customer', signerName: customerName,
               image: img, signedAt: new Date().toISOString(),

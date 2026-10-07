@@ -2,48 +2,9 @@ import { useMemo } from 'react';
 import { useStore } from '../../state/store';
 import { Card, Field, Notice, Tag } from '../../components/ui';
 import { NOT_ENTERED } from '../../types';
-import type { MaterialLabel, TreatmentTemplate } from '../../types';
+import type { TreatmentTemplate } from '../../types';
+import { computeReEntry, hasSprayAction, reEntryHeadline } from '../../lib/reEntry';
 import type { StepProps } from './JournalWizard';
-
-export interface ReEntryResult {
-  /** השעה המחמירה ביותר מבין החומרים. undefined = לא הוזן, null = אין זמן כניסה (פיתיון בלבד) */
-  hours: number | undefined | null;
-  /** הוראות מיוחדות נוספות, לצד זמן הכניסה */
-  specialInstructions: { material: string; text: string }[];
-  /** חומרים שזמן הכניסה שלהם לא הוזן */
-  missing: string[];
-}
-
-/**
- * זמן הכניסה מחדש הוא המחמיר ביותר מבין החומרים.
- * חומר שהוא פיתיון (null) אינו תורם זמן כניסה של ריסוס, אך הוראותיו מוצגות בנפרד.
- */
-export function computeReEntry(
-  materials: { name: string; label?: MaterialLabel }[],
-): ReEntryResult {
-  let hours: number | undefined | null = undefined;
-  const specialInstructions: { material: string; text: string }[] = [];
-  const missing: string[] = [];
-  let sawBait = false;
-
-  for (const { name, label } of materials) {
-    if (!label) { missing.push(name); continue; }
-    if (label.reEntryHours === null) {
-      sawBait = true;
-      if (label.reEntryNote) specialInstructions.push({ material: name, text: label.reEntryNote });
-      continue;
-    }
-    if (typeof label.reEntryHours === 'number') {
-      hours = typeof hours === 'number' ? Math.max(hours, label.reEntryHours) : label.reEntryHours;
-    } else {
-      missing.push(name);
-      if (label.reEntryNote) specialInstructions.push({ material: name, text: label.reEntryNote });
-    }
-  }
-
-  if (hours === undefined && sawBait && missing.length === 0) hours = null;
-  return { hours, specialInstructions, missing };
-}
 
 /** ההנחיות שנחשפות בגלל תשובה לשדה מותנה בתבנית. */
 export function revealedInstructions(
@@ -81,9 +42,14 @@ export function Step6Instructions({ journalId }: StepProps) {
     [journalMaterials, state.materials, state.treatmentTemplates, labelFor],
   );
 
+  const sprayPerformed = useMemo(
+    () => hasSprayAction(state.journalActions.filter((a) => a.journalId === journalId)),
+    [state.journalActions, journalId],
+  );
+
   const reEntry = useMemo(
-    () => computeReEntry(rows.map((r) => ({ name: r.name, label: r.label }))),
-    [rows],
+    () => computeReEntry(rows.map((r) => ({ name: r.name, label: r.label })), { sprayPerformed }),
+    [rows, sprayPerformed],
   );
 
   if (rows.length === 0) {
@@ -94,18 +60,50 @@ export function Step6Instructions({ journalId }: StepProps) {
     <>
       <Card>
         <div className="card-title"><h2>זמן כניסה מחדש</h2></div>
-        {typeof reEntry.hours === 'number' ? (
-          <Notice kind="warn" title={`אין להיכנס לשטח המטופל במשך ${reEntry.hours} שעות`}>
-            זהו הזמן המחמיר ביותר מבין החומרים שנבחרו ביומן זה.
+
+        {reEntry.status === 'determinate' && (
+          <Notice kind="warn" title={reEntryHeadline(reEntry)}>
+            זהו הזמן המחמיר מבין התכשירים שנעשה בהם שימוש, לפי תוויות מאומתות.
           </Notice>
-        ) : reEntry.hours === null ? (
-          <Notice kind="info" title="לא חל זמן כניסה מחדש של ריסוס">
-            הטיפול בוצע בפיתיון בתיבות האכלה בלבד.
+        )}
+
+        {reEntry.status === 'bait_only' && (
+          <Notice kind="info" title={reEntryHeadline(reEntry)}>
+            יש לפעול לפי הוראות הבטיחות להצבת פיתיון שבתווית.
           </Notice>
-        ) : (
-          <Notice kind="warn" title="זמן כניסה מחדש לא הוזן">
-            יש להשלים את זמן הכניסה מהתווית הרשמית של כל חומר לפני מסירת ההנחיות ללקוח.
-            {reEntry.missing.length > 0 && <div className="mt-2 small">חסר עבור: {reEntry.missing.join(', ')}</div>}
+        )}
+
+        {reEntry.status === 'no_materials' && (
+          <Notice kind="info" title={reEntryHeadline(reEntry)}>
+            אם בוצע טיפול בתכשיר, יש להוסיף אותו בשלב 5.
+          </Notice>
+        )}
+
+        {reEntry.status === 'incomplete' && (
+          <Notice kind="error" title={reEntryHeadline(reEntry)}>
+            {reEntry.inconsistentBaitClaim ? (
+              <div>
+                תועדה פעולת ריסוס, אך כל התכשירים שנבחרו מסומנים כטיפול בפיתיון.
+                יש לתקן את הפעולות או את התכשירים לפני מסירת הנחיות ללקוח.
+              </div>
+            ) : (
+              <>
+                <div>
+                  חסר מידע מאומת עבור: <span className="bold">{reEntry.missing.join(', ')}</span>.
+                  אין למסור ללקוח זמן כניסה עד להשלמה מהתווית הרשמית.
+                </div>
+                {reEntry.known.length > 0 && (
+                  <div className="mt-2">
+                    <span className="bold">מידע חלקי בלבד</span> — אינו הזמן לעבודה כולה:
+                    <ul>
+                      {reEntry.known.map((k) => (
+                        <li key={k.material}>{k.material}: {k.hours} שעות</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
+            )}
           </Notice>
         )}
 

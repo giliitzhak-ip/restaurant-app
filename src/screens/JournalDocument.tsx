@@ -3,7 +3,8 @@ import { useStore } from '../state/store';
 import { Card, EmptyState, Notice } from '../components/ui';
 import { navigate } from '../router';
 import { pestName } from '../data/pests';
-import { computeReEntry, revealedInstructions } from './wizard/Step6Instructions';
+import { revealedInstructions } from './wizard/Step6Instructions';
+import { computeReEntry, hasSprayAction, reEntryHeadline } from '../lib/reEntry';
 import {
   ACTION_LABEL, JOURNAL_STATUS_LABEL, SEVERITY_LABEL, SITE_KIND_LABEL,
   VISIT_KIND_LABEL, WORK_KIND_LABEL, formatDate, formatDateTime, journalNumberText,
@@ -34,8 +35,11 @@ export function JournalDocument({ journalId }: { journalId?: string }) {
   }, [full, state.materials, state.treatmentTemplates, labelFor]);
 
   const reEntry = useMemo(
-    () => computeReEntry(rows.map((r) => ({ name: r.name, label: r.label }))),
-    [rows],
+    () => computeReEntry(
+      rows.map((r) => ({ name: r.name, label: r.label })),
+      { sprayPerformed: hasSprayAction(full?.actions ?? []) },
+    ),
+    [rows, full],
   );
 
   if (!full) {
@@ -195,15 +199,23 @@ export function JournalDocument({ journalId }: { journalId?: string }) {
         )}
 
         <h2>הנחיות ללקוח</h2>
-        {typeof reEntry.hours === 'number' ? (
-          <p><strong>זמן כניסה מחדש: {reEntry.hours} שעות</strong> (המחמיר מבין התכשירים שבוצעו).</p>
-        ) : reEntry.hours === null ? (
-          <p><strong>לא חל זמן כניסה מחדש של ריסוס</strong> – הטיפול בוצע בפיתיון בתיבות האכלה.</p>
-        ) : (
-          <p><strong>זמן כניסה מחדש: {NOT_ENTERED}</strong> – יש להשלים מהתווית הרשמית.</p>
+        <p><strong>{reEntryHeadline(reEntry)}</strong></p>
+        {reEntry.status === 'incomplete' && (
+          <>
+            <p>
+              חסר מידע מאומת עבור: {reEntry.missing.join(', ')}.
+              אין להסתמך על זמן כניסה חלקי כזמן לעבודה כולה.
+            </p>
+            {reEntry.known.length > 0 && (
+              <p>
+                מידע חלקי בלבד:{' '}
+                {reEntry.known.map((k) => `${k.material} — ${k.hours} שעות`).join('; ')}.
+              </p>
+            )}
+          </>
         )}
 
-        {reEntry.specialInstructions.map((si, i) => (
+        {reEntry.specialInstructions.map((si: { material: string; text: string }, i: number) => (
           <p key={i}><strong>{si.material}:</strong> {si.text}</p>
         ))}
 

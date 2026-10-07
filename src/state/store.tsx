@@ -20,11 +20,18 @@ function stateKeyFor(scope?: string): string {
   return scope ? `${STATE_KEY}:${scope}` : STATE_KEY;
 }
 
-export type SaveState = 'idle' | 'saving' | 'saved';
+/**
+ * 'saved' מוצג רק אחרי כתיבה מאושרת לאחסון קבוע.
+ * 'failed' מציין שהנתונים נמצאים בזיכרון בלבד וייעלמו עם סגירת הכרטיסייה.
+ */
+export type SaveState = 'idle' | 'saving' | 'saved' | 'failed';
 
 interface StoreValue {
   state: AppState;
   saveState: SaveState;
+  /** פירוט כשל השמירה, להצגה ולניסיון חוזר. */
+  saveErrors: string[];
+  retrySave: () => Promise<void>;
   pendingSync: number;
   online: boolean;
   ready: boolean;
@@ -61,6 +68,7 @@ interface StoreValue {
   upsertBaitStation: (rec: Omit<BaitStationRecord, 'id'> & { id?: ID }) => void;
   removeBaitStation: (id: ID) => void;
   saveSignature: (sig: Omit<Signature, 'id'>) => void;
+  removeSignature: (journalId: ID, role: Signature['role']) => void;
   addAttachment: (att: Omit<Attachment, 'id' | 'createdAt'>) => void;
   removeAttachment: (id: ID) => void;
 
@@ -108,6 +116,7 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
   const [state, setState] = useState<AppState>(() => seedState());
   const [ready, setReady] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>('idle');
+  const [saveErrors, setSaveErrors] = useState<string[]>([]);
   const [pendingSync, setPendingSync] = useState(0);
   const [online, setOnline] = useState(true);
   const saveTimer = useRef<number | undefined>(undefined);
@@ -159,7 +168,10 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
     setSaveState('saving');
     window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
-      void kvSet(storageKey, state).then(() => setSaveState('saved'));
+      void kvSet(storageKey, state).then((outcome) => {
+        setSaveState(outcome.durable ? 'saved' : 'failed');
+        setSaveErrors(outcome.durable ? [] : outcome.errors);
+      });
     }, 350);
     return () => window.clearTimeout(saveTimer.current);
   }, [state, ready, storageKey]);
@@ -203,6 +215,11 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
 
   const push = useCallback((entity: string, entityId: ID, payload: unknown) => {
     void syncQueue.enqueue(entity, entityId, payload);
+  }, []);
+
+  /** מחיקה נרשמת בתור הסנכרון, אחרת היא נשארת במכשיר אחד בלבד. */
+  const pushDelete = useCallback((entity: string, entityId: ID) => {
+    void syncQueue.enqueueDelete(entity, entityId);
   }, []);
 
   /* ───────── מדביר ───────── */
@@ -514,7 +531,8 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
       setState((s) => {
         const existing = s.signatures.find((x) => x.journalId === sig.journalId && x.role === sig.role);
         const record: Signature = { ...sig, id: existing?.id ?? newId('sgn') };
-        push('signatures', record.id, { ...record, image: '[stored]' });
+        // תמונת החתימה היא הראיה עצמה ונשלחת במלואה, לא כמציין מקום
+        push('signatures', record.id, record);
         return {
           ...s,
           signatures: existing
@@ -524,6 +542,21 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
       });
     },
     [push],
+  );
+
+  /** מחיקת חתימה: גם מקומית וגם בשרת, כך שרענון לא יחזיר אותה. */
+  const removeSignature = useCallback<StoreValue['removeSignature']>(
+    (journalId, role) => {
+      setState((s) => {
+        const existing = s.signatures.find((x) => x.journalId === journalId && x.role === role);
+        if (!existing) return s;
+        /* ב-StrictMode המעדכן מורץ פעמיים; תור הסנכרון מאחד פעולות
+           על אותה ישות, ולכן תירשם פעולת מחיקה אחת בלבד. */
+        pushDelete('signatures', existing.id);
+        return { ...s, signatures: s.signatures.filter((x) => x.id !== existing.id) };
+      });
+    },
+    [pushDelete],
   );
 
   const addAttachment = useCallback<StoreValue['addAttachment']>((att) => {
@@ -774,32 +807,41 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
     [state.materialLabels],
   );
 
+  const retrySave = useCallback(async () => {
+    setSaveState('saving');
+    const outcome = await kvSet(storageKey, stateRef.current);
+    setSaveState(outcome.durable ? 'saved' : 'failed');
+    setSaveErrors(outcome.durable ? [] : outcome.errors);
+  }, [storageKey]);
+
   const resetAll = useCallback(() => {
     setState(seedState());
   }, []);
 
   const value = useMemo<StoreValue>(
     () => ({
-      state, saveState, pendingSync, online, ready,
+      state, saveState, saveErrors, retrySave, pendingSync, online, ready,
       updateExterminator,
       createCustomer, updateCustomer, createSite,
       createJournal, updateJournal, completeJournal, cancelJournal, duplicateJournal, loadFromLastJournal,
       setJournalPest, removeJournalPest, toggleJournalAction, updateJournalAction,
       selectMaterial, replaceJournalMaterial, updateJournalMaterial, removeJournalMaterial,
-      upsertBaitStation, removeBaitStation, saveSignature, addAttachment, removeAttachment,
+      upsertBaitStation, removeBaitStation, saveSignature, removeSignature,
+      addAttachment, removeAttachment,
       saveCustomerTemplate, updateTreatmentTemplate, duplicateTreatmentTemplate,
       archiveTreatmentTemplate, archiveCustomerTemplate,
       createRoute, addRouteStop, updateRouteStop, moveRouteStop, reorderRouteStops, removeRouteStop,
       createTask, updateTask, getFullJournal, labelFor, resetAll,
     }),
     [
-      state, saveState, pendingSync, online, ready,
+      state, saveState, saveErrors, retrySave, pendingSync, online, ready,
       updateExterminator,
       createCustomer, updateCustomer, createSite,
       createJournal, updateJournal, completeJournal, cancelJournal, duplicateJournal, loadFromLastJournal,
       setJournalPest, removeJournalPest, toggleJournalAction, updateJournalAction,
       selectMaterial, replaceJournalMaterial, updateJournalMaterial, removeJournalMaterial,
-      upsertBaitStation, removeBaitStation, saveSignature, addAttachment, removeAttachment,
+      upsertBaitStation, removeBaitStation, saveSignature, removeSignature,
+      addAttachment, removeAttachment,
       saveCustomerTemplate, updateTreatmentTemplate, duplicateTreatmentTemplate,
       archiveTreatmentTemplate, archiveCustomerTemplate,
       createRoute, addRouteStop, updateRouteStop, moveRouteStop, reorderRouteStops, removeRouteStop,
