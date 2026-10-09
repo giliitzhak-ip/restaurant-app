@@ -247,6 +247,7 @@ const WIDTHS = [
 const RESPONSIVE = [
   ['01-home', `${B}/`, undefined],
   ['02-login', `${B}/login`, undefined],
+  ['02b-services', `${B}/services`, undefined],
   ['03-request', `${B}/request?q=${encodeURIComponent('יש לי נזילה מתחת לכיור')}&mode=NOW`,
     { email: 'rotem@demo.local', password: 'demo1234' }],
   ['04-provider', `${B}/provider`,

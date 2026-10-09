@@ -92,6 +92,40 @@ body {
   font-family: var(--font-mono);
 }
 
+/* ───────────────────────────────────────────────────────────────────────────
+   The press.
+
+   Every tappable thing in the app answers the finger before the network
+   does. On a phone, the gap between a tap and a screen change is where
+   people tap again — which is how a double-booked job happens — so the
+   press is not decoration: it is the acknowledgement that the tap landed.
+
+   It is one transform, not a ripple: a ripple needs a pseudo-element
+   positioned from the pointer, and at 60fps on a mid-range Android that is
+   the thing that stutters. A scale is composited on the GPU and costs
+   nothing. `will-change` is deliberately NOT set — on dozens of tiles it
+   allocates dozens of layers and makes scrolling worse than the animation
+   it was meant to smooth.
+
+   The reduced-motion block below switches it off, which is why the press
+   lives in `transform` and `transition` rather than an animation the block
+   cannot reach.
+   ─────────────────────────────────────────────────────────────────────── */
+.gs-press {
+  transition:
+    transform 140ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    background-color 140ms ease,
+    border-color 140ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.gs-press:active:not(:disabled) {
+  transform: scale(0.965);
+}
+/* A tile is bigger, so the same ratio reads as a bigger movement. */
+.gs-press-tile:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
 /* Respect a reduced-motion preference (spec §41). */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -101,6 +135,14 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* Shortening the transition is not enough: the pressed state would still
+     JUMP to the smaller size. The press becomes a colour change instead,
+     which still confirms the tap without moving anything. */
+  .gs-press:active:not(:disabled),
+  .gs-press-tile:active:not(:disabled) {
+    transform: none !important;
   }
 }
 

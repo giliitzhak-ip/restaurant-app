@@ -43,10 +43,22 @@ export default function HomePage() {
         */}
       <HomeSearch />
 
-      <footer className="mt-auto pt-10 text-center text-xs text-ink-3">
+      {/*
+        * A way to ask "what do you even do?" without being asked to classify
+        * your own problem first. The grid lives on its own screen rather
+        * than here, so the home screen stays two questions and a button.
+        */}
+      <footer className="mt-auto flex flex-wrap items-center justify-center gap-1 pt-10 text-center text-xs text-ink-3">
+        <Link
+          href="/services"
+          className="gs-press inline-flex min-h-11 items-center px-4 hover:text-ink-2"
+        >
+          מה אפשר להזמין
+        </Link>
+        <span aria-hidden="true" className="text-ink-3/50">·</span>
         <Link
           href="/provider"
-          className="inline-flex min-h-11 items-center px-4 hover:text-ink-2"
+          className="gs-press inline-flex min-h-11 items-center px-4 hover:text-ink-2"
         >
           אני בעל מקצוע
         </Link>

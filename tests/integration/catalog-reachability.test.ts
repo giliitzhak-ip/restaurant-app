@@ -146,4 +146,63 @@ describe('catalog reachability', () => {
     );
     expect(rows.map((r) => r.slug)).toEqual([]);
   });
+
+  /**
+   * The browse grid cannot advertise a dead end.
+   *
+   * `/services` lists every active category that has at least one active
+   * service, and tapping a service opens a request carrying that service's own
+   * Hebrew name as the description. Two ways that breaks without anything
+   * failing: a category ships with no services and the panel opens empty, or a
+   * service's display name is not a phrase the classifier recognises, so the
+   * tile routes to a request for a different trade — or for nothing.
+   *
+   * Neither is visible by reading the page. The grid would look correct and
+   * send people to the wrong professional, which is worse than no grid.
+   */
+  describe('the browse grid', () => {
+    it('offers no trade that would open onto an empty list', async () => {
+      const empty = await withSystem((db) =>
+        db.many<{ name_he: string }>(
+          `select c.name_he
+             from categories c
+        left join services s on s.category_id = c.id and s.is_active
+            where c.is_active
+            group by c.id, c.name_he
+           having count(s.id) = 0`,
+        ),
+      );
+
+      // A trade with no services is not wrong in itself — it just must not be
+      // browsable. The page drops it with the same HAVING clause; this asserts
+      // the two agree, so the page never renders a panel with nothing in it.
+      expect(empty.map((row) => row.name_he)).toEqual([]);
+    });
+
+    it("routes every tile's service back to that same service", async () => {
+      const rules = await catalogRules();
+      const classifier = new RuleBasedUnderstanding(rules);
+
+      const names = await withSystem((db) =>
+        db.many<{ slug: string; name_he: string }>(
+          `select s.slug, s.name_he
+             from services s join categories c on c.id = s.category_id
+            where s.is_active and c.is_active
+            order by s.slug`,
+        ),
+      );
+      expect(names.length).toBeGreaterThan(30);
+
+      const misrouted: string[] = [];
+      for (const service of names) {
+        // Exactly what the tile puts in ?q= — the service's display name.
+        const result = classifier.understandSync(service.name_he);
+        if (result.service !== service.slug) {
+          misrouted.push(`"${service.name_he}" → ${result.service ?? 'nothing'}`);
+        }
+      }
+
+      expect(misrouted, 'these tiles would open a request for the wrong service').toEqual([]);
+    });
+  });
 });

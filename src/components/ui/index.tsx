@@ -56,7 +56,10 @@ export function Button({
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={cn(
-        'inline-flex items-center justify-center gap-2 transition-colors',
+        'inline-flex items-center justify-center gap-2',
+        // Every button in the app answers the tap. See .gs-press in
+        // globals.css for why it is a transform and not a ripple.
+        'gs-press',
         'disabled:cursor-not-allowed disabled:opacity-45',
         VARIANTS[variant],
         SIZES[size],
