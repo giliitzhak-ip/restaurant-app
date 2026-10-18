@@ -16,7 +16,7 @@
     "typecheck": "tsc -b --pretty false",
     "lint": "eslint .",
     "test": "vitest run",
-    "e2e": "node e2e/auth-flow.mjs && node e2e/invite.mjs && node e2e/acceptance-core.mjs && node e2e/acceptance-flows.mjs && node e2e/catalog.mjs && node e2e/typing.mjs && node e2e/persistence.mjs && node e2e/sync-coverage.mjs && node e2e/journal-lock.mjs && node e2e/offline.mjs && node e2e/backup.mjs && node e2e/route-order.mjs && node e2e/rtl.mjs && node e2e/accessibility.mjs",
+    "e2e": "node e2e/auth-flow.mjs && node e2e/invite.mjs && node e2e/duplicates.mjs && node e2e/acceptance-core.mjs && node e2e/acceptance-flows.mjs && node e2e/catalog.mjs && node e2e/typing.mjs && node e2e/persistence.mjs && node e2e/sync-coverage.mjs && node e2e/journal-lock.mjs && node e2e/offline.mjs && node e2e/backup.mjs && node e2e/route-order.mjs && node e2e/rtl.mjs && node e2e/accessibility.mjs",
     "verify": "npm run typecheck && npm run lint && npm run test && npm run test:import && npm run test:server && npm run build",
     "mobile:add:android": "npx cap add android",
     "mobile:add:ios": "npx cap add ios",
@@ -28,7 +28,8 @@
     "test:server": "bash server/tests/run.sh",
     "seed:dev": "node server/tests/seed-dev.js",
     "import:pesticides": "node scripts/import-pesticides.mjs",
-    "test:import": "node scripts/tests/import.test.mjs"
+    "test:import": "node scripts/tests/import.test.mjs && node scripts/tests/duplicates.test.mjs",
+    "duplicates": "node scripts/duplicates-report.mjs"
   },
   "dependencies": {
     "@capacitor/core": "^8.5.2",

@@ -7,7 +7,7 @@
 
 import fs from 'node:fs/promises';
 import { chromium, devices } from 'playwright';
-import { authenticate, createFreshBusiness } from './helpers.mjs';
+import { authenticate, createFreshBusiness, saveCustomerDialog } from './helpers.mjs';
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:3000';
 const LAUNCH = process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {};
@@ -36,8 +36,8 @@ await pageA.waitForTimeout(700);
 for (const name of NAMES) {
   await pageA.getByRole('button', { name: '+ לקוח חדש' }).click();
   await pageA.getByLabel('שם לקוח / עסק').fill(name);
-  await pageA.getByLabel('כתובת', { exact: true }).fill('הרצל 1, תל אביב');
-  await pageA.getByRole('button', { name: 'שמור', exact: true }).click();
+  await pageA.getByLabel('כתובת מלאה').fill('הרצל 1, תל אביב');
+  await saveCustomerDialog(pageA);
   await pageA.waitForTimeout(700);
 }
 

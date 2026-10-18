@@ -774,6 +774,13 @@ input[type='search']::-webkit-search-decoration {
 .admin-meta dt { color: var(--muted); }
 .admin-meta dd { margin: 0; }
 
+/* רשימת לקוחות דומים בדיאלוג לקוח חדש */
+.similar-list { list-style: none; margin: var(--sp-2) 0; padding: 0; }
+.similar-list li {
+  border-top: 1px solid var(--line); padding: var(--sp-2) 0;
+}
+.similar-list li:first-child { border-top: 0; }
+
 /* מצב הדגמה – מוצהר בראש כל מסך */
 .demo-banner {
   position: sticky; top: 0; z-index: 40;

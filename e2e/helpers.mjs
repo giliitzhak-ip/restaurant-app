@@ -77,3 +77,19 @@ export async function createFreshBusiness(base, label = 'עסק בדיקה') {
 
   return { email, password, orgName: name, contactName };
 }
+
+/**
+ * שומר לקוח חדש בדיאלוג, כולל אישור ההתראה על לקוח דומה.
+ *
+ * האפליקציה מתריעה כשיש לקוח דומה וחוסמת את השמירה עד אישור מפורש –
+ * זו הגנה מפני כפילות. בבדיקות שיוצרות לקוחות חוזרים צריך לאשר,
+ * אחרת הכפתור נשאר מושבת.
+ */
+export async function saveCustomerDialog(page) {
+  const dialog = page.locator('.dialog');
+  if ((await dialog.locator('.similar-list').count()) > 0) {
+    await dialog.getByText('בדקתי – זה לקוח אחר, צור אותו בנפרד').click();
+    await page.waitForTimeout(200);
+  }
+  await page.getByRole('button', { name: 'שמור', exact: true }).click();
+}

@@ -5,6 +5,7 @@ import { navigate } from '../router';
 import { STOP_STATUS_LABEL, formatDate, toDateInput } from '../lib/format';
 import { pestName } from '../data/pests';
 import { suggestedOrder } from '../lib/routeOrder';
+import { useGuardedAction } from '../lib/useGuardedAction';
 import type { StopStatus } from '../types';
 
 const STATUS_FLOW: StopStatus[] = ['pending', 'on_the_way', 'in_progress', 'done', 'postponed'];
@@ -68,7 +69,7 @@ export function RouteScreen() {
     setDragId(null);
   }, []);
 
-  function openJournalForStop(stopId: string, customerId: string): void {
+  function openJournalForStopNow(stopId: string, customerId: string): void {
     const customer = state.customers.find((c) => c.id === customerId);
     const site = state.sites.find((s) => s.customerId === customerId);
     const journal = createJournal();
@@ -83,6 +84,26 @@ export function RouteScreen() {
     updateRouteStop(stopId, { journalId: journal.id, status: 'in_progress' });
     navigate(`#/journal/${journal.id}/1`);
   }
+
+  /* לחיצה כפולה פתחה שני יומנים לאותה תחנה. הגנה אחת משותפת
+     לכל התחנות: אין מצב שפותחים שני יומנים בתוך שנייה וחצי. */
+  const { run: openJournalForStop, pending: openingJournal } =
+    useGuardedAction<[string, string]>(openJournalForStopNow);
+
+  const { run: addStop, pending: addingStop } = useGuardedAction(() => {
+    if (!pickCustomer || !route) return;
+    const site = state.sites.find((s) => s.customerId === pickCustomer);
+    addRouteStop(route.id, pickCustomer, site?.id);
+    setPickCustomer('');
+  });
+
+  const { run: createRouteForDate, pending: creatingRoute } = useGuardedAction(() => {
+    createRoute({
+      date,
+      name: `מסלול ${formatDate(new Date(date).toISOString())}`,
+      exterminatorId: state.exterminators[0]?.id ?? '',
+    });
+  });
 
   /** בסיום טיפול: סימון התחנה כהושלמה ומעבר ללקוח הבא. */
   function completeStop(stopId: string): void {
@@ -104,13 +125,8 @@ export function RouteScreen() {
           <button
             type="button"
             className="btn btn-primary"
-            onClick={() =>
-              createRoute({
-                date,
-                name: `מסלול ${formatDate(new Date(date).toISOString())}`,
-                exterminatorId: state.exterminators[0]?.id ?? 'ext_yizhak',
-              })
-            }
+            disabled={creatingRoute}
+            onClick={createRouteForDate}
           >
             צור מסלול ליום זה
           </button>
@@ -127,12 +143,8 @@ export function RouteScreen() {
             <button
               type="button"
               className="btn btn-soft"
-              disabled={!pickCustomer}
-              onClick={() => {
-                const site = state.sites.find((s) => s.customerId === pickCustomer);
-                addRouteStop(route.id, pickCustomer, site?.id);
-                setPickCustomer('');
-              }}
+              disabled={!pickCustomer || addingStop}
+              onClick={addStop}
             >
               + הוסף תחנה
             </button>
@@ -320,7 +332,12 @@ export function RouteScreen() {
             </div>
 
             <div className="row">
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => openJournalForStop(stop.id, stop.customerId)}>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                disabled={openingJournal}
+                onClick={() => openJournalForStop(stop.id, stop.customerId)}
+              >
                 פתח יומן ללקוח
               </button>
               <button type="button" className="btn btn-soft btn-sm" onClick={() => completeStop(stop.id)}>

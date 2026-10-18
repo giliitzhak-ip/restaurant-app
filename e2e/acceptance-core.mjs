@@ -1,5 +1,5 @@
 import { chromium, devices } from 'playwright';
-import { authenticate, createFreshBusiness } from './helpers.mjs';
+import { authenticate, createFreshBusiness, saveCustomerDialog } from './helpers.mjs';
 import { mkdirSync } from 'node:fs';
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:3000';
@@ -71,8 +71,8 @@ await page.getByRole('button', { name: '+ לקוח חדש' }).click();
 await page.getByLabel('שם לקוח / עסק').fill('מסעדת הגפן');
 await page.getByLabel('איש קשר').fill('דנה לוי');
 await page.getByLabel('טלפון').fill('050-1234567');
-await page.getByLabel('כתובת', { exact: true }).fill('הרצל 10, תל אביב');
-await page.getByRole('button', { name: 'שמור', exact: true }).click();
+await page.getByLabel('כתובת מלאה').fill('הרצל 10, תל אביב');
+await saveCustomerDialog(page);
 await page.waitForTimeout(400);
 check('בדיקה 1א: לקוח חדש נוצר ונשמר', await page.getByText('מסעדת הגפן').first().isVisible());
 

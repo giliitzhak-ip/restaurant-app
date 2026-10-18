@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { matchRoute, navigate, useRoute } from './router';
 import { STANDALONE } from './lib/config';
+import { useGuardedAction } from './lib/useGuardedAction';
 import { useStore } from './state/store';
 import { BottomNav, DesktopNav } from './components/Nav';
 import { SaveStatus } from './components/SaveStatus';
@@ -63,10 +64,13 @@ export function App() {
     document.title = `${TITLES[name] ?? 'יומן הדברה'} · יומן הדברה – יצחק הדברות`;
   }, [name]);
 
-  const startJournal = useCallback(() => {
+  /* לחיצה כפולה על "יומן חדש" יצרה שני יומנים. ההגנה כאן מכסה את
+     שלושת המקומות שמשתמשים באותה פעולה: הבית, הסרגל התחתון ו"עוד". */
+  const openNewJournal = useCallback(() => {
     const journal = createJournal();
     navigate(`#/journal/${journal.id}/1`);
   }, [createJournal]);
+  const { run: startJournal } = useGuardedAction(openNewJournal);
 
   if (!ready) {
     return (

@@ -1,5 +1,5 @@
 import { chromium, devices } from 'playwright';
-import { authenticate, createFreshBusiness } from './helpers.mjs';
+import { authenticate, createFreshBusiness, saveCustomerDialog } from './helpers.mjs';
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:3000';
 /** אפשר להצביע על דפדפן מותקן מראש: CHROME_PATH=/path/to/chrome */
@@ -35,8 +35,8 @@ await page.goto(BASE + '/#/customers', { waitUntil: 'networkidle' });
 for (const [name, addr] of [['מסעדת הגפן', 'הרצל 10, תל אביב'], ['בניין רימון', 'האלון 3, חיפה'], ['מפעל דגן', 'התעשייה 7, אשדוד']]) {
   await page.getByRole('button', { name: '+ לקוח חדש' }).click();
   await page.getByLabel('שם לקוח / עסק').fill(name);
-  await page.getByLabel('כתובת', { exact: true }).fill(addr);
-  await page.getByRole('button', { name: 'שמור', exact: true }).click();
+  await page.getByLabel('כתובת מלאה').fill(addr);
+  await saveCustomerDialog(page);
   await page.waitForTimeout(350);
 }
 check('נוספו לקוחות נוספים', await page.getByText('מפעל דגן').first().isVisible());

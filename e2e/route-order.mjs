@@ -1,5 +1,5 @@
 import { chromium, devices } from 'playwright';
-import { authenticate, createFreshBusiness } from './helpers.mjs';
+import { authenticate, createFreshBusiness, saveCustomerDialog } from './helpers.mjs';
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:3000';
 /** אפשר להצביע על דפדפן מותקן מראש: CHROME_PATH=/path/to/chrome */
@@ -27,8 +27,8 @@ for (const [name, address] of [
 ]) {
   await page.getByRole('button', { name: '+ לקוח חדש' }).click();
   await page.getByLabel('שם לקוח / עסק').fill(name);
-  await page.getByLabel('כתובת', { exact: true }).fill(address);
-  await page.getByRole('button', { name: 'שמור', exact: true }).click();
+  await page.getByLabel('כתובת מלאה').fill(address);
+  await saveCustomerDialog(page);
   await page.waitForTimeout(350);
 }
 
@@ -56,8 +56,10 @@ check('סדר מומלץ מקבץ לפי עיר, רחוב ומספר בית',
 
 // גרירה במגע (Pointer Events) – התחנה הראשונה יורדת למקום השני
 const handles = page.locator('.drag-handle');
-await handles.nth(0).scrollIntoViewIfNeeded();
-await page.waitForTimeout(250);
+/* גלילה למרכז המסך ולא רק "לתוך התצוגה": הסרגל התחתון קבוע, ושורה
+   שנמצאת מתחתיו אינה ניתנת לגרירה – גם לא באצבע אמיתית. */
+await handles.nth(0).evaluate((el) => el.scrollIntoView({ block: 'center' }));
+await page.waitForTimeout(350);
 const from = await handles.nth(0).boundingBox();
 const to = await handles.nth(1).boundingBox();
 await page.mouse.move(from.x + 20, from.y + 20);

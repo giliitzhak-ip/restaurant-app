@@ -35,6 +35,13 @@ export function SaveStatus() {
   } = useStore();
   const [open, setOpen] = useState(false);
 
+  /* דחייה והערה הן שני דברים שונים, ואין לקרוא לשינוי שנקלט
+     "לא נקלט". הניסוח נגזר ממה שבאמת קרה. */
+  const blocking = syncRejected.filter((r) => !r.accepted).length;
+  const rejectedLabel = blocking > 0
+    ? (blocking === 1 ? 'שינוי לא נקלט בשרת' : `${blocking} שינויים לא נקלטו`)
+    : (syncRejected.length === 1 ? 'הערה מהשרת' : `${syncRejected.length} הערות מהשרת`);
+
   return (
     <>
       <SaveIndicator
@@ -44,6 +51,7 @@ export function SaveStatus() {
         errors={saveErrors}
         onRetry={() => void retrySave()}
         rejected={syncRejected.length}
+        rejectedLabel={rejectedLabel}
         onShowRejected={() => setOpen(true)}
       />
 
@@ -67,14 +75,19 @@ export function SaveStatus() {
         }
       >
         <Notice kind="warn">
-          הנתונים נשמרו במכשיר ולא אבדו, אבל השינויים הבאים לא נקלטו בשרת.
-          עד שהם ייקלטו הם לא יופיעו במכשירים אחרים.
+          הנתונים נשמרו במכשיר ולא אבדו. להלן שינויים שלא נקלטו בשרת, או
+          שנקלטו עם הערה שדורשת תשומת לב.
         </Notice>
         <div>
           {syncRejected.map((r) => (
             <div className="sync-reject-item" key={r.op.id}>
-              <div className="bold">{ENTITY_LABELS[r.op.entity] ?? r.op.entity}</div>
-              <div className="small sync-reject-why">{r.errors.join(' · ')}</div>
+              <div className="bold">
+                {ENTITY_LABELS[r.op.entity] ?? r.op.entity}
+                {r.accepted && <span className="small muted"> · נקלט בשרת</span>}
+              </div>
+              <div className={`small ${r.accepted ? 'muted' : 'sync-reject-why'}`}>
+                {r.errors.join(' · ')}
+              </div>
               <div className="small muted">
                 {r.op.deleted ? 'מחיקה' : 'עדכון'} · {new Date(r.at).toLocaleString('he-IL')}
               </div>

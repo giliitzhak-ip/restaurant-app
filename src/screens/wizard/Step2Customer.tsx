@@ -1,21 +1,29 @@
 import { useMemo, useRef, useState } from 'react';
 import { useStore } from '../../state/store';
-import { Card, Dialog, Field, Notice, Tag } from '../../components/ui';
+import { Card, Dialog, Field, Notice } from '../../components/ui';
+import { NewCustomerDialog } from '../../components/NewCustomerDialog';
+import { enteredSummary } from '../../lib/journalEntered';
 import { SearchCombobox, type ComboItem } from '../../components/SearchCombobox';
 import { SITE_KIND_LABEL } from '../../lib/format';
 import type { SiteKind } from '../../types';
 import type { StepProps } from './JournalWizard';
 
 export function Step2Customer({ journalId }: StepProps) {
-  const { state, updateJournal, createCustomer, createSite, loadFromLastJournal } = useStore();
+  const { state, updateJournal, loadFromLastJournal, getFullJournal } = useStore();
   const journal = state.journals.find((j) => j.id === journalId)!;
   const customer = state.customers.find((c) => c.id === journal.customerId);
   const [newOpen, setNewOpen] = useState(false);
+  /** אישור לפני שטעינה מיומן קודם תחליף נתונים שהוזנו. */
+  const [confirmLoad, setConfirmLoad] = useState<string[] | null>(null);
   const [loadResult, setLoadResult] = useState<{ copied: string[]; cleared: string[] } | null>(null);
-  const [draft, setDraft] = useState({
-    name: '', contactName: '', phone: '', email: '', address: '', city: '', notes: '',
-  });
   const addressRef = useRef<HTMLInputElement>(null);
+
+  /** הטעינה עצמה. מחליפה את נתוני הטיוטה פעם אחת, ולא מוסיפה בכל לחיצה. */
+  function runLoad(): void {
+    if (!journal.customerId) return;
+    setConfirmLoad(null);
+    setLoadResult(loadFromLastJournal(journal.id, journal.customerId));
+  }
 
   const items = useMemo<ComboItem[]>(
     () =>
@@ -57,25 +65,6 @@ export function Step2Customer({ journalId }: StepProps) {
     });
   }
 
-  function saveNewCustomer(): void {
-    if (!draft.name.trim() || !draft.address.trim()) return;
-    const created = createCustomer({ ...draft });
-    const site = createSite({
-      customerId: created.id,
-      label: 'אתר ראשי',
-      address: created.address,
-      siteKind: 'apartment',
-    });
-    updateJournal(journal.id, {
-      customerId: created.id,
-      siteId: site.id,
-      siteAddress: site.address,
-      siteKind: 'apartment',
-    });
-    setDraft({ name: '', contactName: '', phone: '', email: '', address: '', city: '', notes: '' });
-    setNewOpen(false);
-  }
-
   return (
     <>
       <Card>
@@ -105,7 +94,14 @@ export function Step2Customer({ journalId }: StepProps) {
             disabled={!hasPrevious}
             onClick={() => {
               if (!journal.customerId) return;
-              setLoadResult(loadFromLastJournal(journal.id, journal.customerId));
+              /* אם כבר הוזנו נתונים – קודם אישור, כי הטעינה מחליפה
+                 את נתוני הטיוטה ולא מוסיפה עליהם. */
+              const entered = enteredSummary(getFullJournal(journal.id));
+              if (entered.length > 0) {
+                setConfirmLoad(entered);
+                return;
+              }
+              runLoad();
             }}
           >
             טען מיומן אחרון
@@ -174,50 +170,45 @@ export function Step2Customer({ journalId }: StepProps) {
       </Card>
 
       <Dialog
-        open={newOpen}
-        title="לקוח חדש"
-        onClose={() => setNewOpen(false)}
+        open={confirmLoad !== null}
+        title="טעינה מיומן קודם תחליף נתונים"
+        onClose={() => setConfirmLoad(null)}
         footer={
           <>
-            <button type="button" className="btn btn-ghost" onClick={() => setNewOpen(false)}>ביטול</button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={!draft.name.trim() || !draft.address.trim()}
-              onClick={saveNewCustomer}
-            >
-              שמור ושייך ליומן
+            <button type="button" className="btn btn-ghost" onClick={() => setConfirmLoad(null)}>
+              ביטול
+            </button>
+            <button type="button" className="btn btn-primary" onClick={runLoad}>
+              החלף את נתוני הטיוטה
             </button>
           </>
         }
       >
-        <Field label="שם לקוח / עסק" htmlFor="nc-name">
-          <input id="nc-name" type="text" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
-        </Field>
-        <Field label="איש קשר" htmlFor="nc-contact">
-          <input id="nc-contact" type="text" value={draft.contactName} onChange={(e) => setDraft({ ...draft, contactName: e.target.value })} />
-        </Field>
-        <div className="row">
-          <Field label="טלפון" htmlFor="nc-phone">
-            <input id="nc-phone" type="tel" inputMode="tel" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} />
-          </Field>
-          <Field label="דוא״ל" htmlFor="nc-email">
-            <input id="nc-email" type="email" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} />
-          </Field>
-        </div>
-        <Field label="כתובת מלאה" htmlFor="nc-address">
-          <input id="nc-address" type="text" value={draft.address} onChange={(e) => setDraft({ ...draft, address: e.target.value })} />
-        </Field>
-        <Field label="עיר" htmlFor="nc-city">
-          <input id="nc-city" type="text" value={draft.city} onChange={(e) => setDraft({ ...draft, city: e.target.value })} />
-        </Field>
-        <Field label="הערות קבועות" htmlFor="nc-notes">
-          <textarea id="nc-notes" value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} />
-        </Field>
-        {!draft.name.trim() || !draft.address.trim() ? (
-          <div className="small muted">שם וכתובת הם שדות חובה. <Tag kind="muted">ולידציה גם בשרת</Tag></div>
-        ) : null}
+        <Notice kind="warn" title="מה יוחלף">
+          <ul>
+            {(confirmLoad ?? []).map((item) => <li key={item}>{item}</li>)}
+          </ul>
+          <div className="small mt-2">
+            הטעינה מעתיקה פרטים קבועים מהיומן הקודם ומחליפה את נתוני הטיוטה הנוכחית.
+            היומן הקודם עצמו אינו משתנה. אצווה, תפוגה, כמויות, ממצאים וחתימות יידרשו מילוי מחדש.
+          </div>
+        </Notice>
       </Dialog>
+
+      <NewCustomerDialog
+        open={newOpen}
+        onClose={() => setNewOpen(false)}
+        onCreated={(created, site) => {
+          setNewOpen(false);
+          updateJournal(journal.id, {
+            customerId: created.id,
+            siteId: site.id,
+            siteAddress: site.address,
+            siteKind: 'apartment',
+          });
+        }}
+        onPickExisting={(existing) => pickCustomer(existing.id)}
+      />
     </>
   );
 }

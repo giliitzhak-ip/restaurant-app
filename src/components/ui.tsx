@@ -136,15 +136,17 @@ export function Dialog({
 }
 
 export function SaveIndicator({
-  state, pending, online, errors = [], onRetry, rejected = 0, onShowRejected,
+  state, pending, online, errors = [], onRetry, rejected = 0, rejectedLabel, onShowRejected,
 }: {
   state: string;
   pending: number;
   online: boolean;
   errors?: string[];
   onRetry?: () => void;
-  /** מספר השינויים שהשרת דחה. אינם מוסתרים מהמשתמש. */
+  /** מספר השינויים שדורשים תשומת לב. אינם מוסתרים מהמשתמש. */
   rejected?: number;
+  /** נוסח מדויק: דחייה אינה אותו דבר כמו הערה על שינוי שנקלט. */
+  rejectedLabel?: string;
   onShowRejected?: () => void;
 }) {
   /* שמירה במכשיר וסנכרון לשרת הם שני דברים נפרדים, ומוצגים בנפרד.
@@ -171,10 +173,10 @@ export function SaveIndicator({
         type="button"
         className="save-pill save-pill-rejected"
         onClick={onShowRejected}
-        aria-label={`${rejected} שינויים לא נקלטו בשרת – לפרטים`}
+        aria-label={`${rejectedLabel ?? `${rejected} שינויים דורשים תשומת לב`} – לפרטים`}
       >
         <span className="save-dot failed" aria-hidden="true" />
-        {rejected === 1 ? 'שינוי לא נקלט בשרת' : `${rejected} שינויים לא נקלטו`}
+        {rejectedLabel ?? (rejected === 1 ? 'שינוי לא נקלט בשרת' : `${rejected} שינויים לא נקלטו`)}
       </button>
     );
   }

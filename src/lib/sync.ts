@@ -21,6 +21,15 @@ export interface RejectedOp {
   status: number;
   errors: string[];
   at: string;
+  /** true = השינוי נקלט בשרת, אבל הוחזרה עליו הערה שדורשת תשומת לב. */
+  accepted?: boolean;
+}
+
+/** שינוי שהשרת קיבל אבל שינה בו מספר עסקי, כדי למנוע כפילות. */
+export interface ServerAssignment {
+  entity: string;
+  entityId: string;
+  fields: Record<string, string | number>;
 }
 
 export interface SyncStatus {
@@ -113,6 +122,16 @@ class SyncQueue {
   hasPending(entity: string, entityId: string): boolean {
     return this.queue.some((op) => op.entity === entity && op.entityId === entityId)
       || this.rejected.some((r) => r.op.entity === entity && r.op.entityId === entityId);
+  }
+
+  /**
+   * מטפל בהקצאת מספר מהשרת. השרת הוא הגורם הקובע לייחודיות המספר
+   * בתוך העסק, והמכשיר מאמץ את מה שהוקצה.
+   */
+  private assignmentHandler: ((assignment: ServerAssignment) => void) | null = null;
+
+  setAssignmentHandler(fn: ((assignment: ServerAssignment) => void) | null): void {
+    this.assignmentHandler = fn;
   }
 
   /** נקרא בהתחברות ובהתנתקות. החלפת משתמש מחדשת את ניסיון הסנכרון. */
@@ -255,7 +274,35 @@ class SyncQueue {
             await drain(res);
             break;
           }
-          await drain(res);
+
+          /* תשובת הצלחה עשויה לשאת מספר שהשרת הקציב מחדש, או הערה
+             על התנגשות שלא ניתן לתקן אוטומטית. שתיהן אינן נזרקות. */
+          try {
+            const body = (await res.json()) as {
+              assigned?: Record<string, string | number>;
+              warnings?: string[];
+            };
+            if (body.assigned && this.assignmentHandler) {
+              this.assignmentHandler({
+                entity: op.entity, entityId: op.entityId, fields: body.assigned,
+              });
+            }
+            if (Array.isArray(body.warnings) && body.warnings.length > 0) {
+              this.rejected = [
+                ...this.rejected.filter(
+                  (r) => !(r.op.entity === op.entity && r.op.entityId === op.entityId),
+                ),
+                {
+                  op, status: res.status, errors: body.warnings,
+                  at: new Date().toISOString(), accepted: true,
+                },
+              ].slice(-50);
+              await kvSet(REJECTED_KEY, this.rejected);
+            }
+          } catch {
+            /* גוף לא קריא – השינוי נקלט, ואין מה לאמץ */
+          }
+
           this.blocked = false;
           this.queue.shift();
           await kvSet(QUEUE_KEY, this.queue);

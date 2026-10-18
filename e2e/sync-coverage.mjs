@@ -7,7 +7,7 @@
  */
 
 import { chromium, devices } from 'playwright';
-import { authenticate, createFreshBusiness } from './helpers.mjs';
+import { authenticate, createFreshBusiness, saveCustomerDialog } from './helpers.mjs';
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:3000';
 const LAUNCH = process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {};
@@ -49,8 +49,8 @@ await page.goto(BASE + '/#/customers', { waitUntil: 'networkidle' });
 await page.waitForTimeout(500);
 await page.getByRole('button', { name: '+ לקוח חדש' }).click();
 await page.getByLabel('שם לקוח / עסק').fill(customerName);
-await page.getByLabel('כתובת', { exact: true }).fill('הברוש 12, חולון');
-await page.getByRole('button', { name: 'שמור', exact: true }).click();
+await page.getByLabel('כתובת מלאה').fill('הברוש 12, חולון');
+await saveCustomerDialog(page);
 await settle();
 await page.getByText(customerName).first().click();
 await page.waitForTimeout(400);

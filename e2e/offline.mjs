@@ -7,7 +7,7 @@
  */
 
 import { chromium, devices } from 'playwright';
-import { authenticate, createFreshBusiness } from './helpers.mjs';
+import { authenticate, createFreshBusiness, saveCustomerDialog } from './helpers.mjs';
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:3000';
 const LAUNCH = process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {};
@@ -32,8 +32,8 @@ const OFFLINE_CUSTOMER = `לקוח ללא רשת ${Date.now()}`;
 const addCustomer = async (name, address) => {
   await page.getByRole('button', { name: '+ לקוח חדש' }).click();
   await page.getByLabel('שם לקוח / עסק').fill(name);
-  await page.getByLabel('כתובת', { exact: true }).fill(address);
-  await page.getByRole('button', { name: 'שמור', exact: true }).click();
+  await page.getByLabel('כתובת מלאה').fill(address);
+  await saveCustomerDialog(page);
   await page.waitForTimeout(900);
 };
 

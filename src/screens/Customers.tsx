@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react';
 import { useStore } from '../state/store';
-import { Card, Dialog, EmptyState, Field } from '../components/ui';
+import { Card, EmptyState, Field } from '../components/ui';
+import { NewCustomerDialog } from '../components/NewCustomerDialog';
 import { navigate } from '../router';
 import { normalize } from '../lib/search';
 
 export function CustomersScreen() {
-  const { state, createCustomer, createSite } = useStore();
+  const { state } = useStore();
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState({ name: '', contactName: '', phone: '', email: '', address: '', city: '', notes: '' });
 
   const results = useMemo(() => {
     const q = normalize(query);
@@ -55,50 +55,14 @@ export function CustomersScreen() {
         </div>
       )}
 
-      <Dialog
+      <NewCustomerDialog
         open={open}
-        title="לקוח חדש"
         onClose={() => setOpen(false)}
-        footer={
-          <>
-            <button type="button" className="btn btn-ghost" onClick={() => setOpen(false)}>ביטול</button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={!draft.name.trim() || !draft.address.trim()}
-              onClick={() => {
-                const created = createCustomer({ ...draft });
-                createSite({ customerId: created.id, label: 'אתר ראשי', address: created.address, siteKind: 'apartment' });
-                setDraft({ name: '', contactName: '', phone: '', email: '', address: '', city: '', notes: '' });
-                setOpen(false);
-              }}
-            >
-              שמור
-            </button>
-          </>
-        }
-      >
-        <Field label="שם לקוח / עסק" htmlFor="cc-name">
-          <input id="cc-name" type="text" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
-        </Field>
-        <Field label="איש קשר" htmlFor="cc-contact">
-          <input id="cc-contact" type="text" value={draft.contactName} onChange={(e) => setDraft({ ...draft, contactName: e.target.value })} />
-        </Field>
-        <div className="row">
-          <Field label="טלפון" htmlFor="cc-phone">
-            <input id="cc-phone" type="tel" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} />
-          </Field>
-          <Field label="דוא״ל" htmlFor="cc-email">
-            <input id="cc-email" type="email" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} />
-          </Field>
-        </div>
-        <Field label="כתובת" htmlFor="cc-address">
-          <input id="cc-address" type="text" value={draft.address} onChange={(e) => setDraft({ ...draft, address: e.target.value })} />
-        </Field>
-        <Field label="הערות קבועות" htmlFor="cc-notes">
-          <textarea id="cc-notes" value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} />
-        </Field>
-      </Dialog>
+        /* נשארים ברשימה אחרי היצירה, כפי שהיה קודם. הניווט היחיד
+           שנוסף הוא מעבר ללקוח קיים שהוצע בהתראת הכפילות. */
+        onCreated={() => setOpen(false)}
+        onPickExisting={(customer) => navigate(`#/customer/${customer.id}`)}
+      />
     </>
   );
 }

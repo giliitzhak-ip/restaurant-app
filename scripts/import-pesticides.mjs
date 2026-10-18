@@ -83,9 +83,24 @@ function toRecords(text) {
 
 /* ───────── המרה למבנה האפליקציה ───────── */
 
-function slug(value, index) {
-  const base = String(value ?? '').replace(/[^0-9A-Za-z֐-׿]+/g, '').slice(0, 24);
-  return `gov_${base || 'x'}_${index}`;
+/**
+ * מזהה תכשיר קבוע, הנגזר ממספר הרישום בלבד.
+ *
+ * קודם נכנס לכאן גם מספר השורה בקובץ, ולכן ייבוא חוזר של אותו מאגר
+ * בסדר שורות אחר נתן לאותו תכשיר מזהה אחר – ובמכשיר של המשתמש
+ * הופיע אותו תכשיר פעמיים, אחד מהמאגר החדש ואחד מהשמור.
+ *
+ * `seen` מונה התנגשויות אמיתיות (אותו מספר רישום פעמיים במאגר),
+ * ורק בהן נוסף סיומת. התכשיר הראשון תמיד שומר על המזהה הנקי.
+ */
+function stableId(registrationNumber, tradeName, seen) {
+  const source = registrationNumber && registrationNumber !== NOT_ENTERED
+    ? registrationNumber
+    : tradeName;
+  const base = String(source ?? '').replace(/[^0-9A-Za-z֐-׿]+/g, '').slice(0, 24) || 'x';
+  const count = seen.get(base) ?? 0;
+  seen.set(base, count + 1);
+  return count === 0 ? `gov_${base}` : `gov_${base}_${count + 1}`;
 }
 
 /** תאריך תוקף לתקן YYYY-MM-DD. ערך שאינו ניתן לפענוח מוחזר ריק. */
@@ -128,8 +143,10 @@ function convert(records, overrides = {}) {
 
   const materials = [];
   const seen = new Map();
+  const seenIds = new Map();
   let withConcentration = 0;
   let withoutIngredient = 0;
+  let duplicatesSkipped = 0;
 
   records.forEach((row, index) => {
     const tradeName = String(row[cols.tradeName] ?? '').trim();
@@ -141,9 +158,16 @@ function convert(records, overrides = {}) {
       cols.concentration ? row[cols.concentration] : undefined,
     );
 
-    // מניעת כפילויות: אותו שם ואותו מספר רישום
-    const key = `${tradeName}|${registrationNumber}`;
-    if (seen.has(key)) return;
+    /* מניעת כפילויות: מספר רישום מזהה תכשיר אחד, ולכן שורה שנייה
+       עם אותו מספר רישום היא אותו תכשיר – גם אם השם נכתב מעט אחרת.
+       בהיעדר מספר רישום נופלים לשם המסחרי. */
+    const key = registrationNumber && registrationNumber !== NOT_ENTERED
+      ? `reg:${registrationNumber}`
+      : `name:${tradeName}`;
+    if (seen.has(key)) {
+      duplicatesSkipped += 1;
+      return;
+    }
     seen.set(key, true);
 
     if (ingredients.length === 0) withoutIngredient += 1;
@@ -154,7 +178,7 @@ function convert(records, overrides = {}) {
     const labelUrl = cols.labelUrl ? String(row[cols.labelUrl] ?? '').trim() : '';
 
     materials.push({
-      id: slug(registrationNumber !== NOT_ENTERED ? registrationNumber : tradeName, index),
+      id: stableId(registrationNumber, tradeName, seenIds),
       tradeName,
       registrationNumber,
       formulation: (cols.formulation ? String(row[cols.formulation] ?? '').trim() : '') || NOT_ENTERED,
@@ -166,7 +190,7 @@ function convert(records, overrides = {}) {
     });
   });
 
-  return { materials, cols, stats: { withConcentration, withoutIngredient } };
+  return { materials, cols, stats: { withConcentration, withoutIngredient, duplicatesSkipped } };
 }
 
 /* ───────── הרצה ───────── */
@@ -213,6 +237,7 @@ try {
   console.log(`\nיובאו ${materials.length} תכשירים.`);
   console.log(`  עם ריכוז חומר פעיל: ${stats.withConcentration}`);
   console.log(`  ללא חומר פעיל במקור: ${stats.withoutIngredient}`);
+  console.log(`  שורות כפולות שדולגו (אותו מספר רישום): ${stats.duplicatesSkipped}`);
   if (!cols.activeIngredient) {
     console.log('\nשים לב: לא זוהתה עמודת חומר פעיל. הריכוז לא יתמלא אוטומטית.');
   }

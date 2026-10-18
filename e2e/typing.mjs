@@ -5,7 +5,7 @@
  */
 
 import { chromium, devices } from 'playwright';
-import { authenticate, createFreshBusiness } from './helpers.mjs';
+import { authenticate, createFreshBusiness, saveCustomerDialog } from './helpers.mjs';
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:3000';
 const LAUNCH = process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {};
@@ -54,10 +54,10 @@ check('דוא״ל נקלט במלואו',
   (await page.getByLabel('דוא״ל').inputValue()) === 'yaniv@example.com',
   await page.getByLabel('דוא״ל').inputValue());
 
-await typeSlowly(page.getByLabel('כתובת', { exact: true }), 'הרצל 10, תל אביב');
+await typeSlowly(page.getByLabel('כתובת מלאה'), 'הרצל 10, תל אביב');
 check('כתובת נקלטת במלואה',
-  (await page.getByLabel('כתובת', { exact: true }).inputValue()) === 'הרצל 10, תל אביב',
-  await page.getByLabel('כתובת', { exact: true }).inputValue());
+  (await page.getByLabel('כתובת מלאה').inputValue()) === 'הרצל 10, תל אביב',
+  await page.getByLabel('כתובת מלאה').inputValue());
 
 await typeSlowly(page.getByLabel('הערות קבועות'), 'קוד שער 1234');
 check('הערות נקלטות במלואן',
@@ -68,7 +68,7 @@ check('הערות נקלטות במלואן',
 const focused = await page.evaluate(() => document.activeElement?.id ?? '');
 check('הפוקוס נשאר בשדה האחרון שהוקלד', focused.includes('notes') || focused.includes('cc-notes'), focused);
 
-await page.getByRole('button', { name: 'שמור', exact: true }).click();
+await saveCustomerDialog(page);
 await page.waitForTimeout(700);
 check('הלקוח נשמר עם הפרטים המלאים', await page.getByText('מסעדת הגפן').first().isVisible());
 

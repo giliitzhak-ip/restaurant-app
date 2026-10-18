@@ -319,13 +319,19 @@ describe('מניעת שמירה כפולה', () => {
   });
 
   it('מספרי היומנים רצים ואינם חוזרים', async () => {
+    /* טיוטה ריקה נפתחת מחדש ואינה מקבלת מספר נוסף, ולכן כל יומן כאן
+       מקבל לקוח – כך הוא יומן אמיתי ונפרד, כמו ב"פתח יומן ללקוח". */
     const { result } = await setup();
     const numbers: number[] = [];
     act(() => {
-      numbers.push(result.current.createJournal().journalNumber);
+      const first = result.current.createJournal();
+      result.current.updateJournal(first.id, { customerId: 'cus_a' });
+      numbers.push(first.journalNumber);
     });
     act(() => {
-      numbers.push(result.current.createJournal().journalNumber);
+      const second = result.current.createJournal();
+      result.current.updateJournal(second.id, { customerId: 'cus_b' });
+      numbers.push(second.journalNumber);
     });
     expect(numbers[1]).toBe(numbers[0] + 1);
   });

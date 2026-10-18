@@ -170,6 +170,58 @@ const selectChanged = db.prepare(
    LIMIT ?`,
 );
 
+/* מספרים ייחודיים בתוך עסק.
+   מספר יומן ומספר לקוח מוקצים במכשיר, ולכן שני מכשירים של אותו עסק
+   יכולים להקציב את אותו מספר. השרת הוא הגורם הקובע: הוא מזהה את
+   ההתנגשות ומקצה מספר פנוי. אין כאן אינדקס ייחודי בסכימה, כי נתונים
+   היסטוריים כבר מכילים התנגשויות ואינדקס היה חוסם את כתיבתם. */
+const findNumberClash = db.prepare(
+  `SELECT entity_id FROM sync_documents
+   WHERE entity = ? AND org_id = ? AND deleted_at IS NULL
+     AND entity_id <> ?
+     AND json_extract(payload, ?) = ?
+   LIMIT 1`,
+);
+const maxNumber = db.prepare(
+  `SELECT MAX(CAST(json_extract(payload, ?) AS INTEGER)) AS n
+   FROM sync_documents
+   WHERE entity = ? AND org_id = ? AND deleted_at IS NULL`,
+);
+
+const NUMBERED = {
+  journals: { field: 'journalNumber', path: '$.journalNumber', numeric: true },
+  customers: { field: 'customerNumber', path: '$.customerNumber', numeric: false },
+};
+
+/**
+ * מוודא שהמספר העסקי ייחודי בעסק.
+ * מחזיר { assigned } כשהוקצה מספר חדש, או { conflict } כשאין לשנות
+ * את המספר (יומן שהושלם – המסמך כבר נמסר ללקוח ובו המספר המקורי).
+ */
+function resolveBusinessNumber(entity, entityId, payload, orgId) {
+  const rule = NUMBERED[entity];
+  if (!rule) return {};
+  const current = payload?.[rule.field];
+  if (current === undefined || current === null || current === '') return {};
+
+  const clash = findNumberClash.get(entity, orgId, entityId, rule.path, current);
+  if (!clash) return {};
+
+  const locked = entity === 'journals' && ['completed', 'sent'].includes(String(payload.status));
+  if (locked) {
+    return {
+      conflict:
+        `מספר יומן ${current} קיים כבר בעסק ביומן אחר. היומן נשמר כפי שהוא,`
+        + ' כי מסמך שהושלם אינו ממוספר מחדש. יש לבדוק את שני היומנים.',
+    };
+  }
+
+  const max = Number(maxNumber.get(rule.path, entity, orgId)?.n ?? 0);
+  const next = max + 1;
+  payload[rule.field] = rule.numeric ? next : String(next);
+  return { assigned: payload[rule.field] };
+}
+
 const PULL_LIMIT = 2000;
 
 /** GET /api/sync/pull?since=<iso> – שינויים מהשרת למכשיר. */
@@ -279,25 +331,52 @@ async function handleSync(req, res, session) {
     return json(res, 422, { ok: false, errors: ['ביטול יומן שהושלם מחייב סיבה מתועדת.'] });
   }
 
-  upsertDoc.run(
-    entity, entityId, JSON.stringify(payload), now,
-    session.user.org_id, session.user.id, opId,
-  );
+  /* מספר עסקי ייחודי בתוך העסק. נעשה לפני הכתיבה, כדי שלא תיכתב
+     רשומה עם מספר שכבר תפוס. */
+  const numbering = resolveBusinessNumber(entity, entityId, payload, session.user.org_id);
 
-  insertAudit.run(
-    crypto.randomUUID(),
+  /* הכתיבה והביקורת בעסקה אחת: או ששתיהן נכתבות, או שאף אחת.
+     אחרת שגיאה בכתיבת הביקורת הייתה משאירה שינוי ללא תיעוד. */
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    upsertDoc.run(
+      entity, entityId, JSON.stringify(payload), now,
+      session.user.org_id, session.user.id, opId,
+    );
+
+    insertAudit.run(
+      crypto.randomUUID(),
+      entity,
+      entityId,
+      existing ? 'update' : 'create',
+      numbering.assigned !== undefined ? 'renumbered' : null,
+      existing ? JSON.stringify(existing).slice(0, 2000) : null,
+      JSON.stringify(payload).slice(0, 2000),
+      session.user.id,
+      session.user.name,
+      now,
+    );
+
+    if (numbering.conflict) {
+      insertAudit.run(
+        crypto.randomUUID(), entity, entityId, 'number_conflict', null,
+        null, numbering.conflict, session.user.id, session.user.name, now,
+      );
+    }
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+
+  return json(res, 200, {
+    ok: true,
     entity,
     entityId,
-    existing ? 'update' : 'create',
-    null,
-    existing ? JSON.stringify(existing).slice(0, 2000) : null,
-    JSON.stringify(payload).slice(0, 2000),
-    session.user.id,
-    session.user.name,
-    now,
-  );
-
-  return json(res, 200, { ok: true, entity, entityId, receivedAt: now });
+    receivedAt: now,
+    ...(numbering.assigned !== undefined ? { assigned: { [NUMBERED[entity].field]: numbering.assigned } } : {}),
+    ...(numbering.conflict ? { warnings: [numbering.conflict] } : {}),
+  });
 }
 
 const MIME = {

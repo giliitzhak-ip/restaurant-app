@@ -41,3 +41,5 @@ echo
 bash "$HERE/doclinks.sh" || exit 1
 echo
 bash "$HERE/invites.sh" || exit 1
+echo
+bash "$HERE/numbering.sh" || exit 1

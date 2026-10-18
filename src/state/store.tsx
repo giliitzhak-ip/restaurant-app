@@ -9,6 +9,7 @@ import type {
   JournalSnapshot,
 } from '../types';
 import { seedState } from './seed';
+import { mergeCatalog } from './mergeCatalog';
 import { kvGet, kvSet } from '../lib/storage';
 import { syncQueue, startSyncWatchers, type RejectedOp } from '../lib/sync';
 import {
@@ -18,6 +19,7 @@ import { newId } from '../lib/id';
 import { isoNow } from '../lib/format';
 import { buildJournalSnapshot, fullJournalFromState } from '../lib/snapshot';
 import { isJournalLocked } from '../lib/journalLock';
+import { isUntouchedDraft } from '../lib/journalEntered';
 import { buildBackup, mergeBackup, type BackupFile, type ImportPlan } from '../lib/backup';
 import { blockingIssues, validateJournal } from '../lib/validation';
 
@@ -151,6 +153,14 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
   /* צילום המצב שכבר נרשם בתור הסנכרון. null = עוד לא נקבע קו בסיס. */
   const syncedRef = useRef<SyncSnapshot | null>(null);
   const lastPullRef = useRef(0);
+  const pullingRef = useRef(false);
+  /**
+   * מקצה המספרים הרץ. מספר יומן ומספר לקוח מוקצים כאן ולא מתוך
+   * ה-state, כי קריאה מתוך ה-state נותנת לשתי לחיצות באותו רגע את
+   * אותו מספר – וכך נוצרו שני יומנים באותו מספר. הקצאה מתוך ref
+   * מתקדמת מיד, גם לפני שהרינדור הבא קרה.
+   */
+  const countersRef = useRef({ journalNumber: 1, customerNumber: 1 });
 
   /* טעינה ראשונית מהאחסון המקומי */
   useEffect(() => {
@@ -158,21 +168,25 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
     void (async () => {
       const stored = await kvGet<AppState>(storageKey);
       if (!cancelled && stored) {
-        // מיזוג מאגר החומרים והתבניות של המערכת כדי שעדכוני קוד יגיעו למשתמש קיים
+        /* מיזוג מאגר התכשירים והתבניות של המערכת, כדי שעדכוני קוד
+           יגיעו גם למשתמש קיים. המיזוג הוא לפי מספר רישום ולא לפי
+           מזהה, ולכן שינוי מזהה במאגר אינו מייצר תכשיר כפול, וההפניות
+           ביומנים ההיסטוריים מוסבות לרשומה הקנונית. */
         const seeded = seedState();
-        const materials = [...seeded.materials];
-        for (const m of stored.materials ?? []) {
-          if (!materials.some((x) => x.id === m.id)) materials.push(m);
+        const merge = mergeCatalog(seeded, stored);
+        if (merge.merged > 0) {
+          console.info(
+            `[מאגר תכשירים] ${merge.merged} רשומות כפולות אוחדו לפי מספר רישום.`,
+          );
         }
-        const labels = [...seeded.materialLabels];
-        for (const l of stored.materialLabels ?? []) {
-          if (!labels.some((x) => x.id === l.id)) labels.push(l);
-        }
-        const templates = [...seeded.treatmentTemplates];
-        for (const t of stored.treatmentTemplates ?? []) {
-          if (!templates.some((x) => x.id === t.id)) templates.push(t);
-        }
-        setState({ ...seeded, ...stored, materials, materialLabels: labels, treatmentTemplates: templates });
+        setState({
+          ...seeded,
+          ...stored,
+          materials: merge.materials,
+          materialLabels: merge.materialLabels,
+          treatmentTemplates: merge.treatmentTemplates,
+          journalMaterials: merge.journalMaterials,
+        });
       }
       if (!cancelled) {
         loadedRef.current = true;
@@ -180,6 +194,35 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
       }
     })();
     startSyncWatchers();
+
+    /* השרת הוא הגורם הקובע לייחודיות מספר יומן ומספר לקוח בעסק.
+       כששני מכשירים הקציבו את אותו מספר, השרת מקציב מספר פנוי
+       והמכשיר מאמץ אותו – כך לא נשארים שני מסמכים באותו מספר. */
+    syncQueue.setAssignmentHandler(({ entity, entityId, fields }) => {
+      setState((s) => {
+        if (entity === 'journals' && typeof fields.journalNumber === 'number') {
+          const journal = s.journals.find((j) => j.id === entityId);
+          if (!journal || journal.journalNumber === fields.journalNumber) return s;
+          const journalNumber = fields.journalNumber;
+          return {
+            ...s,
+            journals: s.journals.map((j) => (j.id === entityId ? { ...j, journalNumber } : j)),
+            counters: { ...s.counters, journalNumber: Math.max(s.counters.journalNumber, journalNumber + 1) },
+          };
+        }
+        if (entity === 'customers' && fields.customerNumber !== undefined) {
+          const customerNumber = String(fields.customerNumber);
+          const customer = s.customers.find((c) => c.id === entityId);
+          if (!customer || customer.customerNumber === customerNumber) return s;
+          return {
+            ...s,
+            customers: s.customers.map((c) => (c.id === entityId ? { ...c, customerNumber } : c)),
+          };
+        }
+        return s;
+      });
+    });
+
     const unsub = syncQueue.subscribe((status) => {
       setPendingSync(status.pending);
       setOnline(status.online);
@@ -188,6 +231,7 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
     return () => {
       cancelled = true;
       unsub();
+      syncQueue.setAssignmentHandler(null);
     };
   }, [storageKey]);
 
@@ -233,24 +277,33 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
    * שינוי מקומי שעדיין ממתין בתור גובר, כדי שלא יימחק מידע שהוקלד בשטח.
    */
   const pullFromServer = useCallback<StoreValue['pullFromServer']>(async () => {
+    /* משיכה אחת בכל רגע. המשיכה מופעלת מכמה מקומות (פתיחה, חזרה
+       לחזית, מעבר מסך, טיימר), ושתי משיכות במקביל היו שולחות את
+       אותה בקשה פעמיים ומחילות את אותם שינויים פעמיים. */
+    if (pullingRef.current) return 0;
+    pullingRef.current = true;
     let applied = 0;
     lastPullRef.current = Date.now();
-    // דף חלקי: ממשיכים מאותה נקודה. התקרה מונעת לופ אם השרת חוזר על עצמו.
-    for (let page = 0; page < 20; page += 1) {
-      const pulled = await syncQueue.pull();
-      if (!pulled) break;
-      setState((s) => {
-        const outcome = mergePulled(s, pulled, (entity, id) => syncQueue.hasPending(entity, id));
-        const changed = outcome.added + outcome.updated + outcome.removed;
-        if (changed === 0) return s;
-        applied += changed;
-        /* המצב שהגיע מהשרת כבר נמצא בשרת, ולכן הוא נכנס לקו הבסיס
-           ואינו נשלח בחזרה כשינוי חדש. */
-        if (syncedRef.current) syncedRef.current = snapshotState(outcome.state);
-        return outcome.state;
-      });
-      await syncQueue.writeCursor(pulled.cursor);
-      if (!pulled.truncated) break;
+    try {
+      // דף חלקי: ממשיכים מאותה נקודה. התקרה מונעת לופ אם השרת חוזר על עצמו.
+      for (let page = 0; page < 20; page += 1) {
+        const pulled = await syncQueue.pull();
+        if (!pulled) break;
+        setState((s) => {
+          const outcome = mergePulled(s, pulled, (entity, id) => syncQueue.hasPending(entity, id));
+          const changed = outcome.added + outcome.updated + outcome.removed;
+          if (changed === 0) return s;
+          applied += changed;
+          /* המצב שהגיע מהשרת כבר נמצא בשרת, ולכן הוא נכנס לקו הבסיס
+             ואינו נשלח בחזרה כשינוי חדש. */
+          if (syncedRef.current) syncedRef.current = snapshotState(outcome.state);
+          return outcome.state;
+        });
+        await syncQueue.writeCursor(pulled.cursor);
+        if (!pulled.truncated) break;
+      }
+    } finally {
+      pullingRef.current = false;
     }
     return applied;
   }, []);
@@ -314,6 +367,47 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
     [state.users, state.currentUserId],
   );
 
+  /* המונים במצב עשויים לעלות מטעינה, מייבוא גיבוי או ממשיכה מהשרת.
+     המקצה תמיד לפחות גבוה כמו המצב, כדי שלא יחזור על מספר שכבר נוצל. */
+  useEffect(() => {
+    stateRef.current = state;
+    // מהרגע שהמצב התקבע, ה-state הוא הקובע ואין צורך בתביעות
+    claimsRef.current.clear();
+    countersRef.current = {
+      journalNumber: Math.max(countersRef.current.journalNumber, state.counters.journalNumber),
+      customerNumber: Math.max(countersRef.current.customerNumber, state.counters.customerNumber),
+    };
+  }, [state]);
+
+  /**
+   * תביעת מפתח עסקי. `setState` אינו סינכרוני, ולכן שתי לחיצות באותו
+   * רגע אינן רואות זו את יצירתה של זו דרך ה-state. כאן נשמרת היצירה
+   * הראשונה לפי מפתח, וכל קריאה נוספת באותו tick מקבלת אותה רשומה.
+   * התביעות נמחקות ברגע שהמצב התקבע, ומאותו רגע ה-state הוא הקובע.
+   */
+  const claimsRef = useRef(new Map<string, { id: string; record: unknown }>());
+
+  const claimOnce = useCallback(<T extends { id: ID }>(
+    key: string,
+    fromState: () => T | undefined,
+    make: () => T,
+  ): T => {
+    const existing = fromState();
+    if (existing) return existing;
+    const claimed = claimsRef.current.get(key);
+    if (claimed) return claimed.record as T;
+    const record = make();
+    claimsRef.current.set(key, { id: record.id, record });
+    return record;
+  }, []);
+
+  /** מקצה מספר רץ אחד ומתקדם מיד, כך ששתי קריאות אינן מקבלות אותו מספר. */
+  const allocate = useCallback((key: 'journalNumber' | 'customerNumber'): number => {
+    const next = Math.max(countersRef.current[key], stateRef.current.counters[key]);
+    countersRef.current = { ...countersRef.current, [key]: next + 1 };
+    return next;
+  }, []);
+
   const audit = useCallback(
     (entry: Omit<AuditEntry, 'id' | 'at' | 'userId' | 'userName'>): AuditEntry => ({
       ...entry,
@@ -350,22 +444,23 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
   const createCustomer = useCallback<StoreValue['createCustomer']>(
     (draft) => {
       const now = isoNow();
+      const sequence = allocate('customerNumber');
       const customer: Customer = {
         ...draft,
         id: newId('cus'),
-        customerNumber: String(1000 + state.counters.customerNumber),
+        customerNumber: String(1000 + sequence),
         createdAt: now,
         updatedAt: now,
       };
       setState((s) => ({
         ...s,
         customers: [...s.customers, customer],
-        counters: { ...s.counters, customerNumber: s.counters.customerNumber + 1 },
+        counters: { ...s.counters, customerNumber: Math.max(s.counters.customerNumber, sequence + 1) },
         auditLog: [...s.auditLog, audit({ entity: 'customers', entityId: customer.id, action: 'create' })],
       }));
       return customer;
     },
-    [state.counters.customerNumber, audit],
+    [audit, allocate],
   );
 
   const updateCustomer = useCallback<StoreValue['updateCustomer']>(
@@ -395,12 +490,24 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
 
   /* ───────── יומן ───────── */
 
+  /**
+   * פתיחת יומן. אם קיימת טיוטה ריקה שלא נגעו בה – היא נפתחת מחדש
+   * במקום ליצור עוד אחת. כך לחיצה חוזרת על "יומן חדש" אינה מייצרת
+   * יומנים ריקים, ואינה שורפת מספרי יומן על טיוטות שנזנחו.
+   */
   const createJournal = useCallback<StoreValue['createJournal']>(() => {
+    const current = stateRef.current;
+    const reusable = [...current.journals]
+      .reverse()
+      .find((j) => isUntouchedDraft(fullJournalFromState(current, j.id)));
+    if (reusable) return reusable;
+
     const ext = state.exterminators[0];
     const now = isoNow();
+    const journalNumber = allocate('journalNumber');
     const journal: Journal = {
       id: newId('jrn'),
-      journalNumber: state.counters.journalNumber,
+      journalNumber,
       status: 'draft',
       startedAt: now,
       workKind: 'private',
@@ -419,11 +526,11 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
     setState((s) => ({
       ...s,
       journals: [...s.journals, journal],
-      counters: { ...s.counters, journalNumber: s.counters.journalNumber + 1 },
+      counters: { ...s.counters, journalNumber: Math.max(s.counters.journalNumber, journalNumber + 1) },
       auditLog: [...s.auditLog, audit({ entity: 'journals', entityId: journal.id, action: 'create' })],
     }));
     return journal;
-  }, [state.exterminators, state.counters.journalNumber, audit]);
+  }, [state.exterminators, audit, allocate]);
 
   const updateJournal = useCallback<StoreValue['updateJournal']>(
     (id, patch) => {
@@ -707,13 +814,34 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
 
   /* ───────── תבניות ───────── */
 
+  /**
+   * שמירת תבנית לקוח. התבנית מזוהה לפי הלקוח והשם, ולכן שמירה
+   * חוזרת מעדכנת את התבנית הקיימת ואינה יוצרת עוד אחת באותו שם.
+   * המזהה ותאריך היצירה נשמרים, כדי שההיסטוריה והסנכרון לא יישברו.
+   */
   const saveCustomerTemplate = useCallback<StoreValue['saveCustomerTemplate']>(
     (tpl) => {
-      const created: CustomerTemplate = { ...tpl, id: newId('ctp'), createdAt: isoNow() };
-      setState((s) => ({ ...s, customerTemplates: [...s.customerTemplates, created] }));
-      return created;
+      const key = `ctp:${tpl.customerId}|${tpl.name.trim()}`;
+      const find = () => stateRef.current.customerTemplates.find(
+        (t) => t.customerId === tpl.customerId && t.name.trim() === tpl.name.trim(),
+      );
+      const claimed = claimOnce<CustomerTemplate>(
+        key,
+        find,
+        () => ({ ...tpl, id: newId('ctp'), createdAt: isoNow() }),
+      );
+      /* תבנית קיימת מתעדכנת במקומה: המזהה ותאריך היצירה נשמרים,
+         כדי שההיסטוריה והסנכרון לא יישברו. */
+      const record: CustomerTemplate = { ...claimed, ...tpl, id: claimed.id, createdAt: claimed.createdAt };
+      setState((s) => ({
+        ...s,
+        customerTemplates: s.customerTemplates.some((t) => t.id === record.id)
+          ? s.customerTemplates.map((t) => (t.id === record.id ? record : t))
+          : [...s.customerTemplates, record],
+      }));
+      return record;
     },
-    [],
+    [claimOnce],
   );
 
   const updateTreatmentTemplate = useCallback<StoreValue['updateTreatmentTemplate']>((id, patch) => {
@@ -758,7 +886,7 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
       const copy: Journal = {
         ...src,
         id: newId('jrn'),
-        journalNumber: state.counters.journalNumber,
+        journalNumber: allocate('journalNumber'),
         status: 'draft',
         startedAt: now,
         createdAt: now,
@@ -771,12 +899,12 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
       setState((s) => ({
         ...s,
         journals: [...s.journals, copy],
-        counters: { ...s.counters, journalNumber: s.counters.journalNumber + 1 },
+        counters: { ...s.counters, journalNumber: Math.max(s.counters.journalNumber, copy.journalNumber + 1) },
         auditLog: [...s.auditLog, audit({ entity: 'journals', entityId: copy.id, action: 'create', after: `שוכפל מ-${src.journalNumber}` })],
       }));
       return copy;
     },
-    [state.journals, state.counters.journalNumber, audit],
+    [state.journals, audit, allocate],
   );
 
   /**
@@ -853,13 +981,25 @@ export function StoreProvider({ children, scope }: { children: ReactNode; scope?
 
   /* ───────── מסלול ומשימות ───────── */
 
+  /**
+   * יצירת מסלול ליום. המסך מציג מסלול אחד לתאריך, ולכן מסלול שני
+   * לאותו תאריך היה נשאר מוסתר ומסונכרן לשרת בלי שאיש רואה אותו.
+   * לכן קריאה חוזרת לאותו תאריך מחזירה את המסלול הקיים.
+   */
   const createRoute = useCallback<StoreValue['createRoute']>(
-    (draft) => {
-      const route: Route = { ...draft, id: newId('rte'), createdAt: isoNow() };
-      setState((s) => ({ ...s, routes: [...s.routes, route] }));
-      return route;
-    },
-    [],
+    (draft) => claimOnce<Route>(
+      `route:${draft.date}`,
+      () => stateRef.current.routes.find((r) => r.date === draft.date),
+      () => {
+        const route: Route = { ...draft, id: newId('rte'), createdAt: isoNow() };
+        setState((s) => (
+          // בדיקה חוזרת מול המצב המחויב, למקרה של שתי לחיצות באותו רגע
+          s.routes.some((r) => r.date === draft.date) ? s : { ...s, routes: [...s.routes, route] }
+        ));
+        return route;
+      },
+    ),
+    [claimOnce],
   );
 
   const addRouteStop = useCallback<StoreValue['addRouteStop']>((routeId, customerId, siteId) => {

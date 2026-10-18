@@ -4,7 +4,7 @@
  */
 
 import { chromium, devices } from 'playwright';
-import { ACCOUNTS, authenticate } from './helpers.mjs';
+import { ACCOUNTS, authenticate, saveCustomerDialog } from './helpers.mjs';
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:3000';
 const LAUNCH = process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {};
@@ -125,8 +125,8 @@ const newEmail = `biz${Date.now()}@dev.local`;
   await page.goto(`${BASE}/#/customers`, { waitUntil: 'networkidle' });
   await page.getByRole('button', { name: '+ לקוח חדש' }).click();
   await page.getByLabel('שם לקוח / עסק').fill('לקוח פרטי של יצחק');
-  await page.getByLabel('כתובת', { exact: true }).fill('רחוב 1');
-  await page.getByRole('button', { name: 'שמור', exact: true }).click();
+  await page.getByLabel('כתובת מלאה').fill('רחוב 1');
+  await saveCustomerDialog(page);
   await page.waitForTimeout(900);
   check('הלקוח נשמר אצל הבעלים', await page.getByText('לקוח פרטי של יצחק').first().isVisible());
 

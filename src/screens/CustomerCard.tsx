@@ -4,11 +4,28 @@ import { Card, EmptyState, Field, Notice, Tag } from '../components/ui';
 import { navigate } from '../router';
 import { formatDate, journalNumberText, JOURNAL_STATUS_LABEL, SITE_KIND_LABEL, TASK_KIND_LABEL } from '../lib/format';
 import { pestName } from '../data/pests';
+import { useGuardedAction } from '../lib/useGuardedAction';
 
 export function CustomerCard({ customerId }: { customerId?: string }) {
   const { state, updateCustomer, saveCustomerTemplate, createJournal, updateJournal } = useStore();
   const customer = state.customers.find((c) => c.id === customerId);
   const [saved, setSaved] = useState(false);
+
+  /* ההגנה על הכפתור חייבת לרוץ בכל רינדור, ולכן היא כאן ולא אחרי
+     הבדיקה שהלקוח קיים. לחיצה כפולה פתחה שני יומנים לאותו לקוח. */
+  const { run: startJournal, pending: startingJournal } = useGuardedAction(() => {
+    if (!customer) return;
+    const site = state.sites.find((si) => si.customerId === customer.id);
+    const journal = createJournal();
+    updateJournal(journal.id, {
+      customerId: customer.id,
+      siteId: site?.id,
+      siteAddress: site?.address ?? customer.address,
+      siteKind: site?.siteKind ?? 'apartment',
+      siteAccessNotes: site?.accessNotes,
+    });
+    navigate(`#/journal/${journal.id}/1`);
+  });
 
   if (!customer) {
     return <Card><EmptyState icon="☎" title="הלקוח לא נמצא." /></Card>;
@@ -34,19 +51,6 @@ export function CustomerCard({ customerId }: { customerId?: string }) {
   const preferredMaterialId = state.journalMaterials
     .filter((m) => journals.some((j) => j.id === m.journalId))
     .map((m) => m.materialId)[0];
-
-  function startJournalForCustomer(): void {
-    const journal = createJournal();
-    const site = sites[0];
-    updateJournal(journal.id, {
-      customerId: customer!.id,
-      siteId: site?.id,
-      siteAddress: site?.address ?? customer!.address,
-      siteKind: site?.siteKind ?? 'apartment',
-      siteAccessNotes: site?.accessNotes,
-    });
-    navigate(`#/journal/${journal.id}/1`);
-  }
 
   return (
     <>
@@ -75,7 +79,14 @@ export function CustomerCard({ customerId }: { customerId?: string }) {
           <textarea id="cd-notes" value={customer.notes ?? ''} onChange={(e) => updateCustomer(customer.id, { notes: e.target.value })} />
         </Field>
         <div className="row">
-          <button type="button" className="btn btn-primary" onClick={startJournalForCustomer}>פתח יומן ללקוח</button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={startingJournal}
+            onClick={startJournal}
+          >
+            פתח יומן ללקוח
+          </button>
           {customer.phone && <a className="btn btn-soft" href={`tel:${customer.phone}`}>חיוג</a>}
         </div>
       </Card>

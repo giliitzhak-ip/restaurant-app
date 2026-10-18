@@ -1,5 +1,5 @@
 import { chromium } from 'playwright';
-import { authenticate, createFreshBusiness } from './helpers.mjs';
+import { authenticate, createFreshBusiness, saveCustomerDialog } from './helpers.mjs';
 const BASE = process.env.BASE_URL ?? 'http://localhost:3000';
 /** אפשר להצביע על דפדפן מותקן מראש: CHROME_PATH=/path/to/chrome */
 const LAUNCH = process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {};
@@ -18,8 +18,8 @@ await page.goto(BASE, { waitUntil: 'networkidle' });
 await page.goto(BASE + '/#/customers', { waitUntil: 'networkidle' });
 await page.getByRole('button', { name: '+ לקוח חדש' }).click();
 await page.getByLabel('שם לקוח / עסק').fill('בדיקת נגישות');
-await page.getByLabel('כתובת', { exact: true }).fill('רחוב 1');
-await page.getByRole('button', { name: 'שמור', exact: true }).click();
+await page.getByLabel('כתובת מלאה').fill('רחוב 1');
+await saveCustomerDialog(page);
 await page.waitForTimeout(400);
 await page.locator('.nav-fab').click();
 await page.waitForTimeout(400);

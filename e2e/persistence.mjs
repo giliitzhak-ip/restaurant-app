@@ -5,7 +5,7 @@
  */
 
 import { chromium, devices } from 'playwright';
-import { authenticate, createFreshBusiness } from './helpers.mjs';
+import { authenticate, createFreshBusiness, saveCustomerDialog } from './helpers.mjs';
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:3000';
 const LAUNCH = process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {};
@@ -49,8 +49,8 @@ const savePill = (page) => page.locator(".save-pill").first();
   // שינוי אמיתי של נתונים, כדי שהשמירה האוטומטית תרוץ ותיכשל
   await page.getByRole('button', { name: '+ לקוח חדש' }).click();
   await page.getByLabel('שם לקוח / עסק').fill('לקוח בדיקת אחסון');
-  await page.getByLabel('כתובת', { exact: true }).fill('הזיתים 4, רמת גן');
-  await page.getByRole('button', { name: 'שמור', exact: true }).click();
+  await page.getByLabel('כתובת מלאה').fill('הזיתים 4, רמת גן');
+  await saveCustomerDialog(page);
   await page.waitForTimeout(1200);
 
   const pillText = (await savePill(page).textContent()) ?? '';
@@ -94,8 +94,8 @@ const savePill = (page) => page.locator(".save-pill").first();
   await page.waitForTimeout(500);
   await page.getByRole('button', { name: '+ לקוח חדש' }).click();
   await page.getByLabel('שם לקוח / עסק').fill('לקוח בדיקת חתימה');
-  await page.getByLabel('כתובת', { exact: true }).fill('האורן 9, פתח תקווה');
-  await page.getByRole('button', { name: 'שמור', exact: true }).click();
+  await page.getByLabel('כתובת מלאה').fill('האורן 9, פתח תקווה');
+  await saveCustomerDialog(page);
   await page.waitForTimeout(500);
   await page.getByText('לקוח בדיקת חתימה').first().click();
   await page.waitForTimeout(400);
