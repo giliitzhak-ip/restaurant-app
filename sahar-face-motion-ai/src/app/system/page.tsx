@@ -16,6 +16,7 @@ const CHECK_LABELS = {
   worker: "Worker עיבוד מדיה",
   ffmpeg: "FFmpeg",
   ffprobe: "FFprobe",
+  faces: "זיהוי פנים (YuNet/SFace)",
 } as const;
 const MODULE_LABELS: Record<ModuleKey, string> = {
   faceSwap: "Face Swap",

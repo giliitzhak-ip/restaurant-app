@@ -2,9 +2,14 @@
 
 A Hebrew (RTL) web platform for making AI videos: face swap, motion transfer, synthetic Hebrew voices, lip sync and video editing, with built-in consent management and AI-content labelling.
 
-> **Status: Phase 2 of 8.** Accounts, the project library, real file uploads to S3-compatible storage, FFprobe validation and browser-friendly previews all work. The AI modules are not connected yet. The dashboard shows each module's real status and does not pretend to process anything. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+> **Status: Phase 3 of 8.**
+> - Working: accounts, the project library, uploads to S3-compatible storage, FFprobe validation and previews, local face detection, and the **AI Face Swap studio** with cost quote and explicit approval.
+> - Face swap runs end-to-end on the free `mock` provider.
+> - The Magic Hour cloud adapter is built and contract-tested, but **no paid call has been made**. It needs an API key and your approval ([FACE_SWAP_PROVIDERS.md](FACE_SWAP_PROVIDERS.md), [DEPLOYMENT.md](DEPLOYMENT.md)).
+>
+> The other AI modules are not connected yet. The dashboard shows each module's real status and does not pretend to process anything. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
 
-Docs: [ARCHITECTURE.md](ARCHITECTURE.md) · [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) · [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [.env.example](.env.example)
+Docs: [FACE_SWAP_PROVIDERS.md](FACE_SWAP_PROVIDERS.md) · [DEPLOYMENT.md](DEPLOYMENT.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) · [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [.env.example](.env.example)
 
 ## Requirements
 
@@ -22,6 +27,8 @@ cp .env.example .env
 # set APP_SECRET:  openssl rand -hex 32
 
 docker compose up -d            # Postgres + Redis + MinIO (or use your own services)
+python3 -m venv .venv && .venv/bin/pip install -r ai/requirements.txt   # face detection (OpenCV)
+npm run models:download         # YuNet + SFace models (checksum-verified)
 npx prisma migrate deploy       # create tables
 npm run build && npm start      # web app on http://0.0.0.0:3000
 npm run worker                  # media worker (second terminal): FFprobe checks + previews

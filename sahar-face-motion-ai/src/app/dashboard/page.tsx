@@ -25,7 +25,7 @@ export default async function DashboardPage() {
       </section>
 
       <Alert variant="info" className="mb-6">
-        המערכת נמצאת בשלב {CURRENT_PHASE} מתוך 8: ספריית פרויקטים, העלאת קבצים לאחסון, בדיקת FFprobe ותצוגה מקדימה פעילים. כלי ה-AI ייפתחו לפי מפת הדרכים.
+        המערכת נמצאת בשלב {CURRENT_PHASE} מתוך 8: ספריית פרויקטים, העלאה לאחסון ו-AI Face Swap (עם הערכת עלות ואישור מפורש) פעילים. שאר כלי ה-AI ייפתחו לפי מפת הדרכים.
       </Alert>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -57,6 +57,7 @@ export default async function DashboardPage() {
                   <FlaskConical className="size-3.5 text-gold" aria-hidden />
                   ספק נבחר: {provider.displayName}
                   {provider.isMock && " (מצב בדיקות, ללא AI אמיתי)"}
+                  {!provider.isMock && !provider.ready && " (לא מוכן: חסר מפתח או אישור לשירות בתשלום)"}
                 </p>
               )}
             </Card>

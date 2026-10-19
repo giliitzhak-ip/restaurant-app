@@ -76,6 +76,7 @@ Only vendor docs and official SDK source were consulted, and no paid API was cal
 
 | Module | Candidate | API shape | Notes |
 |---|---|---|---|
+| Face Swap | **Magic Hour**: chosen in phase 3, see [FACE_SWAP_PROVIDERS.md](FACE_SWAP_PROVIDERS.md) | `POST https://api.magichour.ai/v1/face-swap` (+ upload-urls, face-detection, video-projects), Bearer | 1 credit/frame; adapter implemented |
 | Face Swap | **FaceFusion** (self-hosted GPU worker) | CLI only (`headless-run`, `job-*`); no HTTP API, so we must wrap it in our own FastAPI service | Code is OpenRAIL-AS. The default `inswapper_128` model is **non-commercial** (InsightFace). Commercial use needs a different swapper model with a verified licence, or a paid InsightFace licence. Needs an NVIDIA CUDA GPU for video. |
 | Face Swap | Akool | `POST https://openapi.akool.com/api/open/v3/faceswap/highquality/specifyvideo` (marked legacy; v4 "Face Swap Plus"); async with webhook/poll | Exact auth header and pricing unverified. |
 | Face Swap | Replicate community models | `POST https://api.replicate.com/v1/predictions` | Built on inswapper/roop, so the same licence risk applies. |
@@ -89,9 +90,37 @@ Only vendor docs and official SDK source were consulted, and no paid API was cal
 
 **Face Swap vs Motion Transfer are separate modules.** Face swap keeps the target video's body and replaces only the face. Motion transfer generates a new video of the character from a still image, driven by the reference motion.
 
+## 5b. Face swap pipeline (phase 3)
+
+```
+upload ─► media worker: FFprobe → preview → YuNet+SFace face detection (people, thumbnails)
+studio ─► POST /api/face-swap/quote   consent records + PENDING_APPROVAL job + cost quote (no provider call)
+       ─► POST /api/jobs/:id/approve  exact amount + acceptCharge; budget/limits re-checked; → QUEUED
+ai worker ─► provider.start() once → providerJobId saved → provider.poll() with backoff
+          ─► download result → restore audio if missing → stamp AI metadata → GENERATED asset → preview job
+```
+
+- **Adapters** (`src/providers/face-swap/`): `mock` (local FFmpeg, labelled TEST), `magichour` (cloud), `gpu-worker` (self-hosted). Selected with `FACE_SWAP_PROVIDER`.
+- **Billing safety:**
+  - `start()` is never retried. If it throws, the job fails with "check the provider dashboard".
+  - Retries and restarts resume polling from the saved `providerJobId`.
+  - Approval is a conditional update (`PENDING_APPROVAL` → `QUEUED`), so double taps can't approve twice.
+- **Person selection:**
+  - Our detector clusters faces across sampled frames with SFace embeddings.
+  - For Magic Hour, the chosen person's crop is matched (SFace cosine ≥ 0.363) against Magic Hour's own (free) face detection, and sent as `face_mappings`.
+  - If no confident match exists, the job is refused before the billable call.
+
 ## 6. GPU worker (future)
 
-`GPU_WORKER_URL` will point to a FastAPI service running next to FaceFusion (or other open models) on a CUDA machine. It will expose `POST /jobs` (signed input URLs, returns id), `GET /jobs/{id}` (status/progress) and upload results to a signed PUT URL. Auth is a bearer token (`GPU_WORKER_TOKEN`). It implements the same provider interfaces as the cloud adapters.
+`GPU_WORKER_URL` points to our own small HTTP service in front of FaceFusion (or another open model) on a CUDA machine. The adapter (`src/providers/face-swap/gpu-worker.ts`) already speaks this contract:
+
+```
+POST /v1/face-swap   Authorization: Bearer $GPU_WORKER_TOKEN
+     { source_url, target_url, target_face: { box: {x,y,w,h} (0..1), time_sec } | null }   →  { id }
+GET  /v1/jobs/{id}   →  { status: queued|running|succeeded|failed, progress?: 0..1, output_url?, error? }
+```
+
+Inputs are time-limited signed URLs (S3 pre-signed, or `/api/media/signed` HMAC links for local storage). The model on the server must be licensed for commercial use; the default `inswapper_128` is not.
 
 ## 7. Security & abuse controls
 

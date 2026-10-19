@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Copy, Trash2, Pencil, Loader2, History } from "lucide-react";
+import { ArrowRight, Copy, Trash2, Pencil, Loader2, History, ScanFace } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import type { MediaKind } from "@/server/media/policy";
 import { AssetCard } from "./asset-card";
 import { AspectPicker } from "./aspect-picker";
 import { Uploader } from "./uploader";
+import { FaceSwapJobCard } from "@/components/face-swap/job-card";
 
 type Filter = "ALL" | MediaKind;
 const FILTERS: { value: Filter; label: string }[] = [
@@ -65,7 +66,9 @@ export function ProjectWorkspace({
   }, [initial.id]);
 
   // Poll while any file is still being processed by the media worker.
-  const processing = project.assets.some((a) => a.status === "PROCESSING");
+  const processing =
+    project.assets.some((a) => a.status === "PROCESSING") || project.aiJobs.some((j) => j.status === "QUEUED" || j.status === "RUNNING");
+  const aiJobs = project.aiJobs.filter((j) => j.status !== "PENDING_APPROVAL");
   useEffect(() => {
     if (!processing) return;
     const t = setInterval(refresh, 1500);
@@ -136,6 +139,12 @@ export function ProjectWorkspace({
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button asChild size="sm">
+              <Link href={`/projects/${project.id}/face-swap`}>
+                <ScanFace aria-hidden />
+                החלפת פנים
+              </Link>
+            </Button>
             <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
               <Pencil aria-hidden />
               עריכה
@@ -224,6 +233,17 @@ export function ProjectWorkspace({
           </div>
         )}
       </section>
+
+      {aiJobs.length > 0 && (
+        <section aria-labelledby="ai-title" className="space-y-3">
+          <h2 id="ai-title" className="text-lg font-bold">תוצאות AI</h2>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {aiJobs.map((j) => (
+              <FaceSwapJobCard key={j.id} job={j} assets={project.assets} />
+            ))}
+          </div>
+        </section>
+      )}
 
       <Card>
         <CardTitle className="mb-3 flex items-center gap-2">

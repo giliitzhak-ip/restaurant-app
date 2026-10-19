@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { keys, storage } from "@/server/storage";
 import { analyzeProbe, ffprobe } from "@/server/media/probe";
 import { mediaLimits, type MediaKind } from "@/server/media/policy";
+import { detectFaces, type FacesResult } from "@/server/media/faces";
 import { audioPreviewArgs, imagePreviewArgs, posterArgs, runFfmpeg, videoPreviewArgs } from "@/server/media/ffmpeg";
 
 /** Thrown for invalid user files: not retried, shown to the user. */
@@ -54,6 +55,21 @@ export async function processMediaProbe(jobId: string): Promise<void> {
     const k = (file: string) => keys.asset(asset.ownerId, asset.projectId, asset.id, file);
     let previewKey: string | null = null;
     let posterKey: string | null = null;
+    let faces: FacesResult | null = null;
+
+    // Find the people in the media for the face-swap picker. Never fails the upload.
+    const findFaces = async (input: string) => {
+      const outDir = path.join(tmp, "faces");
+      const result = await detectFaces({ input, kind: kind as "VIDEO" | "IMAGE", durationSec: (meta.durationMs ?? 0) / 1000, workDir: tmp, outDir }).catch(
+        (e): FacesResult => ({ status: "error", reason: (e as Error).message.slice(0, 300) }),
+      );
+      if (result.status === "ok") {
+        for (const p of result.persons) await storage().putFile(k(`faces/${p.thumb}`), path.join(outDir, p.thumb), "image/jpeg");
+      } else {
+        console.warn(`[media] face detection ${result.status} for ${asset.id}: ${result.reason}`);
+      }
+      return result;
+    };
 
     if (kind === "VIDEO") {
       const dur = (meta.durationMs ?? 0) / 1000;
@@ -64,13 +80,15 @@ export async function processMediaProbe(jobId: string): Promise<void> {
       const preview = path.join(tmp, "preview.mp4");
       await runFfmpeg(videoPreviewArgs(original, preview, meta.hasAudio), {
         durationSec: dur,
-        onProgress: (f) => void setProgress(20 + f * 70),
+        onProgress: (f) => void setProgress(20 + f * 65),
       });
-      await setProgress(92);
+      await setProgress(88);
       previewKey = k("preview.mp4");
       posterKey = k("poster.jpg");
       await storage().putFile(previewKey, preview, "video/mp4");
       await storage().putFile(posterKey, poster, "image/jpeg");
+      await setProgress(92);
+      faces = await findFaces(preview);
     } else if (kind === "IMAGE") {
       const preview = path.join(tmp, "preview.jpg");
       const poster = path.join(tmp, "poster.jpg");
@@ -88,6 +106,8 @@ export async function processMediaProbe(jobId: string): Promise<void> {
       posterKey = k("poster.jpg");
       await storage().putFile(previewKey, preview, "image/jpeg");
       await storage().putFile(posterKey, poster, "image/jpeg");
+      await setProgress(80);
+      faces = await findFaces(preview);
     } else {
       const preview = path.join(tmp, "preview.m4a");
       await runFfmpeg(audioPreviewArgs(original, preview), {
@@ -115,6 +135,7 @@ export async function processMediaProbe(jobId: string): Promise<void> {
         audioCodec: meta.audioCodec,
         previewKey,
         posterKey,
+        ...(faces && { faces: faces as unknown as Prisma.InputJsonValue }),
       },
     });
     if (updated.count === 0) {

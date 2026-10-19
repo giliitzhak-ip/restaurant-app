@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import type { Asset, Job, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { keys, storage } from "@/server/storage";
+import type { FacesResult } from "@/server/media/faces";
+import { toAiJobDTO, type AiJobDTO } from "@/server/face-swap";
 
 export type AssetDTO = {
   id: string;
@@ -24,6 +26,7 @@ export type AssetDTO = {
   hasPreview: boolean;
   hasPoster: boolean;
   createdAt: string;
+  faces: FacesResult | null;
   /** Live processing job, if any. */
   job: { status: Job["status"]; progress: number } | null;
 };
@@ -36,6 +39,7 @@ export type ProjectDTO = {
   createdAt: string;
   updatedAt: string;
   assets: AssetDTO[];
+  aiJobs: AiJobDTO[];
   events: { id: string; type: string; message: string; createdAt: string }[];
 };
 
@@ -60,6 +64,7 @@ export function toAssetDTO(a: Asset, job?: Pick<Job, "status" | "progress"> | nu
     hasPreview: Boolean(a.previewKey),
     hasPoster: Boolean(a.posterKey),
     createdAt: a.createdAt.toISOString(),
+    faces: (a.faces as FacesResult | null) ?? null,
     job: job ? { status: job.status, progress: job.progress } : null,
   };
 }
@@ -74,6 +79,14 @@ export async function getProjectForUser(userId: string, projectId: string): Prom
       jobs: { where: { type: "MEDIA_PROBE", status: { in: ["QUEUED", "RUNNING"] } }, select: { input: true, status: true, progress: true } },
     },
   });
+  const aiJobs = project
+    ? await db.job.findMany({
+        where: { projectId: project.id, type: "FACE_SWAP", NOT: { status: "CANCELED", approvedAt: null } },
+        orderBy: { createdAt: "desc" },
+        take: 30,
+        include: { outputs: { select: { id: true } } },
+      })
+    : [];
   if (!project) return null;
   const jobByAsset = new Map(project.jobs.map((j) => [(j.input as { assetId?: string }).assetId, j]));
   return {
@@ -84,6 +97,7 @@ export async function getProjectForUser(userId: string, projectId: string): Prom
     createdAt: project.createdAt.toISOString(),
     updatedAt: project.updatedAt.toISOString(),
     assets: project.assets.map((a) => toAssetDTO(a, jobByAsset.get(a.id))),
+    aiJobs: aiJobs.map(toAiJobDTO),
     events: project.events.map((e) => ({ id: e.id, type: e.type, message: e.message, createdAt: e.createdAt.toISOString() })),
   };
 }
@@ -141,10 +155,14 @@ export async function duplicateProject(userId: string, projectId: string): Promi
       const posterKey = remap(a.posterKey);
       if (a.previewKey && previewKey) await store.copy(a.previewKey, previewKey);
       if (a.posterKey && posterKey) await store.copy(a.posterKey, posterKey);
+      const faces = a.faces as { status?: string; persons?: { thumb: string }[] } | null;
+      for (const p of faces?.status === "ok" ? (faces.persons ?? []) : []) {
+        await store.copy(keys.asset(userId, src.id, a.id, `faces/${p.thumb}`), keys.asset(userId, newProjectId, id, `faces/${p.thumb}`));
+      }
       // Consent references are deliberately carried over: they describe the same media.
       const { id: _oldId, projectId: _p, createdAt: _c, producedByJobId: _j, ...rest } = a;
       void _oldId; void _p; void _c; void _j;
-      copied.push({ ...rest, id, projectId: newProjectId, storageKey, previewKey, posterKey });
+      copied.push({ ...rest, faces: (rest.faces ?? undefined) as Prisma.InputJsonValue | undefined, id, projectId: newProjectId, storageKey, previewKey, posterKey });
     }
     await db.$transaction(async (tx) => {
       await tx.project.create({

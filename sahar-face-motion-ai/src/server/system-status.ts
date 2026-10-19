@@ -6,6 +6,7 @@ import { redis } from "@/lib/redis";
 import { allProviderStatuses } from "@/providers/registry";
 import { storage } from "@/server/storage";
 import { WORKER_HEARTBEAT_KEY } from "@/server/queue";
+import { faceDetectionAvailable } from "@/server/media/faces";
 
 const run = promisify(execFile);
 
@@ -72,7 +73,7 @@ export async function systemStatus() {
     checkBinary(process.env.FFPROBE_PATH || "ffprobe"),
   ]);
   return {
-    checks: { database, queue, storage: storageCheck, worker, ffmpeg, ffprobe },
+    checks: { database, queue, storage: storageCheck, worker, ffmpeg, ffprobe, faces: faceDetectionAvailable() },
     providers: allProviderStatuses(),
   };
 }

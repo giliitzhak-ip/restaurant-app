@@ -65,6 +65,7 @@ enum JobType {
 }
 
 enum JobStatus {
+  PENDING_APPROVAL // cost quote shown, waiting for the user's explicit approval (nothing billed)
   QUEUED
   RUNNING
   SUCCEEDED
@@ -153,6 +154,8 @@ model Asset {
   formatName   String?
   videoCodec   String?
   audioCodec   String?
+  // Faces found by the local detector (YuNet + SFace clustering): persons, thumbnails, boxes.
+  faces        Json?
   // Browser-friendly derivatives made by the media worker (H.264/AAC MP4, JPEG poster).
   previewKey   String?
   posterKey    String?
@@ -225,6 +228,13 @@ model Job {
   errorCode     String?
   errorMessage  String?   // Hebrew, user-facing
   estimatedCostCents Int  @default(0)
+  // Cost quote shown to the user (provider, pricing basis, breakdown) and its expiry.
+  quote         Json?
+  quoteExpiresAt DateTime?
+  // Explicit approval: who approved which exact amount, and when. Required before any paid call.
+  approvedAt    DateTime?
+  approvedCostCents Int?
+  actualCostCents Int?
   createdAt     DateTime  @default(now())
   startedAt     DateTime?
   finishedAt    DateTime?

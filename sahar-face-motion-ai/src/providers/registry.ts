@@ -8,8 +8,8 @@ import type { ModuleKey, ProviderInfo } from "./types";
 export const PROVIDER_CATALOG: Record<ModuleKey, ProviderInfo[]> = {
   faceSwap: [
     { id: "mock", displayName: "Mock (בדיקות)", paid: false, requiredEnv: [] },
-    { id: "akool", displayName: "Akool Face Swap", paid: true, requiredEnv: ["AKOOL_API_KEY"] },
-    { id: "replicate", displayName: "Replicate", paid: true, requiredEnv: ["REPLICATE_API_TOKEN"] },
+    { id: "magichour", displayName: "Magic Hour", paid: true, requiredEnv: ["MAGIC_HOUR_API_KEY"] },
+    { id: "akool", displayName: "Akool Face Swap Plus", paid: true, requiredEnv: ["AKOOL_API_KEY"] },
     { id: "gpu-worker", displayName: "GPU Worker עצמאי (FaceFusion)", paid: false, requiredEnv: ["GPU_WORKER_URL", "GPU_WORKER_TOKEN"] },
   ],
   motion: [
@@ -37,7 +37,7 @@ const SELECTOR_ENV: Record<ModuleKey, string> = {
 };
 
 /** Adapters that actually exist in code. Grows phase by phase. */
-const IMPLEMENTED = new Set<string>(["faceSwap:mock", "motion:mock", "voice:mock", "lipSync:mock"]);
+const IMPLEMENTED = new Set<string>(["faceSwap:mock", "faceSwap:magichour", "faceSwap:gpu-worker", "motion:mock", "voice:mock", "lipSync:mock"]);
 
 export type ProviderStatus = {
   module: ModuleKey;

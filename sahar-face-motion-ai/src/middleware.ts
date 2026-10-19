@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 const SESSION_COOKIE = "sfm_session";
-const PROTECTED = ["/dashboard", "/projects", "/account", "/system"];
+const PROTECTED = ["/dashboard", "/projects", "/face-swap", "/account", "/system"];
 
 /**
  * Cheap edge redirect based on cookie presence only. The real session check
@@ -19,4 +19,4 @@ export function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
-export const config = { matcher: ["/dashboard/:path*", "/projects/:path*", "/account/:path*", "/system/:path*"] };
+export const config = { matcher: ["/dashboard/:path*", "/projects/:path*", "/face-swap/:path*", "/account/:path*", "/system/:path*"] };

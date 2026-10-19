@@ -31,12 +31,32 @@ Known limitations:
 - HEIC decoding depends on the FFmpeg build. If it fails, the file is rejected with instructions to switch the iPhone camera to "Most Compatible" (JPEG).
 - WebKit (real Safari engine) is not available in this CI environment. The iPhone profile runs on Chromium with iPhone viewport/touch/UA.
 
-## Phase 3: Face Swap (first real engine)
-- Consent capture UI → `ConsentRecord`
-- Face detection step: choose the target face (thumbnails per detected face)
-- First real adapter. Recommended: a self-hosted FaceFusion GPU worker with a commercially licensed swapper model, **or** a hosted API (Akool / Replicate) once its licence and pricing are confirmed with you
-- Before/after slider, download, AI label in metadata
-- Cost estimate before running, plus budget and daily-limit enforcement
+## Phase 3: Face Swap with a cloud provider ✅ (engine connected, paid calls not enabled)
+- [x] Provider research and comparison: [FACE_SWAP_PROVIDERS.md](FACE_SWAP_PROVIDERS.md). Recommended: **Magic Hour**.
+- [x] Modular face swap contract (`src/providers/face-swap/types.ts`): estimate, limits, start-once and poll, plus capabilities.
+  - Adapters: `mock` (free, local FFmpeg, labelled TEST), `magichour` (built from the official SDK docs), `gpu-worker` (our HTTP contract, for a future self-hosted server).
+- [x] Local face detection on upload (YuNet + SFace, CPU, MIT/Apache-2.0): distinct people across frames, thumbnails, presence. Picks the person to replace and maps them to the provider's face ids.
+- [x] Studio UI (`/projects/:id/face-swap`, mobile-first):
+  - face photo and video (upload or choose);
+  - person picker;
+  - consent declaration, stored as `ConsentRecord`s;
+  - cost quote;
+  - explicit approval checkbox and button;
+  - live job tracking;
+  - before/after/compare;
+  - download.
+- [x] Cost safety:
+  - per-provider estimate; the quote expires in 30 min; approval must match the exact amount;
+  - global `ALLOW_PAID_PROVIDERS` switch; user monthly budget (default $0); per-job cap; daily job limit;
+  - start-once guarantee (no double billing on retries or restarts); actual cost recorded from the provider.
+- [x] Result handling:
+  - original audio restored if missing;
+  - AI metadata stamped into the MP4;
+  - stored as a `GENERATED`, `aiGenerated` asset with its own preview.
+- [x] Tests:
+  - 48 unit/integration tests, including a Magic Hour contract test against a local fake that serves the SDK's documented responses, and face detection on real video;
+  - E2E of the full flow on the iPhone profile, including approval guards.
+- [ ] To go live (needs your approval): a Magic Hour paid plan + API key, cloud deployment ([DEPLOYMENT.md](DEPLOYMENT.md)), `ALLOW_PAID_PROVIDERS=true`, a budget, and a first real test clip.
 
 ## Phase 4: Voice Studio
 - ElevenLabs adapter with `eleven_v3` (Hebrew), voice list, male/female, speed/stability/style

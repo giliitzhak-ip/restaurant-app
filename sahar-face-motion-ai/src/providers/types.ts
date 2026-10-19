@@ -33,15 +33,7 @@ export interface ProviderInfo {
   requiredEnv: string[];
 }
 
-export interface FaceSwapProvider extends ProviderInfo {
-  swapVideo(input: {
-    sourceFace: MediaRef;
-    targetVideo: MediaRef;
-    /** Index of the face selected by the user (from face detection), when supported. */
-    targetFaceIndex?: number;
-  }): Promise<ProviderJobRef>;
-  poll(ref: ProviderJobRef): Promise<ProviderPoll>;
-}
+// Face swap has its own richer contract: see ./face-swap/types.ts
 
 export interface MotionTransferProvider extends ProviderInfo {
   animate(input: { characterImage: MediaRef; drivingVideo: MediaRef }): Promise<ProviderJobRef>;

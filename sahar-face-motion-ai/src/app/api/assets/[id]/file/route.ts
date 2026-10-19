@@ -13,7 +13,7 @@ const PREVIEW_TYPES: Record<string, string> = { mp4: "video/mp4", jpg: "image/jp
 /**
  * Streams a private asset to its owner. Supports HTTP Range requests, which
  * iPhone Safari requires for <video> playback and seeking.
- * ?v=original|preview|poster  &download=1 for an attachment.
+ * ?v=original|preview|poster|face(&n=index)  &download=1 for an attachment.
  */
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await apiUser(req);
@@ -31,6 +31,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     contentType = PREVIEW_TYPES[key?.split(".").pop() ?? ""] ?? "application/octet-stream";
   } else if (variant === "poster") {
     key = asset.posterKey;
+    contentType = "image/jpeg";
+  } else if (variant === "face") {
+    // Thumbnail of a detected person: ?v=face&n=<index>
+    const faces = asset.faces as { status?: string; persons?: { index: number; thumb: string }[] } | null;
+    const person = faces?.status === "ok" ? faces.persons?.find((p) => p.index === Number(url.searchParams.get("n"))) : undefined;
+    key = person ? asset.storageKey.replace(/original\.[^/]+$/, `faces/${person.thumb}`) : null;
     contentType = "image/jpeg";
   } else if (variant === "original") {
     key = asset.status === "REJECTED" ? null : asset.storageKey;

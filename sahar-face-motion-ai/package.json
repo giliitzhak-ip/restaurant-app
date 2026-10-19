@@ -11,12 +11,14 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "worker": "tsx --env-file-if-exists=.env src/worker/index.ts",
+    "models:download": "node scripts/download-models.mjs",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:generate": "prisma generate"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1153.0",
+    "@aws-sdk/s3-request-presigner": "^3.1153.0",
     "@prisma/client": "^6.19.3",
     "@radix-ui/react-slot": "^1.2.3",
     "bcryptjs": "^3.0.3",

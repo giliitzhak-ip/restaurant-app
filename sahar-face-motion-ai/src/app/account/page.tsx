@@ -3,6 +3,8 @@ import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { DeleteAccount } from "@/components/auth/delete-account";
 import { requireUser } from "@/lib/require-user";
 import { db } from "@/lib/db";
+import { BudgetForm } from "@/components/auth/budget-form";
+import { budgetStatus, maxUserBudgetCents } from "@/server/billing";
 
 export const metadata = { title: "החשבון שלי | SAHAR FACE MOTION AI" };
 
@@ -10,6 +12,7 @@ const fmt = new Intl.DateTimeFormat("he-IL", { dateStyle: "long", timeStyle: "sh
 
 export default async function AccountPage() {
   const user = await requireUser("/account");
+  const budget = await budgetStatus(user.id);
   const details = await db.user.findUniqueOrThrow({
     where: { id: user.id },
     select: { createdAt: true, termsAcceptedAt: true, _count: { select: { projects: true, sessions: true } } },
@@ -35,6 +38,13 @@ export default async function AccountPage() {
             <dt className="text-ash">התחברויות פעילות</dt>
             <dd>{details._count.sessions}</dd>
           </dl>
+        </Card>
+        <Card className="space-y-4">
+          <div>
+            <CardTitle>תקציב ועלויות AI</CardTitle>
+            <CardDescription>הגבלת ההוצאה החודשית על שירותי AI בתשלום.</CardDescription>
+          </div>
+          <BudgetForm initial={budget} maxCents={maxUserBudgetCents()} />
         </Card>
         <Card className="space-y-4">
           <div>

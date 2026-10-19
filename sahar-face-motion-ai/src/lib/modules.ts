@@ -28,6 +28,7 @@ export const STUDIO_MODULES: StudioModule[] = [
     description: "החלפת פנים בסרטון תוך שמירה על תנועות הגוף, תנועות הראש והאודיו המקורי. לפני / אחרי והורדה.",
     phase: 3,
     provider: "faceSwap",
+    href: "/face-swap",
   },
   {
     slug: "voice",
@@ -62,4 +63,4 @@ export const STUDIO_MODULES: StudioModule[] = [
   },
 ];
 
-export const CURRENT_PHASE = 2;
+export const CURRENT_PHASE = 3;

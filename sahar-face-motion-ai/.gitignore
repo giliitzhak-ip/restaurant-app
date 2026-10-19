@@ -9,3 +9,7 @@ storage/
 coverage/
 test-results/
 playwright-report/
+*.rdb
+ai/models/
+.venv/
+.cache/

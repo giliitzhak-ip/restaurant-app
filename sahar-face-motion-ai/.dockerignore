@@ -1,0 +1,11 @@
+node_modules
+.next
+.env
+.env.local
+.venv
+.cache
+storage
+ai/models
+test-results
+playwright-report
+*.rdb
