@@ -1,0 +1,55 @@
+{
+  "name": "sahar-ai-studio",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @sahar/web --filter @sahar/worker dev",
+    "dev:web": "pnpm --filter @sahar/web dev",
+    "dev:worker": "pnpm --filter @sahar/worker dev",
+    "build": "pnpm db:generate && pnpm -r --if-present build",
+    "start:web": "pnpm --filter @sahar/web start",
+    "start:worker": "pnpm --filter @sahar/worker start",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "pnpm -r --if-present test",
+    "test:e2e": "pnpm --filter @sahar/web test:e2e",
+    "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm test:integration",
+    "db:generate": "pnpm --filter @sahar/db generate",
+    "db:migrate": "pnpm --filter @sahar/db migrate:dev",
+    "db:deploy": "pnpm --filter @sahar/db migrate:deploy",
+    "db:studio": "pnpm --filter @sahar/db studio",
+    "infra:up": "docker compose up -d postgres redis seaweedfs storage-init",
+    "infra:down": "docker compose down",
+    "test:integration": "pnpm --filter @sahar/db test:prepare && pnpm -r --if-present test:integration"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@eslint/js": "^9.39.1",
+    "@types/node": "^22.19.0",
+    "dotenv-cli": "^10.0.0",
+    "eslint": "^9.39.1",
+    "eslint-config-next": "15.5.28",
+    "globals": "^16.5.0",
+    "prettier": "^3.6.2",
+    "prettier-plugin-tailwindcss": "^0.7.1",
+    "typescript": "5.9.3",
+    "typescript-eslint": "^8.46.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "prisma",
+      "sharp",
+      "unrs-resolver"
+    ]
+  }
+}

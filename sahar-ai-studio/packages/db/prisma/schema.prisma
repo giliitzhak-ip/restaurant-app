@@ -1,0 +1,490 @@
+// SAHAR AI STUDIO — database schema.
+// Documented in /DATABASE_SCHEMA.md. Change only through `pnpm db:migrate`.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────────── Enums ─────────────────────────────
+
+enum Locale {
+  he
+  en
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum ProjectStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum AspectRatio {
+  LANDSCAPE_16_9
+  PORTRAIT_9_16
+}
+
+enum AssetKind {
+  AUDIO_MASTER
+  IMAGE_REFERENCE
+  VIDEO_TAKE
+  VIDEO_RENDER
+  WAVEFORM_PEAKS
+  THUMBNAIL
+}
+
+enum AssetStatus {
+  PENDING_UPLOAD
+  UPLOADED
+  VERIFYING
+  READY
+  FAILED
+  DELETED
+}
+
+enum ConsentSubject {
+  FACE_LIKENESS
+  VOICE
+  MUSIC
+  OTHER_MEDIA
+}
+
+enum SceneStatus {
+  DRAFT
+  GENERATING
+  READY
+  FAILED
+}
+
+enum GenerationOperation {
+  AUDIO_TO_VIDEO
+  LIP_SYNC
+}
+
+enum GenerationStatus {
+  QUEUED
+  SUBMITTING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+  NEEDS_RECONCILIATION
+}
+
+enum RenderStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// ───────────────────────────── Identity ─────────────────────────────
+
+model User {
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  name               String
+  passwordHash       String
+  role               UserRole  @default(USER)
+  locale             Locale    @default(he)
+  /// Monthly spending cap for billable generations, in USD. Null = no generation allowed until set.
+  monthlyBudgetUsd   Decimal?  @db.Decimal(12, 4)
+  termsAcceptedAt    DateTime
+  termsVersion       String
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  sessions       Session[]
+  characters     Character[]
+  projects       Project[]
+  assets         Asset[]
+  consents       ConsentRecord[]
+  generationJobs GenerationJob[]
+  renderJobs     RenderJob[]
+  auditLogs      AuditLog[]
+}
+
+model Session {
+  id         String   @id @default(cuid())
+  /// SHA-256 (hex) of the random session token. The raw token only exists in the cookie.
+  tokenHash  String   @unique
+  userId     String
+  expiresAt  DateTime
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  ipAddress  String?
+  userAgent  String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  targetType String?
+  targetId   String?
+  ipAddress  String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+}
+
+// ───────────────────────────── Media assets ─────────────────────────────
+
+model Asset {
+  id               String      @id @default(cuid())
+  ownerId          String
+  projectId        String?
+  kind             AssetKind
+  status           AssetStatus @default(PENDING_UPLOAD)
+  bucket           String
+  /// Server-generated object key (users/<ownerId>/<assetId>/...). Never user-controlled.
+  storageKey       String      @unique
+  originalFilename String
+  mimeType         String
+  sizeBytes        BigInt
+  /// Content hash computed by the worker after upload. Master audio is immutable once set.
+  sha256           String?
+  width            Int?
+  height           Int?
+  durationMs       Int?
+  metadata         Json?
+  failureReason    String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  deletedAt        DateTime?
+
+  owner   User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  project Project? @relation("ProjectAssets", fields: [projectId], references: [id], onDelete: SetNull)
+
+  consents             ConsentRecord[]
+  characterReference   CharacterReferenceImage?
+  audioAnalysis        AudioAnalysis?           @relation("AnalysisSource")
+  waveformForAnalysis  AudioAnalysis?           @relation("AnalysisWaveform")
+  masterAudioOfProject Project?                 @relation("ProjectMasterAudio")
+  take                 Take?
+  renderOutput         RenderJob?
+
+  @@index([ownerId, kind])
+  @@index([projectId])
+}
+
+model ConsentRecord {
+  id               String         @id @default(cuid())
+  userId           String
+  assetId          String?
+  subject          ConsentSubject
+  /// Exact statement text the user accepted, and its version, for auditability.
+  statement        String
+  statementVersion String
+  acceptedAt       DateTime       @default(now())
+  ipAddress        String?
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asset Asset? @relation(fields: [assetId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([assetId])
+}
+
+// ───────────────────────────── Characters ─────────────────────────────
+
+model Character {
+  id                String    @id @default(cuid())
+  ownerId           String
+  name              String
+  description       String    @default("")
+  defaultAppearance String    @default("")
+  /// Set when the character was created from a built-in preset (e.g. "sharona-sahar").
+  presetKey         String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
+
+  owner           User                      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  referenceImages CharacterReferenceImage[]
+  clothingPresets CharacterClothingPreset[]
+  stylePresets    CharacterStylePreset[]
+  scenes          Scene[]
+  generationJobs  GenerationJob[]
+
+  @@unique([ownerId, presetKey])
+  @@index([ownerId])
+}
+
+model CharacterReferenceImage {
+  id          String   @id @default(cuid())
+  characterId String
+  assetId     String   @unique
+  label       String   @default("")
+  isPrimary   Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  asset     Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  scenes    Scene[]
+
+  @@index([characterId])
+}
+
+model CharacterClothingPreset {
+  id          String @id @default(cuid())
+  characterId String
+  name        String
+  /// Prompt fragment describing the outfit.
+  description String
+  sortOrder   Int    @default(0)
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@index([characterId])
+}
+
+model CharacterStylePreset {
+  id          String @id @default(cuid())
+  characterId String
+  name        String
+  /// Prompt fragment describing the visual style (lighting, grade, lens, era…).
+  description String
+  sortOrder   Int    @default(0)
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@index([characterId])
+}
+
+// ───────────────────────────── Projects & audio ─────────────────────────────
+
+model Project {
+  id               String        @id @default(cuid())
+  ownerId          String
+  title            String
+  description      String        @default("")
+  status           ProjectStatus @default(DRAFT)
+  aspectRatio      AspectRatio   @default(LANDSCAPE_16_9)
+  outputWidth      Int           @default(1920)
+  outputHeight     Int           @default(1080)
+  fps              Int           @default(30)
+  /// The immutable original song. Final renders always use this as master audio.
+  masterAudioId    String?       @unique
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  deletedAt        DateTime?
+
+  owner          User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  masterAudio    Asset?          @relation("ProjectMasterAudio", fields: [masterAudioId], references: [id], onDelete: Restrict)
+  assets         Asset[]         @relation("ProjectAssets")
+  scenes         Scene[]
+  lyricLines     LyricLine[]
+  generationJobs GenerationJob[]
+  renderJobs     RenderJob[]
+
+  @@index([ownerId, updatedAt])
+}
+
+model AudioAnalysis {
+  id               String   @id @default(cuid())
+  assetId          String   @unique
+  durationMs       Int
+  sampleRate       Int
+  channels         Int
+  codec            String
+  bitRate          Int?
+  /// [{ startMs, endMs }]
+  silenceRegions   Json
+  /// Derived asset holding downsampled waveform peaks.
+  waveformAssetId  String?  @unique
+  tempoBpm         Float?
+  /// 0..1, null when tempo detection was not run or not reliable.
+  tempoConfidence  Float?
+  /// [ms, ms, …]
+  beatTimesMs      Json?
+  analyzerVersion  String
+  createdAt        DateTime @default(now())
+
+  asset         Asset  @relation("AnalysisSource", fields: [assetId], references: [id], onDelete: Cascade)
+  waveformAsset Asset? @relation("AnalysisWaveform", fields: [waveformAssetId], references: [id], onDelete: SetNull)
+}
+
+model LyricLine {
+  id        String  @id @default(cuid())
+  projectId String
+  position  Int
+  text      String
+  startMs   Int?
+  endMs     Int?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, position])
+}
+
+// ───────────────────────────── Scenes & takes ─────────────────────────────
+
+model Scene {
+  id               String      @id @default(cuid())
+  projectId        String
+  position         Int
+  startMs          Int
+  endMs            Int
+  /// Manual audio/video offset correction applied at render time (can be negative).
+  offsetMs         Int         @default(0)
+  characterId      String?
+  referenceImageId String?
+  providerKey      String?
+  prompt           String      @default("")
+  status           SceneStatus @default(DRAFT)
+  selectedTakeId   String?     @unique
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  project        Project                  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  character      Character?               @relation(fields: [characterId], references: [id], onDelete: SetNull)
+  referenceImage CharacterReferenceImage? @relation(fields: [referenceImageId], references: [id], onDelete: SetNull)
+  selectedTake   Take?                    @relation("SelectedTake", fields: [selectedTakeId], references: [id], onDelete: SetNull)
+  takes          Take[]                   @relation("SceneTakes")
+  generationJobs GenerationJob[]
+
+  @@index([projectId, position])
+}
+
+model Take {
+  id              String   @id @default(cuid())
+  sceneId         String
+  takeNumber      Int
+  generationJobId String?  @unique
+  videoAssetId    String?  @unique
+  trimStartMs     Int      @default(0)
+  trimEndMs       Int?
+  notes           String   @default("")
+  createdAt       DateTime @default(now())
+
+  scene         Scene          @relation("SceneTakes", fields: [sceneId], references: [id], onDelete: Cascade)
+  selectedBy    Scene?         @relation("SelectedTake")
+  generationJob GenerationJob? @relation(fields: [generationJobId], references: [id], onDelete: SetNull)
+  videoAsset    Asset?         @relation(fields: [videoAssetId], references: [id], onDelete: SetNull)
+
+  @@unique([sceneId, takeNumber])
+}
+
+// ───────────────────────────── Generation jobs & costs ─────────────────────────────
+
+model GenerationJob {
+  id                    String              @id @default(cuid())
+  ownerId               String
+  projectId             String
+  sceneId               String
+  characterId           String?
+  providerKey           String
+  operation             GenerationOperation
+  status                GenerationStatus    @default(QUEUED)
+  /// Guards against duplicate billable requests; also sent to providers that support it.
+  idempotencyKey        String              @unique
+  providerJobId         String?
+  /// Frozen copy of all inputs (segment, prompt, asset ids, provider options).
+  inputSnapshot         Json
+  estimatedCostUsd      Decimal?            @db.Decimal(12, 4)
+  estimatedUnits        Decimal?            @db.Decimal(14, 4)
+  unitName              String?
+  approvedAt            DateTime
+  submittedAt           DateTime?
+  completedAt           DateTime?
+  failedAt              DateTime?
+  cancelledAt           DateTime?
+  attempts              Int                 @default(0)
+  nextPollAt            DateTime?
+  errorCode             String?
+  errorMessage          String?
+  /// Actual amount reported by the provider, when it reports one.
+  actualCostUsd         Decimal?            @db.Decimal(12, 4)
+  actualUnits           Decimal?            @db.Decimal(14, 4)
+  actualCostReportedAt  DateTime?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  owner     User                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  project   Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  scene     Scene                @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  character Character?           @relation(fields: [characterId], references: [id], onDelete: SetNull)
+  take      Take?
+  events    GenerationJobEvent[]
+
+  @@unique([providerKey, providerJobId])
+  @@index([ownerId, createdAt])
+  @@index([projectId])
+  @@index([sceneId])
+  @@index([status, nextPollAt])
+}
+
+model GenerationJobEvent {
+  id         String            @id @default(cuid())
+  jobId      String
+  fromStatus GenerationStatus?
+  toStatus   GenerationStatus
+  message    String?
+  payload    Json?
+  createdAt  DateTime          @default(now())
+
+  job GenerationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, createdAt])
+}
+
+model WebhookEvent {
+  id              String    @id @default(cuid())
+  providerKey     String
+  /// Provider's event/delivery id, used to ignore duplicate deliveries.
+  externalEventId String?
+  signatureValid  Boolean
+  payload         Json
+  receivedAt      DateTime  @default(now())
+  processedAt     DateTime?
+  error           String?
+
+  @@unique([providerKey, externalEventId])
+  @@index([receivedAt])
+}
+
+// ───────────────────────────── Rendering ─────────────────────────────
+
+model RenderJob {
+  id            String       @id @default(cuid())
+  ownerId       String
+  projectId     String
+  status        RenderStatus @default(QUEUED)
+  /// 0..1, computed from FFmpeg -progress output; null until FFmpeg reports.
+  progress      Float?
+  settings      Json
+  outputAssetId String?      @unique
+  errorMessage  String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  owner       User    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  outputAsset Asset?  @relation(fields: [outputAssetId], references: [id], onDelete: SetNull)
+
+  @@index([ownerId, createdAt])
+  @@index([projectId])
+}

@@ -1,0 +1,93 @@
+@import 'tailwindcss';
+
+/*
+ * SAHAR AI STUDIO design tokens — premium dark surfaces with restrained gold accents.
+ * Layout uses logical properties (ps/pe/ms/me/start/end) so RTL and LTR share markup.
+ */
+@theme {
+  --font-sans:
+    var(--font-heebo), 'Heebo', 'Assistant', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+
+  --color-background: #09090b;
+  --color-foreground: #f4f4f5;
+  --color-surface: #111114;
+  --color-surface-raised: #17171b;
+  --color-card: #111114;
+  --color-card-foreground: #f4f4f5;
+  --color-popover: #131316;
+  --color-popover-foreground: #f4f4f5;
+  --color-muted: #1c1c21;
+  --color-muted-foreground: #a1a1aa;
+  --color-border: #26262c;
+  --color-input: #2e2e35;
+  --color-ring: #d4af37;
+
+  --color-primary: #d4af37;
+  --color-primary-foreground: #141006;
+  --color-gold-50: #fbf6e6;
+  --color-gold-200: #efdca0;
+  --color-gold-300: #e6c96a;
+  --color-gold-400: #d4af37;
+  --color-gold-500: #b8932a;
+  --color-gold-600: #8f7021;
+
+  --color-secondary: #1f1f25;
+  --color-secondary-foreground: #f4f4f5;
+  --color-accent: #1f1c14;
+  --color-accent-foreground: #efdca0;
+  --color-destructive: #e5484d;
+  --color-destructive-foreground: #ffffff;
+  --color-success: #3fb950;
+  --color-warning: #e3b341;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    background-color: var(--color-background);
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+}
+
+@utility gold-gradient-text {
+  background-image: linear-gradient(135deg, #f3e2a4 0%, #d4af37 45%, #9a7a24 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@utility safe-area-pt {
+  padding-top: env(safe-area-inset-top);
+}

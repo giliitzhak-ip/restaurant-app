@@ -1,0 +1,28 @@
+{
+  "name": "@sahar/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "dotenv -e ../../.env -- tsx watch src/index.ts",
+    "build": "tsup",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --project unit",
+    "test:integration": "dotenv -e ../../.env -- vitest run --project integration"
+  },
+  "dependencies": {
+    "@prisma/client": "6.19.3",
+    "@sahar/db": "workspace:*",
+    "@sahar/shared": "workspace:*",
+    "bullmq": "^5.81.5",
+    "ioredis": "5.11.1",
+    "pino": "^10.4.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "vitest": "^4.0.8"
+  }
+}

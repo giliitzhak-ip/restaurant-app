@@ -1,0 +1,14 @@
+{
+  "identities": [
+    {
+      "name": "sahar",
+      "credentials": [
+        {
+          "accessKey": "sahar",
+          "secretKey": "sahar_dev_storage_password"
+        }
+      ],
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+    }
+  ]
+}

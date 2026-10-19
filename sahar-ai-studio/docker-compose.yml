@@ -1,0 +1,135 @@
+# SAHAR AI STUDIO — local infrastructure and containerised app.
+#
+#   docker compose up -d postgres redis seaweedfs storage-init   # infra only (pnpm infra:up)
+#   docker compose --profile app up -d --build                   # infra + web + worker
+#
+# Credentials below are development defaults and must be changed for any shared or
+# production deployment (override with an untracked .env / compose override file).
+
+name: sahar-ai-studio
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sahar
+      POSTGRES_PASSWORD: sahar_dev_password
+      POSTGRES_DB: sahar
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/10-test-db.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U sahar -d sahar']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # AOF persistence so queued jobs survive restarts. BullMQ requires noeviction.
+    command: ['redis-server', '--appendonly', 'yes', '--maxmemory-policy', 'noeviction']
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # S3-compatible object storage (SeaweedFS). Buckets are private: only the configured
+  # identity can read or write; no anonymous access is configured.
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.00
+    restart: unless-stopped
+    command:
+      - server
+      - -dir=/data
+      - -s3
+      - -s3.port=8333
+      - -s3.config=/etc/seaweedfs/s3.json
+    ports:
+      - '8333:8333'
+    volumes:
+      - seaweedfs-data:/data
+      - ./docker/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O /dev/null http://localhost:9333/cluster/status || exit 1']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Creates the private media bucket once storage is up.
+  storage-init:
+    image: chrislusf/seaweedfs:4.00
+    depends_on:
+      seaweedfs:
+        condition: service_healthy
+    # `weed shell` exits 0 even on errors, so the bucket listing is checked explicitly.
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >-
+        echo 's3.bucket.create -name sahar-media' | weed shell -master=seaweedfs:9333 -filer=seaweedfs:8888 &&
+        echo 's3.bucket.list' | weed shell -master=seaweedfs:9333 -filer=seaweedfs:8888 | grep -q sahar-media
+    restart: 'no'
+
+  migrate:
+    profiles: ['app']
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+      target: migrate
+    environment:
+      DATABASE_URL: postgresql://sahar:sahar_dev_password@postgres:5432/sahar?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  web:
+    profiles: ['app']
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+      target: runner
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://sahar:sahar_dev_password@postgres:5432/sahar?schema=public
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://seaweedfs:8333
+    ports:
+      - '3000:3000'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  worker:
+    profiles: ['app']
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://sahar:sahar_dev_password@postgres:5432/sahar?schema=public
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://seaweedfs:8333
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  redis-data:
+  seaweedfs-data:
