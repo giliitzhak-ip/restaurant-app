@@ -31,21 +31,34 @@ Status legend: ✅ done · 🔜 next · ⏳ planned
   used for Phase 1 had no outbound network inside build containers. Run
   `docker compose --profile app up -d --build` once on a normal machine.
 
-## Phase 2 — Characters, uploads, projects, waveform 🔜
+## Phase 2 — Characters, uploads, projects, waveform ✅
 
-- S3 storage package (presigned PUT/GET, private bucket, key scheme)
-- Upload flow: declare → validate type/size → presigned PUT → confirm → worker verify
-  (ffprobe / magic bytes, SHA-256) → `READY`
-- Consent dialog + `ConsentRecord` for face/voice/music uploads
-- Character CRUD: reference images (primary flag), default appearance, clothing presets,
-  style presets; seed **Sharona Sahar** preset per user (no invented photo)
-- Project CRUD with aspect ratio (16:9 / 9:16) and target resolution
-- Audio ingestion worker job: duration, sample rate, channels, codec, waveform peaks,
-  silence regions; tempo/beat (Python sidecar) only if validated on test songs
-- Interactive waveform (wavesurfer.js or canvas) with manual scene boundaries and
-  automatic boundary proposals
-- Lyrics entry (per project, line-level, optional timing)
-- Tests: upload validation, analysis on real MP3/WAV fixtures, ownership isolation
+- [x] `packages/storage` (S3: streamed multipart upload, ranged reads, deletes)
+- [x] Upload route streaming to private storage: consent + CSRF + ownership checks,
+      magic-byte sniffing before storing, size cap and SHA-256 while streaming
+- [x] Authorized media route with HTTP Range (iOS Safari playback)
+- [x] `ConsentRecord` for every song (music rights) and reference image (likeness)
+- [x] Character library: create/edit/delete, reference images (upload, primary, delete),
+      clothing and style presets, generation history (empty until Phase 3)
+- [x] **Sharona Sahar** preset in every library as the main character — no invented photo
+- [x] Projects: create/edit/delete, aspect ratio 16:9 / 9:16 with output size, main
+      character, song upload with real progress, song replacement
+- [x] Worker media queue: image verification; audio analysis (duration, sample rate,
+      channels, codec, bitrate, waveform, silences, tempo + beats with confidence)
+- [x] Automatic scene proposal (silences, beats, length bounds) on first analysis
+- [x] Interactive canvas timeline: playback, seek, zoom, drag boundaries (mouse, touch,
+      keyboard), split, merge, re-propose, save with stale/takes protection
+- [x] Scene editor: per-scene character, reference image and prompt; identity warning;
+      "apply main character to all scenes"
+- [x] Hebrew RTL + iPhone layout for every new screen
+- Moved to Phase 5: lyrics entry and lyric-assisted timing (not needed before takes exist)
+
+### Phase 2 verification notes
+
+- Tempo detection is validated on synthetic signals only. Real Hebrew songs should be
+  run through it (and through lip-sync in Phase 3/4) before trusting BPM values.
+- Touch dragging was tested with Chromium's iPhone emulation (pointer events); it has not
+  been tested on a physical iPhone in this environment.
 
 ## Phase 3 — Provider abstraction, Mock Provider, queue, end-to-end generation ⏳
 

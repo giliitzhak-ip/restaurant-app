@@ -3,12 +3,12 @@ import { register, uniqueEmail } from './helpers';
 
 const PAGES = [
   { link: 'לוח בקרה', heading: /^שלום, / },
-  { link: 'קליפ חדש', heading: 'קליפ מוזיקלי חדש', phase: 'יתווסף בשלב 2' },
-  { link: 'ספריית דמויות', heading: 'ספריית דמויות', phase: 'יתווסף בשלב 2' },
+  { link: 'קליפ חדש', heading: 'קליפ מוזיקלי חדש' },
+  { link: 'ספריית דמויות', heading: 'ספריית דמויות' },
   { link: 'סטודיו שירה AI', heading: 'סטודיו שירה AI', phase: 'יתווסף בשלב 3' },
   { link: 'עורך סצנות', heading: 'עורך סצנות', phase: 'יתווסף בשלב 5' },
   { link: 'עורך ציר זמן', heading: 'עורך ציר זמן', phase: 'יתווסף בשלב 5' },
-  { link: 'ספריית פרויקטים', heading: 'ספריית פרויקטים', phase: 'יתווסף בשלב 2' },
+  { link: 'ספריית פרויקטים', heading: 'ספריית פרויקטים' },
   { link: 'תור רינדור', heading: 'תור רינדור', phase: 'יתווסף בשלב 5' },
   { link: 'הגדרות וספקי AI', heading: 'הגדרות וספקי AI' },
 ] as const;

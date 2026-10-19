@@ -91,18 +91,18 @@ enum RenderStatus {
 // ───────────────────────────── Identity ─────────────────────────────
 
 model User {
-  id                 String    @id @default(cuid())
-  email              String    @unique
-  name               String
-  passwordHash       String
-  role               UserRole  @default(USER)
-  locale             Locale    @default(he)
+  id               String   @id @default(cuid())
+  email            String   @unique
+  name             String
+  passwordHash     String
+  role             UserRole @default(USER)
+  locale           Locale   @default(he)
   /// Monthly spending cap for billable generations, in USD. Null = no generation allowed until set.
-  monthlyBudgetUsd   Decimal?  @db.Decimal(12, 4)
-  termsAcceptedAt    DateTime
-  termsVersion       String
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  monthlyBudgetUsd Decimal? @db.Decimal(12, 4)
+  termsAcceptedAt  DateTime
+  termsVersion     String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   sessions       Session[]
   characters     Character[]
@@ -161,7 +161,7 @@ model Asset {
   originalFilename String
   mimeType         String
   sizeBytes        BigInt
-  /// Content hash computed by the worker after upload. Master audio is immutable once set.
+  /// Content hash computed while streaming the upload. Master audio is immutable once set.
   sha256           String?
   width            Int?
   height           Int?
@@ -225,6 +225,7 @@ model Character {
   stylePresets    CharacterStylePreset[]
   scenes          Scene[]
   generationJobs  GenerationJob[]
+  projects        Project[]                 @relation("ProjectMainCharacter")
 
   @@unique([ownerId, presetKey])
   @@index([ownerId])
@@ -275,23 +276,26 @@ model CharacterStylePreset {
 // ───────────────────────────── Projects & audio ─────────────────────────────
 
 model Project {
-  id               String        @id @default(cuid())
-  ownerId          String
-  title            String
-  description      String        @default("")
-  status           ProjectStatus @default(DRAFT)
-  aspectRatio      AspectRatio   @default(LANDSCAPE_16_9)
-  outputWidth      Int           @default(1920)
-  outputHeight     Int           @default(1080)
-  fps              Int           @default(30)
+  id              String        @id @default(cuid())
+  ownerId         String
+  title           String
+  description     String        @default("")
+  status          ProjectStatus @default(DRAFT)
+  aspectRatio     AspectRatio   @default(LANDSCAPE_16_9)
+  outputWidth     Int           @default(1920)
+  outputHeight    Int           @default(1080)
+  fps             Int           @default(30)
   /// The immutable original song. Final renders always use this as master audio.
-  masterAudioId    String?       @unique
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  deletedAt        DateTime?
+  masterAudioId   String?       @unique
+  /// Default singer for every scene — keeps the same identity/reference across scenes.
+  mainCharacterId String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
 
   owner          User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   masterAudio    Asset?          @relation("ProjectMasterAudio", fields: [masterAudioId], references: [id], onDelete: Restrict)
+  mainCharacter  Character?      @relation("ProjectMainCharacter", fields: [mainCharacterId], references: [id], onDelete: SetNull)
   assets         Asset[]         @relation("ProjectAssets")
   scenes         Scene[]
   lyricLines     LyricLine[]
@@ -302,31 +306,33 @@ model Project {
 }
 
 model AudioAnalysis {
-  id               String   @id @default(cuid())
-  assetId          String   @unique
-  durationMs       Int
-  sampleRate       Int
-  channels         Int
-  codec            String
-  bitRate          Int?
+  id                  String   @id @default(cuid())
+  assetId             String   @unique
+  durationMs          Int
+  sampleRate          Int
+  channels            Int
+  codec               String
+  bitRate             Int?
   /// [{ startMs, endMs }]
-  silenceRegions   Json
+  silenceRegions      Json
   /// Derived asset holding downsampled waveform peaks.
-  waveformAssetId  String?  @unique
-  tempoBpm         Float?
-  /// 0..1, null when tempo detection was not run or not reliable.
-  tempoConfidence  Float?
+  waveformAssetId     String?  @unique
+  tempoBpm            Float?
+  /// 0..1 whenever detection ran; tempoBpm/beatTimesMs are only stored when reliable.
+  tempoConfidence     Float?
+  /// Half/double tempo when nearly as plausible (octave ambiguity).
+  tempoAlternativeBpm Float?
   /// [ms, ms, …]
-  beatTimesMs      Json?
-  analyzerVersion  String
-  createdAt        DateTime @default(now())
+  beatTimesMs         Json?
+  analyzerVersion     String
+  createdAt           DateTime @default(now())
 
   asset         Asset  @relation("AnalysisSource", fields: [assetId], references: [id], onDelete: Cascade)
   waveformAsset Asset? @relation("AnalysisWaveform", fields: [waveformAssetId], references: [id], onDelete: SetNull)
 }
 
 model LyricLine {
-  id        String  @id @default(cuid())
+  id        String @id @default(cuid())
   projectId String
   position  Int
   text      String
@@ -389,37 +395,37 @@ model Take {
 // ───────────────────────────── Generation jobs & costs ─────────────────────────────
 
 model GenerationJob {
-  id                    String              @id @default(cuid())
-  ownerId               String
-  projectId             String
-  sceneId               String
-  characterId           String?
-  providerKey           String
-  operation             GenerationOperation
-  status                GenerationStatus    @default(QUEUED)
+  id                   String              @id @default(cuid())
+  ownerId              String
+  projectId            String
+  sceneId              String
+  characterId          String?
+  providerKey          String
+  operation            GenerationOperation
+  status               GenerationStatus    @default(QUEUED)
   /// Guards against duplicate billable requests; also sent to providers that support it.
-  idempotencyKey        String              @unique
-  providerJobId         String?
+  idempotencyKey       String              @unique
+  providerJobId        String?
   /// Frozen copy of all inputs (segment, prompt, asset ids, provider options).
-  inputSnapshot         Json
-  estimatedCostUsd      Decimal?            @db.Decimal(12, 4)
-  estimatedUnits        Decimal?            @db.Decimal(14, 4)
-  unitName              String?
-  approvedAt            DateTime
-  submittedAt           DateTime?
-  completedAt           DateTime?
-  failedAt              DateTime?
-  cancelledAt           DateTime?
-  attempts              Int                 @default(0)
-  nextPollAt            DateTime?
-  errorCode             String?
-  errorMessage          String?
+  inputSnapshot        Json
+  estimatedCostUsd     Decimal?            @db.Decimal(12, 4)
+  estimatedUnits       Decimal?            @db.Decimal(14, 4)
+  unitName             String?
+  approvedAt           DateTime
+  submittedAt          DateTime?
+  completedAt          DateTime?
+  failedAt             DateTime?
+  cancelledAt          DateTime?
+  attempts             Int                 @default(0)
+  nextPollAt           DateTime?
+  errorCode            String?
+  errorMessage         String?
   /// Actual amount reported by the provider, when it reports one.
-  actualCostUsd         Decimal?            @db.Decimal(12, 4)
-  actualUnits           Decimal?            @db.Decimal(14, 4)
-  actualCostReportedAt  DateTime?
-  createdAt             DateTime            @default(now())
-  updatedAt             DateTime            @updatedAt
+  actualCostUsd        Decimal?            @db.Decimal(12, 4)
+  actualUnits          Decimal?            @db.Decimal(14, 4)
+  actualCostReportedAt DateTime?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
 
   owner     User                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   project   Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)

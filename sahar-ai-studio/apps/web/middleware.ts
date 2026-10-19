@@ -37,6 +37,7 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Everything except Next internals, static files and the health probe.
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|robots.txt|api/health).*)'],
+  // Pages only. API routes authenticate themselves (401 JSON), and running middleware on
+  // them would make Next.js buffer request bodies — which caps streamed uploads.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|robots.txt|api/).*)'],
 };

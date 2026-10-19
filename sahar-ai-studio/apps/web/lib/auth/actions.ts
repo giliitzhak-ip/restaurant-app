@@ -4,6 +4,7 @@ import { Prisma, prisma } from '@sahar/db';
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, TERMS_VERSION } from '@sahar/shared';
 import { redirect } from 'next/navigation';
 import { audit } from '../audit';
+import { ensurePresetCharacters } from '../characters';
 import { getServerEnv } from '../env';
 import { format, type Dictionary } from '../i18n/config';
 import { getI18n } from '../i18n/server';
@@ -169,6 +170,8 @@ export async function registerAction(
     throw error;
   }
 
+  // Every new library starts with the studio's main character (no reference image).
+  await ensurePresetCharacters(userId);
   await audit({
     action: 'auth.register',
     userId,

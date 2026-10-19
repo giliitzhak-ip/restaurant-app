@@ -1,17 +1,26 @@
+import { mkdir } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { prisma } from '@sahar/db';
 import {
   MAINTENANCE_JOBS,
+  MEDIA_JOBS,
   QUEUE_NAMES,
+  type MediaJobData,
   WORKER_HEARTBEAT_INTERVAL_MS,
   WORKER_HEARTBEAT_KEY,
   WORKER_HEARTBEAT_TTL_SECONDS,
 } from '@sahar/shared';
 import { getServerEnv } from '@sahar/shared/env';
 import { createLogger } from '@sahar/shared/logger';
-import { Queue, Worker } from 'bullmq';
+import { storageFromEnv } from '@sahar/storage';
+import { Queue, UnrecoverableError, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 import { connectionFromUrl } from './connection';
+import { analyzeAudio } from './jobs/analyze-audio';
+import { InvalidMediaError, type MediaContext } from './jobs/media-context';
 import { purgeExpiredSessions } from './jobs/purge-expired-sessions';
+import { verifyImage } from './jobs/verify-image';
 
 const env = getServerEnv();
 const log = createLogger('worker', env.LOG_LEVEL);
@@ -51,6 +60,65 @@ maintenanceWorker.on('failed', (job, error) =>
 );
 maintenanceWorker.on('error', (error) => log.error({ err: error }, 'worker error'));
 
+// ─── Media: verification and analysis of uploads ───────────────────────────────
+const tmpRoot = path.join(tmpdir(), 'sahar-worker');
+const mediaContext: MediaContext = {
+  db: prisma,
+  storage: storageFromEnv(env),
+  log,
+  ffmpegPath: env.FFMPEG_PATH,
+  ffprobePath: env.FFPROBE_PATH,
+  tmpRoot,
+};
+
+async function markFailed(assetId: string, reason: string, deleteObject: boolean) {
+  const asset = await prisma.asset.findUnique({ where: { id: assetId } });
+  if (!asset || asset.status === 'READY') return;
+  await prisma.asset.update({
+    where: { id: assetId },
+    data: { status: 'FAILED', failureReason: reason.slice(0, 500) },
+  });
+  // Content that failed verification is not kept in storage.
+  if (deleteObject) await mediaContext.storage.delete([asset.storageKey]).catch(() => undefined);
+}
+
+const mediaWorker = new Worker<MediaJobData>(
+  QUEUE_NAMES.media,
+  async (job) => {
+    const { assetId } = job.data;
+    try {
+      switch (job.name) {
+        case MEDIA_JOBS.verifyImage:
+          return { result: await verifyImage(mediaContext, assetId) };
+        case MEDIA_JOBS.analyzeAudio:
+          return { result: await analyzeAudio(mediaContext, assetId) };
+        default:
+          throw new UnrecoverableError(`Unknown media job: ${job.name}`);
+      }
+    } catch (error) {
+      if (error instanceof InvalidMediaError) {
+        log.warn({ jobId: job.id, assetId, reason: error.reason }, 'media rejected');
+        await markFailed(assetId, error.reason, true);
+        throw new UnrecoverableError(error.reason);
+      }
+      throw error;
+    }
+  },
+  { connection, concurrency: 2, lockDuration: 120_000 },
+);
+
+mediaWorker.on('failed', (job, error) => {
+  log.error(
+    { jobId: job?.id, name: job?.name, attempts: job?.attemptsMade, err: error },
+    'media job failed',
+  );
+  const exhausted = job && job.attemptsMade >= (job.opts.attempts ?? 1);
+  if (job && exhausted && !(error instanceof UnrecoverableError)) {
+    void markFailed(job.data.assetId, 'processing failed after retries', false);
+  }
+});
+mediaWorker.on('error', (error) => log.error({ err: error }, 'media worker error'));
+
 // Liveness signal read by the web dashboard.
 const heartbeatRedis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: 1 });
 heartbeatRedis.on('error', (error) => log.warn({ err: error.message }, 'heartbeat redis error'));
@@ -68,6 +136,7 @@ async function beat() {
 }
 
 async function start() {
+  await mkdir(tmpRoot, { recursive: true });
   // Idempotent: upserting the scheduler keeps exactly one repeatable job across restarts.
   await maintenanceQueue.upsertJobScheduler(
     'purge-expired-sessions-hourly',
@@ -75,7 +144,7 @@ async function start() {
     { name: MAINTENANCE_JOBS.purgeExpiredSessions },
   );
   await beat();
-  log.info({ queues: [QUEUE_NAMES.maintenance] }, 'worker started');
+  log.info({ queues: [QUEUE_NAMES.maintenance, QUEUE_NAMES.media] }, 'worker started');
 }
 
 const heartbeatTimer = setInterval(() => void beat(), WORKER_HEARTBEAT_INTERVAL_MS);
@@ -87,7 +156,7 @@ async function shutdown(signal: string) {
   log.info({ signal }, 'worker shutting down');
   clearInterval(heartbeatTimer);
   // Let the in-flight job finish before closing connections.
-  await maintenanceWorker.close();
+  await Promise.all([maintenanceWorker.close(), mediaWorker.close()]);
   await maintenanceQueue.close();
   await heartbeatRedis.del(WORKER_HEARTBEAT_KEY).catch(() => undefined);
   heartbeatRedis.disconnect();

@@ -32,7 +32,13 @@ const nextConfig: NextConfig = {
   eslint: { ignoreDuringBuilds: true },
   reactStrictMode: true,
   transpilePackages: ['@sahar/shared', '@sahar/db'],
-  serverExternalPackages: ['pino', 'ioredis'],
+  serverExternalPackages: [
+    'pino',
+    'ioredis',
+    'bullmq',
+    '@aws-sdk/client-s3',
+    '@aws-sdk/lib-storage',
+  ],
   experimental: {
     serverActions: { bodySizeLimit: '1mb' },
   },

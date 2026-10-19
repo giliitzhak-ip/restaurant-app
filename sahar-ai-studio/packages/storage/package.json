@@ -1,0 +1,21 @@
+{
+  "name": "@sahar/storage",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --project unit",
+    "test:integration": "dotenv -e ../../.env -- vitest run --project integration"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "3.1144.0",
+    "@aws-sdk/lib-storage": "3.1144.0"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.8"
+  }
+}

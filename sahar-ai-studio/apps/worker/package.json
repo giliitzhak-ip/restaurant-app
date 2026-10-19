@@ -12,9 +12,13 @@
     "test:integration": "dotenv -e ../../.env -- vitest run --project integration"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1144.0",
+    "@aws-sdk/lib-storage": "3.1144.0",
     "@prisma/client": "6.19.3",
     "@sahar/db": "workspace:*",
+    "@sahar/media": "workspace:*",
     "@sahar/shared": "workspace:*",
+    "@sahar/storage": "workspace:*",
     "bullmq": "^5.81.5",
     "ioredis": "5.11.1",
     "pino": "^10.4.0",

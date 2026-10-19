@@ -9,7 +9,17 @@ export type AuditAction =
   | 'auth.login.rate_limited'
   | 'auth.logout'
   | 'settings.locale.update'
-  | 'settings.budget.update';
+  | 'settings.budget.update'
+  | 'media.audio.upload'
+  | 'media.reference.upload'
+  | 'media.reference.delete'
+  | 'character.create'
+  | 'character.update'
+  | 'character.delete'
+  | 'project.create'
+  | 'project.update'
+  | 'project.delete'
+  | 'project.scenes.update';
 
 /** Writes an audit row. Audit failures are logged but never break the user's request. */
 export async function audit(entry: {

@@ -12,18 +12,22 @@ export interface CharacterPreset {
   stylePresets: { name: string; description: string }[];
 }
 
+export const PRIMARY_PRESET_KEY = 'sharona-sahar';
+
 export const CHARACTER_PRESETS: readonly CharacterPreset[] = [
   {
-    key: 'sharona-sahar',
-    name: 'Sharona Sahar',
-    description: 'זמרת ים-תיכונית צעירה — דמות ברירת המחדל של הסטודיו.',
+    key: PRIMARY_PRESET_KEY,
+    name: 'שרונה סהר',
+    description:
+      'זמרת ים-תיכונית צעירה — הדמות הראשית של הסטודיו. העלו תמונת ייחוס מאושרת כדי להשתמש בה ביצירה.',
+    // Prompt text stays in English: video models are prompted in English.
     defaultAppearance:
       'Young female Mizrahi singer, long black hair, blue eyes, subtle makeup, elegant black dress, realistic nostalgic cinematic appearance.',
-    clothingPresets: [{ name: 'Elegant black dress', description: 'elegant black dress' }],
+    clothingPresets: [{ name: 'שמלה שחורה אלגנטית', description: 'elegant black dress' }],
     stylePresets: [
       {
-        name: 'Nostalgic cinematic',
-        description: 'realistic, nostalgic cinematic look, soft warm lighting, film grain',
+        name: 'קולנועי נוסטלגי',
+        description: 'realistic, nostalgic cinematic look, soft warm lighting, subtle film grain',
       },
     ],
   },

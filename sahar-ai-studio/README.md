@@ -7,16 +7,18 @@ Hebrew-first platform for creating AI music videos with lip-synced singing chara
 - Data model: [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md)
 - Operations: [docs/BACKUP_AND_RECOVERY.md](docs/BACKUP_AND_RECOVERY.md)
 
-**Current status: Phase 1 (foundation) complete.** Accounts, security, the Hebrew RTL
-interface, the database and the worker are working. Uploads, characters and video
-generation arrive in Phases 2–3; those screens say so instead of showing fake buttons.
+**Current status: Phase 2 complete.** Accounts and security (Phase 1); character library
+with the Sharona Sahar preset and approved reference images, projects, song upload to
+private storage, audio analysis (duration, format, waveform, silences, tempo) and an
+interactive timeline with scene splitting (Phase 2). AI video generation arrives in
+Phase 3; screens for later phases say so instead of showing fake buttons.
 
 ## Requirements
 
 - Node.js 22+ and pnpm 10 (`corepack enable`)
 - Docker with Compose v2 (for PostgreSQL 16, Redis 7 and S3-compatible storage), **or**
   locally installed PostgreSQL 16 and Redis 7
-- FFmpeg/FFprobe (needed by the worker from Phase 2)
+- FFmpeg/FFprobe on the worker's PATH (media verification and audio analysis)
 
 ## Quick start (local development)
 
@@ -43,6 +45,20 @@ Point `DATABASE_URL`, `TEST_DATABASE_URL` and `REDIS_URL` in `.env` at your own
 PostgreSQL 16 / Redis 7 (Redis must be ≥ 7 and use `maxmemory-policy noeviction`).
 Create the two databases (`sahar`, `sahar_test`) owned by the configured user.
 
+## Opening it on an iPhone (same Wi-Fi)
+
+```bash
+pnpm dev            # Next.js listens on all interfaces and prints a "Network:" URL
+```
+
+On the iPhone, open Safari at `http://<your-computer-LAN-IP>:3000` (e.g.
+`http://192.168.1.20:3000`). Use `pnpm dev` for this, not `pnpm start`: production mode
+sets `Secure` cookies, which Safari only stores over HTTPS. For production, serve the app
+over HTTPS behind a reverse proxy.
+
+Uploading on iPhone: photos picked from the library are converted to JPEG by iOS
+automatically (HEIC is not accepted by the server). Songs can be picked from the Files app.
+
 ## Production build
 
 ```bash
@@ -67,7 +83,8 @@ pnpm test                    # unit tests (no services needed)
 pnpm test:integration        # PostgreSQL + Redis integration tests (uses TEST_DATABASE_URL)
 pnpm --filter @sahar/web build && pnpm test:e2e
                              # Playwright: desktop Chromium + iPhone 14 viewport,
-                             # real server on :3100, test DB, Redis logical DB 15
+                             # real server on :3100 + real worker, test DB, Redis DB 15,
+                             # S3 storage from .env (run `pnpm infra:up` first)
 pnpm check                   # typecheck + lint + unit + integration
 ```
 
@@ -76,12 +93,15 @@ The e2e and integration suites refuse to run if `TEST_DATABASE_URL` equals
 
 ## Workspace layout
 
-| Path              | Purpose                                                              |
-| ----------------- | -------------------------------------------------------------------- |
-| `apps/web`        | Next.js 15 App Router UI, server actions, route handlers             |
-| `apps/worker`     | BullMQ worker (session cleanup now; media, AI and render jobs later) |
-| `packages/db`     | Prisma schema, migrations, client                                    |
-| `packages/shared` | Env validation, logger, queue names, domain constants                |
+| Path                   | Purpose                                                                                                                            |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/web`             | Next.js 15 App Router UI, server actions, route handlers                                                                           |
+| `apps/worker`          | BullMQ worker: session cleanup, image verification, audio analysis (AI and render jobs later)                                      |
+| `packages/db`          | Prisma schema, migrations, client                                                                                                  |
+| `packages/shared`      | Env validation, logger, queue names, consent texts, character presets                                                              |
+| `packages/storage`     | S3 client: streamed uploads, ranged reads, deletes, key scheme                                                                     |
+| `packages/media`       | Pure media logic: magic-byte sniffing, ffprobe validation, waveform peaks, silence parsing, tempo/beat estimation, scene proposals |
+| `scripts/fixtures.mjs` | Generates synthetic test media with FFmpeg (no binary fixtures in git)                                                             |
 
 ## Security notes
 

@@ -20,6 +20,14 @@ export function getDirection(locale: AppLocale): 'rtl' | 'ltr' {
   return locale === 'he' ? 'rtl' : 'ltr';
 }
 
+/**
+ * Wraps a left-to-right value (time, BPM, file size) in Unicode isolates so it keeps its
+ * internal order inside Hebrew sentences: "0:00.0 – 0:10.8" never flips.
+ */
+export function isolateLtr(value: string | number): string {
+  return `\u2066${value}\u2069`;
+}
+
 /** Replaces {placeholders}. Unknown placeholders are left intact so mistakes are visible. */
 export function format(template: string, values: Record<string, string | number>): string {
   return template.replace(/\{(\w+)\}/g, (match, key: string) =>

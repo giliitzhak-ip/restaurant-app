@@ -59,7 +59,11 @@ services:
       - seaweedfs-data:/data
       - ./docker/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
     healthcheck:
-      test: ['CMD-SHELL', 'wget -q -O /dev/null http://localhost:9333/cluster/status || exit 1']
+      test:
+        [
+          'CMD-SHELL',
+          'wget -q -O /dev/null http://localhost:9333/cluster/status && wget -q -O /dev/null http://localhost:8888/ || exit 1',
+        ]
       interval: 5s
       timeout: 5s
       retries: 20

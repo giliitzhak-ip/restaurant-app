@@ -2,6 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
 import { defineConfig, devices } from '@playwright/test';
+import { E2E_REDIS_URL } from './e2e/env';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 if (existsSync(path.join(root, '.env'))) process.loadEnvFile(path.join(root, '.env'));
@@ -9,8 +10,7 @@ if (existsSync(path.join(root, '.env'))) process.loadEnvFile(path.join(root, '.e
 const PORT = Number(process.env.E2E_PORT ?? 3100);
 const testDatabaseUrl = process.env.TEST_DATABASE_URL;
 if (!testDatabaseUrl) throw new Error('TEST_DATABASE_URL must be set for end-to-end tests');
-// Isolated Redis logical database so e2e runs never share rate-limit counters with dev.
-const e2eRedisUrl = process.env.E2E_REDIS_URL ?? 'redis://localhost:6379/15';
+const e2eRedisUrl = E2E_REDIS_URL;
 
 export default defineConfig({
   testDir: './e2e',
@@ -18,6 +18,7 @@ export default defineConfig({
   workers: 1,
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
+  timeout: 60_000,
   reporter: [['list'], ['html', { open: 'never' }]],
   globalSetup: './e2e/global-setup.ts',
   use: {
