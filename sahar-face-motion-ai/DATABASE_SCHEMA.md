@@ -23,7 +23,7 @@ All child rows cascade on user/project deletion, so "delete my data" is a single
 | `User` | account | `email` (unique, lower-cased), `passwordHash` (bcrypt), `role`, `termsAcceptedAt`, `monthlyBudgetCents` (0 = paid AI disabled), `dailyJobLimit` |
 | `Session` | login sessions | `tokenHash` (SHA-256 of cookie token, unique), `expiresAt`, `userAgent`, `ip` |
 | `Project` | a workspace | `ownerId`, `name`, `description`, `aspectRatio` ("9:16"/"16:9"/"1:1"), `duplicatedFromId` |
-| `Asset` | any file in S3 | `kind` IMAGE/VIDEO/AUDIO, `role` SOURCE/GENERATED/EXPORT, `storageKey` (unique, private), `mimeType`, `sizeBytes`, `checksumSha256`, FFprobe metadata (`width`, `height`, `durationMs`, `fps`, `hasAudio`), **`aiGenerated`**, `consentId`, `producedByJobId` |
+| `Asset` | any file in storage | `kind` IMAGE/VIDEO/AUDIO, `role` SOURCE/GENERATED/EXPORT, `status` PROCESSING/READY/REJECTED + `errorMessage` (Hebrew), `storageKey` (unique, private), `previewKey`, `posterKey`, `mimeType`, `sizeBytes`, `checksumSha256`, FFprobe metadata (`width`/`height` as displayed, i.e. after rotation; `durationMs`, `fps`, `hasAudio`, `formatName`, `videoCodec`, `audioCodec`), **`aiGenerated`**, `consentId`, `producedByJobId` |
 | `ConsentRecord` | proof of rights for a face/voice/video | `subject` FACE/VOICE/VIDEO, `relationship` SELF/OTHER_WITH_PERMISSION/OWNED_CONTENT, `subjectName`, exact `statement` + `statementVersion`, `verifiedAt` + `verificationMethod`, `revokedAt`, `ip`, `userAgent` |
 | `Voice` | personal voice library | `kind` PRESET/DESIGNED/CLONED, `provider`, `providerVoiceId`, `gender`, `language` (default `he`), `consentId` (required for CLONED, enforced in code; cascades if consent deleted) |
 | `Job` | every async AI/FFmpeg task | `type` (MEDIA_PROBE, FACE_DETECT, FACE_SWAP, MOTION_TRANSFER, TTS, VOICE_CLONE, SPEECH_TO_SPEECH, LIP_SYNC, VIDEO_EXPORT), `status` QUEUED/RUNNING/SUCCEEDED/FAILED/CANCELED, `progress` 0–100, `provider`, `providerJobId`, `input`/`output` JSON, `errorCode`, `errorMessage` (Hebrew), `estimatedCostCents`, timestamps |
@@ -43,4 +43,13 @@ npx prisma migrate dev --name <change>   # development
 npx prisma migrate deploy                # production
 ```
 
-Initial migration: `prisma/migrations/*_init`.
+Migrations: `*_init` (phase 1) and `*_asset_processing` (phase 2: asset status, preview/poster keys, codec metadata).
+
+## Storage layout
+
+```
+u/<userId>/p/<projectId>/<assetId>/original.<ext>
+                                  /preview.mp4 | preview.jpg | preview.m4a
+                                  /poster.jpg
+```
+Deleting an asset, a project or an account purges the matching prefix.

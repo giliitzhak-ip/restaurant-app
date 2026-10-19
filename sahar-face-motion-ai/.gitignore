@@ -7,3 +7,5 @@ out/
 next-env.d.ts
 storage/
 coverage/
+test-results/
+playwright-report/

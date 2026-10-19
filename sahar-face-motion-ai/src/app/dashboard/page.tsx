@@ -1,4 +1,5 @@
-import { Clock, CheckCircle2, FlaskConical } from "lucide-react";
+import Link from "next/link";
+import { Clock, CheckCircle2, FlaskConical, ArrowLeft } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +25,7 @@ export default async function DashboardPage() {
       </section>
 
       <Alert variant="info" className="mb-6">
-        המערכת נמצאת בשלב {CURRENT_PHASE} מתוך 8: תשתית, מסד נתונים, התחברות וממשק בעברית. כלי ה-AI ייפתחו לפי מפת הדרכים.
+        המערכת נמצאת בשלב {CURRENT_PHASE} מתוך 8: ספריית פרויקטים, העלאת קבצים לאחסון, בדיקת FFprobe ותצוגה מקדימה פעילים. כלי ה-AI ייפתחו לפי מפת הדרכים.
       </Alert>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -45,6 +46,12 @@ export default async function DashboardPage() {
                 )}
               </div>
               <CardDescription className="flex-1">{m.description}</CardDescription>
+              {live && m.href && (
+                <Link href={m.href} className="inline-flex items-center gap-1 text-sm font-semibold text-gold hover:underline">
+                  כניסה
+                  <ArrowLeft className="size-4" aria-hidden />
+                </Link>
+              )}
               {provider && (
                 <p className="flex items-center gap-1.5 text-xs text-ash">
                   <FlaskConical className="size-3.5 text-gold" aria-hidden />

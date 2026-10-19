@@ -2,7 +2,7 @@
 
 Each phase ends with: tests passing, a production build, a manual check at iPhone size, and **user approval before the next phase starts**.
 
-## Phase 1: Foundation ✅ (this delivery)
+## Phase 1: Foundation ✅
 - [x] Next.js 15 + React 19 + TypeScript + Tailwind 4 + shadcn-style components
 - [x] Hebrew RTL, black/gold/dark-grey theme, Heebo font, iPhone safe areas, bottom tab bar, 16px inputs (no Safari zoom)
 - [x] PostgreSQL + Prisma: full schema and initial migration
@@ -13,12 +13,23 @@ Each phase ends with: tests passing, a production build, a manual check at iPhon
 - [x] Terms & consent policy page, AI-content disclosure on every page
 - [x] Unit tests (vitest), lint, typecheck, production build; docker-compose for Postgres/Redis/MinIO
 
-## Phase 2: Uploads, projects, preview
-- S3 storage service (MinIO locally), pre-signed upload/download, bucket bootstrap
-- Upload UI (drag & drop / iPhone photo picker) with real progress (XHR upload progress)
-- BullMQ worker (`npm run worker`), `MEDIA_PROBE` job: FFprobe validation, Safari-friendly preview proxy, poster frame
-- Project library: create, rename, list, open, duplicate, delete (rows + S3 objects), history panel
-- Job status API plus a progress bar component
+## Phase 2: Uploads, projects, preview ✅
+- [x] Storage abstraction with an S3 driver (AWS S3 / R2 / MinIO), tested against a real MinIO, plus a local-disk driver
+- [x] Streaming upload API with type allow-list, per-type size limits, per-user storage quota, SHA-256, upload rate limit
+- [x] Upload UI: iPhone photo/video picker and desktop drag & drop, multiple files, real byte progress, Hebrew errors
+- [x] BullMQ media worker (`npm run worker`): FFprobe validation, H.264/AAC preview, poster, image/audio previews, real processing progress, retries, recovery of lost jobs, heartbeat
+- [x] Private file streaming with HTTP Range (Safari), download of originals
+- [x] Project library: create, edit (name/description/aspect ratio), list with covers and counts, duplicate (copies stored files), delete (rows + storage purge), per-file delete, history panel
+- [x] Account deletion also purges stored files
+- [x] Status page: storage and worker checks
+- [x] Tests: 33 unit/integration (real FFmpeg/FFprobe, S3 against MinIO) + 4 E2E (iPhone and desktop profiles)
+
+Decision: uploads go **through the app server** (streamed to storage), not straight to S3 with pre-signed URLs. Direct-to-S3 needs the bucket's public endpoint and CORS to be reachable from the phone, which breaks simple LAN setups. The trade-off is server bandwidth, and we can switch to pre-signed multipart uploads behind the same UI when deploying to the cloud.
+
+Known limitations:
+- EXIF orientation of JPEG *thumbnails* may be ignored by FFmpeg 6.1 (the original displays correctly in the browser).
+- HEIC decoding depends on the FFmpeg build. If it fails, the file is rejected with instructions to switch the iPhone camera to "Most Compatible" (JPEG).
+- WebKit (real Safari engine) is not available in this CI environment. The iPhone profile runs on Chromium with iPhone viewport/touch/UA.
 
 ## Phase 3: Face Swap (first real engine)
 - Consent capture UI → `ConsentRecord`

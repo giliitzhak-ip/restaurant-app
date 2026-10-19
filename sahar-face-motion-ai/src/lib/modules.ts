@@ -7,6 +7,8 @@ export type StudioModule = {
   description: string;
   phase: number;
   provider?: ModuleKey;
+  /** Route once the module is live. */
+  href?: string;
 };
 
 /** The product modules, in roadmap order. `phase` is when the module goes live. */
@@ -17,6 +19,7 @@ export const STUDIO_MODULES: StudioModule[] = [
     subtitle: "Project Library",
     description: "העלאת תמונות וסרטונים, שמירת פרויקטים, תצוגה מקדימה והיסטוריית פעולות.",
     phase: 2,
+    href: "/projects",
   },
   {
     slug: "face-swap",
@@ -59,4 +62,4 @@ export const STUDIO_MODULES: StudioModule[] = [
   },
 ];
 
-export const CURRENT_PHASE = 1;
+export const CURRENT_PHASE = 2;

@@ -28,6 +28,12 @@ enum AssetRole {
   EXPORT // produced by the video editor / FFmpeg
 }
 
+enum AssetStatus {
+  PROCESSING // uploaded, waiting for / running FFprobe validation and preview generation
+  READY
+  REJECTED // failed validation; objects are removed, row kept so the user sees why
+}
+
 enum ConsentSubject {
   FACE
   VOICE
@@ -130,6 +136,8 @@ model Asset {
   owner        User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   kind         AssetKind
   role         AssetRole
+  status       AssetStatus @default(PROCESSING)
+  errorMessage String?   // Hebrew, shown when REJECTED
   // Object key in S3-compatible storage. Never a public URL; served via signed URLs.
   storageKey   String    @unique
   mimeType     String
@@ -142,6 +150,12 @@ model Asset {
   durationMs   Int?
   fps          Float?
   hasAudio     Boolean?
+  formatName   String?
+  videoCodec   String?
+  audioCodec   String?
+  // Browser-friendly derivatives made by the media worker (H.264/AAC MP4, JPEG poster).
+  previewKey   String?
+  posterKey    String?
   // AI disclosure: true for anything a model produced or modified.
   aiGenerated  Boolean   @default(false)
   consentId    String?

@@ -9,7 +9,14 @@ import type { ModuleKey } from "@/providers/types";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "מצב מערכת | SAHAR FACE MOTION AI" };
 
-const CHECK_LABELS = { database: "מסד נתונים", queue: "תור משימות (Redis)", ffmpeg: "FFmpeg", ffprobe: "FFprobe" } as const;
+const CHECK_LABELS = {
+  database: "מסד נתונים",
+  queue: "תור משימות (Redis)",
+  storage: "אחסון קבצים",
+  worker: "Worker עיבוד מדיה",
+  ffmpeg: "FFmpeg",
+  ffprobe: "FFprobe",
+} as const;
 const MODULE_LABELS: Record<ModuleKey, string> = {
   faceSwap: "Face Swap",
   motion: "Motion Transfer",
@@ -42,13 +49,6 @@ export default async function SystemPage() {
                 </div>
               </li>
             ))}
-            <li className="flex items-start gap-3">
-              {status.storageConfigured ? <AlertTriangle className="size-5 shrink-0 text-gold" aria-hidden /> : <StatusIcon ok={false} />}
-              <div>
-                <p className="font-medium">אחסון קבצים (S3)</p>
-                <p className="text-xs text-ash">{status.storageConfigured ? "הוגדרו פרטי חיבור. החיבור בפועל ייבדק ויופעל בשלב 2." : "לא מוגדר"}</p>
-              </div>
-            </li>
           </ul>
         </Card>
 

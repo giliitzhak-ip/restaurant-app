@@ -31,3 +31,13 @@ export const loginSchema = z.object({
 export function firstError(error: z.ZodError): string {
   return error.issues[0]?.message ?? "הנתונים שנשלחו אינם תקינים";
 }
+
+export const ASPECT_RATIOS = ["9:16", "16:9", "1:1"] as const;
+
+export const projectCreateSchema = z.object({
+  name: z.string({ required_error: "יש להזין שם לפרויקט" }).trim().min(1, "יש להזין שם לפרויקט").max(80, "שם הפרויקט ארוך מדי (עד 80 תווים)"),
+  description: z.string().trim().max(500, "התיאור ארוך מדי (עד 500 תווים)").optional().nullable(),
+  aspectRatio: z.enum(ASPECT_RATIOS, { errorMap: () => ({ message: "יחס מסך לא תקין" }) }).default("9:16"),
+});
+
+export const projectUpdateSchema = projectCreateSchema.partial();

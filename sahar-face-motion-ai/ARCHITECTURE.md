@@ -27,7 +27,7 @@
 
 Key principles:
 
-* **Web process never does heavy work.** Uploads go straight to S3 via pre-signed URLs; every AI or FFmpeg task is a `Job` row plus a BullMQ job processed by the worker. The UI polls `/api/jobs/:id` for real progress.
+* **Web process never does heavy work.** It only streams uploads into storage. Every AI or FFmpeg task is a `Job` row plus a BullMQ job processed by the worker, and the UI polls the project endpoint for real progress while files are processing.
 * **Provider adapters are swappable.** Each capability has its own interface in `src/providers/types.ts` (`FaceSwapProvider`, `MotionTransferProvider`, `VoiceProvider`, `LipSyncProvider`). The module's provider is chosen with an env var (`FACE_SWAP_PROVIDER=…`). The status page reports exactly which adapter is selected, whether it has been built, which keys are missing, and whether paid use is allowed.
 * **Nothing fake.** The registry only reports a provider as `ready` when the adapter exists in code, its keys are set and (for paid vendors) `ALLOW_PAID_PROVIDERS=true`. The Mock provider makes real files (for example a valid WAV) to test the pipeline, and the UI labels its output as a test, never as AI output.
 * **Consent and AI disclosure are part of the data model.** Every face/voice input used for synthesis must reference a `ConsentRecord`, and every model output is stored with `aiGenerated = true`.
@@ -44,9 +44,11 @@ sahar-face-motion-ai/
 │   ├── components/auth/        login/register form, logout, delete account
 │   ├── lib/                    db, redis, session, password, tokens, validation, rate-limit
 │   ├── providers/              provider contracts, registry, mock adapter
-│   ├── server/                 server-only services (system status; later: storage, jobs)
-│   ├── worker/                 BullMQ worker entry point (added in phase 2)
+│   ├── server/                 server services: storage drivers, media (policy/ffprobe/ffmpeg), queue, projects, status
+│   ├── worker/                 BullMQ media worker (`npm run worker`)
+│   ├── test/                   test fixtures (real media generated with FFmpeg)
 │   └── middleware.ts           cookie-presence redirect for protected routes
+├── e2e/                        Playwright end-to-end tests (iPhone + desktop profiles)
 ├── docker-compose.yml          Postgres + Redis + MinIO for local dev
 └── *.md                        this documentation
 ```
@@ -58,13 +60,13 @@ sahar-face-motion-ai/
 * Login is rate limited per IP (30 per 15 min) and per email (8 per 15 min) in Redis. Registration is limited to 5 per hour per IP. Login also runs a bcrypt comparison for unknown emails, so timing does not reveal which accounts exist.
 * State-changing API routes check `Origin` against `Host` (CSRF defence in depth).
 * Every protected page and API route re-validates the session on the server; middleware only does a fast redirect.
-* **Project access (phase 2+):** every query filters by `ownerId = currentUser.id`. Assets are never public; downloads use short-lived signed URLs issued after an ownership check.
+* **Project access:** every query filters by `ownerId = currentUser.id`, and another user's ids return 404 (verified in E2E). Assets are never public: files are streamed through an authenticated route after an ownership check, and storage keys are never exposed to the browser.
 
 ## 4. Media pipeline (phases 2–7)
 
-1. Client asks `/api/uploads` for a pre-signed PUT URL. The server first validates MIME type, extension and size limits from env.
-2. The browser uploads directly to S3 and then calls `/api/assets/complete`.
-3. A `MEDIA_PROBE` job runs `ffprobe`. It rejects files that are not real media or exceed duration limits, and stores width/height/fps/duration/audio. For Safari it also creates a preview proxy (H.264/AAC MP4 with `+faststart`) and a poster frame.
+1. *(Implemented in phase 2.)* The browser streams the file to `POST /api/projects/:id/assets` (XHR, so upload progress is real). The server checks the type allow-list, size and quota, hashes the file, and stores it via the storage driver (`src/server/storage`: S3 or local disk).
+2. *(Implemented.)* A `MEDIA_PROBE` job runs `ffprobe` in the worker (`src/worker`). It rejects files that are not real media of the declared kind or exceed limits, and stores display width/height (rotation-aware), fps, duration, codecs and audio presence. It creates an H.264/AAC MP4 preview (`+faststart`, short side ≤720), a JPEG poster, and JPEG/AAC previews for images and audio. Progress is parsed from `ffmpeg -progress`.
+3. *(Implemented.)* `GET /api/assets/:id/file?v=original|preview|poster` streams to the owner only, with HTTP Range support (Safari).
 4. AI jobs: the worker creates signed GET URLs, calls `provider.submit()`, stores `providerJobId`, and polls with backoff (or receives a webhook when the vendor supports one). It then downloads the result into our bucket as a `GENERATED` asset with `aiGenerated = true`, and records usage and cost.
 5. Exports: FFmpeg filter graphs handle trim, concat, audio replace and mix (`amix`, volume), aspect-ratio pad/crop (9:16 / 16:9), up to 1080p when the source allows, plus an "AI-generated" metadata tag. A visible watermark is optional.
 

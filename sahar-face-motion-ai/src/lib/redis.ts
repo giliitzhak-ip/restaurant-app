@@ -1,4 +1,3 @@
-import "server-only";
 import Redis from "ioredis";
 
 const globalForRedis = globalThis as unknown as { redis?: Redis };

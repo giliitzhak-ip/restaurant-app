@@ -4,6 +4,8 @@ import { promisify } from "node:util";
 import { db } from "@/lib/db";
 import { redis } from "@/lib/redis";
 import { allProviderStatuses } from "@/providers/registry";
+import { storage } from "@/server/storage";
+import { WORKER_HEARTBEAT_KEY } from "@/server/queue";
 
 const run = promisify(execFile);
 
@@ -41,16 +43,36 @@ async function checkBinary(bin: string): Promise<Check> {
   }
 }
 
+async function checkStorage(): Promise<Check> {
+  try {
+    return await withTimeout(storage().check(), 5000);
+  } catch (e) {
+    return { ok: false, detail: `אחסון לא זמין: ${(e as Error).message}` };
+  }
+}
+
+async function checkWorker(): Promise<Check> {
+  try {
+    const beat = await withTimeout(redis().get(WORKER_HEARTBEAT_KEY), 3000);
+    return beat
+      ? { ok: true, detail: "Worker עיבוד מדיה פעיל" }
+      : { ok: false, detail: "Worker עיבוד מדיה לא פועל. קבצים חדשים ימתינו בתור (הפעלה: npm run worker)" };
+  } catch {
+    return { ok: false, detail: "לא ניתן לבדוק את ה-Worker (Redis לא זמין)" };
+  }
+}
+
 export async function systemStatus() {
-  const [database, queue, ffmpeg, ffprobe] = await Promise.all([
+  const [database, queue, storageCheck, worker, ffmpeg, ffprobe] = await Promise.all([
     checkDb(),
     checkRedis(),
+    checkStorage(),
+    checkWorker(),
     checkBinary(process.env.FFMPEG_PATH || "ffmpeg"),
     checkBinary(process.env.FFPROBE_PATH || "ffprobe"),
   ]);
   return {
-    checks: { database, queue, ffmpeg, ffprobe },
+    checks: { database, queue, storage: storageCheck, worker, ffmpeg, ffprobe },
     providers: allProviderStatuses(),
-    storageConfigured: Boolean(process.env.S3_ENDPOINT && process.env.S3_BUCKET && process.env.S3_ACCESS_KEY_ID),
   };
 }

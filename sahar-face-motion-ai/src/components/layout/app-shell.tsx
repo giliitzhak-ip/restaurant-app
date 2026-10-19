@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LayoutGrid, Activity, UserRound } from "lucide-react";
+import { LayoutGrid, Activity, UserRound, FolderKanban } from "lucide-react";
 import { Logo } from "./logo";
 import { AiDisclosure } from "./ai-disclosure";
 import { LogoutButton } from "@/components/auth/logout-button";
@@ -7,6 +7,7 @@ import type { SessionUser } from "@/lib/session";
 
 const NAV = [
   { href: "/dashboard", label: "סטודיו", icon: LayoutGrid },
+  { href: "/projects", label: "פרויקטים", icon: FolderKanban },
   { href: "/system", label: "מצב מערכת", icon: Activity },
   { href: "/account", label: "החשבון שלי", icon: UserRound },
 ];
@@ -40,7 +41,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
         className="fixed inset-x-0 bottom-0 z-30 border-t border-steel/60 bg-ink/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden"
         aria-label="ניווט תחתון"
       >
-        <div className="grid grid-cols-3">
+        <div className="grid grid-cols-4">
           {NAV.map(({ href, label, icon: Icon }) => (
             <Link key={href} href={href} className="flex flex-col items-center gap-1 py-2.5 text-[11px] text-pearl/80">
               <Icon className="size-5 text-gold" aria-hidden />

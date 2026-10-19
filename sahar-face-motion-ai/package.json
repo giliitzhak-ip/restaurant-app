@@ -9,11 +9,14 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:e2e": "playwright test",
+    "worker": "tsx --env-file-if-exists=.env src/worker/index.ts",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:generate": "prisma generate"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1153.0",
     "@prisma/client": "^6.19.3",
     "@radix-ui/react-slot": "^1.2.3",
     "bcryptjs": "^3.0.3",
@@ -27,10 +30,12 @@
     "react-dom": "^19.1.10",
     "server-only": "^0.0.1",
     "tailwind-merge": "^3.7.0",
+    "tsx": "^4.23.15",
     "zod": "^3.25.76"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.7",
+    "@playwright/test": "^1.56.1",
     "@tailwindcss/postcss": "^4.1.18",
     "@types/node": "^22.20.5",
     "@types/react": "^19.3.0",
@@ -39,7 +44,6 @@
     "eslint-config-next": "^15.5.28",
     "prisma": "^6.19.3",
     "tailwindcss": "^4.1.18",
-    "tsx": "^4.23.15",
     "typescript": "5.9",
     "vitest": "^3.2.7"
   }
