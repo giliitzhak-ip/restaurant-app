@@ -5,7 +5,9 @@ import { FaceSwapStudio } from "@/components/face-swap/face-swap-studio";
 import { requireUser } from "@/lib/require-user";
 import { getProjectForUser } from "@/server/projects";
 import { mediaLimits } from "@/server/media/policy";
-import { selectedFaceSwapProvider } from "@/providers/face-swap";
+import { enabledFaceSwapProviders, selectedFaceSwapProvider, unavailableReason } from "@/providers/face-swap";
+import { freeMode } from "@/server/billing";
+import { providerAccount } from "@/server/face-swap";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "AI Face Swap | SAHAR FACE MOTION AI" };
@@ -16,6 +18,24 @@ export default async function FaceSwapPage({ params }: { params: Promise<{ id: s
   const project = await getProjectForUser(user.id, id);
   if (!project) notFound();
   const provider = selectedFaceSwapProvider();
+  const providers = await Promise.all(
+    enabledFaceSwapProviders().map(async (p) => {
+      const unavailable = unavailableReason(p);
+      const acct = p.paid && !unavailable ? await providerAccount(p) : { account: null, error: null };
+      return {
+        id: p.id,
+        name: p.displayName,
+        paid: p.paid,
+        maxDurationSec: p.capabilities.maxDurationSec,
+        notes: p.notes,
+        isMock: p.id === "mock",
+        hasAccountApi: Boolean(p.account) && !unavailable,
+        unavailable,
+        account: acct.account,
+        accountError: acct.error,
+      };
+    }),
+  );
 
   return (
     <AppShell user={user}>
@@ -25,14 +45,9 @@ export default async function FaceSwapPage({ params }: { params: Promise<{ id: s
         <FaceSwapStudio
           initial={project}
           maxBytes={mediaLimits().maxBytes}
-          provider={{
-            id: provider.id,
-            name: provider.displayName,
-            paid: provider.paid,
-            maxDurationSec: provider.capabilities.maxDurationSec,
-            notes: provider.notes,
-            isMock: provider.id === "mock",
-          }}
+          providers={providers}
+          defaultProviderId={provider.id}
+          freeMode={freeMode()}
         />
       )}
     </AppShell>

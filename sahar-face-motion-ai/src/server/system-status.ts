@@ -7,6 +7,7 @@ import { allProviderStatuses } from "@/providers/registry";
 import { storage } from "@/server/storage";
 import { WORKER_HEARTBEAT_KEY } from "@/server/queue";
 import { faceDetectionAvailable } from "@/server/media/faces";
+import { facefusionInstalled } from "@/providers/face-swap/facefusion-local";
 
 const run = promisify(execFile);
 
@@ -73,7 +74,7 @@ export async function systemStatus() {
     checkBinary(process.env.FFPROBE_PATH || "ffprobe"),
   ]);
   return {
-    checks: { database, queue, storage: storageCheck, worker, ffmpeg, ffprobe, faces: faceDetectionAvailable() },
+    checks: { database, queue, storage: storageCheck, worker, ffmpeg, ffprobe, faces: faceDetectionAvailable(), facefusion: facefusionInstalled() },
     providers: allProviderStatuses(),
   };
 }

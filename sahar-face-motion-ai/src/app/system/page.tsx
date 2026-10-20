@@ -4,6 +4,10 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { requireUser } from "@/lib/require-user";
 import { systemStatus } from "@/server/system-status";
+import { freeMode } from "@/server/billing";
+import { enabledFaceSwapProviders, unavailableReason } from "@/providers/face-swap";
+import { providerAccount } from "@/server/face-swap";
+import { CreditsBadge } from "@/components/face-swap/credits-badge";
 import type { ModuleKey } from "@/providers/types";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +21,7 @@ const CHECK_LABELS = {
   ffmpeg: "FFmpeg",
   ffprobe: "FFprobe",
   faces: "זיהוי פנים (YuNet/SFace)",
+  facefusion: "FaceFusion (מנוע חינמי מקומי)",
 } as const;
 const MODULE_LABELS: Record<ModuleKey, string> = {
   faceSwap: "Face Swap",
@@ -32,10 +37,45 @@ function StatusIcon({ ok }: { ok: boolean }) {
 export default async function SystemPage() {
   const user = await requireUser("/system");
   const status = await systemStatus();
+  const free = freeMode();
+  const engines = await Promise.all(
+    enabledFaceSwapProviders().map(async (p) => {
+      const unavailable = unavailableReason(p);
+      const acct = p.account && !unavailable ? await providerAccount(p) : null;
+      return { p, unavailable, acct };
+    }),
+  );
 
   return (
     <AppShell user={user}>
       <h1 className="mb-6 text-2xl font-bold">מצב מערכת</h1>
+
+      <Card id="free-mode" className="mb-4 space-y-3">
+        <CardTitle className="flex flex-wrap items-center gap-2">
+          מצב חינמי (Free Mode)
+          {free ? <Badge variant="success">פעיל: פעולות בתשלום חסומות</Badge> : <Badge variant="danger">כבוי: שירותים בתשלום אפשריים באישור</Badge>}
+        </CardTitle>
+        <p className="text-sm text-ash">
+          {free
+            ? "שום פעולה לא תחייב כסף. מותרים מנועים חינמיים, ושימוש בקרדיטים חינמיים רק בחשבון ספק חינמי ללא מנוי, כשהיתרה מכסה את כל המשימה. ההגדרה בשרת: FREE_MODE."
+            : "שירותים בתשלום מותרים רק עם ALLOW_PAID_PROVIDERS=true, תקציב חודשי ואישור מפורש לכל משימה."}
+        </p>
+        <ul className="space-y-3">
+          {engines.map(({ p, unavailable, acct }) => (
+            <li key={p.id} className="flex flex-wrap items-center gap-2 text-sm">
+              {unavailable ? <XCircle className="size-5 text-danger" aria-hidden /> : <CheckCircle2 className="size-5 text-success" aria-hidden />}
+              <span className="font-medium">{p.displayName}</span>
+              {!p.paid ? <Badge variant="success">חינם</Badge> : <Badge variant="gold">{free ? "קרדיטים חינמיים בלבד" : "בתשלום"}</Badge>}
+              {unavailable && <span className="text-xs text-danger">{unavailable}</span>}
+              {acct && (
+                <span className="basis-full ps-7">
+                  <CreditsBadge initial={acct.account} error={acct.error} />
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
         <Card>

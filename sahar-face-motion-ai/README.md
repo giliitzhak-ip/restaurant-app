@@ -5,11 +5,16 @@ A Hebrew (RTL) web platform for making AI videos: face swap, motion transfer, sy
 > **Status: Phase 3 of 8.**
 > - Working: accounts, the project library, uploads to S3-compatible storage, FFprobe validation and previews, local face detection, and the **AI Face Swap studio** with cost quote and explicit approval.
 > - Face swap runs end-to-end on the free `mock` provider.
+> - **Free Mode** is on by default: nothing can cost money.
+> - Free engines:
+>   - local open-source **FaceFusion** (`ghost_1_256`, Apache-2.0);
+>   - **Magic Hour free credits**: only on a free account with enough credits, and the balance is shown in the app.
+> - Runs in GitHub Codespaces with no computer and no card ([FREE_MODE.md](FREE_MODE.md)).
 > - The Magic Hour cloud adapter is built and contract-tested, but **no paid call has been made**. It needs an API key and your approval ([FACE_SWAP_PROVIDERS.md](FACE_SWAP_PROVIDERS.md), [DEPLOYMENT.md](DEPLOYMENT.md)).
 >
 > The other AI modules are not connected yet. The dashboard shows each module's real status and does not pretend to process anything. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
 
-Docs: [FACE_SWAP_PROVIDERS.md](FACE_SWAP_PROVIDERS.md) · [DEPLOYMENT.md](DEPLOYMENT.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) · [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [.env.example](.env.example)
+Docs: **[FREE_MODE.md](FREE_MODE.md) (start here: free use from iPhone)** · [FACE_SWAP_PROVIDERS.md](FACE_SWAP_PROVIDERS.md) · [DEPLOYMENT.md](DEPLOYMENT.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) · [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) · [.env.example](.env.example)
 
 ## Requirements
 

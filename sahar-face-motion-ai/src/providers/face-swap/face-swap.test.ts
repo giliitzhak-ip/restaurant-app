@@ -9,8 +9,8 @@ import { analyzeProbe, ffprobe } from "@/server/media/probe";
 import { mediaLimits } from "@/server/media/policy";
 import { magicHourFaceSwap, magicHourFrames } from "./magichour";
 import { mockFaceSwap } from "./mock";
-import { checkLimits, type FaceSwapRequest, type VideoInfo } from "./types";
-import { jobBlockers, type BudgetStatus } from "@/server/billing";
+import { checkLimits, clippedVideo, type FaceSwapRequest, type ProviderAccount, type VideoInfo } from "./types";
+import { coveredByFreeCredits, jobBlockers, type BudgetStatus } from "@/server/billing";
 
 const v30: VideoInfo = { durationSec: 30, width: 1080, height: 1920, fps: 30, hasAudio: true };
 const budget = (over: Partial<BudgetStatus> = {}): BudgetStatus => ({
@@ -41,13 +41,46 @@ describe("cost estimates", () => {
   });
 });
 
-describe("billing guard", () => {
-  const env = { MAGIC_HOUR_API_KEY: "k", ALLOW_PAID_PROVIDERS: "true", S3_ENDPOINT: "https://acc.r2.cloudflarestorage.com" };
+describe("clip options", () => {
+  it("trims and caps fps, which lowers the Magic Hour credits", () => {
+    const v = clippedVideo({ ...v30, fps: 60 }, { startSec: 5, endSec: 15, maxFps: 15 });
+    expect(v).toMatchObject({ durationSec: 10, fps: 15 });
+    expect(magicHourFaceSwap.estimate(v).credits).toBe(150);
+    expect(clippedVideo(v30, { startSec: 25, endSec: 99, maxFps: 30 }).durationSec).toBe(5);
+  });
+});
+
+describe("Free Mode", () => {
+  const free: ProviderAccount = { credits: 400, tier: "free", subscription: null };
+  const env = { MAGIC_HOUR_API_KEY: "k", FREE_MODE: "true", ALLOW_PAID_PROVIDERS: "true" };
+  it("allows a paid provider only when free credits on a free account cover the job", () => {
+    expect(coveredByFreeCredits(free, 390)).toEqual({ ok: true });
+    expect(jobBlockers({ provider: magicHourFaceSwap, costCents: 0, budget: budget({ monthlyBudgetCents: 0, availableCents: 0 }), env, account: free, credits: 390 })).toEqual([]);
+  });
+  it("blocks when credits are short, the account is paid, or the balance is unknown", () => {
+    expect(coveredByFreeCredits(free, 401).ok).toBe(false);
+    expect(coveredByFreeCredits({ ...free, tier: "creator", subscription: "Creator" }, 10).ok).toBe(false);
+    expect(coveredByFreeCredits({ ...free, subscription: "Pro" }, 10).ok).toBe(false); // tier lag during plan change
+    expect(coveredByFreeCredits(null, 10).ok).toBe(false);
+    const b = jobBlockers({ provider: magicHourFaceSwap, costCents: 0, budget: budget(), env, account: { ...free, credits: 100 }, credits: 390 });
+    expect(b[0]).toContain("מצב חינמי פעיל");
+  });
+  it("ignores ALLOW_PAID_PROVIDERS and budgets: paid usage stays blocked", () => {
+    const b = jobBlockers({ provider: magicHourFaceSwap, costCents: 225, budget: budget(), env, account: { credits: 100000, tier: "pro", subscription: "Pro" }, credits: 900 });
+    expect(b.length).toBeGreaterThan(0);
+  });
+  it("lets free engines run with no budget", () => {
+    expect(jobBlockers({ provider: mockFaceSwap, costCents: 0, budget: budget({ monthlyBudgetCents: 0, availableCents: 0 }), env: { FREE_MODE: "true" } })).toEqual([]);
+  });
+});
+
+describe("billing guard (Free Mode off)", () => {
+  const env = { MAGIC_HOUR_API_KEY: "k", ALLOW_PAID_PROVIDERS: "true", FREE_MODE: "false", S3_ENDPOINT: "https://acc.r2.cloudflarestorage.com" };
   it("allows a paid job only with key, global opt-in and enough budget", () => {
     expect(jobBlockers({ provider: magicHourFaceSwap, costCents: 225, budget: budget(), env })).toEqual([]);
   });
   it("blocks when paid providers are disabled or the key is missing", () => {
-    const b = jobBlockers({ provider: magicHourFaceSwap, costCents: 225, budget: budget(), env: { S3_ENDPOINT: env.S3_ENDPOINT } });
+    const b = jobBlockers({ provider: magicHourFaceSwap, costCents: 225, budget: budget(), env: { FREE_MODE: "false", S3_ENDPOINT: env.S3_ENDPOINT } });
     expect(b.join(" ")).toContain("ALLOW_PAID_PROVIDERS");
     expect(b.join(" ")).toContain("חסר מפתח");
   });
@@ -69,6 +102,7 @@ describe("mock provider", () => {
       sourceImage: { localPath: fx.f("photo.jpg"), mimeType: "image/jpeg", url: async () => "" },
       targetVideo: { localPath: fx.f("dance.mp4"), mimeType: "video/mp4", url: async () => "" },
       video: { durationSec: 2, width: 1280, height: 720, fps: 30, hasAudio: true },
+      clip: { startSec: 0, endSec: 2, maxFps: 30 },
       target: { personIndex: 0, box: { x: 0.4, y: 0.2, w: 0.2, h: 0.3 }, timeSec: 0, personsInVideo: 1 },
     };
     const progress: number[] = [];
@@ -94,6 +128,7 @@ describe("Magic Hour adapter (contract test against a local fake)", () => {
   let base = "";
   let projectStatus = "queued";
   let faceFiles: string[] = [];
+  let accountMode: "pro" | "free" = "free";
 
   beforeAll(async () => {
     server = http.createServer((req, res) => {
@@ -125,6 +160,12 @@ describe("Magic Hour adapter (contract test against a local fake)", () => {
           return res.end(fs.readFileSync(faceFiles[Number(req.url!.split("/")[2]!.split(".")[0])]!));
         }
         if (req.method === "POST" && req.url === "/v1/face-swap") return json(200, { id: "cuid-example", credits_charged: 450, estimated_frame_cost: 450 });
+        if (req.method === "GET" && req.url === "/v1/account") {
+          // Example response from the SDK docs (resources/v1/account/README.md), and a free account.
+          return json(200, accountMode === "pro"
+            ? { credits: 12500, email: "user@example.com", id: "cuid-example", subscription: { billing_interval: "month", cancel_at_period_end: false, current_period_end: "2026-10-01T00:00:00.000Z", name: "Pro", price: { amount: 4900, currency: "usd" }, status: "active" }, tier: "pro" }
+            : { credits: 400, email: "user@example.com", id: "cuid-free", subscription: null, tier: "free" });
+        }
         if (req.method === "GET" && req.url === "/v1/video-projects/cuid-example") {
           if (projectStatus === "error") return json(200, { id: "cuid-example", status: "error", error: { code: "no_source_face", message: "Please use an image with a detectable face" } });
           return json(200, {
@@ -151,6 +192,7 @@ describe("Magic Hour adapter (contract test against a local fake)", () => {
     sourceImage: { localPath: fx.f("photo.jpg"), mimeType: "image/jpeg", url: async () => "" },
     targetVideo: { localPath: fx.f("dance.mp4"), mimeType: "video/mp4", url: async () => "" },
     video: { durationSec: 2, width: 1280, height: 720, fps: 30, hasAudio: true },
+    clip: { startSec: 0, endSec: 2, maxFps: 30 },
     target,
   });
 
@@ -181,6 +223,7 @@ describe("Magic Hour adapter (contract test against a local fake)", () => {
       state: "succeeded",
       output: { kind: "url", url: `${base}/out.mp4` },
       billedCents: 113, // 450 credits × $0.0025, rounded up
+      billedCredits: 450,
     });
     projectStatus = "error";
     const failed = await magicHourFaceSwap.poll(providerJobId, { onProgress: () => {} });
@@ -207,6 +250,19 @@ describe("Magic Hour adapter (contract test against a local fake)", () => {
       face_swap_mode: "individual-faces",
       face_mappings: [{ original_face: "api-assets/id/0-1.png", new_face: "api-assets/id/1.jpg" }],
     });
+  }, 60_000);
+
+  it("reads the credit balance and plan (GET /v1/account)", async () => {
+    accountMode = "pro";
+    expect(await magicHourFaceSwap.account!()).toEqual({ credits: 12500, tier: "pro", subscription: "Pro" });
+    accountMode = "free";
+    expect(await magicHourFaceSwap.account!()).toEqual({ credits: 400, tier: "free", subscription: null });
+  });
+
+  it("sends only the chosen clip (end_seconds = clip length)", async () => {
+    calls.length = 0;
+    await magicHourFaceSwap.start({ ...request(null), clip: { startSec: 0.5, endSec: 1.5, maxFps: 15 } }, { onProgress: () => {} });
+    expect((calls.find((c) => c.url === "/v1/face-swap")!.body as { end_seconds: number }).end_seconds).toBe(1);
   }, 60_000);
 
   it("refuses to submit (and bill) when the chosen person can't be matched", async (ctx) => {

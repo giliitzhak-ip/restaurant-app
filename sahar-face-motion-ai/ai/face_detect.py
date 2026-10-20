@@ -42,7 +42,7 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--yunet", required=True)
     ap.add_argument("--sface")
-    ap.add_argument("--max-persons", type=int, default=8)
+    ap.add_argument("--max-persons", type=int, default=8)  # images: callers may raise it
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
 

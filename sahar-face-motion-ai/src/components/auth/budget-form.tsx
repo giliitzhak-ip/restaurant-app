@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { usd } from "@/lib/money";
 import type { BudgetStatus } from "@/server/billing";
 
-export function BudgetForm({ initial, maxCents }: { initial: BudgetStatus; maxCents: number }) {
+export function BudgetForm({ initial, maxCents, freeMode }: { initial: BudgetStatus; maxCents: number; freeMode: boolean }) {
   const [budget, setBudget] = useState(initial);
   const [value, setValue] = useState((initial.monthlyBudgetCents / 100).toFixed(0));
   const [busy, setBusy] = useState(false);
@@ -41,6 +41,7 @@ export function BudgetForm({ initial, maxCents }: { initial: BudgetStatus; maxCe
         }
       }}
     >
+      {freeMode && <Alert variant="info">מצב חינמי פעיל בשרת: שום פעולה לא תחויב, גם אם יוגדר תקציב.</Alert>}
       <div className="space-y-1 text-sm">
         <div className="flex justify-between"><span className="text-ash">נוצל החודש</span><span>{usd(budget.spentCents)}</span></div>
         <div className="flex justify-between"><span className="text-ash">שמור למשימות פעילות</span><span>{usd(budget.reservedCents)}</span></div>

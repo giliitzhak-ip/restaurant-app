@@ -1,0 +1,13 @@
+{
+  // GitHub Codespaces for SAHAR FACE MOTION AI only (lives in sahar-face-motion-ai/).
+  // Create from github.com → Code → Codespaces → "…" → New with options → this configuration.
+  "name": "SAHAR FACE MOTION AI",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+  "hostRequirements": { "cpus": 2, "memory": "8gb" },
+  "postCreateCommand": "bash sahar-face-motion-ai/scripts/codespace-setup.sh",
+  "postStartCommand": "bash sahar-face-motion-ai/scripts/codespace-start.sh",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": { "label": "SAHAR FACE MOTION AI", "onAutoForward": "openBrowser" }
+  }
+}

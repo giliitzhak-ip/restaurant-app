@@ -4,6 +4,7 @@ import { Logo } from "./logo";
 import { AiDisclosure } from "./ai-disclosure";
 import { LogoutButton } from "@/components/auth/logout-button";
 import type { SessionUser } from "@/lib/session";
+import { freeMode } from "@/server/billing";
 
 const NAV = [
   { href: "/dashboard", label: "סטודיו", icon: LayoutGrid },
@@ -27,6 +28,11 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
             ))}
           </nav>
           <div className="flex items-center gap-3">
+            {freeMode() && (
+              <Link href="/system#free-mode" className="rounded-full bg-success/15 px-2.5 py-1 text-xs font-semibold text-success ring-1 ring-success/30" title="פעולות בתשלום חסומות">
+                מצב חינמי
+              </Link>
+            )}
             <span className="hidden text-sm text-ash sm:inline">שלום, {user.name}</span>
             <LogoutButton />
           </div>

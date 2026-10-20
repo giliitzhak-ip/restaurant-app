@@ -30,6 +30,12 @@ test("face swap: upload, pick person, consent, quote, explicit approval, job tra
   await page.goto(`/projects/${projectId}/face-swap`);
   await expect(page.getByRole("heading", { name: /AI Face Swap/ })).toBeVisible();
 
+  // Free Mode is on; engines that can't run here are shown as unavailable, never faked.
+  await expect(page.getByRole("link", { name: "מצב חינמי" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Mock/ })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: /Magic Hour/ })).toBeDisabled();
+  await expect(page.getByText("לא זמין: חסר מפתח API בשרת")).toBeVisible();
+
   // 1–2. Upload the face photo and the dance video in their steps
   const inputs = page.locator("input[type=file]");
   await inputs.nth(0).setInputFiles(files!.face);
@@ -52,6 +58,7 @@ test("face swap: upload, pick person, consent, quote, explicit approval, job tra
   await page.getByRole("radio", { name: "שלי", exact: true }).check();
   await page.getByLabel("שם האדם שבתמונה").fill("סהר בדיקה");
   for (const cb of await page.locator("fieldset ~ label input[type=checkbox]").all()) await cb.check();
+  await page.getByText("15 fps", { exact: false }).click();
   await shot(page, `${tag}-faceswap-setup`);
 
   // 5. Quote → explicit approval
@@ -75,6 +82,7 @@ test("face swap: upload, pick person, consent, quote, explicit approval, job tra
   const project = (await (await page.request.get(`/api/projects/${projectId}`)).json()).project;
   const job = project.aiJobs.find((j: { status: string }) => j.status === "SUCCEEDED");
   expect(job.input.personIndex).toBe(1);
+  expect(job.input.clip).toMatchObject({ startSec: 0, maxFps: 15 });
   expect(job.approvedCostCents).toBe(0);
   const result = project.assets.find((a: { id: string }) => a.id === job.resultAssetId);
   expect(result).toMatchObject({ role: "GENERATED", aiGenerated: true, status: "READY", kind: "VIDEO" });
@@ -111,6 +119,18 @@ test("face swap: upload, pick person, consent, quote, explicit approval, job tra
   await other.close();
   expect((await page.request.post(`/api/jobs/${q.job.id}/cancel`, { headers: { origin } })).status()).toBe(200);
   expect((await page.request.post(`/api/jobs/${q.job.id}/approve`, { headers: { origin }, data: { confirmCostCents: 0, acceptCharge: true } })).status()).toBe(409);
+
+  // A paid engine without a key can't even be quoted
+  const paid = await page.request.post("/api/face-swap/quote", {
+    headers: { origin },
+    data: { projectId, sourceAssetId: job.input.sourceAssetId, targetAssetId: job.input.targetAssetId, personIndex: 0, providerId: "magichour", consent: { faceOwner: "SELF", subjectName: "סהר", confirmFace: true, confirmVideo: true, confirmLabel: true } },
+  });
+  expect(paid.status()).toBe(503);
+  const unknown = await page.request.post("/api/face-swap/quote", {
+    headers: { origin },
+    data: { projectId, sourceAssetId: job.input.sourceAssetId, targetAssetId: job.input.targetAssetId, personIndex: 0, providerId: "gpu-worker", consent: { faceOwner: "SELF", subjectName: "סהר", confirmFace: true, confirmVideo: true, confirmLabel: true } },
+  });
+  expect(unknown.status()).toBe(400); // not in FACE_SWAP_PROVIDERS
 
   const noConsent = await page.request.post("/api/face-swap/quote", {
     headers: { origin },

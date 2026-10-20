@@ -6,7 +6,7 @@ import { Readable } from "node:stream";
 import { runFfmpeg, scaleShortSide } from "@/server/media/ffmpeg";
 import { matchFace } from "@/server/media/faces";
 import { providerFetch, ProviderHttpError } from "./http";
-import type { FaceSwapProvider, PollResult, VideoInfo } from "./types";
+import type { FaceSwapProvider, PollResult, ProviderAccount, VideoInfo } from "./types";
 
 /**
  * Magic Hour face swap (https://magichour.ai).
@@ -20,6 +20,7 @@ import type { FaceSwapProvider, PollResult, VideoInfo } from "./types";
  *                                  face_swap_mode:"all-faces"|"individual-faces",image_file_path | face_mappings:[{original_face,new_face}]}}
  *                                 → {id, credits_charged, estimated_frame_cost}
  *   GET  /v1/video-projects/{id} → {status: queued|rendering|complete|error|canceled, downloads:[{url}], credits_charged, error}
+ *   GET  /v1/account             → {credits, tier: free|creator|pro|business, subscription: {...}|null}
  * Auth: Authorization: Bearer <MAGIC_HOUR_API_KEY>.
  */
 
@@ -83,10 +84,11 @@ export const magicHourFaceSwap: FaceSwapProvider = {
     const costCents = Math.ceil(credits * MAGIC_HOUR_PRICING.usdPerCredit() * 100);
     return {
       costCents,
+      credits,
       basis: `${credits.toLocaleString("he-IL")} קרדיטים × $${MAGIC_HOUR_PRICING.usdPerCredit()} לקרדיט (הערכה עליונה; החיוב בפועל לפי הפריימים שעובדו)`,
       breakdown: [
         { label: "אורך הסרטון", value: `${video.durationSec.toFixed(1)} שניות` },
-        { label: "פריימים לעיבוד", value: `${frames.toLocaleString("he-IL")} (${Math.min(30, Math.round(video.fps ?? 30))}fps)` },
+        { label: "פריימים לעיבוד", value: `${frames.toLocaleString("he-IL")} (${Math.round(Math.min(30, video.fps ?? 30))}fps)` },
         { label: "קרדיטים", value: credits.toLocaleString("he-IL") },
         { label: "מחיר לקרדיט", value: `$${MAGIC_HOUR_PRICING.usdPerCredit()}` },
       ],
@@ -95,15 +97,21 @@ export const magicHourFaceSwap: FaceSwapProvider = {
     };
   },
 
+  async account(): Promise<ProviderAccount> {
+    const a = await providerFetch<{ credits: number; tier: string; subscription?: { name?: string } | null }>(`${BASE()}/v1/account`, { headers: auth(), timeoutMs: 15_000 });
+    return { credits: Number(a.credits) || 0, tier: a.tier, subscription: a.subscription ? (a.subscription.name ?? "subscription") : null };
+  },
+
   async start(req, ctx) {
     const work = await fs.mkdtemp(path.join(os.tmpdir(), "sahar-mh-"));
+    const clipDur = Math.max(0.1, req.clip.endSec - req.clip.startSec);
     try {
-      // 1. Normalise the video: H.264, ≤30 fps, short side ≤1080, audio kept. Also makes iPhone HEVC safe.
+      // 1. Normalise the clip: trim, H.264, ≤ chosen fps, short side ≤1080, audio kept. Also makes iPhone HEVC safe.
       const video = path.join(work, "target.mp4");
       await runFfmpeg(
-        ["-i", req.targetVideo.localPath, "-map", "0:v:0", "-map", "0:a:0?", "-vf", scaleShortSide(1080), "-fpsmax", "30",
+        ["-ss", req.clip.startSec.toFixed(3), "-t", clipDur.toFixed(3), "-i", req.targetVideo.localPath, "-map", "0:v:0", "-map", "0:a:0?", "-vf", scaleShortSide(1080), "-fpsmax", String(req.clip.maxFps),
           "-c:v", "libx264", "-preset", "medium", "-crf", "17", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", video],
-        { durationSec: req.video.durationSec, onProgress: (f) => ctx.onProgress(f * 0.3) },
+        { durationSec: clipDur, onProgress: (f) => ctx.onProgress(f * 0.3) },
       );
       const imgExt = path.extname(req.sourceImage.localPath).slice(1).toLowerCase() || "jpg";
 
@@ -163,7 +171,7 @@ export const magicHourFaceSwap: FaceSwapProvider = {
         body: JSON.stringify({
           name: `SAHAR ${req.jobId}`,
           start_seconds: 0,
-          end_seconds: Math.round(req.video.durationSec * 1000) / 1000,
+          end_seconds: Math.round(clipDur * 1000) / 1000,
           style: { version: process.env.MAGIC_HOUR_STYLE_VERSION || "default" },
           assets,
         }),
@@ -188,7 +196,7 @@ export const magicHourFaceSwap: FaceSwapProvider = {
       const url = p.downloads?.[0]?.url ?? p.download?.url;
       if (!url) return { state: "failed", message: "הספק סיים אך לא החזיר קובץ", code: "NO_DOWNLOAD" };
       const billedCents = p.credits_charged !== undefined ? Math.ceil(p.credits_charged * MAGIC_HOUR_PRICING.usdPerCredit() * 100) : undefined;
-      return { state: "succeeded", output: { kind: "url", url }, billedCents };
+      return { state: "succeeded", output: { kind: "url", url }, billedCents, billedCredits: p.credits_charged };
     }
     if (p.status === "error" || p.status === "canceled") {
       const code = p.error?.code;

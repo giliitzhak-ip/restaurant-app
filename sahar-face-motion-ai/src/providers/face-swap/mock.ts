@@ -51,18 +51,19 @@ export const mockFaceSwap: FaceSwapProvider = {
       `[0:v][face]overlay=x='main_w*${(box.x - box.w * 0.15).toFixed(4)}':y='main_h*${(box.y - box.h * 0.15).toFixed(4)}'[v1]`,
       `[v1]drawbox=x=0:y=0:w=iw:h=ih*0.09:color=black@0.6:t=fill,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='TEST OUTPUT - NOT A REAL FACE SWAP':fontcolor=0xD4AF37:fontsize=h*0.04:x=(w-tw)/2:y=h*0.025,format=yuv420p[v]`,
     ].join(";");
+    const clipDur = Math.max(0.1, req.clip.endSec - req.clip.startSec);
     await runFfmpeg(
       [
-        "-i", req.targetVideo.localPath,
+        "-ss", req.clip.startSec.toFixed(3), "-t", clipDur.toFixed(3), "-i", req.targetVideo.localPath,
         "-i", req.sourceImage.localPath,
         "-filter_complex", filter,
-        "-map", "[v]", "-map", "0:a?",
+        "-map", "[v]", "-map", "0:a?", "-fpsmax", String(req.clip.maxFps),
         "-c:v", "libx264", "-preset", "veryfast", "-crf", "22", "-pix_fmt", "yuv420p",
         "-c:a", "aac", "-b:a", "160k",
         "-movflags", "+faststart",
         out,
       ],
-      { durationSec: req.video.durationSec, onProgress: ctx.onProgress },
+      { durationSec: clipDur, onProgress: ctx.onProgress },
     );
     return { providerJobId: `mock-${req.jobId}` };
   },

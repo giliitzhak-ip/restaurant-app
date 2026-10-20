@@ -14,9 +14,11 @@ export function clientIp(req: Request): string {
 export function isSameOrigin(req: Request): boolean {
   const origin = req.headers.get("origin");
   if (!origin) return true; // same-origin fetches from older Safari may omit Origin on some requests
-  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+  const hosts = [req.headers.get("x-forwarded-host"), req.headers.get("host")];
+  // Behind proxies (e.g. GitHub Codespaces port forwarding) Host may be internal; APP_URL is the public address.
   try {
-    return new URL(origin).host === host;
+    if (process.env.APP_URL) hosts.push(new URL(process.env.APP_URL).host);
+    return hosts.includes(new URL(origin).host);
   } catch {
     return false;
   }

@@ -4,7 +4,7 @@ import { DeleteAccount } from "@/components/auth/delete-account";
 import { requireUser } from "@/lib/require-user";
 import { db } from "@/lib/db";
 import { BudgetForm } from "@/components/auth/budget-form";
-import { budgetStatus, maxUserBudgetCents } from "@/server/billing";
+import { budgetStatus, freeMode, maxUserBudgetCents } from "@/server/billing";
 
 export const metadata = { title: "החשבון שלי | SAHAR FACE MOTION AI" };
 
@@ -44,7 +44,7 @@ export default async function AccountPage() {
             <CardTitle>תקציב ועלויות AI</CardTitle>
             <CardDescription>הגבלת ההוצאה החודשית על שירותי AI בתשלום.</CardDescription>
           </div>
-          <BudgetForm initial={budget} maxCents={maxUserBudgetCents()} />
+          <BudgetForm initial={budget} maxCents={maxUserBudgetCents()} freeMode={freeMode()} />
         </Card>
         <Card className="space-y-4">
           <div>

@@ -1,8 +1,7 @@
-import "server-only";
 import type { Asset, Job } from "@prisma/client";
 import type { FacesResult } from "@/server/media/faces";
-import { checkLimits, type CostEstimate, type FaceSwapProvider, type VideoInfo } from "@/providers/face-swap/types";
-import { budgetStatus, jobBlockers } from "./billing";
+import { checkLimits, clippedVideo, type ClipOptions, type CostEstimate, type FaceSwapProvider, type ProviderAccount, type VideoInfo } from "@/providers/face-swap/types";
+import { budgetStatus, freeMode, jobBlockers } from "./billing";
 
 export const QUOTE_TTL_MIN = 30;
 
@@ -12,14 +11,41 @@ export type FaceSwapInput = {
   personIndex: number | null;
   faceConsentId: string;
   videoConsentId: string;
+  clip: ClipOptions;
 };
 
 export type QuoteDTO = {
   provider: { id: string; name: string; paid: boolean; notes: string[]; maxDurationSec: number; faceSelection: string };
   estimate: CostEstimate;
   blockers: string[];
+  /** The clip as it will be sent (trimmed / fps-capped). */
   video: VideoInfo;
+  clip: ClipOptions;
+  freeMode: boolean;
+  /** Paid provider, but this job is fully covered by the account's free credits ($0 charged). */
+  freeCredits: boolean;
+  account: ProviderAccount | null;
+  /** Amount the user approves (USD cents). 0 for free providers and free-credit jobs. */
+  chargeCents: number;
 };
+
+const accountCache = new Map<string, { at: number; value: ProviderAccount | null; error: string | null }>();
+
+/** Provider account (credits, tier) with a short cache; `fresh` bypasses it (used right before billing). */
+export async function providerAccount(provider: FaceSwapProvider, fresh = false): Promise<{ account: ProviderAccount | null; error: string | null }> {
+  if (!provider.account || provider.requiredEnv.some((k) => !process.env[k])) return { account: null, error: null };
+  const hit = accountCache.get(provider.id);
+  if (!fresh && hit && Date.now() - hit.at < 60_000) return { account: hit.value, error: hit.error };
+  try {
+    const value = await provider.account();
+    accountCache.set(provider.id, { at: Date.now(), value, error: null });
+    return { account: value, error: null };
+  } catch (e) {
+    const error = `לא ניתן לקרוא את פרטי החשבון אצל הספק (${(e as Error).message.slice(0, 120)})`;
+    accountCache.set(provider.id, { at: Date.now(), value: null, error });
+    return { account: null, error };
+  }
+}
 
 export type AiJobDTO = {
   id: string;
@@ -92,12 +118,25 @@ export function validateFaceSwapAssets(source: Asset | null, target: Asset | nul
   return out;
 }
 
-export async function buildQuote(userId: string, provider: FaceSwapProvider, target: Asset): Promise<QuoteDTO> {
-  const video = videoInfoOf(target);
+export async function buildQuote(userId: string, provider: FaceSwapProvider, target: Asset, clip: ClipOptions, fresh = false): Promise<QuoteDTO> {
+  const video = clippedVideo(videoInfoOf(target), clip);
   const estimate = provider.estimate(video);
   const budget = await budgetStatus(userId);
-  const blockers = [...checkLimits(provider, video, Number(target.sizeBytes)), ...jobBlockers({ provider, costCents: estimate.costCents, budget })];
+  const free = freeMode();
+  const { account, error } = provider.paid ? await providerAccount(provider, fresh) : { account: null, error: null };
+  const freeCredits = free && provider.paid;
+  const chargeCents = provider.paid && !free ? estimate.costCents : 0;
+  const blockers = [
+    ...checkLimits(provider, video, Number(target.sizeBytes)),
+    ...jobBlockers({ provider, costCents: chargeCents, budget, account, credits: estimate.credits }),
+    ...(error && provider.paid ? [error] : []),
+  ];
   return {
+    clip,
+    freeMode: free,
+    freeCredits,
+    account,
+    chargeCents,
     provider: {
       id: provider.id,
       name: provider.displayName,

@@ -7,7 +7,7 @@ import type { FaceSwapProvider, PollResult } from "./types";
  * ARCHITECTURE.md §6, so any open model can be plugged in behind it:
  *
  *   POST {GPU_WORKER_URL}/v1/face-swap   Authorization: Bearer {GPU_WORKER_TOKEN}
- *        { source_url, target_url, target_face: { box, time_sec } | null }
+ *        { source_url, target_url, target_face: { box, time_sec } | null, clip: { start_sec, end_sec, max_fps } }
  *        → { id }
  *   GET  {GPU_WORKER_URL}/v1/jobs/{id}
  *        → { status: "queued"|"running"|"succeeded"|"failed", progress?: 0..1, output_url?, error? }
@@ -50,6 +50,7 @@ export const gpuWorkerFaceSwap: FaceSwapProvider = {
         source_url: await req.sourceImage.url(),
         target_url: await req.targetVideo.url(),
         target_face: req.target ? { box: req.target.box, time_sec: req.target.timeSec } : null,
+        clip: { start_sec: req.clip.startSec, end_sec: req.clip.endSec, max_fps: req.clip.maxFps },
       }),
     });
     if (!res.id) throw new Error("GPU worker did not return a job id");

@@ -51,6 +51,7 @@ export async function detectFaces(opts: {
   durationSec?: number | null;
   workDir: string;
   outDir: string;
+  maxPersons?: number;
 }): Promise<FacesResult> {
   const avail = faceDetectionAvailable();
   if (!avail.ok) return { status: "unavailable", reason: avail.detail };
@@ -74,7 +75,7 @@ export async function detectFaces(opts: {
     }
     args.push("--frames", framesDir);
   } else {
-    args.push("--image", opts.input, "--max-persons", "4");
+    args.push("--image", opts.input, "--max-persons", String(opts.maxPersons ?? 4));
   }
 
   try {

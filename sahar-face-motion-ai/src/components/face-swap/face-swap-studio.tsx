@@ -18,6 +18,8 @@ import type { ProjectDTO } from "@/server/projects";
 import type { AiJobDTO } from "@/server/face-swap";
 import type { MediaKind } from "@/server/media/policy";
 import { FaceSwapJobCard } from "./job-card";
+import { CreditsBadge } from "./credits-badge";
+import type { ProviderAccount } from "@/providers/face-swap/types";
 
 export type ProviderSummary = {
   id: string;
@@ -26,6 +28,11 @@ export type ProviderSummary = {
   maxDurationSec: number;
   notes: string[];
   isMock: boolean;
+  hasAccountApi: boolean;
+  /** Why it can't run here (not installed / no key), or null. */
+  unavailable: string | null;
+  account: ProviderAccount | null;
+  accountError: string | null;
 };
 
 async function api(url: string, method: string, body?: unknown) {
@@ -82,14 +89,23 @@ function Pick({ selected, onClick, children, label }: { selected: boolean; onCli
 
 export function FaceSwapStudio({
   initial,
-  provider,
+  providers,
+  defaultProviderId,
   maxBytes,
+  freeMode,
 }: {
   initial: ProjectDTO;
-  provider: ProviderSummary;
+  providers: ProviderSummary[];
+  defaultProviderId: string;
   maxBytes: Record<MediaKind, number>;
+  freeMode: boolean;
 }) {
   const [project, setProject] = useState(initial);
+  const [engineId, setEngineId] = useState(
+    (providers.find((p) => p.id === defaultProviderId && !p.unavailable) ?? providers.find((p) => !p.unavailable) ?? providers[0]!).id,
+  );
+  const provider = providers.find((p) => p.id === engineId) ?? providers[0]!;
+  const account = provider.account;
   const [sourceId, setSourceId] = useState<string | null>(null);
   const [targetId, setTargetId] = useState<string | null>(null);
   const [personIndex, setPersonIndex] = useState<number | null>(null);
@@ -97,6 +113,9 @@ export function FaceSwapStudio({
   const [subjectName, setSubjectName] = useState("");
   const [checks, setChecks] = useState({ face: false, video: false, label: false });
   const [quote, setQuote] = useState<AiJobDTO | null>(null);
+  const [clipStart, setClipStart] = useState(0);
+  const [clipEnd, setClipEnd] = useState(0);
+  const [maxFps, setMaxFps] = useState<30 | 24 | 15>(30);
   const [acceptCharge, setAcceptCharge] = useState(false);
   const [busy, setBusy] = useState<"quote" | "approve" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -125,15 +144,21 @@ export function FaceSwapStudio({
     return () => clearInterval(t);
   }, [needsPoll, refresh]);
 
-  // Auto-select when there is exactly one person in the video.
+  // Auto-select when there is exactly one person in the video; reset the clip to the whole video.
+  const targetDuration = (target?.durationMs ?? 0) / 1000;
   useEffect(() => {
     setPersonIndex(persons.length === 1 ? persons[0]!.index : null);
     setQuote(null);
+    setClipStart(0);
+    setClipEnd(Math.min(targetDuration, provider.maxDurationSec));
   }, [targetId, persons.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => setQuote(null), [clipStart, clipEnd, maxFps, engineId]);
+  const clipLen = Math.max(0, clipEnd - clipStart);
+  const sendFps = Math.min(maxFps, target?.fps ?? 30);
 
   const consentOk = faceOwner !== null && subjectName.trim().length >= 2 && checks.face && checks.video && checks.label;
   const personOk = persons.length <= 1 || personIndex !== null;
-  const ready = Boolean(source?.status === "READY" && target?.status === "READY" && personOk && consentOk);
+  const ready = Boolean(!provider.unavailable && source?.status === "READY" && target?.status === "READY" && personOk && consentOk && clipEnd - clipStart >= 1);
 
   const sourceWarning = useMemo(() => {
     if (!source || source.status !== "READY") return null;
@@ -153,6 +178,8 @@ export function FaceSwapStudio({
         sourceAssetId: sourceId,
         targetAssetId: targetId,
         personIndex: persons.length > 1 ? personIndex : persons.length === 1 ? persons[0]!.index : null,
+        clip: { startSec: Math.round(clipStart * 10) / 10, endSec: Math.round(clipEnd * 10) / 10, maxFps },
+        providerId: engineId,
         consent: { faceOwner, subjectName, confirmFace: checks.face, confirmVideo: checks.video, confirmLabel: checks.label },
       });
       setQuote(data.job);
@@ -194,11 +221,52 @@ export function FaceSwapStudio({
         <h1 className="text-2xl font-bold sm:text-3xl">
           <span className="gold-text">AI Face Swap</span> · <span dir="auto">{project.name}</span>
         </h1>
-        <p className="mt-1 text-sm text-ash">
-          ספק: <span className="text-gold">{provider.name}</span>
-          {provider.isMock && " (מצב בדיקות: התוצאה מסומנת TEST ואינה החלפת פנים אמיתית)"}
-        </p>
+        {freeMode && (
+          <p className="mt-2 text-sm text-success">מצב חינמי פעיל: פעולות בתשלום חסומות לחלוטין. מותר רק מנוע חינמי, או קרדיטים חינמיים של חשבון חינמי.</p>
+        )}
       </div>
+
+      <Card className="space-y-3">
+        <CardTitle>מנוע החלפת הפנים</CardTitle>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {providers.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              aria-pressed={engineId === p.id}
+              disabled={Boolean(p.unavailable)}
+              onClick={() => setEngineId(p.id)}
+              className={cn(
+                "rounded-xl border p-3 text-start transition-colors disabled:opacity-50",
+                engineId === p.id ? "border-gold bg-gold/10" : "border-steel hover:border-gold/50",
+              )}
+            >
+              <span className="flex flex-wrap items-center gap-2 font-semibold">
+                {p.name}
+                {p.isMock ? (
+                  <Badge>בדיקה בלבד</Badge>
+                ) : !p.paid ? (
+                  <Badge variant="success">חינם</Badge>
+                ) : freeMode ? (
+                  <Badge variant="gold">קרדיטים חינמיים בלבד</Badge>
+                ) : (
+                  <Badge variant="danger">בתשלום</Badge>
+                )}
+              </span>
+              {p.unavailable && <span className="mt-1 block text-xs text-danger">לא זמין: {p.unavailable}</span>}
+            </button>
+          ))}
+        </div>
+        <ul className="space-y-1 text-xs text-ash">
+          {provider.notes.map((n) => (
+            <li key={n} className="flex gap-2">
+              <Sparkles className="mt-0.5 size-3 shrink-0 text-gold" aria-hidden />
+              {n}
+            </li>
+          ))}
+        </ul>
+        {provider.hasAccountApi && <CreditsBadge key={provider.id} initial={account} error={provider.accountError} />}
+      </Card>
 
       <Step n={1} title="תמונת הפנים החדשות" done={source?.status === "READY"}>
         <p className="text-sm text-ash">תמונה חדה של פנים מלפנים, בתאורה טובה ובלי משקפי שמש. אדם אחד בתמונה.</p>
@@ -308,7 +376,50 @@ export function FaceSwapStudio({
         </p>
       </Step>
 
-      <Step n={5} title="עלות ואישור" done={false}>
+      <Step n={5} title="קטע ואיכות" done={Boolean(target) && clipLen >= 1}>
+        {!target ? (
+          <p className="text-sm text-ash">בחרו סרטון.</p>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm text-ash">
+              {provider.paid ? "החיוב לפי מספר הפריימים. קטע קצר וקצב פריימים נמוך חוסכים קרדיטים." : "ניתן לעבד רק חלק מהסרטון."}
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="clip-start">התחלה: <span dir="ltr">{clipStart.toFixed(1)}s</span></Label>
+                <input id="clip-start" type="range" min={0} max={Math.max(0, targetDuration - 1)} step={0.1} value={clipStart}
+                  onChange={(e) => { const v = Number(e.target.value); setClipStart(v); if (clipEnd < v + 1) setClipEnd(Math.min(targetDuration, v + 1)); }}
+                  className="w-full accent-[#d4af37]" />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="clip-end">סיום: <span dir="ltr">{clipEnd.toFixed(1)}s</span></Label>
+                <input id="clip-end" type="range" min={Math.min(targetDuration, clipStart + 1)} max={targetDuration} step={0.1} value={clipEnd}
+                  onChange={(e) => setClipEnd(Number(e.target.value))} className="w-full accent-[#d4af37]" />
+              </div>
+            </div>
+            <fieldset className="flex flex-wrap gap-2">
+              <legend className="mb-2 text-sm">קצב פריימים לעיבוד</legend>
+              {([30, 24, 15] as const).map((f) => (
+                <label key={f} className={cn("cursor-pointer rounded-xl border px-3 py-2 text-sm", maxFps === f ? "border-gold bg-gold/10 text-gold" : "border-steel")}>
+                  <input type="radio" name="fps" className="sr-only" checked={maxFps === f} onChange={() => setMaxFps(f)} />
+                  <span dir="ltr">{f} fps</span>
+                  {f === 30 ? " · חלק" : f === 15 ? " · חסכוני" : ""}
+                </label>
+              ))}
+            </fieldset>
+            <p className="text-sm">
+              אורך הקטע: <b dir="ltr">{clipLen.toFixed(1)}s</b> · פריימים: <b>{Math.ceil(clipLen * sendFps).toLocaleString("he-IL")}</b>
+              {account && provider.paid && (
+                <span className={cn("ms-2", Math.ceil(clipLen * sendFps) > account.credits ? "text-danger" : "text-success")}>
+                  ({Math.ceil(clipLen * sendFps) > account.credits ? "יותר מהקרדיטים שנותרו" : "בתוך הקרדיטים שנותרו"})
+                </span>
+              )}
+            </p>
+          </div>
+        )}
+      </Step>
+
+      <Step n={6} title="עלות ואישור" done={false}>
         {!quote ? (
           <>
             <p className="text-sm text-ash">לפני כל יצירה מוצגת הערכת עלות. שום חיוב לא מתבצע בלי אישור מפורש שלכם.</p>
@@ -316,15 +427,20 @@ export function FaceSwapStudio({
               {busy === "quote" && <Loader2 className="animate-spin" aria-hidden />}
               קבלת הערכת עלות
             </Button>
-            {!ready && <p className="text-xs text-ash">יש להשלים את שלבים 1–4.</p>}
+            {!ready && <p className="text-xs text-ash">יש להשלים את שלבים 1–5.</p>}
           </>
         ) : (
           q && (
             <div className="space-y-4">
               <div className="rounded-xl border border-gold/40 bg-gold/5 p-4">
-                <p className="text-sm text-ash">עלות משוערת</p>
+                <p className="text-sm text-ash">{q.freeCredits ? "חיוב כספי" : "עלות משוערת"}</p>
                 <p className="text-4xl font-black text-gold">{usd(quote.estimatedCostCents)}</p>
-                <p className="mt-1 text-xs text-ash">{q.estimate.basis}</p>
+                {q.freeCredits && q.estimate.credits !== undefined && (
+                  <p className="mt-1 text-sm text-success">
+                    שימוש ב-{q.estimate.credits.toLocaleString("he-IL")} קרדיטים חינמיים{q.account ? ` מתוך ${q.account.credits.toLocaleString("he-IL")} שנותרו` : ""}
+                  </p>
+                )}
+                <p className="mt-1 text-xs text-ash">{q.freeCredits ? "שווי מסחרי משוער: " + usd(q.estimate.costCents) + " · " : ""}{q.estimate.basis}</p>
                 <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                   {q.estimate.breakdown.map((b) => (
                     <div key={b.label} className="contents">
@@ -355,15 +471,17 @@ export function FaceSwapStudio({
               ) : (
                 <label className="flex items-start gap-3 rounded-xl border border-gold/50 p-3 text-sm leading-relaxed">
                   <input type="checkbox" checked={acceptCharge} onChange={(e) => setAcceptCharge(e.target.checked)} className="mt-0.5 size-5 shrink-0 accent-[#d4af37]" />
-                  {q.provider.paid
-                    ? `אני מאשר/ת חיוב של עד ${usd(quote.estimatedCostCents)} אצל ${q.provider.name} עבור יצירת הסרטון.`
-                    : "אני מאשר/ת את הפעלת המשימה (ללא עלות)."}
+                  {q.freeCredits
+                    ? `אני מאשר/ת שימוש ב-${q.estimate.credits?.toLocaleString("he-IL")} קרדיטים חינמיים אצל ${q.provider.name} (ללא חיוב כספי).`
+                    : q.provider.paid
+                      ? `אני מאשר/ת חיוב של עד ${usd(quote.estimatedCostCents)} אצל ${q.provider.name} עבור יצירת הסרטון.`
+                      : "אני מאשר/ת את הפעלת המשימה (ללא עלות)."}
                 </label>
               )}
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Button size="lg" className="flex-1" disabled={!acceptCharge || q.blockers.length > 0 || busy !== null} onClick={approve}>
                   {busy === "approve" && <Loader2 className="animate-spin" aria-hidden />}
-                  {q.provider.paid ? `אישור ויצירה (${usd(quote.estimatedCostCents)})` : "אישור ויצירה"}
+                  {q.provider.paid && !q.freeCredits ? `אישור ויצירה (${usd(quote.estimatedCostCents)})` : "אישור ויצירה"}
                 </Button>
                 <Button size="lg" variant="ghost" onClick={() => setQuote(null)} disabled={busy !== null}>
                   ביטול

@@ -4,10 +4,9 @@ import { db } from "@/lib/db";
 import { apiUser } from "@/lib/api-auth";
 import { jsonError } from "@/lib/http";
 import { getFaceSwapProvider } from "@/providers/face-swap";
-import { checkLimits } from "@/providers/face-swap/types";
-import { budgetStatus, jobBlockers, usd } from "@/server/billing";
+import { usd } from "@/server/billing";
 import { enqueueAiJob } from "@/server/queue";
-import { toAiJobDTO, videoInfoOf, type FaceSwapInput } from "@/server/face-swap";
+import { buildQuote, toAiJobDTO, type FaceSwapInput, type QuoteDTO } from "@/server/face-swap";
 
 const schema = z.object({
   // The exact amount the user saw and agreed to. Must match the quote.
@@ -41,11 +40,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const source = await db.asset.findFirst({ where: { id: input.sourceAssetId, ownerId: userId } });
   if (!target || !source) return jsonError("קבצי המקור נמחקו", 409);
 
-  // Re-check everything at approval time: budget, limits and server settings may have changed.
-  const blockers = [
-    ...checkLimits(provider, videoInfoOf(target), Number(target.sizeBytes)),
-    ...jobBlockers({ provider, costCents: job.estimatedCostCents, budget: await budgetStatus(userId) }),
-  ];
+  // Re-check everything at approval time with a fresh provider balance: budget, credits,
+  // Free Mode and server settings may have changed since the quote.
+  const original = job.quote as unknown as QuoteDTO;
+  const recheck = await buildQuote(userId, provider, target, input.clip, true);
+  if (recheck.chargeCents !== job.estimatedCostCents || recheck.freeCredits !== original.freeCredits) {
+    return jsonError("התנאים השתנו מאז הצעת המחיר. צרו הצעה חדשה.", 409);
+  }
+  const blockers = recheck.blockers;
   if (blockers.length) return jsonError(blockers[0]!, 402, { errors: blockers });
 
   // Conditional update: two quick taps can't approve (and bill) twice.
@@ -59,7 +61,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       projectId: job.projectId,
       userId,
       type: "faceswap.approved",
-      message: `אושרה החלפת פנים: ${provider.displayName}, עלות מאושרת ${usd(job.estimatedCostCents)}`,
+      message: original.freeCredits
+        ? `אושרה החלפת פנים: ${provider.displayName}, ${original.estimate.credits} קרדיטים חינמיים ($0)`
+        : `אושרה החלפת פנים: ${provider.displayName}, עלות מאושרת ${usd(job.estimatedCostCents)}`,
       data: { jobId: job.id },
     },
   });

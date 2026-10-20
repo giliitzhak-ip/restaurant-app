@@ -58,6 +58,21 @@ Known limitations:
   - E2E of the full flow on the iPhone profile, including approval guards.
 - [ ] To go live (needs your approval): a Magic Hour paid plan + API key, cloud deployment ([DEPLOYMENT.md](DEPLOYMENT.md)), `ALLOW_PAID_PROVIDERS=true`, a budget, and a first real test clip.
 
+## Phase 3b: Free Mode ✅
+- [x] `FREE_MODE` (default on): paid usage impossible.
+  - Paid providers are allowed only with free credits on a free, subscription-less account that covers the whole job.
+  - This is checked at quote, at approval (fresh balance) and in the worker right before the call.
+- [x] Remaining credits shown (Magic Hour `GET /v1/account`) in the studio and on `/system`.
+- [x] Clip trimming and an fps cap (30/24/15) to stretch free credits.
+- [x] Open-source engine `facefusion-local` (FaceFusion CLI, default model ghost_1_256 / Apache-2.0), with person selection by reference frame and position. Setup: `scripts/setup-facefusion.sh`.
+- [x] Engine picker in the studio (`FACE_SWAP_PROVIDERS`). Unavailable engines are shown with the reason, never faked.
+- [x] GitHub Codespaces configuration (`.devcontainer/sahar-face-motion-ai/`) for $0, no-card use from iPhone Safari.
+- [x] Tests:
+  - Free Mode rules, account/credits contract, clip trimming;
+  - FaceFusion adapter against a stand-in CLI;
+  - worker modules load outside Next.js (regression found and fixed in this phase);
+  - E2E with the engine picker.
+
 ## Phase 4: Voice Studio
 - ElevenLabs adapter with `eleven_v3` (Hebrew), voice list, male/female, speed/stability/style
 - Original "designed" voices (comic, dramatic, cartoon); public-figure parody only as original voices, never clones

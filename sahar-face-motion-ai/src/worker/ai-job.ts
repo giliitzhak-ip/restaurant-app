@@ -13,8 +13,9 @@ import { runFfmpeg } from "@/server/media/ffmpeg";
 import { enqueueMediaJob } from "@/server/queue";
 import type { FacesResult } from "@/server/media/faces";
 import { getFaceSwapProvider } from "@/providers/face-swap";
-import type { FaceSelection, ProviderMedia, PollResult } from "@/providers/face-swap/types";
-import type { FaceSwapInput } from "@/server/face-swap";
+import { fullClip, type FaceSelection, type ProviderMedia, type PollResult } from "@/providers/face-swap/types";
+import { providerAccount, type FaceSwapInput, type QuoteDTO } from "@/server/face-swap";
+import { coveredByFreeCredits, freeMode } from "@/server/billing";
 
 /** Not worth retrying (bad input, provider refused, not approved…). */
 export class JobFailed extends Error {
@@ -53,11 +54,22 @@ export async function processFaceSwap(jobId: string): Promise<void> {
 
   const provider = getFaceSwapProvider(job.provider);
   if (!provider) throw new JobFailed("ספק החלפת הפנים אינו זמין עוד", "PROVIDER_UNKNOWN");
-  if (!job.providerJobId && provider.paid && process.env.ALLOW_PAID_PROVIDERS !== "true") {
-    throw new JobFailed("שירותים בתשלום הושבתו בשרת לפני תחילת העיבוד. לא בוצע חיוב.", "PAID_DISABLED");
+  const quote = job.quote as unknown as QuoteDTO | null;
+  if (!job.providerJobId && provider.paid) {
+    if (freeMode()) {
+      // Free Mode: last check right before the provider call. Only a free, subscription-less
+      // account with enough remaining credits may be used; otherwise nothing is sent.
+      if (!quote?.freeCredits) throw new JobFailed("מצב חינמי פעיל: המשימה אושרה כמשימה בתשלום ולכן לא נשלחה. לא בוצע חיוב.", "FREE_MODE");
+      const { account } = await providerAccount(provider, true);
+      const check = coveredByFreeCredits(account, quote.estimate.credits);
+      if (!check.ok) throw new JobFailed(`מצב חינמי: ${check.reason} לא נשלחה משימה ולא בוצע חיוב.`, "FREE_MODE");
+    } else if (process.env.ALLOW_PAID_PROVIDERS !== "true") {
+      throw new JobFailed("שירותים בתשלום הושבתו בשרת לפני תחילת העיבוד. לא בוצע חיוב.", "PAID_DISABLED");
+    }
   }
 
   const input = job.input as unknown as FaceSwapInput;
+  const clipOf = (durationMs: number | null) => input.clip ?? fullClip({ durationSec: (durationMs ?? 0) / 1000, width: 0, height: 0, fps: null, hasAudio: false });
   const [source, target] = await Promise.all([
     db.asset.findUnique({ where: { id: input.sourceAssetId } }),
     db.asset.findUnique({ where: { id: input.targetAssetId } }),
@@ -114,6 +126,7 @@ export async function processFaceSwap(jobId: string): Promise<void> {
               fps: target.fps,
               hasAudio: Boolean(target.hasAudio),
             },
+            clip: clipOf(target.durationMs),
             target: selection,
           },
           { onProgress: (f) => void setProgress(5 + f * 80) },
@@ -155,9 +168,12 @@ export async function processFaceSwap(jobId: string): Promise<void> {
     const final = path.join(tmp, "result.mp4");
     const label = `AI-generated (face swap, ${provider.displayName}) by SAHAR FACE MOTION AI. Not an authentic recording.`;
     const restoreAudio = !outHasAudio && Boolean(target.hasAudio);
+    const clip = clipOf(target.durationMs);
     await runFfmpeg([
       "-i", raw,
-      ...(restoreAudio ? ["-i", tgtPath, "-map", "0:v:0", "-map", "1:a:0", "-shortest"] : ["-map", "0"]),
+      ...(restoreAudio
+        ? ["-ss", clip.startSec.toFixed(3), "-t", (clip.endSec - clip.startSec).toFixed(3), "-i", tgtPath, "-map", "0:v:0", "-map", "1:a:0", "-shortest"]
+        : ["-map", "0"]),
       "-c:v", "copy",
       ...(restoreAudio ? ["-c:a", "aac", "-b:a", "160k"] : ["-c:a", "copy"]),
       "-metadata", `comment=${label}`, "-metadata", "description=AI-generated synthetic media",
@@ -170,7 +186,9 @@ export async function processFaceSwap(jobId: string): Promise<void> {
     const storageKey = keys.asset(job.userId, job.projectId, assetId, "original.mp4");
     await storage().putFile(storageKey, final, "video/mp4");
     const { size } = await fs.stat(final);
-    const costCents = result.billedCents ?? job.approvedCostCents;
+    // Free-credit jobs cost $0 by construction; otherwise prefer what the provider reports.
+    const costCents = quote?.freeCredits ? 0 : (result.billedCents ?? job.approvedCostCents);
+    const creditsUsed = result.billedCredits ?? quote?.estimate.credits;
     const baseName = (target.originalName ?? "video").replace(/\.[^.]+$/, "");
 
     const probeJob = await db.$transaction(async (tx) => {
@@ -196,13 +214,17 @@ export async function processFaceSwap(jobId: string): Promise<void> {
         where: { id: jobId },
         data: { status: "SUCCEEDED", progress: 100, finishedAt: new Date(), actualCostCents: costCents, output: { assetId } as Prisma.InputJsonValue },
       });
-      await tx.usageRecord.create({ data: { userId: job.userId, jobId, provider: provider.id, unit: "video_seconds", quantity: (target.durationMs ?? 0) / 1000, costCents } });
+      await tx.usageRecord.create({
+        data: creditsUsed !== undefined
+          ? { userId: job.userId, jobId, provider: provider.id, unit: quote?.freeCredits ? "free_credits" : "credits", quantity: creditsUsed, costCents }
+          : { userId: job.userId, jobId, provider: provider.id, unit: "video_seconds", quantity: clip.endSec - clip.startSec, costCents },
+      });
       await tx.projectEvent.create({
         data: {
           projectId: job.projectId,
           userId: job.userId,
           type: "faceswap.succeeded",
-          message: `החלפת הפנים הושלמה (${provider.displayName}${costCents ? `, עלות $${(costCents / 100).toFixed(2)}` : ""}). התוצאה מסומנת כתוכן AI.`,
+          message: `החלפת הפנים הושלמה (${provider.displayName}${costCents ? `, עלות $${(costCents / 100).toFixed(2)}` : quote?.freeCredits && creditsUsed ? `, ${creditsUsed} קרדיטים חינמיים` : ""}). התוצאה מסומנת כתוכן AI.`,
           data: { jobId, assetId },
         },
       });

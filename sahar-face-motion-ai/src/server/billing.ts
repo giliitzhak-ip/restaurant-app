@@ -1,9 +1,34 @@
 import { db } from "@/lib/db";
-import type { FaceSwapProvider } from "@/providers/face-swap/types";
+import type { FaceSwapProvider, ProviderAccount } from "@/providers/face-swap/types";
 
 import { usd } from "@/lib/money";
 
 export { usd };
+
+/**
+ * Free Mode (FREE_MODE, ON unless explicitly "false"): no action may cost money.
+ * Free providers run normally. A paid provider is allowed only when its own
+ * account proves the job is covered by free credits: free tier, no subscription,
+ * and enough remaining credits. ALLOW_PAID_PROVIDERS and budgets don't matter here.
+ */
+export function freeMode(env: Record<string, string | undefined> = process.env): boolean {
+  return env.FREE_MODE !== "false";
+}
+
+export type FreeCreditsCheck = { ok: true } | { ok: false; reason: string };
+
+/** Whether a paid provider's job is fully covered by free credits on a free, subscription-less account. */
+export function coveredByFreeCredits(account: ProviderAccount | null, creditsNeeded: number | undefined): FreeCreditsCheck {
+  if (creditsNeeded === undefined) return { ok: false, reason: "הספק אינו מחייב בקרדיטים, ולכן אינו זמין במצב חינמי." };
+  if (!account) return { ok: false, reason: "לא ניתן לבדוק את יתרת הקרדיטים אצל הספק, ולכן ההרצה נחסמה כדי לא לחייב." };
+  if (account.tier !== "free" || account.subscription !== null) {
+    return { ok: false, reason: `חשבון הספק אינו בתוכנית החינמית (${account.subscription ?? account.tier}). במצב חינמי מותר להשתמש רק בחשבון חינמי ללא מנוי.` };
+  }
+  if (account.credits < creditsNeeded) {
+    return { ok: false, reason: `אין מספיק קרדיטים חינמיים: נדרשים ${creditsNeeded.toLocaleString("he-IL")}, נותרו ${account.credits.toLocaleString("he-IL")}. קצרו את הקטע או הורידו את קצב הפריימים.` };
+  }
+  return { ok: true };
+}
 
 /** Hard per-job ceiling, independent of user budgets (MAX_JOB_COST_USD, default $20). */
 export function maxJobCostCents(env: Record<string, string | undefined> = process.env) {
@@ -71,12 +96,26 @@ export function jobBlockers(opts: {
   costCents: number;
   budget: BudgetStatus;
   env?: Record<string, string | undefined>;
+  /** Free Mode only: provider account + credits the job needs. */
+  account?: ProviderAccount | null;
+  credits?: number;
 }): string[] {
   const env = opts.env ?? process.env;
   const { provider, costCents, budget } = opts;
   const out: string[] = [];
   const missing = provider.requiredEnv.filter((k) => !env[k]);
   if (missing.length) out.push(`הספק ${provider.displayName} לא הוגדר בשרת (חסר מפתח API).`);
+
+  if (freeMode(env)) {
+    if (provider.paid) {
+      const check = coveredByFreeCredits(opts.account ?? null, opts.credits);
+      if (!missing.length && !check.ok) out.push(`מצב חינמי פעיל: ${check.reason}`);
+    }
+    if (budget.jobsToday >= budget.dailyJobLimit) out.push(`הגעתם למגבלת המשימות היומית (${budget.dailyJobLimit}).`);
+    if (provider.capabilities.needsPublicUrls && mediaUrlsArePrivate(env)) out.push("האחסון נמצא בכתובת פרטית, ולכן הספק לא יוכל להוריד את הקבצים.");
+    return out;
+  }
+
   if (provider.paid && env.ALLOW_PAID_PROVIDERS !== "true") out.push("שירותי AI בתשלום חסומים בהגדרות השרת (ALLOW_PAID_PROVIDERS). לא יתבצע חיוב.");
   if (provider.paid && costCents > budget.availableCents) {
     out.push(

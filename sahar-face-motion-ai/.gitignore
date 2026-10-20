@@ -13,3 +13,5 @@ playwright-report/
 ai/models/
 .venv/
 .cache/
+.facefusion/
+.logs/
