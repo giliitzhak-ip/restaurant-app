@@ -35,6 +35,10 @@ npm run build
 
 # The free open-source engine. Skippable: SKIP_FACEFUSION=1
 if [ "${SKIP_FACEFUSION:-0}" != "1" ]; then
-  bash scripts/setup-facefusion.sh && sed -i "s#^FACE_SWAP_PROVIDER=.*#FACE_SWAP_PROVIDER=facefusion-local#" .env || echo "⚠ FaceFusion setup failed; the mock engine stays the default"
+  if bash scripts/setup-facefusion.sh; then
+    sed -i "s#^FACE_SWAP_PROVIDER=.*#FACE_SWAP_PROVIDER=facefusion-local#" .env
+  else
+    echo "⚠ FaceFusion setup failed; the mock engine stays the default. Retry: bash sahar-face-motion-ai/scripts/setup-facefusion.sh"
+  fi
 fi
 echo "✓ setup complete"

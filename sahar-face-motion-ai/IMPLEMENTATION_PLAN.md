@@ -66,7 +66,7 @@ Known limitations:
 - [x] Clip trimming and an fps cap (30/24/15) to stretch free credits.
 - [x] Open-source engine `facefusion-local` (FaceFusion CLI, default model ghost_1_256 / Apache-2.0), with person selection by reference frame and position. Setup: `scripts/setup-facefusion.sh`.
 - [x] Engine picker in the studio (`FACE_SWAP_PROVIDERS`). Unavailable engines are shown with the reason, never faked.
-- [x] GitHub Codespaces configuration (`.devcontainer/sahar-face-motion-ai/`) for $0, no-card use from iPhone Safari.
+- [x] GitHub Codespaces configuration (`.devcontainer/devcontainer.json` on this branch) for $0, no-card use from iPhone Safari.
 - [x] Tests:
   - Free Mode rules, account/credits contract, clip trimming;
   - FaceFusion adapter against a stand-in CLI;

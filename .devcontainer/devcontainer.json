@@ -1,6 +1,6 @@
 {
   // GitHub Codespaces for SAHAR FACE MOTION AI only (lives in sahar-face-motion-ai/).
-  // Create from github.com → Code → Codespaces → "…" → New with options → this configuration.
+  // Default configuration on this branch: https://codespaces.new/giliitzhak-ip/restaurant-app/tree/claude/sahar-face-motion-ai
   "name": "SAHAR FACE MOTION AI",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
   "hostRequirements": { "cpus": 2, "memory": "8gb" },

@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 import { faceSamples, makeFaceVideos } from "../src/test/faces";
 import { shot, signIn } from "./helpers";
 
-let files: { face: string; two: string } | null = null;
+let files: { face: string; two: string; otherFace: string } | null = null;
 let dir = "";
 
 test.beforeAll(async () => {
@@ -16,7 +16,9 @@ test.beforeAll(async () => {
   const v = makeFaceVideos(dir, s);
   const face = path.join(dir, "my-face.jpg");
   fs.copyFileSync(s.b, face);
-  files = { face, two: v.two };
+  const otherFace = path.join(dir, "new-face.jpg");
+  fs.copyFileSync(s.a, otherFace);
+  files = { face, two: v.two, otherFace };
 });
 test.afterAll(() => dir && fs.rmSync(dir, { recursive: true, force: true }));
 
@@ -139,4 +141,55 @@ test("face swap: upload, pick person, consent, quote, explicit approval, job tra
   expect(noConsent.status()).toBe(400);
 
   await page.request.delete(`/api/projects/${projectId}`);
+});
+
+// Real swap with the local open-source engine. Runs only where FaceFusion is installed
+// (E2E_FACEFUSION=1, e.g. after scripts/setup-facefusion.sh in Codespaces).
+test("real FaceFusion swap of the chosen person (CPU)", async ({ page }, info) => {
+  test.skip(!files || process.env.E2E_FACEFUSION !== "1", "FaceFusion not installed for this run");
+  test.skip(info.project.name !== "iphone", "one real CPU run is enough");
+  test.setTimeout(15 * 60_000);
+  await signIn(page.request, `e2e-ff-${info.project.name}@test.local`);
+  for (const p of (await (await page.request.get("/api/projects")).json()).projects) await page.request.delete(`/api/projects/${p.id}`);
+  const { id: projectId } = await (await page.request.post("/api/projects", { data: { name: "FaceFusion אמיתי", aspectRatio: "16:9" } })).json();
+
+  await page.goto(`/projects/${projectId}/face-swap`);
+  const engine = page.getByRole("button", { name: /FaceFusion/ });
+  await expect(engine).toBeEnabled();
+  await engine.click();
+  await expect(engine).toHaveAttribute("aria-pressed", "true");
+
+  const inputs = page.locator("input[type=file]");
+  await inputs.nth(0).setInputFiles(files!.otherFace); // person A's face → onto person B (right)
+  await inputs.nth(1).setInputFiles(files!.two);
+  await expect(page.getByRole("button", { name: "בחירת new-face.jpg" }).locator("img")).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByRole("button", { name: "בחירת two-dancers.mp4" }).locator("img")).toBeVisible({ timeout: 90_000 });
+  await page.getByRole("button", { name: "בחירת new-face.jpg" }).click();
+  await page.getByRole("button", { name: "בחירת two-dancers.mp4" }).click();
+  await page.getByRole("button", { name: "אדם 2" }).click();
+  await page.getByRole("radio", { name: "שלי", exact: true }).check();
+  await page.getByLabel("שם האדם שבתמונה").fill("בדיקה");
+  for (const cb of await page.locator("fieldset ~ label input[type=checkbox]").all()) await cb.check();
+  await page.getByText("15 fps", { exact: false }).click();
+  await page.getByRole("button", { name: "קבלת הערכת עלות" }).click();
+  await expect(page.getByText("$0.00").first()).toBeVisible();
+  await page.getByLabel("אני מאשר/ת את הפעלת המשימה (ללא עלות).").check();
+  await page.getByRole("button", { name: "אישור ויצירה" }).click();
+
+  await expect(page.getByText("הושלם").first()).toBeVisible({ timeout: 12 * 60_000 });
+  await expect(page.getByRole("tab", { name: "השוואה" })).toBeVisible({ timeout: 120_000 });
+  await shot(page, "facefusion-real-result");
+
+  const project = (await (await page.request.get(`/api/projects/${projectId}`)).json()).project;
+  const job = project.aiJobs.find((j: { status: string }) => j.status === "SUCCEEDED");
+  expect(job.provider).toBe("facefusion-local");
+  const result = project.assets.find((a: { id: string }) => a.id === job.resultAssetId);
+  expect(result).toMatchObject({ aiGenerated: true, status: "READY" });
+  const out = path.join(dir, "ff-result.mp4");
+  fs.writeFileSync(out, await (await page.request.get(`/api/assets/${result.id}/file?v=original`)).body());
+  // Save frames for a visual check: left person must be unchanged, right person swapped.
+  execFileSync("ffmpeg", ["-v", "error", "-y", "-ss", "1", "-i", out, "-frames:v", "1", path.join(process.env.SHOT_DIR ?? dir, "facefusion-real-frame.jpg")]);
+  const probe = JSON.parse(execFileSync("ffprobe", ["-v", "error", "-print_format", "json", "-show_streams", "-show_format", out]).toString());
+  expect(probe.streams.some((s: { codec_type: string }) => s.codec_type === "audio")).toBe(true);
+  expect(probe.format.tags.comment).toMatch(/AI-generated \(face swap, FaceFusion/);
 });

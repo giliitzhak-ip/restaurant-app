@@ -43,7 +43,7 @@ The FaceFusion code itself is OpenRAIL-AS (use restrictions apply). Hardware: CP
 
 | Host | Free? | Card? | Fit |
 |---|---|---|---|
-| **GitHub Codespaces** | monthly free quota for personal accounts (about 120 core-hours, i.e. ~60 h on 2 cores, plus 15 GB; check under GitHub → Settings → Billing) | no | **Best fit:** full Linux with Docker-like setup, runs everything (DB, Redis, FFmpeg, FaceFusion), and opens in iPhone Safari via a forwarded port. Stops when idle. |
+| **GitHub Codespaces** | Free personal accounts get **120 compute hours/month** at a ×2 multiplier on 2-core machines, so **≈ 60 real hours**, plus **15 GB-month** storage **[V, github/docs billing page]**. Without a payment method, usage is **blocked** (not billed) when the quota is used **[V]**. Stops after 30 min idle, 12 h max lifetime, and is deleted after 30 days stopped **[V]**. | no | **Best fit:** a full Linux machine that runs everything (DB, Redis, FFmpeg, FaceFusion) and opens in iPhone Safari via a forwarded port. Our environment uses ≈ 6–7 GB. |
 | Hugging Face Spaces (Docker) | **no longer free** for Docker/Gradio Spaces **[V]** | — | — |
 | Render / Koyeb free | 512 MB RAM, no background workers **[S]** | varies | too small for the worker |
 | Oracle Always Free | ~2 OCPU / 12 GB **[S]** | **yes** | good VM, needs a card |
@@ -75,10 +75,25 @@ To use Magic Hour's free credits as well:
 
 The studio then shows the remaining credits and only allows jobs that fit them.
 
-## Not verified here
-- The development environment cannot reach Hugging Face, GitHub releases or Codespaces. So FaceFusion's real models, the Codespaces setup scripts and the Magic Hour API were **not run end-to-end**.
-- What *is* tested:
-  - our FaceFusion adapter against a stand-in CLI (exact arguments, person selection, progress);
-  - the Magic Hour account/credit and upload/submit flow against a fake server that uses the SDK's documented responses;
-  - the full studio flow with the mock engine.
-- The first real FaceFusion run in Codespaces downloads models from GitHub releases, which is allowed there.
+## Verified (Oct 20, 2026)
+- **Real FaceFusion 3.9.1 swap on CPU,** run in the development environment:
+  - `ghost_1_256`: 30 frames at 480p took about 1.1 s/frame on 4 vCPU.
+  - Models downloaded from GitHub releases: about 1.5 GB in `.assets/models`. Plus a venv of about 0.9 GB.
+- **Full app E2E with the real engine** (`E2E_FACEFUSION=1`):
+  - 2 threads, as on a 2-core Codespace;
+  - a two-person clip where the user picks person 2: only that person's face is replaced, and the other is unchanged (checked visually);
+  - 3 s at 15 fps finished in about 2 min end-to-end;
+  - the result keeps the audio and carries the AI metadata.
+- **`scripts/setup-facefusion.sh`:**
+  - It ends with a real self-test swap (`✓ FaceFusion works`).
+  - It handles Debian bookworm's Python 3.11 by fetching Python 3.12 with `uv`, because FaceFusion's pinned scipy 1.18.1 requires Python ≥ 3.12.
+  - The uv path was tested.
+- **Bugs found and fixed while verifying:**
+  - FaceFusion's `install.py` takes `onnxruntime` as a positional argument, and it installs with the `pip` on PATH (not the venv's). We now install `requirements.txt` into the venv directly.
+  - `force-download` would fetch models for *every* processor, wasting quota. It was replaced by the self-test, which downloads only what a swap needs.
+  - A relative-path bug in the self-test.
+
+## Still not verified
+- The Codespaces machine itself: the devcontainer image pull, apt installs and port forwarding. They follow GitHub's documented behaviour, but can only be exercised in a real Codespace.
+- Whether the worker keeps running past the 30-minute idle timeout when you only use the app tab (not the editor). Keep first jobs short (≤ 10 s clips take minutes).
+- The real Magic Hour API (it needs your key; free credits only).
