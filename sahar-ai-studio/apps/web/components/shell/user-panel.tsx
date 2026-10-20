@@ -18,7 +18,7 @@ export function UserPanel({
       <div className="min-w-0">
         <p className="text-xs text-muted-foreground">{signedInAs}</p>
         <p className="truncate text-sm font-medium" data-testid="current-user-name">
-          {name}
+          <bdi>{name}</bdi>
         </p>
         <p className="truncate text-xs text-muted-foreground">
           <bdi>{email}</bdi>

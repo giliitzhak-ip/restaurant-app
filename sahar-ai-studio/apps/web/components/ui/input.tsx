@@ -5,6 +5,8 @@ export function Input({ className, type, ...props }: ComponentProps<'input'>) {
   return (
     <input
       type={type}
+      // User text follows its own direction; email/password/number inputs pass dir="ltr".
+      dir="auto"
       data-slot="input"
       className={cn(
         // 16px text on mobile prevents iOS Safari from zooming into focused inputs.

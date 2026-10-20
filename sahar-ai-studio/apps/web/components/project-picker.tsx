@@ -37,7 +37,7 @@ export async function ProjectPicker({
               href={`/projects/${project.id}/${suffix}`}
               className="flex min-h-14 items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 hover:border-gold-500/50"
             >
-              <span className="font-medium">{project.title}</span>
+              <bdi className="font-medium">{project.title}</bdi>
               <span className="flex items-center gap-2 text-sm text-muted-foreground">
                 <bdi>
                   {project.masterAudio?.durationMs

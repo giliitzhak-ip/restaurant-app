@@ -26,6 +26,8 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  // E2E builds use their own directory so they never overwrite a running dev server's.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   outputFileTracingRoot: monorepoRoot,
   poweredByHeader: false,
   // Linting runs once for the whole monorepo (`pnpm lint`), not again inside `next build`.

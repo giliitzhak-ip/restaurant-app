@@ -18,6 +18,12 @@ export function loadProject(ownerId: string, projectId: string) {
         include: {
           character: { select: { id: true, name: true } },
           referenceImage: { select: { id: true, assetId: true, label: true } },
+          selectedTake: {
+            select: {
+              takeNumber: true,
+              videoAsset: { select: { id: true, status: true, metadata: true } },
+            },
+          },
           _count: { select: { takes: true } },
         },
       },

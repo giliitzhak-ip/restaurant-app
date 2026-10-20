@@ -32,9 +32,15 @@ export default async function ProjectTimelinePage({ params }: Params) {
         className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowRight className="size-4 ltr:rotate-180" aria-hidden />
-        {project.title}
+        <bdi>{project.title}</bdi>
       </Link>
-      <PageHeader title={`${t.timeline.title} · ${project.title}`} />
+      <PageHeader
+        title={
+          <>
+            {t.timeline.title} · <bdi>{project.title}</bdi>
+          </>
+        }
+      />
       {audio?.status === 'READY' && analysis ? (
         <TimelineEditor
           projectId={project.id}

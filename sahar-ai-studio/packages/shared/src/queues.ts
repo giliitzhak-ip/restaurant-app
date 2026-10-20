@@ -2,6 +2,7 @@
 export const QUEUE_NAMES = {
   maintenance: 'maintenance',
   media: 'media',
+  generation: 'generation',
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
@@ -30,3 +31,17 @@ export function mediaJobId(name: MediaJobName, assetId: string): string {
 export const WORKER_HEARTBEAT_KEY = 'sahar:worker:heartbeat';
 export const WORKER_HEARTBEAT_INTERVAL_MS = 10_000;
 export const WORKER_HEARTBEAT_TTL_SECONDS = 30;
+
+export const GENERATION_JOB = 'generate';
+
+export interface GenerationJobData {
+  generationJobId: string;
+}
+
+/** Retry policy for generation jobs (shared by the web enqueue and worker reconciliation). */
+export const GENERATION_JOB_OPTIONS = {
+  attempts: 3,
+  backoff: { type: 'exponential' as const, delay: 5_000 },
+  removeOnComplete: { count: 1000 },
+  removeOnFail: { count: 1000 },
+};

@@ -110,9 +110,15 @@ export default async function SettingsPage() {
                           : s.providers.keyMissing}
                       </Badge>
                     )}
-                    <Badge>
-                      {format(s.providers.integrationPlanned, { phase: provider.plannedPhase })}
-                    </Badge>
+                    {provider.operational ? (
+                      <Badge variant="success" data-testid={`provider-operational-${provider.id}`}>
+                        {s.providers.operational}
+                      </Badge>
+                    ) : (
+                      <Badge>
+                        {format(s.providers.integrationPlanned, { phase: provider.plannedPhase })}
+                      </Badge>
+                    )}
                   </div>
                 </li>
               ))}

@@ -172,44 +172,57 @@ Next.js compiles them via `transpilePackages`; the worker is bundled with `tsup`
 - The timeline's time axis always runs left → right (video-editor convention), inside an
   otherwise RTL interface; times and BPM values are Unicode-isolated in Hebrew text.
 
-## 8. AI provider abstraction (Phase 3+)
+## 8. AI provider abstraction (Phase 3 — implemented, `packages/providers`)
+
+Every provider exposes normalized metadata and one of two execution modes:
 
 ```ts
 interface VideoProvider {
-  key: ProviderKey; // 'mock' | 'hedra' | 'fal-lipsync' | 'local-gpu'
-  capabilities(): ProviderCapabilities; // inputs, max duration, aspect ratios,
-  // resolutions, pricing metadata (+ verifiedAt)
-  isOperational(): { ok: boolean; reason?: string };
-  estimateCost(input): CostEstimate;
-  submit(input, { idempotencyKey }): Promise<{ providerJobId: string }>;
-  getStatus(providerJobId): Promise<NormalizedStatus>;
-  fetchResult(providerJobId): Promise<ResultStream>;
-  cancel?(providerJobId): Promise<void>;
-  verifyWebhook?(req): Promise<WebhookEvent | null>;
+  key: 'mock' | 'local-gpu' /* | 'hedra' (Phase 4) | 'fal-lipsync' (Phase 6) */;
+  kind: 'technical-test' | 'ai';            // test output is never presented as AI
+  capabilities: {
+    operations, inputs, minDurationMs, maxDurationMs, aspectRatios, resolutions,
+    pricing: { model, usdPerSecond?, source, verifiedAt },
+    supportsCancel, supportsWebhooks, execution: 'local' | 'remote',
+  };
+  availability(): { operational: boolean; reason?: … };
+  estimateCost(request): { amountUsd: '0.00', billable, units, unitName, basis };
+  execution:
+    | { kind: 'local'; run(input, { workDir, onProgress, signal }) }        // Mock
+    | { kind: 'remote'; submit; getStatus; fetchResult; cancel? };          // Hedra…
 }
 ```
 
-Implementations, in order: **Mock** (real pipeline, generates an actual video locally
-with FFmpeg from the reference image + audio segment, zero cost), **Hedra**, **fal.ai
-lip-sync**, **Local GPU** (interface only, `isOperational() → false` until a real
-inference backend is implemented and tested). Endpoints, parameters and pricing for real
-providers are taken from the official docs at implementation time — never guessed.
+- **Mock** (`technical-test`, local): FFmpeg renders the reference image (cover-crop,
+  slow zoom) or a plain card, the exact song segment cut with `atrim` (sample-accurate,
+  original timing), a live waveform strip and burned-in Hebrew/English labels "technical
+  test — not AI-generated". H.264 High/yuv420p/AAC-LC/+faststart. Cost $0.00, not billed.
+- **Local GPU**: listed, `operational: false` until a real inference backend exists.
+- `validateRequest()` checks operation, duration bounds, aspect ratio and resolution
+  against the declared capabilities before anything is queued.
 
-## 9. Generation workflow & idempotency (Phase 3+)
+## 9. Generation workflow (Phase 3 — implemented for local providers)
 
-1. User selects scene/segment and provider → server computes estimate.
-2. User approves → `GenerationJob` row created in a transaction with
-   `status=QUEUED`, `approvedAt`, the estimate, an `idempotencyKey`, and a budget check
-   against the user's monthly limit.
-3. BullMQ job uses the `GenerationJob.id` as its `jobId` (dedupes enqueue).
-4. Worker: if `providerJobId` already stored → never submit again, only poll. Otherwise
-   it transitions `QUEUED → SUBMITTING` with a conditional update (compare-and-set),
-   submits with the idempotency key (where the provider supports one), and stores
-   `providerJobId` immediately. A crash between submit and persist is surfaced as
-   `NEEDS_RECONCILIATION` instead of being blindly retried, preventing double billing.
-5. Completion arrives by verified webhook or by polling with exponential backoff and a
-   hard deadline. The result is downloaded into our storage and a `Take` is created.
-6. All transitions are appended to `GenerationJobEvent`.
+1. Studio: the server computes the estimate for the scene + engine and shows it, also
+   when it is $0.00.
+2. Approval (server action): requires the approval checkbox, recomputes the estimate and
+   rejects if it differs from the approved amount, enforces max 10 active jobs, and for
+   billable providers a monthly budget with room (per-user `pg_advisory_xact_lock`). The
+   `GenerationJob` is created as `QUEUED` with a frozen `inputSnapshot` and the
+   client's **idempotency key** (unique) — a repeated submit returns the same job.
+3. BullMQ job id = `GenerationJob.id` (never enqueued twice). If enqueueing fails, the
+   worker's startup reconciliation re-enqueues open jobs.
+4. Worker: `QUEUED → PROCESSING` by compare-and-set; downloads inputs; renders while
+   writing real progress (FFmpeg `out_time_us`) at most every 500 ms; each write also
+   checks for `CANCELLED` and aborts FFmpeg. Output is verified with ffprobe (codecs,
+   size, duration ±150 ms), stored privately, then `PROCESSING → COMPLETED` + `Take` +
+   selected take in one transaction. Cancelled-while-uploading results are discarded.
+5. Errors: permanent (`source_missing`, `reference_missing`, `output_invalid`, …) fail
+   immediately; others retry 3× with exponential backoff, then `FAILED`
+   (`render_failed`). Every transition is appended to `GenerationJobEvent`.
+6. **Remote providers (Phase 4):** submit once, store `providerJobId` immediately, then
+   only poll/receive webhooks — never resubmit; an unknown submit outcome becomes
+   `NEEDS_RECONCILIATION` instead of a retry (no double billing).
 
 ## 10. Rendering (Phase 5)
 

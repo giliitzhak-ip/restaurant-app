@@ -15,6 +15,7 @@ COPY apps/worker/package.json apps/worker/
 COPY packages/shared/package.json packages/shared/
 COPY packages/storage/package.json packages/storage/
 COPY packages/media/package.json packages/media/
+COPY packages/providers/package.json packages/providers/
 COPY packages/db/package.json packages/db/
 # Prisma client generation runs on install and needs the schema.
 COPY packages/db/prisma packages/db/prisma

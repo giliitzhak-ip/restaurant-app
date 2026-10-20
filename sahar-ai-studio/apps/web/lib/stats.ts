@@ -16,7 +16,8 @@ export async function getDashboardStats(ownerId: string, now = new Date()) {
     prisma.$queryRaw<{ total: Prisma.Decimal | null }[]>`
       SELECT SUM(COALESCE("actualCostUsd", "estimatedCostUsd")) AS total
       FROM "GenerationJob"
-      WHERE "ownerId" = ${ownerId} AND "approvedAt" >= ${monthStart}`,
+      WHERE "ownerId" = ${ownerId} AND "approvedAt" >= ${monthStart}
+        AND NOT ("status" = 'CANCELLED' AND "submittedAt" IS NULL)`,
   ]);
   return {
     projects,

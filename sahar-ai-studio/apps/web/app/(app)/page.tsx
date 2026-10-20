@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { requireUser } from '@/lib/auth/session';
 import { checkHealth } from '@/lib/health';
-import { format } from '@/lib/i18n/config';
+import { formatNode } from '@/lib/i18n/format-node';
 import { getI18n } from '@/lib/i18n/server';
 import { getDashboardStats } from '@/lib/stats';
 
@@ -83,7 +83,7 @@ export default async function DashboardPage() {
   return (
     <>
       <PageHeader
-        title={format(t.dashboard.greeting, { name: user.name })}
+        title={formatNode(t.dashboard.greeting, { name: <bdi>{user.name}</bdi> })}
         description={t.dashboard.subtitle}
       />
 

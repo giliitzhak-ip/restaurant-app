@@ -82,7 +82,7 @@ export default async function CharactersPage() {
                 <div className="flex min-w-0 flex-col gap-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold group-hover:text-gold-200">
-                      {character.name}
+                      <bdi>{character.name}</bdi>
                     </span>
                     {isPrimaryPreset(character.presetKey) ? (
                       <Badge>{t.characters.primaryBadge}</Badge>

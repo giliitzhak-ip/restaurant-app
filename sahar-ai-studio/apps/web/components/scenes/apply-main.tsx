@@ -23,6 +23,8 @@ export function ApplyMainCharacter({
           variant="outline"
           message={`${label}?`}
           disabled={pending}
+          // Long label: wrap instead of overflowing the card on phones.
+          className="h-auto min-h-11 py-2 text-start whitespace-normal"
           data-testid="apply-main"
         >
           <Users aria-hidden />

@@ -3,9 +3,12 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { prisma } from '@sahar/db';
 import {
+  GENERATION_JOB,
+  GENERATION_JOB_OPTIONS,
   MAINTENANCE_JOBS,
   MEDIA_JOBS,
   QUEUE_NAMES,
+  type GenerationJobData,
   type MediaJobData,
   WORKER_HEARTBEAT_INTERVAL_MS,
   WORKER_HEARTBEAT_KEY,
@@ -13,11 +16,13 @@ import {
 } from '@sahar/shared';
 import { getServerEnv } from '@sahar/shared/env';
 import { createLogger } from '@sahar/shared/logger';
+import { createProviderRegistry } from '@sahar/providers';
 import { storageFromEnv } from '@sahar/storage';
 import { Queue, UnrecoverableError, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 import { connectionFromUrl } from './connection';
 import { analyzeAudio } from './jobs/analyze-audio';
+import { failGeneration, PermanentGenerationError, processGeneration } from './jobs/generate';
 import { InvalidMediaError, type MediaContext } from './jobs/media-context';
 import { purgeExpiredSessions } from './jobs/purge-expired-sessions';
 import { verifyImage } from './jobs/verify-image';
@@ -119,6 +124,87 @@ mediaWorker.on('failed', (job, error) => {
 });
 mediaWorker.on('error', (error) => log.error({ err: error }, 'media worker error'));
 
+// ─── Generation: approved provider jobs (Mock renders locally with FFmpeg) ───────
+const providers = createProviderRegistry({
+  ffmpegPath: env.FFMPEG_PATH,
+  fontRegular: env.MOCK_FONT_REGULAR,
+  fontBold: env.MOCK_FONT_BOLD,
+});
+const generationQueue = new Queue<GenerationJobData>(QUEUE_NAMES.generation, { connection });
+const generationContext = {
+  db: prisma,
+  storage: mediaContext.storage,
+  log,
+  providers,
+  ffprobePath: env.FFPROBE_PATH,
+  tmpRoot,
+};
+
+const generationWorker = new Worker<GenerationJobData>(
+  QUEUE_NAMES.generation,
+  async (job) => {
+    const { generationJobId } = job.data;
+    try {
+      return { result: await processGeneration(generationContext, generationJobId) };
+    } catch (error) {
+      const finalAttempt = job.attemptsMade + 1 >= (job.opts.attempts ?? 1);
+      if (error instanceof PermanentGenerationError) {
+        await failGeneration(prisma, generationJobId, error.code, error.message);
+        throw new UnrecoverableError(error.code);
+      }
+      if (finalAttempt) {
+        await failGeneration(
+          prisma,
+          generationJobId,
+          'render_failed',
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+      throw error;
+    }
+  },
+  {
+    connection,
+    // Rendering is CPU-bound: one at a time by default.
+    concurrency: env.GENERATION_CONCURRENCY,
+    lockDuration: 120_000,
+  },
+);
+generationWorker.on('failed', (job, error) =>
+  log.error(
+    { jobId: job?.id, attempts: job?.attemptsMade, err: error.message },
+    'generation attempt failed',
+  ),
+);
+generationWorker.on('error', (error) => log.error({ err: error }, 'generation worker error'));
+
+/**
+ * Jobs still QUEUED/PROCESSING in the database but missing from Redis (e.g. Redis was
+ * flushed, or the worker died) are enqueued again. The job id equals the database id, so
+ * this never duplicates work; local renders are safe to repeat.
+ */
+async function reconcileGenerations() {
+  const open = await prisma.generationJob.findMany({
+    where: { status: { in: ['QUEUED', 'PROCESSING'] } },
+    select: { id: true },
+  });
+  let requeued = 0;
+  for (const { id } of open) {
+    const existing = await generationQueue.getJob(id);
+    const state = existing ? await existing.getState() : 'missing';
+    if (state === 'completed' || state === 'failed') await existing!.remove();
+    if (state === 'completed' || state === 'failed' || state === 'missing') {
+      await generationQueue.add(
+        GENERATION_JOB,
+        { generationJobId: id },
+        { ...GENERATION_JOB_OPTIONS, jobId: id },
+      );
+      requeued++;
+    }
+  }
+  if (requeued > 0) log.warn({ requeued }, 're-enqueued unfinished generation jobs');
+}
+
 // Liveness signal read by the web dashboard.
 const heartbeatRedis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: 1 });
 heartbeatRedis.on('error', (error) => log.warn({ err: error.message }, 'heartbeat redis error'));
@@ -144,7 +230,8 @@ async function start() {
     { name: MAINTENANCE_JOBS.purgeExpiredSessions },
   );
   await beat();
-  log.info({ queues: [QUEUE_NAMES.maintenance, QUEUE_NAMES.media] }, 'worker started');
+  await reconcileGenerations();
+  log.info({ queues: Object.values(QUEUE_NAMES) }, 'worker started');
 }
 
 const heartbeatTimer = setInterval(() => void beat(), WORKER_HEARTBEAT_INTERVAL_MS);
@@ -156,7 +243,8 @@ async function shutdown(signal: string) {
   log.info({ signal }, 'worker shutting down');
   clearInterval(heartbeatTimer);
   // Let the in-flight job finish before closing connections.
-  await Promise.all([maintenanceWorker.close(), mediaWorker.close()]);
+  await Promise.all([maintenanceWorker.close(), mediaWorker.close(), generationWorker.close()]);
+  await generationQueue.close();
   await maintenanceQueue.close();
   await heartbeatRedis.del(WORKER_HEARTBEAT_KEY).catch(() => undefined);
   heartbeatRedis.disconnect();

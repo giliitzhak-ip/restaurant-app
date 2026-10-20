@@ -1,12 +1,11 @@
-import { prisma } from '@sahar/db';
 import type { Metadata } from 'next';
-import { EmptyList } from '@/components/empty-list';
 import { PageHeader } from '@/components/page-header';
 import { PhaseNotice } from '@/components/phase-notice';
-import { Badge } from '@/components/ui/badge';
+import { JobList } from '@/components/studio/job-list';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { requireUser } from '@/lib/auth/session';
 import { getI18n } from '@/lib/i18n/server';
+import { listJobs, toJobView } from '@/lib/jobs';
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -15,46 +14,32 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function RendersPage() {
   const user = await requireUser();
-  const { t } = await getI18n();
-  const page = t.pages.renders;
-  const jobs = await prisma.renderJob.findMany({
-    where: { ownerId: user.id },
-    orderBy: { createdAt: 'desc' },
-    take: 50,
-    select: { id: true, status: true, progress: true, project: { select: { title: true } } },
-  });
+  const { t, locale } = await getI18n();
+  const jobs = (await listJobs(user.id, {}, 50)).map(toJobView);
+  const providerNames = {
+    mock: t.studio.providers.mock.name,
+    'local-gpu': t.studio.providers.localGpu.name,
+  };
 
   return (
     <>
-      <PageHeader title={page.title} description={page.description} />
+      <PageHeader title={t.pages.renders.title} description={t.pages.renders.description} />
       <div className="flex flex-col gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>{page.listTitle}</CardTitle>
+            <CardTitle>{t.studio.jobs.title}</CardTitle>
           </CardHeader>
           <CardContent>
-            {jobs.length === 0 ? (
-              <EmptyList label={t.common.empty} />
-            ) : (
-              <ul className="divide-y divide-border">
-                {jobs.map((job) => (
-                  <li key={job.id} className="flex items-center justify-between gap-3 py-3">
-                    <span className="font-medium">{job.project.title}</span>
-                    <span className="flex items-center gap-2">
-                      {job.progress !== null ? (
-                        <bdi className="text-sm text-muted-foreground">
-                          {Math.round(job.progress * 100)}%
-                        </bdi>
-                      ) : null}
-                      <Badge variant="muted">{job.status}</Badge>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <JobList
+              jobs={jobs}
+              t={t.studio}
+              providerNames={providerNames}
+              showProject
+              locale={locale}
+            />
           </CardContent>
         </Card>
-        <PhaseNotice t={t} phase={5} features={page.features} />
+        <PhaseNotice t={t} phase={5} features={t.pages.renders.features} />
       </div>
     </>
   );

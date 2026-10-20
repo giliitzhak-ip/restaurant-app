@@ -48,10 +48,14 @@ export default async function ProjectScenesPage({ params }: Params) {
         className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowRight className="size-4 ltr:rotate-180" aria-hidden />
-        {project.title}
+        <bdi>{project.title}</bdi>
       </Link>
       <PageHeader
-        title={`${t.scenes.title} · ${project.title}`}
+        title={
+          <>
+            {t.scenes.title} · <bdi>{project.title}</bdi>
+          </>
+        }
         actions={
           project.masterAudio?.status === 'READY' ? (
             <Button asChild variant="outline">
@@ -88,6 +92,19 @@ export default async function ProjectScenesPage({ params }: Params) {
                   characterId: scene.characterId,
                   referenceImageId: scene.referenceImageId,
                   prompt: scene.prompt,
+                  selectedTake:
+                    scene.selectedTake?.videoAsset?.status === 'READY'
+                      ? {
+                          assetId: scene.selectedTake.videoAsset.id,
+                          takeNumber: scene.selectedTake.takeNumber,
+                          isTestRender:
+                            (
+                              scene.selectedTake.videoAsset.metadata as {
+                                providerKind?: string;
+                              } | null
+                            )?.providerKind === 'technical-test',
+                        }
+                      : null,
                 }}
                 characters={options}
                 identity={identity}
@@ -95,6 +112,11 @@ export default async function ProjectScenesPage({ params }: Params) {
                 t={t.scenes}
                 common={t.common}
                 sceneLabel={t.timeline.sceneLabel}
+                takeLabels={{
+                  take: t.studio.jobs.take,
+                  testBadge: t.studio.testBadge,
+                  download: t.studio.jobs.download,
+                }}
               />
             ))}
           </ul>

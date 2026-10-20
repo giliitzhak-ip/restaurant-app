@@ -60,16 +60,35 @@ Status legend: ✅ done · 🔜 next · ⏳ planned
 - Touch dragging was tested with Chromium's iPhone emulation (pointer events); it has not
   been tested on a physical iPhone in this environment.
 
-## Phase 3 — Provider abstraction, Mock Provider, queue, end-to-end generation ⏳
+## Phase 3 — Provider abstraction, Mock Provider, queue, end-to-end generation ✅
 
-- `packages/providers`: interface, capability schema, registry, cost-estimate types
-- Mock provider that actually produces a video with FFmpeg (still image + audio segment,
-  subtle motion) — free, honest about being a mock
-- Cost estimate → explicit approval → `GenerationJob` → BullMQ → worker submit/poll →
-  result stored → `Take` created; idempotency + compare-and-set transitions
-- Monthly budget enforcement at approval time
-- Rendering Queue / AI Singing Studio pages wired to real job state (polling/SSE)
-- Tests: full flow e2e with the mock provider; duplicate-submission prevention
+- [x] Phase 2 UI/RTL audit (he/en × desktop/iPhone): `<bdi>` isolation of user content,
+      `dir="auto"` inputs, timeline grips off the ruler, toolbar regrouped, wrapping buttons
+- [x] Upload matrix tests (WebP, MP3 with cover art, 24-bit/48 kHz mono WAV, Hebrew
+      filename, oversize client+server, HEIC/MP4 refused) and DB/S3 persistence tests
+- [x] `packages/providers`: normalized capabilities, pricing with source/verification date,
+      cost estimate, request validation, local vs remote execution, registry
+- [x] Mock provider: real H.264/AAC MP4 via FFmpeg from the reference image + exact song
+      segment, waveform strip, burned-in "technical test — not AI" labels (he + en)
+- [x] Local GPU provider listed but never operational (no backend)
+- [x] Approval flow: server-recomputed estimate must equal the approved amount,
+      idempotency key per approval, budget check for billable providers under a per-user
+      advisory lock, max 10 active jobs per user
+- [x] BullMQ generation queue + worker: QUEUED → PROCESSING → COMPLETED / FAILED /
+      CANCELLED with compare-and-set transitions, event history, real FFmpeg progress,
+      cancellation that stops FFmpeg, output verification with ffprobe, retries for
+      transient errors, permanent error codes, startup reconciliation
+- [x] Takes stored privately; inline iPhone playback (`playsInline`, Range) and download
+      (`Content-Disposition` with Hebrew filename); selected take in the scene editor
+- [x] Studio page (scene → engine → estimate → approval → live job list) and the
+      Rendering Queue page listing all generation jobs
+
+### Phase 3 verification notes
+
+- In-browser _playback_ of the MP4 could not be automated here: Playwright's Chromium has
+  no H.264/AAC decoders. The files are verified with ffprobe (H.264 High, yuv420p, AAC-LC,
+  faststart) and served with Range support; iPhone Safari and Chrome do decode H.264.
+- Automated "iPhone" tests use Chromium with iPhone 14 emulation, not WebKit/Safari.
 
 ## Phase 4 — Hedra integration ⏳
 

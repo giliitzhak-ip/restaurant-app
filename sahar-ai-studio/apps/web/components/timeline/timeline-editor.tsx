@@ -380,74 +380,94 @@ export function TimelineEditor({
         onEnded={() => setPlaying(false)}
       />
 
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          onClick={togglePlay}
-          size="icon"
-          aria-label={playing ? t.pause : t.play}
-          data-testid="timeline-play"
-        >
-          {playing ? <Pause /> : <Play />}
-        </Button>
-        <span
-          className="min-w-28 rounded-md border border-border bg-surface px-3 py-2 text-sm tabular-nums"
-          aria-label={t.playhead}
-        >
-          <bdi data-testid="timeline-time">
-            {formatTime(playheadMs)} / {formatTime(durationMs)}
-          </bdi>
-        </span>
-        <div className="flex gap-1">
+      {/* Toolbar: transport row, then editing row (labels hidden on phones, names kept for screen readers) */}
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            onClick={togglePlay}
+            size="icon"
+            aria-label={playing ? t.pause : t.play}
+            data-testid="timeline-play"
+          >
+            {playing ? <Pause /> : <Play />}
+          </Button>
+          <span
+            className="min-w-28 rounded-md border border-border bg-surface px-3 py-2 text-sm tabular-nums"
+            aria-label={t.playhead}
+          >
+            <bdi data-testid="timeline-time">
+              {formatTime(playheadMs)} / {formatTime(durationMs)}
+            </bdi>
+          </span>
           <Button
             variant="outline"
-            size="icon"
-            onClick={() => setZoom(zoom / 1.6)}
-            aria-label={t.zoomOut}
-            data-testid="timeline-zoom-out"
+            onClick={playScene}
+            aria-label={t.playScene}
+            data-testid="timeline-play-scene"
           >
-            <ZoomOut />
+            <SquarePlay />
+            <span className="hidden sm:inline">{t.playScene}</span>
+          </Button>
+          <div className="flex gap-1">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setZoom(zoom / 1.6)}
+              aria-label={t.zoomOut}
+              data-testid="timeline-zoom-out"
+            >
+              <ZoomOut />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setZoom(zoom * 1.6)}
+              aria-label={t.zoomIn}
+              data-testid="timeline-zoom-in"
+            >
+              <ZoomIn />
+            </Button>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={split}
+            aria-label={t.split}
+            data-testid="timeline-split"
+          >
+            <Scissors />
+            <span className="hidden sm:inline">{t.split}</span>
           </Button>
           <Button
             variant="outline"
-            size="icon"
-            onClick={() => setZoom(zoom * 1.6)}
-            aria-label={t.zoomIn}
-            data-testid="timeline-zoom-in"
+            onClick={merge}
+            disabled={selected >= scenes.length - 1}
+            aria-label={t.merge}
+            data-testid="timeline-merge"
           >
-            <ZoomIn />
+            <Combine />
+            <span className="hidden sm:inline">{t.merge}</span>
+          </Button>
+          <Button
+            variant="outline"
+            onClick={autoPropose}
+            aria-label={t.auto}
+            data-testid="timeline-auto"
+          >
+            <Sparkles />
+            <span className="hidden sm:inline">{t.auto}</span>
+          </Button>
+          <Button
+            onClick={save}
+            disabled={!dirty || saving}
+            className="ms-auto"
+            data-testid="timeline-save"
+          >
+            <Save />
+            {saving ? t.saving : t.save}
           </Button>
         </div>
-        <Button variant="outline" onClick={split} data-testid="timeline-split">
-          <Scissors />
-          <span className="hidden sm:inline">{t.split}</span>
-        </Button>
-        <Button
-          variant="outline"
-          onClick={merge}
-          disabled={selected >= scenes.length - 1}
-          data-testid="timeline-merge"
-        >
-          <Combine />
-          <span className="hidden sm:inline">{t.merge}</span>
-        </Button>
-        <Button variant="outline" onClick={playScene} data-testid="timeline-play-scene">
-          <SquarePlay />
-          <span className="hidden sm:inline">{t.playScene}</span>
-        </Button>
-        <Button variant="outline" onClick={autoPropose} data-testid="timeline-auto">
-          <Sparkles />
-          <span className="hidden sm:inline">{t.auto}</span>
-        </Button>
-        <Button
-          onClick={save}
-          disabled={!dirty || saving}
-          className="ms-auto"
-          data-testid="timeline-save"
-        >
-          <Save />
-          {saving ? t.saving : t.save}
-        </Button>
       </div>
 
       <div
@@ -562,8 +582,15 @@ export function TimelineEditor({
                   onKeyDown={(event) => onHandleKeyDown(event, boundary)}
                   data-testid="boundary-handle"
                 >
-                  <span className="h-full w-0.5 bg-gold-300 group-hover:w-1 group-focus-visible:w-1 group-focus-visible:bg-gold-50" />
-                  <span className="absolute top-[3px] size-3 rotate-45 rounded-[2px] bg-gold-300" />
+                  <span
+                    className="w-0.5 bg-gold-300 group-hover:w-1 group-focus-visible:w-1 group-focus-visible:bg-gold-50"
+                    style={{ marginTop: RULER, height: HEIGHT - RULER }}
+                  />
+                  {/* Grip sits in the scene band so it never covers the ruler's time labels. */}
+                  <span
+                    className="absolute h-5 w-2.5 rounded-full border border-background/60 bg-gold-300 shadow"
+                    style={{ top: RULER + BAND / 2 - 10 }}
+                  />
                 </div>
               );
             })}

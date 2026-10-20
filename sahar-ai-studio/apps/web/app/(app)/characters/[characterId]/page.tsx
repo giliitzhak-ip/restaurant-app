@@ -73,7 +73,7 @@ export default async function CharacterPage({ params }: Params) {
         {t.characters.edit.back}
       </Link>
       <PageHeader
-        title={character.name}
+        title={<bdi>{character.name}</bdi>}
         actions={
           isPrimaryPreset(character.presetKey) ? (
             <Badge>{t.characters.primaryBadge}</Badge>

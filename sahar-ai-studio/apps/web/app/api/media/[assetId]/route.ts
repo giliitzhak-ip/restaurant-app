@@ -3,6 +3,7 @@ import { ObjectNotFoundError } from '@sahar/storage';
 import { Readable } from 'node:stream';
 import type { NextRequest } from 'next/server';
 import { ApiError, apiError, handleApiError, requireApiUser } from '@/lib/api';
+import { contentDisposition, takeFilename } from '@/lib/content-disposition';
 import { logger } from '@/lib/logger';
 import { parseSingleRange } from '@/lib/range';
 import { getStorage } from '@/lib/storage';
@@ -29,7 +30,20 @@ export async function GET(
         deletedAt: null,
         status: { in: ['READY', 'UPLOADED', 'VERIFYING'] },
       },
-      select: { storageKey: true, mimeType: true, sha256: true, kind: true },
+      select: {
+        storageKey: true,
+        mimeType: true,
+        sha256: true,
+        kind: true,
+        originalFilename: true,
+        metadata: true,
+        take: {
+          select: {
+            takeNumber: true,
+            scene: { select: { position: true, project: { select: { title: true } } } },
+          },
+        },
+      },
     });
     if (!asset) return apiError(404, 'notFound');
 
@@ -51,7 +65,18 @@ export async function GET(
       'Accept-Ranges': 'bytes',
       // Objects are immutable once uploaded, but private to the signed-in owner.
       'Cache-Control': 'private, max-age=86400',
-      'Content-Disposition': 'inline',
+      'Content-Disposition': contentDisposition(
+        request.nextUrl.searchParams.get('download') === '1' ? 'attachment' : 'inline',
+        asset.take
+          ? takeFilename(
+              asset.take.scene.project.title,
+              asset.take.scene.position,
+              asset.take.takeNumber,
+              (asset.metadata as { providerKind?: string } | null)?.providerKind ===
+                'technical-test',
+            )
+          : asset.originalFilename,
+      ),
     });
     if (asset.sha256) headers.set('ETag', `"${asset.sha256}"`);
     if (range && object.contentRange) headers.set('Content-Range', object.contentRange);

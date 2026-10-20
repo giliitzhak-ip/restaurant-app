@@ -62,7 +62,7 @@ export default async function ProjectsPage() {
                 data-testid="project-card"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <span className="font-semibold">{project.title}</span>
+                  <bdi className="font-semibold">{project.title}</bdi>
                   <Badge variant="muted">{t.projects.aspect[project.aspectRatio]}</Badge>
                 </div>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">

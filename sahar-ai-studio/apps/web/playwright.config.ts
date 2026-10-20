@@ -25,6 +25,9 @@ export default defineConfig({
     baseURL: `http://localhost:${PORT}`,
     locale: 'he-IL',
     trace: 'retain-on-failure',
+    // Real devices have a UTF-8 locale; without one Chromium cannot represent Hebrew
+    // download filenames (it falls back to "download").
+    launchOptions: { env: { ...process.env, LANG: 'C.UTF-8', LC_ALL: 'C.UTF-8' } },
     screenshot: 'only-on-failure',
   },
   projects: [
@@ -46,12 +49,15 @@ export default defineConfig({
       REDIS_URL: e2eRedisUrl,
       E2E_REDIS_URL: e2eRedisUrl,
       APP_URL: `http://localhost:${PORT}`,
+      NEXT_DIST_DIR: '.next-e2e',
       ALLOW_REGISTRATION: 'true',
       // Every test registers from 127.0.0.1, so per-IP limits are lifted; the per-email
       // login limit stays at its production default and is asserted in auth.spec.ts.
       AUTH_LOGIN_MAX_PER_IP: '10000',
       AUTH_REGISTER_MAX_PER_IP: '10000',
       AUTH_LOGIN_MAX_PER_EMAIL: '8',
+      // Small image limit so the 6 MB fixture exercises client- and server-side size checks.
+      MAX_IMAGE_UPLOAD_MB: '5',
     },
   },
 });

@@ -7,11 +7,12 @@ Hebrew-first platform for creating AI music videos with lip-synced singing chara
 - Data model: [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md)
 - Operations: [docs/BACKUP_AND_RECOVERY.md](docs/BACKUP_AND_RECOVERY.md)
 
-**Current status: Phase 2 complete.** Accounts and security (Phase 1); character library
-with the Sharona Sahar preset and approved reference images, projects, song upload to
-private storage, audio analysis (duration, format, waveform, silences, tempo) and an
-interactive timeline with scene splitting (Phase 2). AI video generation arrives in
-Phase 3; screens for later phases say so instead of showing fake buttons.
+**Current status: Phase 3 complete.** Accounts and security (Phase 1); characters,
+uploads, projects, audio analysis and the scene timeline (Phase 2); and an end-to-end
+generation pipeline (Phase 3): cost estimate → explicit approval → job queue → worker →
+stored MP4 take that plays inline and downloads on iPhone. The only engine connected is
+a **technical test engine** that renders a real MP4 with FFmpeg — it is not AI and is
+labelled as such in the UI and inside the video. Paid AI providers arrive in Phase 4.
 
 ## Requirements
 
@@ -81,7 +82,7 @@ pnpm lint                    # ESLint (flat config, Next.js rules)
 pnpm format:check            # Prettier
 pnpm test                    # unit tests (no services needed)
 pnpm test:integration        # PostgreSQL + Redis integration tests (uses TEST_DATABASE_URL)
-pnpm --filter @sahar/web build && pnpm test:e2e
+pnpm --filter @sahar/web test:e2e:build
                              # Playwright: desktop Chromium + iPhone 14 viewport,
                              # real server on :3100 + real worker, test DB, Redis DB 15,
                              # S3 storage from .env (run `pnpm infra:up` first)
@@ -96,10 +97,11 @@ The e2e and integration suites refuse to run if `TEST_DATABASE_URL` equals
 | Path                   | Purpose                                                                                                                            |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `apps/web`             | Next.js 15 App Router UI, server actions, route handlers                                                                           |
-| `apps/worker`          | BullMQ worker: session cleanup, image verification, audio analysis (AI and render jobs later)                                      |
+| `apps/worker`          | BullMQ worker: session cleanup, media verification/analysis, generation jobs (final render later)                                  |
 | `packages/db`          | Prisma schema, migrations, client                                                                                                  |
 | `packages/shared`      | Env validation, logger, queue names, consent texts, character presets                                                              |
 | `packages/storage`     | S3 client: streamed uploads, ranged reads, deletes, key scheme                                                                     |
+| `packages/providers`   | Provider contract, capabilities, cost estimates, Mock (FFmpeg) and Local-GPU stub                                                  |
 | `packages/media`       | Pure media logic: magic-byte sniffing, ffprobe validation, waveform peaks, silence parsing, tempo/beat estimation, scene proposals |
 | `scripts/fixtures.mjs` | Generates synthetic test media with FFmpeg (no binary fixtures in git)                                                             |
 

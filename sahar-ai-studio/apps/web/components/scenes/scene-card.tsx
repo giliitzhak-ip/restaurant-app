@@ -4,6 +4,7 @@ import { AlertTriangle, UserRound } from 'lucide-react';
 import { useActionState, useEffect, useState } from 'react';
 import { FormError } from '@/components/auth/form-message';
 import { PrivateImage } from '@/components/media/private-image';
+import { TakePlayer } from '@/components/studio/take-player';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -28,6 +29,7 @@ export interface SceneCardData {
   characterId: string | null;
   referenceImageId: string | null;
   prompt: string;
+  selectedTake: { assetId: string; takeNumber: number; isTestRender: boolean } | null;
 }
 
 const selectClass =
@@ -41,6 +43,7 @@ export function SceneCard({
   t,
   common,
   sceneLabel,
+  takeLabels,
 }: {
   scene: SceneCardData;
   characters: SceneCharacterOption[];
@@ -51,6 +54,7 @@ export function SceneCard({
   common: Dictionary['common'];
   /** e.g. "סצנה {n}" */
   sceneLabel: string;
+  takeLabels: { take: string; testBadge: string; download: string };
 }) {
   const [state, formAction, pending] = useActionState(action, {});
   const [characterId, setCharacterId] = useState(scene.characterId ?? '');
@@ -173,6 +177,19 @@ export function SceneCard({
           </div>
         </div>
       </form>
+      {scene.selectedTake ? (
+        <div className="mt-4 border-t border-border pt-4" data-testid="selected-take">
+          <p className="mb-2 text-sm font-medium">
+            {format(takeLabels.take, { n: scene.selectedTake.takeNumber })}
+          </p>
+          <TakePlayer
+            assetId={scene.selectedTake.assetId}
+            isTestRender={scene.selectedTake.isTestRender}
+            testBadge={takeLabels.testBadge}
+            downloadLabel={takeLabels.download}
+          />
+        </div>
+      ) : null}
     </li>
   );
 }

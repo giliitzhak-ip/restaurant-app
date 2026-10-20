@@ -417,6 +417,8 @@ model GenerationJob {
   failedAt             DateTime?
   cancelledAt          DateTime?
   attempts             Int                 @default(0)
+  /// 0..1 from the provider's real progress reports; null until the first report.
+  progress             Float?
   nextPollAt           DateTime?
   errorCode            String?
   errorMessage         String?

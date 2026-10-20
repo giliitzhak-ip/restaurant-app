@@ -17,6 +17,7 @@
     "@prisma/client": "6.19.3",
     "@sahar/db": "workspace:*",
     "@sahar/media": "workspace:*",
+    "@sahar/providers": "workspace:*",
     "@sahar/shared": "workspace:*",
     "@sahar/storage": "workspace:*",
     "bullmq": "^5.81.5",

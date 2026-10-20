@@ -41,6 +41,11 @@ export const serverEnvSchema = z.object({
 
   FFMPEG_PATH: z.string().default('ffmpeg'),
   FFPROBE_PATH: z.string().default('ffprobe'),
+  /** Fonts for the labels burned into technical test renders (must support Hebrew). */
+  MOCK_FONT_REGULAR: z.string().default('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'),
+  MOCK_FONT_BOLD: z.string().default('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'),
+  /** Renders are CPU-bound; raise only on machines with spare cores. */
+  GENERATION_CONCURRENCY: z.coerce.number().int().min(1).max(16).default(1),
 
   HEDRA_API_KEY: optionalString,
   FAL_KEY: optionalString,

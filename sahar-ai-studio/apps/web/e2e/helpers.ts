@@ -1,5 +1,12 @@
 import { expect, type Page } from '@playwright/test';
 
+/** In-memory file (lets tests use names the test machine's filesystem/locale cannot). */
+export interface FilePayload {
+  name: string;
+  mimeType: string;
+  buffer: Buffer;
+}
+
 export const PASSWORD = 'Sahar-Studio-2026!';
 
 export function uniqueEmail(prefix: string) {
@@ -23,7 +30,10 @@ export async function logout(page: Page) {
 }
 
 /** Creates a project through the real form (song streamed to storage, analysed by the worker). */
-export async function createProject(page: Page, { title, song }: { title: string; song: string }) {
+export async function createProject(
+  page: Page,
+  { title, song }: { title: string; song: string | FilePayload },
+) {
   await page.goto('/projects/new');
   await page.getByLabel('שם הקליפ').fill(title);
   await page.getByTestId('song-input').setInputFiles(song);

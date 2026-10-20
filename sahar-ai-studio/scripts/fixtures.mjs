@@ -76,7 +76,97 @@ export function ensureFixtures(dir) {
       Buffer.concat([Buffer.from([0xff, 0xfb, 0x90, 0x64]), Buffer.alloc(4096, 7)]),
     );
   }
+  // MP3 with embedded cover art (ID3 APIC → ffprobe shows an attached_pic video stream).
+  if (!existsSync(file('song-cover.mp3'))) {
+    run([
+      '-i',
+      file('song.wav'),
+      '-i',
+      file('reference.jpg'),
+      '-map',
+      '0:a',
+      '-map',
+      '1:v',
+      '-c:a',
+      'libmp3lame',
+      '-b:a',
+      '128k',
+      '-c:v',
+      'mjpeg',
+      '-disposition:v',
+      'attached_pic',
+      '-id3v2_version',
+      '3',
+      file('song-cover.mp3'),
+    ]);
+  }
+  if (!existsSync(file('song-48k-24bit-mono.wav'))) {
+    run([
+      '-i',
+      file('song.wav'),
+      '-ac',
+      '1',
+      '-ar',
+      '48000',
+      '-c:a',
+      'pcm_s24le',
+      file('song-48k-24bit-mono.wav'),
+    ]);
+  }
+  if (!existsSync(file('reference.webp'))) {
+    run([
+      '-f',
+      'lavfi',
+      '-i',
+      'testsrc2=size=640x800:rate=1',
+      '-frames:v',
+      '1',
+      '-c:v',
+      'libwebp',
+      file('reference.webp'),
+    ]);
+  }
+  // Random noise compresses badly: a multi-megabyte PNG for size-limit tests.
+  if (!existsSync(file('large.png'))) {
+    run([
+      '-f',
+      'lavfi',
+      '-i',
+      'nullsrc=s=1600x1600,geq=random(1)*255:random(2)*255:random(3)*255',
+      '-frames:v',
+      '1',
+      file('large.png'),
+    ]);
+  }
+  // A real MP4 and an HEIC-like header: both must be refused by content sniffing.
+  if (!existsSync(file('clip.mp4'))) {
+    run([
+      '-f',
+      'lavfi',
+      '-i',
+      'testsrc2=size=320x240:rate=25',
+      '-t',
+      '1',
+      '-c:v',
+      'libx264',
+      '-pix_fmt',
+      'yuv420p',
+      file('clip.mp4'),
+    ]);
+  }
+  if (!existsSync(file('photo.heic'))) {
+    writeFileSync(
+      file('photo.heic'),
+      Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from('ftypheic'), Buffer.alloc(2048, 1)]),
+    );
+  }
   return {
+    songCoverMp3: file('song-cover.mp3'),
+    songHiResWav: file('song-48k-24bit-mono.wav'),
+    referenceWebp: file('reference.webp'),
+    largePng: file('large.png'),
+    clipMp4: file('clip.mp4'),
+    heic: file('photo.heic'),
     songWav: file('song.wav'),
     songMp3: file('song.mp3'),
     referencePng: file('reference.png'),

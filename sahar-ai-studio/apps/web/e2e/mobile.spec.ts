@@ -79,3 +79,28 @@ test.describe('iPhone layout', () => {
     expect(handle.width).toBeGreaterThanOrEqual(24);
   });
 });
+
+test.describe('iPhone studio', () => {
+  test('generate a test video and get a playable, downloadable take on iPhone', async ({
+    page,
+  }) => {
+    await register(page, { name: 'אייפון', email: uniqueEmail('mobile-studio') });
+    await createProject(page, { title: 'נייד', song: fixture('song.mp3') });
+    await waitForSongReady(page);
+    await page.goto('/studio');
+    await expect(page.getByTestId('estimate-amount')).toHaveText('$0.00');
+    await page.getByTestId('approve-estimate').tap();
+    await page.getByTestId('generate').tap();
+    const row = page.getByTestId('job-row').first();
+    await expect(row).toHaveAttribute('data-status', 'COMPLETED', { timeout: 60_000 });
+    const video = page.getByTestId('take-video').first();
+    expect(await video.evaluate((v: HTMLVideoElement) => v.playsInline)).toBe(true);
+    await expect(page.getByTestId('take-download').first()).toHaveAttribute(
+      'href',
+      /\/api\/media\/.+\?download=1$/,
+    );
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+  });
+});

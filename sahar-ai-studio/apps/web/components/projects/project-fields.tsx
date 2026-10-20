@@ -48,7 +48,7 @@ export function ProjectFields({
           {(['LANDSCAPE_16_9', 'PORTRAIT_9_16'] as const).map((value) => (
             <label
               key={value}
-              className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border border-input bg-surface px-3 has-[:checked]:border-gold-400 has-[:checked]:bg-accent"
+              className="flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-input bg-surface px-3 has-[:checked]:border-gold-400 has-[:checked]:bg-accent"
             >
               <input
                 type="radio"
@@ -65,7 +65,7 @@ export function ProjectFields({
                     : 'h-7 w-4 rounded-sm border border-current'
                 }
               />
-              <span className="text-sm">{t.aspect[value]}</span>
+              <span className="text-sm whitespace-nowrap">{t.aspect[value]}</span>
             </label>
           ))}
         </div>

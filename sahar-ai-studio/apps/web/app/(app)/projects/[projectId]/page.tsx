@@ -62,7 +62,10 @@ export default async function ProjectPage({ params }: Params) {
         <ArrowRight className="size-4 ltr:rotate-180" aria-hidden />
         {p.back}
       </Link>
-      <PageHeader title={project.title} description={project.description || undefined} />
+      <PageHeader
+        title={<bdi>{project.title}</bdi>}
+        description={project.description || undefined}
+      />
 
       <div className="grid gap-4 lg:grid-cols-5">
         <Card className="lg:col-span-3" data-testid="song-card">

@@ -19,7 +19,9 @@ export type AuditAction =
   | 'project.create'
   | 'project.update'
   | 'project.delete'
-  | 'project.scenes.update';
+  | 'project.scenes.update'
+  | 'generation.request'
+  | 'generation.cancel';
 
 /** Writes an audit row. Audit failures are logged but never break the user's request. */
 export async function audit(entry: {
