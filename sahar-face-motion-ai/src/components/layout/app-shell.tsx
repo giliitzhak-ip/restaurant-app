@@ -39,8 +39,11 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 pb-28 md:pb-10">{children}</main>
-      <AiDisclosure />
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 md:pb-10">{children}</main>
+      {/* On phones the fixed tab bar covers the bottom ~70px: keep the footer (and its terms link) above it. */}
+      <div className="pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
+        <AiDisclosure />
+      </div>
 
       {/* Mobile bottom tab bar (iPhone) */}
       <nav

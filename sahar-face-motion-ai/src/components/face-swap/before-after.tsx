@@ -28,8 +28,8 @@ export function BeforeAfter({ beforeId, afterId, ratio }: { beforeId: string; af
     }
     before.currentTime = after.currentTime;
     before.muted = true; // one soundtrack only
-    await Promise.allSettled([after.play(), before.play()]);
-    setPlaying(true);
+    const res = await Promise.allSettled([after.play(), before.play()]);
+    setPlaying(res.some((r) => r.status === "fulfilled"));
   };
 
   const video = (id: string, ref: React.RefObject<HTMLVideoElement | null>, label: string, ai: boolean, controls: boolean) => (

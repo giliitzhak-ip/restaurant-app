@@ -34,6 +34,7 @@ test("face swap: upload, pick person, consent, quote, explicit approval, job tra
 
   // Free Mode is on; engines that can't run here are shown as unavailable, never faked.
   await expect(page.getByRole("link", { name: "מצב חינמי" })).toBeVisible();
+  await page.getByRole("button", { name: /Mock/ }).click(); // this test exercises the flow with the free mock engine
   await expect(page.getByRole("button", { name: /Mock/ })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("button", { name: /Magic Hour/ })).toBeDisabled();
   await expect(page.getByText("לא זמין: חסר מפתח API בשרת")).toBeVisible();
