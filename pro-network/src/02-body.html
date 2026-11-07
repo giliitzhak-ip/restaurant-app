@@ -1,0 +1,26 @@
+
+<div dir="rtl" lang="he" id="app">
+  <header class="top">
+    <div class="top-in">
+      <button class="brand" data-act="home" aria-label="PRO NETWORK – דף הבית">
+        <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="#11B5AD"/><g stroke="#0B1B33" stroke-width="2.2" fill="none" stroke-linecap="round"><path d="M10 23 17 11l7 12z"/></g><g fill="#0B1B33"><circle cx="17" cy="11" r="3.2"/><circle cx="10" cy="23" r="3.2"/><circle cx="24" cy="23" r="3.2"/></g></svg>
+        <span><b>PRO NETWORK</b><small>רשת בעלי המקצוע של ישראל</small></span>
+      </button>
+      <div class="roles" role="group" aria-label="בחירת ממשק">
+        <button data-role="customer">לקוח</button>
+        <button data-role="pro">בעל מקצוע</button>
+        <button data-role="admin">מנהל</button>
+      </div>
+    </div>
+  </header>
+  <div class="demo-strip">אב־טיפוס להדגמה · <b>כל הנתונים, ההודעות והתשלומים מדומים</b> · שום מידע לא נשלח החוצה</div>
+  <nav class="tabs" id="tabs" aria-label="ניווט ראשי"></nav>
+  <main id="view" tabindex="-1"></main>
+  <button class="fab" id="fab" data-act="guide"></button>
+  <div class="scrim" id="scrim" data-act="close-sheet"></div>
+  <aside class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div class="sheet-h"><h2 id="sheet-title"></h2><button class="icon-btn" data-act="close-sheet" aria-label="סגירה">✕</button></div>
+    <div class="sheet-b" id="sheet-body"></div>
+  </aside>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</div>

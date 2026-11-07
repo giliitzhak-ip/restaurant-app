@@ -1,0 +1,1657 @@
+<title>PRO NETWORK</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#0B1B33">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&family=Rubik:wght@500;600;700&display=swap">
+<style>
+/* Layout: app shell — navy top bar, role-specific views, bottom tab bar on phones that becomes a top tab strip on wide screens. */
+:root{
+  --bg:#F2F5F9; --surface:#FFFFFF; --surface-2:#E9EFF5; --ink:#0B1B33; --ink-2:#4B5D76; --ink-3:#7A8BA2; --line:#D6DFE9;
+  --navy:#0B1B33; --navy-2:#132B4D; --on-navy:#F4F8FC; --on-navy-2:#A9BBD3;
+  --teal:#11B5AD; --teal-ink:#07807A; --teal-soft:#D9F3F1; --on-teal:#04201E;
+  --ok:#17875B; --ok-soft:#DDF3E9; --warn:#A86B00; --warn-soft:#FBEFD6; --bad:#C63B3B; --bad-soft:#FBE2E2; --info:#2F5FD0; --info-soft:#E1E9FB;
+  --shadow:0 1px 2px rgba(11,27,51,.06),0 6px 20px rgba(11,27,51,.06);
+  --f-display:"Rubik","Heebo",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --f-body:"Heebo",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --r:14px; --r-sm:10px; --tab-h:64px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#06111E; --surface:#0D1C30; --surface-2:#13263F; --ink:#E8F0F8; --ink-2:#A2B4CB; --ink-3:#71849D; --line:#1E3452;
+  --navy:#081627; --navy-2:#11243F; --on-navy:#F4F8FC; --on-navy-2:#9FB2CB;
+  --teal:#2CD3C8; --teal-ink:#5DE6DB; --teal-soft:#0E3A42; --on-teal:#03201E;
+  --ok:#43C78F; --ok-soft:#0F3527; --warn:#E9B04B; --warn-soft:#3A2A0C; --bad:#F07575; --bad-soft:#3D1717; --info:#86A8F5; --info-soft:#17284D;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25); color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#06111E; --surface:#0D1C30; --surface-2:#13263F; --ink:#E8F0F8; --ink-2:#A2B4CB; --ink-3:#71849D; --line:#1E3452;
+  --navy:#081627; --navy-2:#11243F; --on-navy:#F4F8FC; --on-navy-2:#9FB2CB;
+  --teal:#2CD3C8; --teal-ink:#5DE6DB; --teal-soft:#0E3A42; --on-teal:#03201E;
+  --ok:#43C78F; --ok-soft:#0F3527; --warn:#E9B04B; --warn-soft:#3A2A0C; --bad:#F07575; --bad-soft:#3D1717; --info:#86A8F5; --info-soft:#17284D;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25); color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg)}
+body{color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:60;background:var(--navy)}
+h1,h2,h3,h4{font-family:var(--f-display);margin:0;text-wrap:balance;line-height:1.2}
+h1{font-size:clamp(26px,6vw,40px);font-weight:700}
+h2{font-size:20px;font-weight:600}
+h3{font-size:16px;font-weight:600}
+p{margin:0}
+a{color:var(--teal-ink)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--ink-2)}
+.small{font-size:13px}
+.xs{font-size:12px}
+.label{font-size:12px;letter-spacing:.06em;font-weight:500;color:var(--ink-3)}
+.ltr{direction:ltr;unicode-bidi:isolate;display:inline-block}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:50;background:var(--navy);color:var(--on-navy);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.top-in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:12px;padding-block:10px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;background:none;border:0;padding:0;cursor:pointer;color:inherit}
+.brand b{font-family:var(--f-display);font-weight:700;letter-spacing:.08em;font-size:16px;direction:ltr}
+.brand small{display:block;font-size:11px;color:var(--on-navy-2);line-height:1.1}
+.brand svg{flex:none}
+.roles{margin-inline-start:auto;display:flex;background:var(--navy-2);border-radius:12px;padding:3px;gap:2px}
+.roles button{border:0;background:transparent;color:var(--on-navy-2);padding:7px 12px;border-radius:9px;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap}
+.roles button[aria-pressed="true"]{background:var(--teal);color:var(--on-teal)}
+.demo-strip{background:var(--navy-2);color:var(--on-navy-2);font-size:12px;text-align:center;padding:4px 16px}
+.demo-strip b{color:var(--teal)}
+
+/* tabs */
+.tabs{position:fixed;inset:auto 0 0 0;z-index:40;background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding-bottom:env(safe-area-inset-bottom,0px);padding-left:max(4px,env(safe-area-inset-left,0px));padding-right:max(4px,env(safe-area-inset-right,0px))}
+.tabs button{flex:1;min-width:0;border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 2px 8px;font-size:11px;color:var(--ink-3);cursor:pointer;position:relative}
+.tabs button[aria-current="page"]{color:var(--teal-ink)}
+.tabs button[aria-current="page"]::before{content:"";position:absolute;top:0;inset-inline:28%;height:3px;border-radius:0 0 3px 3px;background:var(--teal)}
+.tabs .badge{position:absolute;top:5px;inset-inline-start:calc(50% + 6px);background:var(--bad);color:#fff;border-radius:9px;font-size:10px;min-width:17px;height:17px;line-height:17px;padding:0 4px}
+main{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px calc(var(--tab-h) + 90px + env(safe-area-inset-bottom,0px))}
+@media (min-width:900px){
+  .tabs{position:sticky;top:calc(env(safe-area-inset-top,0px) + 58px);inset:auto;border-top:0;border-bottom:1px solid var(--line);justify-content:center;gap:4px;padding:0 16px}
+  .tabs button{flex:none;flex-direction:row;gap:8px;font-size:14px;padding:12px 16px}
+  .tabs button[aria-current="page"]::before{top:auto;bottom:0;inset-inline:10px;border-radius:3px 3px 0 0}
+  .tabs .badge{position:static}
+  main{padding-block:24px 110px}
+}
+
+/* primitives */
+.stack{display:flex;flex-direction:column;gap:14px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.between{justify-content:space-between}
+.grow{flex:1;min-width:0}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.kpis{display:grid;gap:10px;grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (min-width:700px){.kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;min-width:0}
+.card.flat{box-shadow:none}
+.card.pop{box-shadow:var(--shadow);border-color:transparent}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;min-width:0}
+.kpi .v{font-family:var(--f-display);font-size:24px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:4px;line-height:1.1}
+.kpi .s{font-size:12px;color:var(--ink-2);margin-top:4px}
+.section-h{display:flex;align-items:end;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.hr{height:1px;background:var(--line);border:0;margin:4px 0}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 18px;border-radius:12px;border:1px solid transparent;background:var(--teal);color:var(--on-teal);font-weight:700;font-size:15px;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn:active{transform:translateY(1px)}
+.btn.sm{min-height:36px;padding:0 12px;font-size:13px;border-radius:10px;font-weight:500}
+.btn.ghost{background:var(--surface);border-color:var(--line);color:var(--ink)}
+.btn.navy{background:var(--navy);color:var(--on-navy)}
+.btn.danger{background:var(--bad-soft);color:var(--bad)}
+.btn.okb{background:var(--ok-soft);color:var(--ok)}
+.btn.block{width:100%}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.icon-btn{border:0;background:var(--surface-2);width:38px;height:38px;border-radius:10px;display:inline-grid;place-items:center;cursor:pointer;color:var(--ink)}
+
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;padding:3px 9px;border-radius:999px;white-space:nowrap;background:var(--surface-2);color:var(--ink-2)}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.8}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.pill.info{background:var(--info-soft);color:var(--info)}
+.pill.teal{background:var(--teal-soft);color:var(--teal-ink)}
+.pill.plain::before{display:none}
+.sim{font-size:10px;font-weight:700;letter-spacing:.05em;color:var(--warn);background:var(--warn-soft);border-radius:6px;padding:1px 6px;white-space:nowrap}
+
+/* forms */
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field>span{font-size:13px;font-weight:500;color:var(--ink-2)}
+.field>span i{color:var(--bad);font-style:normal}
+.input,select.input,textarea.input{width:100%;min-height:48px;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 14px;font-size:16px;outline:none}
+textarea.input{min-height:110px;resize:vertical}
+.input:focus{border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-soft)}
+.input.err{border-color:var(--bad)}
+.ferr{color:var(--bad);font-size:12px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 14px;cursor:pointer;font-size:14px;text-align:start;min-height:44px}
+.chip[aria-pressed="true"]{border-color:var(--teal);background:var(--teal-soft);color:var(--ink);font-weight:500}
+.chip small{display:block;font-size:12px;color:var(--ink-2)}
+.check{display:flex;gap:10px;align-items:flex-start;background:var(--surface-2);border-radius:12px;padding:12px;cursor:pointer}
+.check input{width:22px;height:22px;accent-color:var(--teal);flex:none;margin-top:1px}
+.switch{position:relative;width:52px;height:30px;flex:none}
+.switch input{opacity:0;position:absolute;inset:0;margin:0;cursor:pointer;z-index:1}
+.switch span{position:absolute;inset:0;background:var(--line);border-radius:30px;transition:background .2s}
+.switch span::after{content:"";position:absolute;top:3px;inset-inline-start:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.switch input:checked+span{background:var(--teal)}
+.switch input:checked+span::after{transform:translateX(-22px)}
+.upload{border:1.5px dashed var(--line);border-radius:12px;padding:16px;text-align:center;cursor:pointer;display:block;color:var(--ink-2)}
+.upload img{max-height:160px;border-radius:10px;margin:0 auto 8px;display:block}
+.filters{display:grid;gap:8px;grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (min-width:800px){.filters{grid-template-columns:2fr repeat(5,minmax(0,1fr))}}
+.filters .input{min-height:42px;font-size:14px;padding:8px 10px}
+
+/* hero */
+.hero{background:var(--navy);color:var(--on-navy);border-radius:20px;padding:24px 18px;position:relative;overflow:hidden}
+.hero canvas{position:absolute;inset:0;width:100%;height:100%;opacity:.4;pointer-events:none}
+.hero>*:not(canvas){position:relative}
+.hero p{color:var(--on-navy-2);max-width:52ch;margin-top:8px}
+.hero .search{margin-top:18px;display:grid;gap:8px;grid-template-columns:1fr}
+@media (min-width:700px){.hero{padding:40px 36px}.hero .search{grid-template-columns:1.4fr 1fr auto}}
+.hero .input{background:var(--surface);color:var(--ink);border-color:transparent}
+.trust{display:flex;gap:16px;flex-wrap:wrap;margin-top:16px;font-size:13px;color:var(--on-navy-2)}
+.trust span{display:flex;gap:6px;align-items:center}
+.trust svg{color:var(--teal)}
+.cats{display:grid;gap:10px;grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (min-width:700px){.cats{grid-template-columns:repeat(7,minmax(0,1fr))}}
+.cat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:500;text-align:center;min-height:92px}
+.cat .ic{width:40px;height:40px;border-radius:12px;background:var(--teal-soft);color:var(--teal-ink);display:grid;place-items:center}
+.steps{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.step{display:flex;gap:12px;align-items:flex-start}
+.step .n{width:30px;height:30px;border-radius:50%;background:var(--navy);color:var(--on-navy);font-family:var(--f-display);font-weight:600;display:grid;place-items:center;flex:none}
+
+/* responsive table */
+.tbl-wrap{overflow-x:auto}
+table.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th{text-align:start;font-weight:500;font-size:12px;color:var(--ink-3);padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl td{padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+.tbl tr.click{cursor:pointer}
+.tbl tr.click:hover td{background:var(--surface-2)}
+@media (max-width:760px){
+  table.tbl.cards thead{display:none}
+  table.tbl.cards,table.tbl.cards tbody,table.tbl.cards tr,table.tbl.cards td{display:block;width:100%}
+  table.tbl.cards tr{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:8px 12px;margin-bottom:10px}
+  table.tbl.cards td{border:0;padding:5px 0;display:flex;justify-content:space-between;gap:12px;align-items:center;text-align:end}
+  table.tbl.cards td::before{content:attr(data-l);font-size:12px;color:var(--ink-3);text-align:start;flex:none}
+  table.tbl.cards td[data-l=""]::before{display:none}
+  .tbl-wrap.cards-wrap{overflow:visible}
+}
+
+/* list items */
+.item{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:0}
+.avatar{width:42px;height:42px;border-radius:12px;background:var(--navy-2);color:var(--on-navy);display:grid;place-items:center;font-family:var(--f-display);font-weight:600;flex:none}
+.stars{color:#E3A008;letter-spacing:1px;font-size:13px}
+.bar{height:8px;border-radius:8px;background:var(--surface-2);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--teal);border-radius:8px}
+.hbars{display:flex;flex-direction:column;gap:10px}
+.hbar{display:grid;grid-template-columns:110px 1fr auto;gap:10px;align-items:center;font-size:13px}
+.hbar .bar{height:12px}
+.timeline{list-style:none;margin:0;padding:0;position:relative}
+.timeline li{position:relative;padding:0 26px 14px 0}
+.timeline li::before{content:"";position:absolute;right:6px;top:6px;width:10px;height:10px;border-radius:50%;background:var(--teal)}
+.timeline li::after{content:"";position:absolute;right:10px;top:18px;bottom:0;width:2px;background:var(--line)}
+.timeline li:last-child::after{display:none}
+.progress{display:flex;gap:4px}
+.progress i{flex:1;height:6px;border-radius:4px;background:var(--surface-2)}
+.progress i.on{background:var(--teal)}
+.score{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;font-size:12px}
+.score .bar{height:6px}
+.calc{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:14px}
+.calc .t{font-weight:700;border-top:1px solid var(--line);padding-top:6px}
+.empty{text-align:center;padding:28px 12px;color:var(--ink-2)}
+.empty svg{color:var(--ink-3);margin-bottom:8px}
+.notice{border-radius:12px;padding:12px 14px;font-size:13px;display:flex;gap:10px;align-items:flex-start}
+.notice.warn{background:var(--warn-soft);color:var(--ink)}
+.notice.info{background:var(--info-soft);color:var(--ink)}
+.notice.ok{background:var(--ok-soft);color:var(--ink)}
+.notice.bad{background:var(--bad-soft);color:var(--ink)}
+.notice svg{flex:none;margin-top:1px}
+.menu-list{display:flex;flex-direction:column}
+.menu-list button{display:flex;align-items:center;gap:12px;border:0;background:none;padding:14px 4px;border-bottom:1px solid var(--line);text-align:start;cursor:pointer;font-size:15px}
+.menu-list button:last-child{border-bottom:0}
+.menu-list .ic{width:36px;height:36px;border-radius:10px;background:var(--teal-soft);color:var(--teal-ink);display:grid;place-items:center;flex:none}
+
+/* sheet + toast */
+.scrim{position:fixed;inset:0;background:rgba(4,12,24,.5);z-index:80;opacity:0;pointer-events:none;transition:opacity .2s}
+.scrim.open{opacity:1;pointer-events:auto}
+.sheet{position:fixed;z-index:90;inset:auto 0 0 0;max-height:88%;background:var(--bg);border-radius:20px 20px 0 0;transform:translateY(105%);transition:transform .25s ease;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom,0px)}
+.sheet.open{transform:none}
+.sheet-h{display:flex;align-items:center;gap:10px;padding:14px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--line)}
+.sheet-h h2{flex:1;min-width:0}
+.sheet-b{overflow:auto;padding:16px max(16px,env(safe-area-inset-right,0px)) 24px max(16px,env(safe-area-inset-left,0px));-webkit-overflow-scrolling:touch}
+@media (min-width:900px){.sheet{inset:0 auto 0 0;width:560px;max-height:none;border-radius:0;transform:translateX(-105%)}.sheet.open{transform:none}}
+.toast{position:fixed;z-index:100;left:50%;bottom:calc(var(--tab-h) + 16px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--navy);color:var(--on-navy);padding:12px 18px;border-radius:12px;font-size:14px;opacity:0;transition:all .25s;pointer-events:none;max-width:calc(100% - 32px);box-shadow:var(--shadow)}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast.bad{background:var(--bad);color:#fff}
+.fab{position:fixed;z-index:45;left:max(16px,env(safe-area-inset-left,0px));bottom:calc(var(--tab-h) + 14px + env(safe-area-inset-bottom,0px));background:var(--navy);color:var(--on-navy);border:2px solid var(--teal);border-radius:999px;padding:10px 14px;display:flex;gap:8px;align-items:center;font-weight:700;font-size:13px;cursor:pointer;box-shadow:var(--shadow)}
+.fab .prog{background:var(--teal);color:var(--on-teal);border-radius:999px;padding:0 7px;font-size:12px}
+@media (max-width:599px){.fab .fab-t{display:none}.fab{padding:8px 10px}}
+@media (min-width:900px){.fab{bottom:24px}.toast{bottom:24px}}
+.guide-step{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--line)}
+.guide-step .dot{width:28px;height:28px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;flex:none;font-size:13px;font-weight:700;font-family:var(--f-display)}
+.guide-step.done .dot{background:var(--teal);border-color:var(--teal);color:var(--on-teal)}
+.guide-step.next{background:var(--teal-soft);margin-inline:-10px;padding-inline:10px;border-radius:12px;border-bottom-color:transparent}
+.spinner{width:18px;height:18px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div dir="rtl" lang="he" id="app">
+  <header class="top">
+    <div class="top-in">
+      <button class="brand" data-act="home" aria-label="PRO NETWORK – דף הבית">
+        <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="#11B5AD"/><g stroke="#0B1B33" stroke-width="2.2" fill="none" stroke-linecap="round"><path d="M10 23 17 11l7 12z"/></g><g fill="#0B1B33"><circle cx="17" cy="11" r="3.2"/><circle cx="10" cy="23" r="3.2"/><circle cx="24" cy="23" r="3.2"/></g></svg>
+        <span><b>PRO NETWORK</b><small>רשת בעלי המקצוע של ישראל</small></span>
+      </button>
+      <div class="roles" role="group" aria-label="בחירת ממשק">
+        <button data-role="customer">לקוח</button>
+        <button data-role="pro">בעל מקצוע</button>
+        <button data-role="admin">מנהל</button>
+      </div>
+    </div>
+  </header>
+  <div class="demo-strip">אב־טיפוס להדגמה · <b>כל הנתונים, ההודעות והתשלומים מדומים</b> · שום מידע לא נשלח החוצה</div>
+  <nav class="tabs" id="tabs" aria-label="ניווט ראשי"></nav>
+  <main id="view" tabindex="-1"></main>
+  <button class="fab" id="fab" data-act="guide"></button>
+  <div class="scrim" id="scrim" data-act="close-sheet"></div>
+  <aside class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div class="sheet-h"><h2 id="sheet-title"></h2><button class="icon-btn" data-act="close-sheet" aria-label="סגירה">✕</button></div>
+    <div class="sheet-b" id="sheet-body"></div>
+  </aside>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</div>
+<script>
+/* ============================================================
+   PRO NETWORK — core: reference data, demo seed, matching engine,
+   commission engine, store. No network calls anywhere.
+   ============================================================ */
+'use strict';
+
+const VAT = 0.18;                    // Israeli VAT rate (2025+)
+const LARGE_PROJECT_THRESHOLD = 50000; // ₪ excl. VAT
+const MAX_OFFERS = 3;                 // providers that receive each lead
+
+const REGIONS = {
+  north: 'צפון', haifa: 'חיפה והקריות', sharon: 'השרון', center: 'מרכז וגוש דן',
+  shfela: 'השפלה', jerusalem: 'ירושלים והסביבה', south: 'דרום'
+};
+const CITIES = [
+  ['תל אביב-יפו','center'],['רמת גן','center'],['גבעתיים','center'],['חולון','center'],['בת ים','center'],
+  ['פתח תקווה','center'],['בני ברק','center'],['ראש העין','center'],['אריאל','center'],
+  ['ראשון לציון','shfela'],['רחובות','shfela'],['נס ציונה','shfela'],['מודיעין','shfela'],['רמלה','shfela'],['לוד','shfela'],
+  ['ירושלים','jerusalem'],['בית שמש','jerusalem'],['מבשרת ציון','jerusalem'],['מעלה אדומים','jerusalem'],
+  ['נתניה','sharon'],['הרצליה','sharon'],['רעננה','sharon'],['כפר סבא','sharon'],['הוד השרון','sharon'],['חדרה','sharon'],
+  ['חיפה','haifa'],['קריית ביאליק','haifa'],['קריית אתא','haifa'],['נשר','haifa'],['טירת כרמל','haifa'],
+  ['עפולה','north'],['נצרת','north'],['טבריה','north'],['כרמיאל','north'],['נהריה','north'],['צפת','north'],['קריית שמונה','north'],
+  ['אשדוד','south'],['אשקלון','south'],['באר שבע','south'],['קריית גת','south'],['דימונה','south'],['אילת','south']
+];
+const CITY_REGION = Object.fromEntries(CITIES);
+
+const TIERS = {
+  small:   { name: 'תיקונים קטנים',   min: 10, max: 15, def: 12 },
+  service: { name: 'הדברה וניקיון',    min: 10, max: 15, def: 12 },
+  tech:    { name: 'מצלמות ומיזוג',    min: 8,  max: 12, def: 10 },
+  reno:    { name: 'שיפוצים',          min: 5,  max: 8,  def: 6 },
+  large:   { name: 'פרויקטים גדולים',  min: 3,  max: 5,  def: 4 }
+};
+
+const CATS = [
+  { id:'plumbing', name:'אינסטלציה',        icon:'drop',   tier:'small' },
+  { id:'electric', name:'חשמל',              icon:'bolt',   tier:'small',   license:'רישיון חשמלאי (משרד העבודה)' },
+  { id:'ac',       name:'מיזוג אוויר',       icon:'snow',   tier:'tech',    license:'תעודת טכנאי קירור ומיזוג' },
+  { id:'pest',     name:'הדברה',             icon:'bug',    tier:'service', license:'היתר מדביר (המשרד להגנת הסביבה)' },
+  { id:'reno',     name:'שיפוצים',           icon:'brick',  tier:'reno' },
+  { id:'cameras',  name:'מצלמות אבטחה',      icon:'cam',    tier:'tech' },
+  { id:'cleaning', name:'ניקיון',            icon:'spark',  tier:'service' },
+  { id:'garden',   name:'גינון',             icon:'leaf',   tier:'service' },
+  { id:'locks',    name:'מנעולנות',          icon:'key',    tier:'small' },
+  { id:'paint',    name:'צביעה',             icon:'brush',  tier:'small' },
+  { id:'appliance',name:'מכשירי חשמל',       icon:'tool',   tier:'small' },
+  { id:'solar',    name:'דודים וסולארי',     icon:'sun',    tier:'tech' },
+  { id:'aluminum', name:'אלומיניום וזגגות',  icon:'window', tier:'reno' },
+  { id:'moving',   name:'הובלות',            icon:'truck',  tier:'service' }
+];
+const CAT = Object.fromEntries(CATS.map(c => [c.id, c]));
+
+const URGENCY = {
+  now:  { name:'דחוף – היום',     hint:'תקלה שמונעת שימוש', hours:6 },
+  soon: { name:'תוך 48 שעות',     hint:'צריך בקרוב',        hours:48 },
+  week: { name:'השבוע',           hint:'בימים הקרובים',     hours:168 },
+  flex: { name:'גמיש',            hint:'אין לחץ זמן',        hours:720 }
+};
+
+const STATUS = {
+  pending_info: { name:'חסרים פרטים',          tone:'warn' },
+  no_consent:   { name:'ממתין להסכמת לקוח',    tone:'warn' },
+  unmatched:    { name:'אין התאמה',            tone:'bad'  },
+  matched:      { name:'נשלח לבעלי מקצוע',     tone:'info' },
+  accepted:     { name:'בעל מקצוע שובץ',       tone:'teal' },
+  quoted:       { name:'התקבלה הצעת מחיר',     tone:'teal' },
+  approved:     { name:'הלקוח אישר',           tone:'ok'   },
+  in_progress:  { name:'בביצוע',               tone:'ok'   },
+  completed:    { name:'הושלם',                tone:'ok'   },
+  closed:       { name:'שולם ונסגר',           tone:'plain'},
+  cancelled:    { name:'בוטל',                 tone:'bad'  }
+};
+const FLOW = ['matched','accepted','quoted','approved','in_progress','completed','closed'];
+
+const COMM_STATUS = {
+  none:      { name:'אין עמלה',        tone:'plain' },
+  accruing:  { name:'נצברת',           tone:'info'  },
+  due:       { name:'לגבייה',          tone:'warn'  },
+  collected: { name:'נגבתה',           tone:'ok'    },
+  disputed:  { name:'במחלוקת',         tone:'bad'   },
+  waived:    { name:'בוטלה',           tone:'plain' }
+};
+
+/* ---------- utils ---------- */
+const DAY = 864e5;
+const now = () => Date.now();
+const uid = (p) => p + Math.random().toString(36).slice(2, 8);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ils = (n) => '₪' + Math.round(n || 0).toLocaleString('he-IL');
+const ils2 = (n) => '₪' + (Math.round((n || 0) * 100) / 100).toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const pct = (x, d = 0) => (x * 100).toFixed(d) + '%';
+const fdate = (t) => new Date(t).toLocaleDateString('he-IL', { day:'numeric', month:'numeric', year:'2-digit' });
+const ftime = (t) => new Date(t).toLocaleString('he-IL', { day:'numeric', month:'numeric', hour:'2-digit', minute:'2-digit' });
+const ago = (t) => { const m = Math.round((now() - t) / 6e4); if (m < 1) return 'עכשיו'; if (m < 60) return `לפני ${m} דק׳`; const h = Math.round(m / 60); if (h < 24) return `לפני ${h} שע׳`; return `לפני ${Math.round(h / 24)} ימים`; };
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const initials = (name) => name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('');
+const maskName = (name) => { const p = name.trim().split(/\s+/); return p[0] + (p[1] ? ' ' + p[1][0] + '.' : ''); };
+const maskPhone = (ph) => ph.replace(/\d(?=\d{2})/g, '•');
+const validPhone = (ph) => /^0(5\d|[2-4]|[8-9]|7\d)-?\d{7}$/.test(ph.replace(/\s/g, ''));
+
+/* ---------- demo seed ---------- */
+function seed() {
+  const P = (id, name, business, cats, cities, regions, o = {}) => ({
+    id, name, business, cats, cities, regions,
+    phone: o.phone || '050-0000000', approved: o.approved ?? true, active: o.active ?? true,
+    licenseVerified: o.lic ?? true, available: o.available ?? true, nextSlotH: o.slot ?? 24,
+    acceptRate: o.acc ?? 0.8, offers30: o.off ?? 6, rating: o.rating ?? 4.6,
+    agreementRate: o.rate ?? null, joined: now() - (o.joinedDays ?? 200) * DAY,
+    reviews: o.reviews || [], demo: true
+  });
+  const R = (who, stars, text, days) => ({ who, stars, text, at: now() - days * DAY });
+  const providers = [
+    P('p1','אבי כהן','כהן אינסטלציה',['plumbing','solar'],['תל אביב-יפו','רמת גן','גבעתיים'],['center'],{slot:4,acc:.86,off:9,rating:4.8,phone:'052-3141592',reviews:[R('מיכל ש.',5,'הגיע תוך שעה, פתר נזילה מתחת לכיור. מקצועי ונקי.',12),R('רון ד.',5,'מחיר הוגן והסביר הכל.',40)]}),
+    P('p2','יוסי לוי','לוי חשמל ובקרה',['electric','cameras'],['תל אביב-יפו','חולון','בת ים'],['center','shfela'],{slot:6,acc:.74,off:11,rating:4.5,phone:'054-2718281',reviews:[R('דנה ל.',4,'עבודה טובה, קצת איחור.',8)]}),
+    P('p3','מוחמד חסן','קור פלוס מיזוג',['ac'],['חיפה','קריית ביאליק','נשר','קריית אתא'],['haifa'],{slot:24,acc:.91,off:5,rating:4.9,phone:'053-1123581',reviews:[R('אורי ב.',5,'ניקה ומילא גז, המזגן כמו חדש.',20)]}),
+    P('p4','שרון אברהם','אברהם שיפוצים',['reno','paint','aluminum'],['ירושלים','מבשרת ציון','בית שמש'],['jerusalem'],{slot:72,acc:.62,off:4,rating:4.4,rate:5.5,phone:'058-7654321'}),
+    P('p5','דוד מזרחי','מזרחי הדברות',['pest'],['באר שבע','דימונה'],['south'],{slot:12,acc:.8,off:3,rating:4.7,phone:'050-5550101'}),
+    P('p6','נועה פרידמן','ניקיון ברק',['cleaning'],['נתניה','הרצליה','רעננה','כפר סבא'],['sharon'],{slot:24,acc:.88,off:7,rating:4.8,phone:'052-8889900',reviews:[R('גלית מ.',5,'ניקיון אחרי שיפוץ ברמה גבוהה.',5)]}),
+    P('p7','עומר בן דוד','מנעולן 24/7',['locks'],['תל אביב-יפו','רמת גן','בני ברק','פתח תקווה'],['center'],{slot:1,acc:.95,off:14,rating:4.6,phone:'054-1010101'}),
+    P('p8','איתי גולן','גולן מערכות אבטחה',['cameras','electric'],['ראשון לציון','רחובות','נס ציונה'],['shfela','center'],{slot:48,acc:.7,off:5,rating:4.3,lic:false,phone:'050-3030303'}),
+    P('p9','רינה אוחיון','גינות אוחיון',['garden'],['מודיעין','רמלה','לוד'],['shfela'],{slot:72,acc:.66,off:2,rating:4.5,phone:'053-4040404'}),
+    P('p10','אלכס פטרוב','פטרוב מיזוג',['ac','appliance'],['תל אביב-יפו','חולון','ראשון לציון'],['center'],{slot:24,acc:.78,off:8,rating:4.6,phone:'052-6060606'}),
+    P('p11','חיים ביטון','ביטון אינסטלציה',['plumbing'],['אשדוד','אשקלון','קריית גת'],['south'],{slot:6,acc:.83,off:4,rating:4.7,phone:'050-7070707'}),
+    P('p12','סאמר ח׳ורי','ח׳ורי בנייה ושיפוצים',['reno','paint'],['חיפה','טירת כרמל'],['haifa','north'],{slot:120,acc:.58,off:3,rating:4.2,rate:5,phone:'054-8080808'}),
+    P('p13','מאיה רוזן','רוזן חשמל',['electric'],['נתניה','חדרה'],['sharon'],{slot:24,acc:.81,off:4,rating:4.7,approved:false,joinedDays:3,phone:'052-9090909'}),
+    P('p14','גיל שטרן','שטרן הובלות',['moving'],['תל אביב-יפו'],['center','sharon','shfela'],{slot:48,acc:.72,off:6,rating:4.4,phone:'050-1212121'}),
+    P('p15','בני עזרא','עזרא דודי שמש',['solar','plumbing'],['ירושלים'],['jerusalem'],{slot:24,acc:.77,off:5,rating:4.5,available:false,phone:'058-1313131'}),
+    P('p16','לילך נחום','נחום הדברה ירוקה',['pest','garden'],['תל אביב-יפו','רמת גן','הרצליה'],['center','sharon'],{slot:24,acc:.84,off:6,rating:4.8,phone:'053-1414141'})
+  ];
+  providers.forEach(p => { if (p.reviews.length) p.rating = +(p.reviews.reduce((a, r) => a + r.stars, 0) / p.reviews.length * .5 + p.rating * .5).toFixed(1); });
+
+  let n = 1040;
+  const L = (o) => {
+    const t = now() - o.days * DAY;
+    const lead = {
+      id: uid('l'), code: 'PN-' + (n++), created: t, demo: true,
+      customer: { name: o.name, phone: o.phone, email: '', address: o.address || '' },
+      cat: o.cat, city: o.city, urgency: o.urg || 'soon', desc: o.desc, image: null, consent: true,
+      status: 'matched', offers: [], assignedTo: null, quote: null, payments: [], commission: { status: 'none' },
+      review: null, history: [{ at: t, text: 'הבקשה נקלטה במערכת' }]
+    };
+    return lead;
+  };
+  const leads = [
+    L({days:0.1,name:'רותם ישראלי',phone:'052-1234567',cat:'plumbing',city:'רמת גן',urg:'now',desc:'נזילה חזקה מתחת לכיור במטבח, הברז הראשי סגור כרגע.'}),
+    L({days:0.4,name:'שירה כץ',phone:'054-7654321',cat:'ac',city:'חיפה',urg:'soon',desc:'מזגן בסלון מטפטף מים ולא מקרר. דגם אלקטרה 1.5 כ״ס.'}),
+    L({days:1.2,name:'משה דהן',phone:'050-2223344',cat:'electric',city:'חולון',urg:'soon',desc:'קפיצות של הפחת כשמפעילים את התנור והמדיח יחד.'}),
+    L({days:2,name:'תמר לוין',phone:'053-9988776',cat:'cleaning',city:'הרצליה',urg:'week',desc:'ניקיון דירת 4 חדרים לאחר שיפוץ, כולל חלונות.'}),
+    L({days:3,name:'אלון שגיא',phone:'052-5556677',cat:'reno',city:'ירושלים',urg:'flex',desc:'שיפוץ חדר רחצה מלא: ריצוף, חיפוי, כלים סניטריים.'}),
+    L({days:5,name:'יעל ברק',phone:'054-1112233',cat:'locks',city:'בני ברק',urg:'now',desc:'ננעלתי מחוץ לדירה, המפתח בפנים.'}),
+    L({days:7,name:'אורן מלכה',phone:'050-4445566',cat:'pest',city:'באר שבע',urg:'soon',desc:'ג׳וקים במטבח ובחדר הרחצה, דירה בקומה 2.'}),
+    L({days:9,name:'נטע אלמוג',phone:'053-6667788',cat:'cameras',city:'ראשון לציון',urg:'week',desc:'התקנת 4 מצלמות חוץ ו־DVR לבית פרטי.'}),
+    L({days:12,name:'קרן שמעוני',phone:'052-7778899',cat:'ac',city:'תל אביב-יפו',urg:'soon',desc:'התקנת מזגן עילי חדש בחדר שינה.'}),
+    L({days:16,name:'עידו פרץ',phone:'054-8889911',cat:'plumbing',city:'אשדוד',urg:'now',desc:'סתימה בקו ביוב ראשי, מים עולים במקלחת.'}),
+    L({days:21,name:'ליאת חדד',phone:'050-9990011',cat:'reno',city:'חיפה',urg:'flex',desc:'שיפוץ כללי של דירת 5 חדרים כולל מטבח.'}),
+    L({days:26,name:'בועז רז',phone:'053-1212343',cat:'garden',city:'מודיעין',urg:'week',desc:'גיזום עצים ושתילת דשא בגינה של 80 מ״ר.'}),
+    L({days:0.05,name:'',phone:'052-0000111',cat:'electric',city:'נתניה',urg:'soon',desc:'שקע שרוף בסלון.'}),
+    L({days:0.2,name:'גלעד אשכנזי',phone:'054-3434343',cat:'paint',city:'בית שמש',urg:'week',desc:'צביעת דירת 3 חדרים.'})
+  ];
+  const st = { providers, leads, complaints: [], catRates: Object.fromEntries(CATS.map(c => [c.id, TIERS[c.tier].def])),
+               largeRate: TIERS.large.def, proId: 'p1', demoLeadId: null, adminSawDemo: false, ver: 1 };
+
+  // run each seeded lead through the real pipeline, then advance some of them
+  leads.forEach(l => intake(st, l, true, l.created + 60e3));
+  const adv = (i, pid, to, quote, pays) => {
+    const l = leads[i]; const day = l.created;
+    if (!l.offers.find(o => o.pid === pid)) l.offers.push({ pid, status: 'pending', score: 0, at: day });
+    accept(st, l, pid, day + 3600e3);
+    if (to === 'accepted') return;
+    submitQuote(st, l, quote, 'כולל חלקים ועבודה', day + 7200e3);
+    if (to === 'quoted') return;
+    approveQuote(st, l, day + 10800e3);
+    if (to === 'approved') return;
+    setStatus(st, l, 'in_progress', day + 86400e3);
+    if (to === 'in_progress') return;
+    setStatus(st, l, 'completed', day + 2 * 86400e3);
+    (pays || []).forEach(p => addPayment(st, l, p.type || 'payment', p.amt, p.method || 'העברה בנקאית', day + 2.2 * 86400e3));
+  };
+  adv(1, 'p3', 'quoted', 850);
+  adv(2, 'p2', 'accepted');
+  adv(3, 'p6', 'approved', 1400);
+  adv(4, 'p4', 'in_progress', 38000);
+  adv(5, 'p7', 'completed', 450, [{ amt: 450 * 1.18 }]);
+  adv(6, 'p5', 'completed', 700, [{ amt: 700 * 1.18 }]);
+  adv(7, 'p8', 'completed', 6200, [{ amt: 3000 }]);
+  adv(8, 'p10', 'completed', 3900, [{ amt: 3900 * 1.18 }]);
+  adv(9, 'p11', 'completed', 600, [{ amt: 600 * 1.18 }, { type: 'refund', amt: 150, method: 'זיכוי לכרטיס' }]);
+  adv(10, 'p12', 'completed', 92000, [{ amt: 92000 * 1.18 }]);
+  adv(11, 'p9', 'completed', 2400, [{ amt: 2400 * 1.18 }]);
+  leads[5].commission.status = 'collected';
+  leads[10].commission.status = 'collected';
+  leads[11].commission = { status: 'disputed', dispute: 'חלק מהעבודה (שתילה) בוצע על ידי קבלן משנה של הלקוח, ולכן העמלה צריכה להיות רק על הגיזום.', disputeAt: now() - 20 * DAY };
+  leads[5].review = { stars: 5, text: 'הגיע תוך 20 דקות. שירות מעולה.', at: now() - 4 * DAY };
+  st.complaints.push(
+    { id: uid('c'), leadId: leads[9].id, from: 'customer', type: 'איכות עבודה', text: 'הסתימה חזרה אחרי יומיים. ביקשתי החזר חלקי.', status: 'resolved', at: now() - 14 * DAY, resolution: 'בוצע החזר חלקי של ₪150 והספק חזר לטפל.' },
+    { id: uid('c'), leadId: leads[7].id, from: 'customer', type: 'עיכוב', text: 'הספק הבטיח לסיים תוך יום ולקח 4 ימים. נשאר לשלם ₪4,316 ואני מחכה לחשבונית.', status: 'open', at: now() - 6 * DAY }
+  );
+  return st;
+}
+
+/* ---------- matching engine ---------- */
+const WEIGHTS = { geo: .30, avail: .25, quality: .20, accept: .15, fair: .10 };
+const WEIGHT_NAMES = { geo: 'קרבה גאוגרפית', avail: 'זמינות', quality: 'איכות שירות', accept: 'שיעור היענות', fair: 'חלוקה הוגנת' };
+
+function missingFields(lead) {
+  const m = [];
+  if (!lead.customer.name.trim()) m.push('שם הלקוח');
+  if (!validPhone(lead.customer.phone || '')) m.push('טלפון תקין');
+  if (!CAT[lead.cat]) m.push('תחום שירות');
+  if (!CITY_REGION[lead.city]) m.push('עיר');
+  if (!lead.desc || lead.desc.trim().length < 8) m.push('תיאור העבודה');
+  return m;
+}
+
+function evaluate(st, lead) {
+  const region = CITY_REGION[lead.city];
+  const cat = CAT[lead.cat];
+  const rows = st.providers.map(p => {
+    const fails = [];
+    if (!p.cats.includes(lead.cat)) fails.push('לא בתחום');
+    const inCity = p.cities.includes(lead.city), inRegion = p.regions.includes(region);
+    if (!inCity && !inRegion) fails.push('מחוץ לאזור השירות');
+    if (!p.approved) fails.push('טרם אושר');
+    if (!p.active) fails.push('מושעה');
+    if (cat && cat.license && !p.licenseVerified) fails.push('רישיון לא אומת');
+    if (!p.available) fails.push('לא זמין');
+    return { p, fails, inCity, inRegion };
+  });
+  const elig = rows.filter(r => !r.fails.length);
+  const maxOff = Math.max(1, ...elig.map(r => r.p.offers30));
+  const urgH = URGENCY[lead.urgency].hours;
+  rows.forEach(r => {
+    if (r.fails.length) { r.score = 0; r.parts = null; return; }
+    const p = r.p;
+    const parts = {
+      geo: r.inCity ? 1 : 0.6,
+      avail: p.nextSlotH <= urgH ? 1 : clamp(urgH / p.nextSlotH, 0.2, 1),
+      quality: clamp((p.rating - 3) / 2),
+      accept: clamp(p.acceptRate),
+      fair: elig.length > 1 ? clamp(1 - p.offers30 / maxOff + 0.15) : 1
+    };
+    r.parts = parts;
+    r.score = Object.keys(WEIGHTS).reduce((a, k) => a + WEIGHTS[k] * parts[k], 0);
+  });
+  rows.sort((a, b) => (b.score - a.score) || (a.fails.length - b.fails.length));
+  return rows;
+}
+
+/** Runs a lead through validation → consent gate → matching. */
+function intake(st, lead, silent, at) {
+  const miss = missingFields(lead);
+  if (miss.length) { lead.status = 'pending_info'; log(lead, 'הבקשה לא שובצה – חסרים: ' + miss.join(', '), at); return { ok: false, reason: 'missing', miss }; }
+  if (!lead.consent) { lead.status = 'no_consent'; log(lead, 'הבקשה לא הועברה – אין הסכמת לקוח לשיתוף', at); return { ok: false, reason: 'consent' }; }
+  return runMatch(st, lead, silent, at);
+}
+function runMatch(st, lead, silent, at) {
+  const rows = evaluate(st, lead).filter(r => !r.fails.length && !lead.offers.find(o => o.pid === r.p.id && o.status === 'rejected'));
+  const pick = rows.slice(0, MAX_OFFERS);
+  if (!pick.length) { lead.status = 'unmatched'; log(lead, 'לא נמצא בעל מקצוע מתאים – הועבר לטיפול ידני', at); return { ok: false, reason: 'none' }; }
+  pick.forEach(r => {
+    if (lead.offers.find(o => o.pid === r.p.id)) return;
+    lead.offers.push({ pid: r.p.id, status: 'pending', score: r.score, at: at || now() });
+    r.p.offers30++;
+  });
+  lead.status = 'matched';
+  log(lead, `נשלח ל־${pick.length} בעלי מקצוע מתאימים (התראה פנימית בלבד)`, at);
+  return { ok: true, count: pick.length };
+}
+function log(lead, text, at) { lead.history.push({ at: at || now(), text }); }
+
+/* ---------- job workflow ---------- */
+function accept(st, lead, pid, at) {
+  if (lead.assignedTo) return false;
+  lead.offers.forEach(o => { o.status = o.pid === pid ? 'accepted' : (o.status === 'pending' ? 'closed' : o.status); });
+  lead.assignedTo = pid; lead.status = 'accepted';
+  const p = prov(st, pid); log(lead, `${p.business} קיבל את העבודה. פרטי הלקוח נחשפו לו`, at);
+  return true;
+}
+function reject(st, lead, pid, reason) {
+  const o = lead.offers.find(o => o.pid === pid); if (!o) return;
+  o.status = 'rejected'; o.reason = reason;
+  const p = prov(st, pid); p.acceptRate = clamp(p.acceptRate * 0.97);
+  log(lead, `${p.business} דחה את הבקשה${reason ? ' (' + reason + ')' : ''}`);
+  if (!lead.offers.some(o => o.status === 'pending') && !lead.assignedTo) runMatch(st, lead);
+}
+function manualAssign(st, lead, pid) {
+  if (!lead.offers.find(o => o.pid === pid)) lead.offers.push({ pid, status: 'pending', score: 0, at: now(), manual: true });
+  lead.assignedTo = null;
+  accept(st, lead, pid);
+  log(lead, 'השיבוץ בוצע ידנית על ידי מנהל');
+}
+function submitQuote(st, lead, amountExVat, note, at) {
+  lead.quote = { amount: +amountExVat, note: note || '', at: at || now() };
+  lead.status = 'quoted';
+  log(lead, `הצעת מחיר: ${ils(amountExVat)} + מע״מ`, at);
+}
+function approveQuote(st, lead, at) { lead.status = 'approved'; log(lead, 'הלקוח אישר את הצעת המחיר', at); }
+function setStatus(st, lead, s, at) {
+  lead.status = s;
+  log(lead, 'סטטוס עודכן: ' + STATUS[s].name, at);
+  if (s === 'completed' || s === 'cancelled') syncCommission(lead);
+}
+function addPayment(st, lead, type, amountInclVat, method, at) {
+  lead.payments.push({ id: uid('pay'), type, amount: +amountInclVat, method, at: at || now(), simulated: true });
+  log(lead, `${type === 'refund' ? 'החזר' : 'תשלום'} מדומה נרשם: ${ils(amountInclVat)} כולל מע״מ (${method})`, at);
+  syncCommission(lead);
+  const pay = payInfo(lead);
+  if (lead.status === 'completed' && pay.state === 'full') { lead.status = 'closed'; log(lead, 'העבודה שולמה במלואה ונסגרה', at); }
+}
+
+/* ---------- commission engine ---------- */
+function payInfo(lead) {
+  const paid = lead.payments.filter(p => p.type === 'payment').reduce((a, p) => a + p.amount, 0);
+  const refunded = lead.payments.filter(p => p.type === 'refund').reduce((a, p) => a + p.amount, 0);
+  const net = paid - refunded;
+  const due = lead.quote ? lead.quote.amount * (1 + VAT) : 0;
+  let state = 'none';
+  if (refunded > 0 && net <= 0.5) state = 'refunded';
+  else if (due && net >= due - 0.5) state = 'full';
+  else if (net > 0) state = 'partial';
+  return { paid, refunded, net, due, balance: Math.max(0, due - net), state };
+}
+const PAY_STATE = { none: ['לא שולם', 'plain'], partial: ['שולם חלקית', 'warn'], full: ['שולם במלואו', 'ok'], refunded: ['הוחזר', 'bad'] };
+
+function rateFor(st, lead, baseExVat) {
+  const p = prov(st, lead.assignedTo);
+  const projectSize = lead.quote ? lead.quote.amount : baseExVat;
+  if (projectSize >= LARGE_PROJECT_THRESHOLD) return { rate: st.largeRate, source: `פרויקט גדול (מעל ${ils(LARGE_PROJECT_THRESHOLD)})` };
+  if (lead.commission.rateOverride != null) return { rate: lead.commission.rateOverride, source: 'תעריף שנקבע ביישוב מחלוקת' };
+  if (p && p.agreementRate != null) return { rate: p.agreementRate, source: 'הסכם אישי עם בעל המקצוע' };
+  return { rate: st.catRates[lead.cat], source: `תעריף קטגוריה · ${TIERS[CAT[lead.cat].tier].name}` };
+}
+/** Commission is computed on money actually received, net of refunds, excluding VAT. */
+function commissionOf(st, lead) {
+  const pay = payInfo(lead);
+  const base = Math.max(0, pay.net) / (1 + VAT);
+  const { rate, source } = rateFor(st, lead, base);
+  const waived = lead.commission.status === 'waived';
+  const amount = waived ? 0 : base * rate / 100;
+  return { base, rate, source, amount, vatPart: Math.max(0, pay.net) - base, pay };
+}
+function syncCommission(lead) {
+  const c = lead.commission;
+  if (['collected', 'disputed', 'waived'].includes(c.status)) return;
+  const pay = payInfo(lead);
+  if (pay.net <= 0) c.status = lead.payments.length ? 'waived' : (lead.status === 'cancelled' ? 'waived' : 'none');
+  else c.status = (lead.status === 'completed' || lead.status === 'closed' || lead.status === 'cancelled') ? 'due' : 'accruing';
+}
+
+/* ---------- store ---------- */
+const KEY = 'pronetwork-demo-v1';
+let S;
+function load() {
+  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && d.ver === 1) return d; } } catch (e) {}
+  return seed();
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* storage full or blocked: keep working in memory */ } }
+function resetDemo() { S = seed(); save(); }
+const prov = (st, id) => st.providers.find(p => p.id === id);
+const lead = (id) => S.leads.find(l => l.id === id);
+/* ============================================================
+   UI helpers, routing, shell
+   ============================================================ */
+const IC = {
+  drop:'<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>',
+  bolt:'<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+  snow:'<path d="M12 2v20M4.9 6l14.2 12M19.1 6 4.9 18M9 4l3 2 3-2M9 20l3-2 3 2"/>',
+  bug:'<rect x="8" y="7" width="8" height="12" rx="4"/><path d="M12 7V4M9 4l1.5 3M15 4l-1.5 3M4 11h4M16 11h4M4 17h4M16 17h4"/>',
+  brick:'<rect x="3" y="5" width="18" height="14" rx="1"/><path d="M3 10h18M3 15h18M9 5v5M15 10v5M9 15v4"/>',
+  cam:'<path d="M3 7l14 4-1.5 4.5L1.5 11.5z"/><path d="M8 13.5 7 18H3M17 11l3-1"/>',
+  spark:'<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/>',
+  leaf:'<path d="M5 19c0-9 6-14 15-14 0 9-5 15-14 15"/><path d="M5 19 13 11"/>',
+  key:'<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M14 9l2 2"/>',
+  brush:'<path d="M14 4l6 6-8 8-6-6z"/><path d="M6 12c-2 2-3 5-3 8 3 0 6-1 8-3"/>',
+  tool:'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  window:'<rect x="4" y="3" width="16" height="18" rx="1"/><path d="M12 3v18M4 12h16"/>',
+  truck:'<path d="M2 6h12v10H2zM14 9h4l3 3v4h-7"/><circle cx="6" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>',
+  home:'<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+  inbox:'<path d="M3 13h5l1.5 3h5L16 13h5"/><path d="M5 5h14l2 8v6H3v-6z"/>',
+  brief:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5h6v2M3 13h18"/>',
+  wallet:'<path d="M4 7h15a1 1 0 0 1 1 1v11H4a1 1 0 0 1-1-1V6a2 2 0 0 1 2-2h12v3"/><circle cx="16" cy="13" r="1.3"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>',
+  users:'<circle cx="9" cy="8" r="3.5"/><path d="M2 20c1-3.5 3.8-5 7-5s6 1.5 7 5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 15c2 .6 3.4 2.2 4 5"/>',
+  grid:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+  list:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  percent:'<path d="M19 5 5 19"/><circle cx="7" cy="7" r="2.5"/><circle cx="17" cy="17" r="2.5"/>',
+  more:'<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>',
+  shield:'<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  star:'<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/>',
+  alert:'<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/>',
+  info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',
+  check:'<path d="m5 12 5 5 9-10"/>',
+  chart:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  flag:'<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
+  tag:'<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.3"/>',
+  image:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 17-5-5-9 8"/>',
+  pin:'<path d="M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/>',
+  play:'<path d="M7 4v16l13-8z"/>',
+  lock:'<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
+  sliders:'<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+  phone:'<path d="M5 3h4l2 5-2.5 1.5a11 11 0 0 0 6 6L16 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 5a2 2 0 0 1 2-2z"/>'
+};
+const icon = (k, s = 20) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[k] || ''}</svg>`;
+const pill = (text, tone) => `<span class="pill ${tone || ''}">${esc(text)}</span>`;
+const statusPill = (s) => pill(STATUS[s].name, STATUS[s].tone);
+const commPill = (s) => pill(COMM_STATUS[s].name, COMM_STATUS[s].tone);
+const payPill = (st) => pill(PAY_STATE[st][0], PAY_STATE[st][1]);
+const SIM = '<span class="sim">הדגמה</span>';
+const stars = (r) => { const f = Math.round(r); return `<span class="stars" aria-label="דירוג ${r} מתוך 5">${'★'.repeat(f)}${'☆'.repeat(5 - f)}</span>`; };
+const empty = (ic, title, sub) => `<div class="empty">${icon(ic, 34)}<h3>${esc(title)}</h3>${sub ? `<p class="small" style="margin-top:4px">${esc(sub)}</p>` : ''}</div>`;
+const notice = (tone, ic, html) => `<div class="notice ${tone}">${icon(ic, 18)}<div>${html}</div></div>`;
+const kpi = (label, value, sub) => `<div class="kpi"><div class="label">${esc(label)}</div><div class="v">${value}</div>${sub ? `<div class="s">${sub}</div>` : ''}</div>`;
+const opt = (v, label, sel) => `<option value="${esc(v)}"${sel ? ' selected' : ''}>${esc(label)}</option>`;
+const cityOptions = (sel, placeholder = 'בחרו עיר') => `<option value="">${placeholder}</option>` + Object.keys(REGIONS).map(r =>
+  `<optgroup label="${REGIONS[r]}">${CITIES.filter(c => c[1] === r).map(c => opt(c[0], c[0], c[0] === sel)).join('')}</optgroup>`).join('');
+const catOptions = (sel, placeholder = 'בחרו תחום') => `<option value="">${placeholder}</option>` + CATS.map(c => opt(c.id, c.name, c.id === sel)).join('');
+
+/* ---------- UI state & routing ---------- */
+const U = {
+  role: 'customer', tab: 'home', sheet: null,
+  form: { cat: '', city: '', urgency: 'soon', desc: '', image: null, name: '', phone: '', email: '', address: '', consent: true },
+  errors: {}, submitting: false, justCreated: null,
+  trackCode: '',
+  lf: { q: '', city: '', cat: '', status: '', from: '', to: '' },
+  pf: { q: '', cat: '', state: '' },
+  sim: { cat: 'plumbing', city: 'תל אביב-יפו', urgency: 'now' },
+  rangeDays: 30,
+  quoteDraft: {}, payDraft: {}
+};
+const TABS = {
+  customer: [['home','בית','home'],['request','בקשה חדשה','plus'],['track','מעקב בקשה','search']],
+  pro: [['home','לוח בקרה','grid'],['requests','בקשות','inbox'],['jobs','עבודות','brief'],['earnings','הכנסות','wallet'],['profile','פרופיל','user']],
+  admin: [['overview','סקירה','chart'],['leads','לידים','list'],['providers','בעלי מקצוע','users'],['commissions','עמלות','percent'],['more','עוד','more']]
+};
+const ADMIN_MORE = { customers: ['לקוחות','users'], categories: ['קטגוריות ותעריפים','tag'], matching: ['מנוע ההתאמה','sliders'], complaints: ['תלונות','flag'], reports: ['דוחות וניתוחים','chart'] };
+const PREFIX = { customer: 'c', pro: 'p', admin: 'a' };
+
+function go(role, tab, keepScroll) {
+  U.role = role; U.tab = tab;
+  const h = '#' + PREFIX[role] + '-' + tab;
+  if (location.hash !== h) { try { history.replaceState(null, '', h); } catch (e) { location.hash = h; } }
+  render();
+  if (!keepScroll) window.scrollTo(0, 0);
+}
+function fromHash() {
+  const m = /^#([cpa])-([a-z]+)$/.exec(location.hash || '');
+  if (!m) return;
+  const role = { c: 'customer', p: 'pro', a: 'admin' }[m[1]];
+  const ok = TABS[role].some(t => t[0] === m[2]) || (role === 'admin' && ADMIN_MORE[m[2]]);
+  if (ok) { U.role = role; U.tab = m[2]; }
+}
+
+function badges() {
+  const b = {};
+  b.requests = S.leads.filter(l => !l.assignedTo && l.offers.some(o => o.pid === S.proId && o.status === 'pending') && l.status === 'matched').length;
+  b.jobs = S.leads.filter(l => l.assignedTo === S.proId && ['accepted','approved','in_progress','completed'].includes(l.status)).length;
+  b.leads = S.leads.filter(l => ['unmatched','pending_info','no_consent'].includes(l.status)).length;
+  b.more = S.complaints.filter(c => c.status !== 'resolved').length;
+  b.commissions = S.leads.filter(l => l.commission.status === 'disputed').length;
+  return b;
+}
+function renderTabs() {
+  const b = badges();
+  const cur = (U.role === 'admin' && ADMIN_MORE[U.tab]) ? 'more' : U.tab;
+  document.getElementById('tabs').innerHTML = TABS[U.role].map(([id, label, ic]) =>
+    `<button data-act="tab" data-tab="${id}"${id === cur ? ' aria-current="page"' : ''}>${icon(ic, 22)}<span>${label}</span>${b[id] ? `<span class="badge num">${b[id]}</span>` : ''}</button>`).join('');
+  document.querySelectorAll('.roles button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.role === U.role)));
+}
+function render() {
+  renderTabs();
+  const v = VIEWS[U.role][U.tab] || VIEWS[U.role][TABS[U.role][0][0]];
+  document.getElementById('view').innerHTML = v();
+  afterRender();
+  renderFab();
+}
+function refresh() { save(); render(); if (U.sheet) renderSheet(); }
+
+let toastT;
+function toast(msg, bad) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show' + (bad ? ' bad' : '');
+  clearTimeout(toastT); toastT = setTimeout(() => { t.className = 'toast' + (bad ? ' bad' : ''); }, 2800);
+}
+
+/* ---------- sheet ---------- */
+function openSheet(type, id) { U.sheet = { type, id }; renderSheet(); document.getElementById('sheet').classList.add('open'); document.getElementById('scrim').classList.add('open'); }
+function closeSheet() { U.sheet = null; document.getElementById('sheet').classList.remove('open'); document.getElementById('scrim').classList.remove('open'); }
+function renderSheet() {
+  const s = U.sheet; if (!s) return;
+  const r = SHEETS[s.type](s.id);
+  document.getElementById('sheet-title').innerHTML = r.title;
+  document.getElementById('sheet-body').innerHTML = r.body;
+}
+
+/* ---------- hero map (decorative, drawn once) ---------- */
+const MAP_PTS = [[33.21,35.57],[33.0,35.1],[32.96,35.5],[32.92,35.3],[32.79,34.99],[32.79,35.53],[32.7,35.3],[32.61,35.29],[32.43,34.92],[32.33,34.86],[32.16,34.84],[32.09,34.88],[32.08,34.78],[31.89,34.81],[31.9,35.01],[31.8,34.65],[31.77,35.21],[31.75,34.99],[31.67,34.57],[31.61,34.76],[31.25,34.79],[31.07,35.03],[30.61,34.8],[29.56,34.95]];
+function drawHeroMap() {
+  const c = document.getElementById('hero-map'); if (!c) return;
+  const box = c.getBoundingClientRect(); const dpr = window.devicePixelRatio || 1;
+  c.width = box.width * dpr; c.height = box.height * dpr;
+  const g = c.getContext('2d'); g.scale(dpr, dpr);
+  const H = box.height - 24, W = H * 0.42, x0 = 18;
+  const pts = MAP_PTS.map(([la, lo]) => [x0 + (lo - 34.2) / 1.6 * W, 12 + (33.35 - la) / 3.9 * H]);
+  g.strokeStyle = 'rgba(44,211,200,.35)'; g.lineWidth = 1;
+  pts.forEach((a, i) => pts.forEach((b, j) => { if (j <= i) return; const d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (d < H * 0.13) { g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke(); } }));
+  pts.forEach(([x, y], i) => { g.fillStyle = i % 5 === 0 ? '#2CD3C8' : 'rgba(244,248,252,.75)'; g.beginPath(); g.arc(x, y, i % 5 === 0 ? 3.2 : 2.1, 0, 7); g.fill(); });
+}
+function afterRender() { drawHeroMap(); }
+/* ============================================================
+   Customer views
+   ============================================================ */
+const VIEWS = { customer: {}, pro: {}, admin: {} };
+const SHEETS = {};
+
+VIEWS.customer.home = () => {
+  const active = S.providers.filter(p => p.approved && p.active).length;
+  const cities = new Set(S.providers.flatMap(p => p.cities)).size;
+  return `<div class="stack" style="gap:22px">
+  <section class="hero">
+    <canvas id="hero-map" aria-hidden="true"></canvas>
+    <div class="label" style="color:var(--teal)">שירות ארצי · מטבריה ועד אילת</div>
+    <h1 style="margin-top:6px">בעל המקצוע הנכון,<br>קרוב אליכם.</h1>
+    <p>מתארים מה צריך, ואנחנו מתאימים בעלי מקצוע מאומתים לפי תחום, אזור וזמינות. ההצעות מגיעות אליכם, וההחלטה שלכם.</p>
+    <form class="search" id="hero-search">
+      <select class="input" id="hs-cat" aria-label="תחום">${catOptions(U.form.cat, 'מה צריך לתקן?')}</select>
+      <select class="input" id="hs-city" aria-label="עיר">${cityOptions(U.form.city, 'באיזו עיר?')}</select>
+      <button class="btn" type="submit">${icon('search', 18)} קבלו הצעות</button>
+    </form>
+    <div class="trust">
+      <span>${icon('shield', 16)} בעלי מקצוע מאומתים</span>
+      <span>${icon('check', 16)} בדיקת רישיון בתחומים מחייבים</span>
+      <span>${icon('lock', 16)} הפרטים שלכם נמסרים רק בהסכמתכם</span>
+    </div>
+  </section>
+
+  <section class="stack">
+    <div class="section-h"><h2>במה אפשר לעזור?</h2><span class="small muted">${CATS.length} תחומים</span></div>
+    <div class="cats">${CATS.map(c => `<button class="cat" data-act="pick-cat" data-cat="${c.id}"><span class="ic">${icon(c.icon, 22)}</span>${c.name}</button>`).join('')}</div>
+  </section>
+
+  <section class="card">
+    <h2>איך זה עובד</h2>
+    <div class="steps" style="margin-top:14px">
+      <div class="step"><span class="n">1</span><div><h3>מתארים את העבודה</h3><p class="small muted">תחום, עיר, דחיפות ותמונה אם יש. לוקח פחות מדקה.</p></div></div>
+      <div class="step"><span class="n">2</span><div><h3>אנחנו מתאימים</h3><p class="small muted">עד ${MAX_OFFERS} בעלי מקצוע זמינים באזור מקבלים את הבקשה, בלי הטלפון שלכם.</p></div></div>
+      <div class="step"><span class="n">3</span><div><h3>מאשרים הצעה</h3><p class="small muted">בעל המקצוע שקיבל את העבודה שולח הצעת מחיר, ואתם מאשרים או דוחים.</p></div></div>
+    </div>
+  </section>
+
+  <section class="kpis">
+    ${kpi('בעלי מקצוע פעילים', active, SIM)}
+    ${kpi('ערים מכוסות', cities, SIM)}
+    ${kpi('תחומי שירות', CATS.length)}
+    ${kpi('בקשות במערכת', S.leads.length, SIM)}
+  </section>
+
+  <section class="card row between" style="background:var(--teal-soft);border-color:transparent">
+    <div class="grow"><h3>בעלי מקצוע? הצטרפו לרשת</h3><p class="small muted">קבלו עבודות באזור שלכם ושלמו עמלה רק על עבודות ששולמו בפועל.</p></div>
+    <button class="btn navy" data-act="switch-role" data-role="pro">לממשק בעלי המקצוע</button>
+  </section>
+  </div>`;
+};
+
+function sampleForm() {
+  Object.assign(U.form, { cat: 'plumbing', city: 'גבעתיים', urgency: 'now', desc: 'דוד החשמל דולף מהחיבור התחתון ויש מים על הרצפה בארון השירות. צריך מישהו היום.', name: 'דנה אברמוב', phone: '052-7788990', email: 'dana@example.com', address: 'רחוב כצנלסון 40, דירה 6', consent: true });
+  U.errors = {};
+}
+
+VIEWS.customer.request = () => {
+  const f = U.form, e = U.errors;
+  if (U.justCreated) return requestSuccess(lead(U.justCreated));
+  const err = (k) => e[k] ? `<span class="ferr">${esc(e[k])}</span>` : '';
+  return `<form id="req-form" class="stack" novalidate style="max-width:720px;margin:0 auto">
+    <div class="section-h"><div><h1 style="font-size:26px">בקשת שירות חדשה</h1><p class="muted small" style="margin-top:4px">השדות המסומנים ב־* הכרחיים כדי שנוכל להתאים בעל מקצוע.</p></div>
+      <button type="button" class="btn ghost sm" data-act="sample">${icon('play', 16)} מלאו דוגמה</button></div>
+
+    <div class="card stack">
+      <h3>מה צריך?</h3>
+      <div class="grid g2">
+        <label class="field"><span>תחום <i>*</i></span><select class="input${e.cat ? ' err' : ''}" id="f-cat" data-bind="cat">${catOptions(f.cat)}</select>${err('cat')}</label>
+        <label class="field"><span>עיר <i>*</i></span><select class="input${e.city ? ' err' : ''}" id="f-city" data-bind="city">${cityOptions(f.city)}</select>${err('city')}</label>
+      </div>
+      ${f.cat && CAT[f.cat].license ? notice('info', 'shield', `בתחום ${CAT[f.cat].name} נשלח את הבקשה רק לבעלי מקצוע עם ${CAT[f.cat].license} מאומת.`) : ''}
+      <div class="field"><span>מתי? <i>*</i></span>
+        <div class="chips" role="radiogroup">${Object.entries(URGENCY).map(([k, u]) => `<button type="button" class="chip" role="radio" aria-pressed="${f.urgency === k}" aria-checked="${f.urgency === k}" data-act="urgency" data-u="${k}">${u.name}<small>${u.hint}</small></button>`).join('')}</div>
+      </div>
+      <label class="field"><span>תיאור העבודה <i>*</i></span><textarea class="input${e.desc ? ' err' : ''}" id="f-desc" data-bind="desc" placeholder="לדוגמה: נזילה מתחת לכיור במטבח, התחילה הבוקר.">${esc(f.desc)}</textarea>${err('desc')}</label>
+      <div class="field"><span>תמונה (לא חובה)</span>
+        <label class="upload" for="f-img">${f.image ? `<img src="${f.image}" alt="תמונה שצורפה">` : icon('image', 28)}<div class="small">${f.image ? 'החליפו תמונה' : 'צרפו תמונה של התקלה'}</div><div class="xs muted">התמונה נשמרת רק בדפדפן הזה</div></label>
+        <input type="file" id="f-img" accept="image/*" hidden>
+        ${f.image ? `<button type="button" class="btn ghost sm" data-act="rm-img" style="align-self:flex-start">הסרת תמונה</button>` : ''}
+      </div>
+    </div>
+
+    <div class="card stack">
+      <h3>פרטי התקשרות</h3>
+      <div class="grid g2">
+        <label class="field"><span>שם מלא <i>*</i></span><input class="input${e.name ? ' err' : ''}" id="f-name" data-bind="name" value="${esc(f.name)}" autocomplete="name">${err('name')}</label>
+        <label class="field"><span>טלפון נייד <i>*</i></span><input class="input${e.phone ? ' err' : ''}" id="f-phone" data-bind="phone" value="${esc(f.phone)}" inputmode="tel" autocomplete="tel" placeholder="050-0000000" dir="ltr" style="text-align:right">${err('phone')}</label>
+        <label class="field"><span>אימייל</span><input class="input" id="f-email" data-bind="email" value="${esc(f.email)}" inputmode="email" autocomplete="email" dir="ltr" style="text-align:right"></label>
+        <label class="field"><span>כתובת</span><input class="input" id="f-address" data-bind="address" value="${esc(f.address)}" autocomplete="street-address" placeholder="נמסרת רק לבעל המקצוע שתאשרו"></label>
+      </div>
+      <label class="check" for="f-consent"><input type="checkbox" id="f-consent" data-bind="consent"${f.consent ? ' checked' : ''}>
+        <span><b>אני מסכים/ה להעביר את פרטי הבקשה לבעלי מקצוע מתאימים</b><br><span class="small muted">בשלב הראשון בעלי המקצוע רואים רק תחום, עיר ותיאור. השם, הטלפון והכתובת נחשפים רק לבעל המקצוע שיקבל את העבודה.</span></span></label>
+      ${!f.consent ? notice('warn', 'alert', 'בלי הסכמה הבקשה תישמר אבל לא תישלח לאף בעל מקצוע. אפשר לאשר אחר כך בעמוד המעקב.') : ''}
+    </div>
+    <button class="btn block" type="submit"${U.submitting ? ' disabled' : ''}>${U.submitting ? '<span class="spinner"></span> מחפשים בעלי מקצוע מתאימים…' : 'שליחת הבקשה'}</button>
+  </form>`;
+};
+
+function requestSuccess(l) {
+  const m = l.status === 'matched';
+  return `<div class="stack" style="max-width:620px;margin:0 auto">
+    <div class="card pop stack" style="text-align:center;align-items:center">
+      <div style="width:56px;height:56px;border-radius:50%;background:${m ? 'var(--ok-soft)' : 'var(--warn-soft)'};color:${m ? 'var(--ok)' : 'var(--warn)'};display:grid;place-items:center">${icon(m ? 'check' : 'alert', 30)}</div>
+      <h1 style="font-size:24px">${m ? 'הבקשה נשלחה' : 'הבקשה נשמרה'}</h1>
+      <p class="muted">${m ? `הבקשה הועברה ל־${l.offers.length} בעלי מקצוע מתאימים ב${esc(l.city)} והסביבה. נעדכן כאן ברגע שמישהו יקבל אותה.` : esc(STATUS[l.status].name) + '. אפשר להשלים את זה בעמוד המעקב.'}</p>
+      <div class="label" style="margin-top:6px">מספר מעקב</div>
+      <div style="font-family:var(--f-display);font-size:30px;font-weight:700;letter-spacing:.04em" class="ltr num">${l.code}</div>
+      ${notice('info', 'info', 'זו הדגמה: לא נשלחו הודעות SMS או וואטסאפ. בעלי המקצוע רואים את הבקשה בממשק שלהם בתוך האפליקציה.')}
+    </div>
+    <div class="grid g2">
+      <button class="btn" data-act="track-lead" data-id="${l.id}">${icon('search', 18)} מעקב אחר הבקשה</button>
+      ${m ? `<button class="btn navy" data-act="as-pro" data-id="${l.id}">${icon('brief', 18)} לראות כבעל מקצוע</button>` : ''}
+      <button class="btn ghost" data-act="new-request">בקשה נוספת</button>
+    </div>
+  </div>`;
+}
+
+VIEWS.customer.track = () => {
+  const l = S.leads.find(x => x.code.toLowerCase() === U.trackCode.trim().toLowerCase());
+  const recent = [...S.leads].sort((a, b) => b.created - a.created).slice(0, 5);
+  return `<div class="stack" style="max-width:720px;margin:0 auto">
+    <h1 style="font-size:26px">מעקב בקשה</h1>
+    <form id="track-form" class="row"><input class="input grow" id="t-code" placeholder="מספר מעקב, לדוגמה PN-1040" value="${esc(U.trackCode)}" dir="ltr" style="text-align:right"><button class="btn" type="submit">חיפוש</button></form>
+    <div class="row small"><span class="muted">בקשות אחרונות ${SIM}</span>${recent.map(r => `<button class="chip" style="min-height:34px;padding:5px 10px" data-act="track-code" data-code="${r.code}"><span class="ltr num">${r.code}</span></button>`).join('')}</div>
+    ${U.trackCode && !l ? notice('bad', 'alert', 'לא מצאנו בקשה עם המספר הזה. בדקו שהוא מופיע כמו בהודעת האישור, למשל PN-1052.') : ''}
+    ${l ? trackDetail(l) : (!U.trackCode ? empty('search', 'הזינו מספר מעקב', 'המספר מופיע במסך האישור אחרי שליחת הבקשה.') : '')}
+  </div>`;
+};
+
+function trackDetail(l) {
+  const p = l.assignedTo && prov(S, l.assignedTo);
+  const idx = FLOW.indexOf(l.status);
+  const pay = payInfo(l);
+  const pending = l.offers.filter(o => o.status === 'pending').length;
+  let action = '';
+  if (l.status === 'no_consent') action = `<div class="card stack">${notice('warn', 'lock', 'הבקשה לא נשלחה לאף בעל מקצוע כי לא אושרה העברת פרטים.')}<button class="btn" data-act="give-consent" data-id="${l.id}">אני מאשר/ת להעביר את הבקשה</button></div>`;
+  if (l.status === 'pending_info') action = `<form class="card stack" id="fix-form" data-id="${l.id}">${notice('warn', 'alert', 'חסרים פרטים: ' + esc(missingFields(l).join(', ')))}
+      <div class="grid g2"><label class="field"><span>שם מלא</span><input class="input" id="fx-name" value="${esc(l.customer.name)}"></label><label class="field"><span>טלפון</span><input class="input" id="fx-phone" value="${esc(l.customer.phone)}" dir="ltr" style="text-align:right"></label></div>
+      <label class="field"><span>תיאור</span><textarea class="input" id="fx-desc">${esc(l.desc)}</textarea></label><button class="btn" type="submit">השלמת פרטים ושליחה</button></form>`;
+  if (l.status === 'quoted') action = `<div class="card pop stack"><div class="row between"><h3>הצעת מחיר מ${esc(p.business)}</h3>${SIM}</div>
+      <div class="calc num"><span>עבודה (לפני מע״מ)</span><span>${ils2(l.quote.amount)}</span><span>מע״מ ${pct(VAT)}</span><span>${ils2(l.quote.amount * VAT)}</span><span class="t">סה״כ לתשלום</span><span class="t">${ils2(l.quote.amount * (1 + VAT))}</span></div>
+      ${l.quote.note ? `<p class="small muted">${esc(l.quote.note)}</p>` : ''}
+      <div class="grid g2"><button class="btn okb" data-act="approve-quote" data-id="${l.id}">${icon('check', 18)} אישור ההצעה</button><button class="btn danger" data-act="decline-quote" data-id="${l.id}">דחיית ההצעה</button></div></div>`;
+  if (['completed', 'closed'].includes(l.status) && !l.review) action = `<form class="card stack" id="review-form" data-id="${l.id}"><h3>איך היה השירות?</h3>
+      <div class="chips" id="rv-stars">${[5,4,3,2,1].map(n => `<button type="button" class="chip" data-act="rv-star" data-n="${n}" aria-pressed="${(U.rv || 5) === n}">${'★'.repeat(n)}</button>`).join('')}</div>
+      <textarea class="input" id="rv-text" placeholder="כמה מילים על בעל המקצוע"></textarea><button class="btn" type="submit">פרסום חוות דעת</button></form>`;
+  const canCancel = ['matched','accepted','quoted','approved','no_consent','pending_info','unmatched'].includes(l.status);
+  return `<div class="card pop stack">
+      <div class="row between"><div><div class="label">בקשה <span class="ltr num">${l.code}</span> ${l.demo ? SIM : ''}</div><h2 style="margin-top:4px">${CAT[l.cat].name} · ${esc(l.city)}</h2></div>${statusPill(l.status)}</div>
+      ${idx >= 0 ? `<div class="progress" aria-label="התקדמות">${FLOW.map((s, i) => `<i class="${i <= idx ? 'on' : ''}" title="${STATUS[s].name}"></i>`).join('')}</div><div class="xs muted">שלב ${idx + 1} מתוך ${FLOW.length}: ${STATUS[l.status].name}</div>` : ''}
+      <p>${esc(l.desc)}</p>
+      ${l.image ? `<img src="${l.image}" alt="תמונה מהבקשה" style="border-radius:12px;max-height:200px;object-fit:cover">` : ''}
+      <div class="row small muted"><span>${icon('clock', 16)} ${URGENCY[l.urgency].name}</span><span>נפתחה ${ftime(l.created)}</span></div>
+      ${l.status === 'matched' ? notice('info', 'clock', `הבקשה אצל ${pending} בעלי מקצוע. הפרטים האישיים שלכם עדיין לא נחשפו לאף אחד.`) : ''}
+      ${l.status === 'unmatched' ? notice('bad', 'alert', 'לא מצאנו כרגע בעל מקצוע פנוי באזור. צוות PRO NETWORK יטפל בבקשה ידנית.') : ''}
+    </div>
+    ${action}
+    ${p ? `<div class="card row"><span class="avatar">${initials(p.name)}</span><div class="grow"><h3>${esc(p.business)}</h3><div class="small muted">${esc(p.name)} · ${stars(p.rating)} <span class="num">${p.rating}</span></div><div class="small ltr num">${esc(p.phone)}</div></div>${SIM}</div>` : ''}
+    ${l.quote && l.status !== 'quoted' ? `<div class="card stack"><h3>תשלום</h3><div class="calc num"><span>סה״כ לפי הצעה (כולל מע״מ)</span><span>${ils2(pay.due)}</span><span>שולם</span><span>${ils2(pay.net)}</span><span class="t">יתרה</span><span class="t">${ils2(pay.balance)}</span></div><div>${payPill(pay.state)}</div></div>` : ''}
+    ${l.review ? `<div class="card"><h3>חוות הדעת שלכם</h3><div>${stars(l.review.stars)}</div><p class="small">${esc(l.review.text)}</p></div>` : ''}
+    <div class="card"><h3>היסטוריה</h3><ul class="timeline" style="margin-top:12px">${[...l.history].sort((a, b) => b.at - a.at).map(h => `<li><div class="small">${esc(h.text)}</div><div class="xs muted">${ftime(h.at)}</div></li>`).join('')}</ul></div>
+    <div class="row">${l.assignedTo ? `<button class="btn ghost sm" data-act="complain" data-id="${l.id}">${icon('flag', 16)} דיווח על בעיה</button>` : ''}${canCancel ? `<button class="btn danger sm" data-act="cust-cancel" data-id="${l.id}">ביטול הבקשה</button>` : ''}</div>`;
+}
+
+SHEETS.complain = (id) => {
+  const l = lead(id);
+  return { title: 'דיווח על בעיה', body: `<form id="complain-form" data-id="${id}" class="stack">
+    <p class="muted small">בקשה <span class="ltr num">${l.code}</span>. הדיווח יגיע לצוות PRO NETWORK, לא לבעל המקצוע.</p>
+    <label class="field"><span>סוג הבעיה</span><select class="input" id="cp-type">${['איכות עבודה','עיכוב','מחיר שונה מההצעה','התנהגות','אחר'].map(t => opt(t, t)).join('')}</select></label>
+    <label class="field"><span>מה קרה?</span><textarea class="input" id="cp-text" required></textarea></label>
+    <button class="btn" type="submit">שליחת הדיווח</button></form>` };
+};
+SHEETS.confirm = (id) => {
+  const c = U.confirm;
+  return { title: esc(c.title), body: `<div class="stack"><p>${esc(c.text)}</p><div class="grid g2"><button class="btn danger" data-act="confirm-yes">${esc(c.yes)}</button><button class="btn ghost" data-act="close-sheet">חזרה</button></div></div>` };
+};
+function askConfirm(title, text, yes, fn) { U.confirm = { title, text, yes, fn }; openSheet('confirm'); }
+/* ============================================================
+   Professional views
+   ============================================================ */
+const me = () => prov(S, S.proId);
+const myOffers = () => S.leads.filter(l => l.offers.some(o => o.pid === S.proId));
+const myJobs = () => S.leads.filter(l => l.assignedTo === S.proId);
+
+function proHeader() {
+  const p = me();
+  const warn = [];
+  if (!p.approved) warn.push('החשבון ממתין לאישור מנהל, ולכן לא תקבלו בקשות.');
+  if (!p.active) warn.push('החשבון מושעה. פנו לצוות PRO NETWORK.');
+  if (p.cats.some(c => CAT[c].license) && !p.licenseVerified) warn.push('הרישיון שלכם טרם אומת. בקשות בתחומים שמחייבים רישיון לא יישלחו אליכם.');
+  return `<div class="card row" style="gap:12px">
+    <span class="avatar">${initials(p.name)}</span>
+    <div class="grow"><div class="label">מחובר/ת כ־ ${SIM}</div>
+      <select class="input" id="pro-switch" aria-label="החלפת בעל מקצוע להדגמה" style="min-height:40px;margin-top:4px;font-weight:500">${S.providers.map(x => opt(x.id, `${x.business} · ${x.name}`, x.id === p.id)).join('')}</select></div>
+  </div>${warn.map(w => notice('warn', 'alert', esc(w))).join('')}`;
+}
+function earningsOf(pid) {
+  const jobs = S.leads.filter(l => l.assignedTo === pid);
+  let gross = 0, ex = 0, comm = 0;
+  jobs.forEach(l => { const c = commissionOf(S, l); gross += c.pay.net; ex += c.base; comm += c.amount; });
+  return { gross, ex, comm, net: ex - comm, jobs };
+}
+
+VIEWS.pro.home = () => {
+  const p = me(), e = earningsOf(p.id);
+  const pend = myOffers().filter(l => l.offers.find(o => o.pid === p.id).status === 'pending' && !l.assignedTo);
+  const active = myJobs().filter(l => ['accepted','quoted','approved','in_progress','completed'].includes(l.status));
+  return `<div class="stack">${proHeader()}
+    <div class="card row between">
+      <div class="grow"><h3>${p.available ? 'זמין לעבודות חדשות' : 'לא זמין כרגע'}</h3><p class="small muted">${p.available ? `תור פנוי הבא: בעוד ${p.nextSlotH < 24 ? p.nextSlotH + ' שעות' : Math.round(p.nextSlotH / 24) + ' ימים'}` : 'לא נשלח אליכם בקשות עד שתחזרו לזמינות.'}</p></div>
+      <label class="switch" aria-label="זמינות"><input type="checkbox" id="avail-toggle"${p.available ? ' checked' : ''}><span></span></label>
+    </div>
+    <div class="kpis">
+      ${kpi('בקשות חדשות', pend.length)}
+      ${kpi('עבודות פעילות', active.length)}
+      ${kpi('הכנסה נטו', ils(e.net), 'אחרי עמלה, לפני מע״מ')}
+      ${kpi('דירוג', `${p.rating} <span class="small muted">/ 5</span>`, `${p.reviews.length} חוות דעת`)}
+    </div>
+    <div class="card stack"><div class="section-h"><h2>בקשות שמחכות לכם</h2><button class="btn ghost sm" data-act="tab" data-tab="requests">לכל הבקשות</button></div>
+      ${pend.length ? pend.slice(0, 3).map(l => offerCard(l, true)).join('') : empty('inbox', 'אין בקשות חדשות', p.available ? 'בקשות מתאימות יופיעו כאן.' : 'הפעילו זמינות כדי לקבל בקשות.')}</div>
+    <div class="card stack"><h2>ביצועים</h2>
+      <div class="score"><span>שיעור היענות</span><div class="bar"><i style="width:${p.acceptRate * 100}%"></i></div><span class="num">${pct(p.acceptRate)}</span>
+      <span>איכות שירות</span><div class="bar"><i style="width:${p.rating / 5 * 100}%"></i></div><span class="num">${p.rating}</span>
+      <span>עבודות שהושלמו</span><div class="bar"><i style="width:${Math.min(100, e.jobs.filter(l => ['completed','closed'].includes(l.status)).length * 20)}%"></i></div><span class="num">${e.jobs.filter(l => ['completed','closed'].includes(l.status)).length}</span></div>
+      <p class="xs muted">המדדים האלה משפיעים על הדירוג שלכם במנוע ההתאמה.</p></div>
+  </div>`;
+};
+
+function offerCard(l, compact) {
+  const o = l.offers.find(o => o.pid === S.proId);
+  const row = evaluate(S, l).find(r => r.p.id === S.proId);
+  const pending = o.status === 'pending' && !l.assignedTo;
+  return `<div class="card stack" style="${compact ? 'padding:12px;background:var(--surface-2);border-color:transparent' : ''}">
+    <div class="row between"><div class="row" style="gap:8px"><span class="ic" style="color:var(--teal-ink)">${icon(CAT[l.cat].icon, 20)}</span><h3>${CAT[l.cat].name} · ${esc(l.city)}</h3></div>
+      ${pending ? pill(URGENCY[l.urgency].name, l.urgency === 'now' ? 'bad' : 'info') : pill({ accepted: 'קיבלתם', rejected: 'דחיתם', closed: 'נלקחה ע״י אחר' }[o.status] || o.status, o.status === 'accepted' ? 'ok' : 'plain')}</div>
+    <p class="small">${esc(l.desc)}</p>
+    ${l.image ? `<img src="${l.image}" alt="תמונה מהלקוח" style="border-radius:10px;max-height:140px;object-fit:cover;align-self:flex-start">` : ''}
+    <div class="row xs muted"><span>${icon('user', 14)} ${esc(maskName(l.customer.name))} · <span class="ltr">${esc(maskPhone(l.customer.phone))}</span></span><span>${ago(l.created)}</span>${l.demo ? SIM : ''}</div>
+    ${pending && row && row.parts ? `<details class="xs"><summary class="muted" style="cursor:pointer">למה קיבלתם את הבקשה? ציון התאמה <b class="num">${Math.round(row.score * 100)}</b></summary><div class="score" style="margin-top:8px">${Object.keys(WEIGHTS).map(k => `<span>${WEIGHT_NAMES[k]} · ${pct(WEIGHTS[k])}</span><div class="bar"><i style="width:${row.parts[k] * 100}%"></i></div><span class="num">${Math.round(row.parts[k] * 100)}</span>`).join('')}</div></details>` : ''}
+    ${pending ? `<div class="notice info" style="padding:8px 10px">${icon('lock', 16)}<span class="xs">פרטי הלקוח המלאים ייחשפו אחרי שתקבלו את העבודה.</span></div>
+      <div class="grid" style="grid-template-columns:2fr 1fr"><button class="btn" data-act="accept" data-id="${l.id}">${icon('check', 18)} קבלת העבודה</button><button class="btn ghost" data-act="reject" data-id="${l.id}">דחייה</button></div>` : ''}
+  </div>`;
+}
+
+VIEWS.pro.requests = () => {
+  const all = myOffers().sort((a, b) => b.created - a.created);
+  const pend = all.filter(l => l.offers.find(o => o.pid === S.proId).status === 'pending' && !l.assignedTo);
+  const past = all.filter(l => !pend.includes(l));
+  return `<div class="stack">${proHeader()}
+    <h2>בקשות חדשות <span class="muted num">(${pend.length})</span></h2>
+    ${pend.length ? `<div class="grid g2">${pend.map(l => offerCard(l)).join('')}</div>` : `<div class="card">${empty('inbox', 'אין בקשות שממתינות לתשובה', 'כשלקוח באזור השירות שלכם יפתח בקשה בתחום שלכם, היא תופיע כאן.')}</div>`}
+    ${past.length ? `<h2>בקשות קודמות</h2><div class="grid g2">${past.slice(0, 8).map(l => offerCard(l, false)).join('')}</div>` : ''}
+  </div>`;
+};
+
+function jobCard(l) {
+  const pay = payInfo(l), c = commissionOf(S, l);
+  const qd = U.quoteDraft[l.id] ?? '';
+  let act = '';
+  switch (l.status) {
+    case 'accepted':
+      act = `<form class="stack" id="quote-form" data-id="${l.id}">
+        <label class="field"><span>סכום הצעה לפני מע״מ (₪)</span><input class="input num" id="q-amt-${l.id}" data-quote="${l.id}" inputmode="decimal" value="${esc(qd)}" placeholder="לדוגמה 850"></label>
+        <div class="small muted num" id="q-total-${l.id}">${qd ? `כולל מע״מ: ${ils2(+qd * (1 + VAT))}` : 'הלקוח יראה את הסכום כולל מע״מ'}</div>
+        <label class="field"><span>פירוט (לא חובה)</span><input class="input" id="q-note-${l.id}" placeholder="מה כלול בהצעה"></label>
+        <button class="btn" type="submit">שליחת הצעת מחיר</button></form>`; break;
+    case 'quoted':
+      act = `${notice('info', 'clock', `הצעה של ${ils(l.quote.amount)} + מע״מ ממתינה לאישור הלקוח.`)}<button class="btn ghost sm" data-act="as-customer" data-id="${l.id}">הדגמה: לעבור לממשק הלקוח ולאשר</button>`; break;
+    case 'approved':
+      act = `<button class="btn" data-act="status" data-s="in_progress" data-id="${l.id}">${icon('play', 18)} התחלת העבודה</button>`; break;
+    case 'in_progress':
+      act = `<button class="btn" data-act="status" data-s="completed" data-id="${l.id}">${icon('check', 18)} סימון העבודה כהושלמה</button>`; break;
+    case 'completed':
+      act = payForm(l); break;
+  }
+  const canCancel = ['accepted','quoted','approved'].includes(l.status);
+  return `<div class="card stack">
+    <div class="row between"><div><div class="label ltr num">${l.code}</div><h3>${CAT[l.cat].name} · ${esc(l.city)}</h3></div>${statusPill(l.status)}</div>
+    <div class="small" style="background:var(--surface-2);border-radius:10px;padding:10px">
+      <div><b>${esc(l.customer.name)}</b> ${l.demo ? SIM : ''}</div>
+      <div class="ltr num">${esc(l.customer.phone)}</div>
+      ${l.customer.address ? `<div>${esc(l.customer.address)}</div>` : ''}
+    </div>
+    <p class="small">${esc(l.desc)}</p>
+    ${l.quote ? `<div class="calc small num"><span>הצעה (לפני מע״מ)</span><span>${ils2(l.quote.amount)}</span><span>שולם (כולל מע״מ)</span><span>${ils2(pay.net)} ${payPill(pay.state)}</span>${c.amount ? `<span>עמלת PRO NETWORK · ${c.rate}%</span><span>${ils2(c.amount)}</span>` : ''}</div>` : ''}
+    ${act}
+    <div class="row">${canCancel ? `<button class="btn danger sm" data-act="pro-cancel" data-id="${l.id}">ביטול העבודה</button>` : ''}
+    ${['accruing','due'].includes(l.commission.status) ? `<button class="btn ghost sm" data-act="dispute" data-id="${l.id}">ערעור על העמלה</button>` : ''}</div>
+  </div>`;
+}
+function payForm(l) {
+  const pay = payInfo(l);
+  const d = U.payDraft[l.id] ?? (pay.balance ? (Math.round(pay.balance * 100) / 100).toString() : '');
+  return `<form class="stack" id="pay-form" data-id="${l.id}" style="border-top:1px solid var(--line);padding-top:12px">
+    <div class="row between"><h3>רישום תשלום מהלקוח</h3>${SIM}</div>
+    <div class="grid" style="grid-template-columns:1fr 1fr">
+      <label class="field"><span>סכום כולל מע״מ</span><input class="input num" id="pay-amt-${l.id}" data-pay="${l.id}" inputmode="decimal" value="${esc(d)}"></label>
+      <label class="field"><span>אמצעי</span><select class="input" id="pay-method-${l.id}">${['העברה בנקאית','ביט','כרטיס אשראי','מזומן','צ׳ק'].map(m => opt(m, m)).join('')}</select></label>
+    </div>
+    <div class="xs muted">יתרה לפי ההצעה: ${ils2(pay.balance)}. אפשר לרשום תשלום חלקי. התשלום מדומה ולא עובר כסף.</div>
+    <button class="btn" type="submit">רישום תשלום מדומה</button></form>`;
+}
+
+VIEWS.pro.jobs = () => {
+  const jobs = myJobs().sort((a, b) => b.created - a.created);
+  const active = jobs.filter(l => !['closed','cancelled'].includes(l.status));
+  const done = jobs.filter(l => ['closed','cancelled'].includes(l.status));
+  return `<div class="stack">${proHeader()}
+    <h2>עבודות פעילות <span class="muted num">(${active.length})</span></h2>
+    ${active.length ? `<div class="grid g2">${active.map(jobCard).join('')}</div>` : `<div class="card">${empty('brief', 'אין עבודות פעילות', 'עבודות שתקבלו יופיעו כאן עם פרטי הלקוח המלאים.')}</div>`}
+    ${done.length ? `<h2>הסתיימו</h2><div class="grid g2">${done.map(jobCard).join('')}</div>` : ''}
+  </div>`;
+};
+
+VIEWS.pro.earnings = () => {
+  const p = me(), e = earningsOf(p.id);
+  const rows = e.jobs.filter(l => l.payments.length || l.commission.status !== 'none').sort((a, b) => b.created - a.created);
+  return `<div class="stack">${proHeader()}
+    <div class="kpis">
+      ${kpi('התקבל מלקוחות', ils(e.gross), 'כולל מע״מ')}
+      ${kpi('בסיס לעמלה', ils(e.ex), 'לפני מע״מ')}
+      ${kpi('עמלות PRO NETWORK', ils(e.comm))}
+      ${kpi('נטו לכם', ils(e.net), 'לפני מע״מ')}
+    </div>
+    ${notice('info', 'percent', `העמלה מחושבת רק על כסף שהתקבל בפועל, אחרי החזרים ובלי מע״מ. ${p.agreementRate != null ? `יש לכם הסכם אישי: <b>${p.agreementRate}%</b>.` : 'התעריף נקבע לפי תחום העבודה.'}`)}
+    <div class="card"><h2>היסטוריית עמלות</h2>
+    ${rows.length ? `<div class="tbl-wrap cards-wrap" style="margin-top:10px"><table class="tbl cards"><thead><tr><th>עבודה</th><th>תאריך</th><th>בסיס</th><th>שיעור</th><th>עמלה</th><th>סטטוס</th></tr></thead><tbody>
+      ${rows.map(l => { const c = commissionOf(S, l); return `<tr><td data-l="עבודה"><span class="ltr num">${l.code}</span> · ${CAT[l.cat].name}</td><td data-l="תאריך" class="num">${fdate(l.created)}</td><td data-l="בסיס" class="num">${ils2(c.base)}</td><td data-l="שיעור" class="num">${c.rate}%</td><td data-l="עמלה" class="num"><b>${ils2(c.amount)}</b></td><td data-l="סטטוס">${commPill(l.commission.status)}</td></tr>`; }).join('')}
+    </tbody></table></div>` : empty('wallet', 'עוד אין תשלומים', 'אחרי שתרשמו תשלום מלקוח, העמלה תופיע כאן.')}</div>
+  </div>`;
+};
+
+VIEWS.pro.profile = () => {
+  const p = me();
+  return `<div class="stack">${proHeader()}
+    <div class="card stack"><h2>פרטי העסק</h2>
+      <div class="grid g2">
+        <label class="field"><span>שם העסק</span><input class="input" id="pf-business" data-pbind="business" value="${esc(p.business)}"></label>
+        <label class="field"><span>טלפון</span><input class="input" id="pf-phone" data-pbind="phone" value="${esc(p.phone)}" dir="ltr" style="text-align:right"></label>
+      </div>
+      <div class="row small">${p.approved ? pill('מאושר', 'ok') : pill('ממתין לאישור', 'warn')} ${p.licenseVerified ? pill('רישיון אומת', 'ok') : pill('רישיון לא אומת', 'warn')} ${pill(p.agreementRate != null ? `הסכם אישי ${p.agreementRate}%` : 'תעריף לפי קטגוריה', 'plain')}</div>
+    </div>
+    <div class="card stack"><h2>תחומי שירות</h2><div class="chips">${CATS.map(c => `<button class="chip" data-act="pcat" data-cat="${c.id}" aria-pressed="${p.cats.includes(c.id)}">${c.name}${c.license ? '<small>דורש רישיון</small>' : ''}</button>`).join('')}</div></div>
+    <div class="card stack"><h2>אזורי שירות</h2>
+      <p class="small muted">אזור שלם מקבל ציון קרבה חלקי. עיר שבחרתם במפורש מקבלת ציון מלא.</p>
+      <div class="label">אזורים שלמים</div>
+      <div class="chips">${Object.entries(REGIONS).map(([k, n]) => `<button class="chip" data-act="preg" data-r="${k}" aria-pressed="${p.regions.includes(k)}">${n}</button>`).join('')}</div>
+      <div class="label">ערים</div>
+      <div class="chips">${p.cities.map(c => `<button class="chip" data-act="pcity-rm" data-city="${esc(c)}" aria-pressed="true">${esc(c)} ✕</button>`).join('')}</div>
+      <select class="input" id="pf-addcity">${cityOptions('', 'הוספת עיר…')}</select>
+    </div>
+    <div class="card"><h2>חוות דעת</h2>${p.reviews.length ? [...p.reviews].sort((a, b) => b.at - a.at).map(r => `<div class="item"><div class="grow"><div class="row between"><b class="small">${esc(r.who)}</b>${stars(r.stars)}</div><p class="small">${esc(r.text)}</p><div class="xs muted">${fdate(r.at)}</div></div></div>`).join('') : empty('star', 'עוד אין חוות דעת')}</div>
+  </div>`;
+};
+
+SHEETS.reject = (id) => ({ title: 'דחיית הבקשה', body: `<div class="stack"><p class="small muted">הבקשה תעבור לבעל המקצוע הבא בתור. דחיות תכופות מורידות את שיעור ההיענות שלכם.</p>
+  <div class="menu-list">${['לא פנוי בזמן המבוקש','רחוק מדי','לא בתחום שלי','אחר'].map(r => `<button data-act="reject-yes" data-id="${id}" data-r="${r}">${esc(r)}</button>`).join('')}</div></div>` });
+SHEETS.dispute = (id) => ({ title: 'ערעור על עמלה', body: `<form id="dispute-form" data-id="${id}" class="stack"><p class="small muted">העמלה תוקפא עד שמנהל יבדוק את הערעור.</p>
+  <label class="field"><span>נימוק</span><textarea class="input" id="dp-text" required placeholder="לדוגמה: חלק מהסכום הוא החזר על חומרים שהלקוח רכש"></textarea></label><button class="btn" type="submit">שליחת ערעור</button></form>` });
+/* ============================================================
+   Admin views
+   ============================================================ */
+const within = (l, days) => !days || l.created >= now() - days * DAY;
+
+VIEWS.admin.overview = () => {
+  const L = S.leads;
+  const comm = L.map(l => commissionOf(S, l));
+  const turnover = comm.reduce((a, c) => a + c.pay.net, 0);
+  const commTotal = comm.reduce((a, c) => a + c.amount, 0);
+  const collected = L.reduce((a, l, i) => a + (l.commission.status === 'collected' ? comm[i].amount : 0), 0);
+  const activeJobs = L.filter(l => ['accepted','quoted','approved','in_progress'].includes(l.status)).length;
+  const provActive = S.providers.filter(p => p.approved && p.active).length;
+  const attention = [
+    ...L.filter(l => l.status === 'unmatched').map(l => ['bad', `ליד <span class="ltr num">${l.code}</span> ללא התאמה · ${CAT[l.cat].name}, ${esc(l.city)}`, 'lead', l.id]),
+    ...L.filter(l => l.status === 'pending_info').map(l => ['warn', `ליד <span class="ltr num">${l.code}</span> חסר פרטים: ${esc(missingFields(l).join(', '))}`, 'lead', l.id]),
+    ...L.filter(l => l.status === 'no_consent').map(l => ['warn', `ליד <span class="ltr num">${l.code}</span> ממתין להסכמת לקוח`, 'lead', l.id]),
+    ...S.providers.filter(p => !p.approved).map(p => ['info', `${esc(p.business)} ממתין לאישור הצטרפות`, 'provider', p.id]),
+    ...L.filter(l => l.commission.status === 'disputed').map(l => ['bad', `מחלוקת עמלה בעבודה <span class="ltr num">${l.code}</span>`, 'lead', l.id]),
+    ...S.complaints.filter(c => c.status !== 'resolved').map(c => ['warn', `תלונה פתוחה: ${esc(c.type)} · <span class="ltr num">${lead(c.leadId).code}</span>`, 'complaint', c.id])
+  ];
+  const funnel = FLOW.map(s => [s, L.filter(l => FLOW.indexOf(l.status) >= FLOW.indexOf(s)).length]);
+  const fmax = Math.max(1, ...funnel.map(f => f[1]));
+  const byCat = CATS.map(c => [c, L.filter(l => l.cat === c.id).reduce((a, l) => a + commissionOf(S, l).amount, 0)]).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]);
+  const cmax = Math.max(1, ...byCat.map(x => x[1]));
+  return `<div class="stack">
+    <div class="section-h"><div><h1 style="font-size:26px">לוח בקרה</h1><p class="small muted">כל הנתונים מדומים לצורך הדגמה</p></div><button class="btn ghost sm" data-act="reset">איפוס נתוני הדגמה</button></div>
+    <div class="kpis">
+      ${kpi('לידים', L.length, `${L.filter(l => within(l, 7)).length} בשבוע האחרון`)}
+      ${kpi('עבודות פעילות', activeJobs, `${L.filter(l => ['completed','closed'].includes(l.status)).length} הושלמו`)}
+      ${kpi('בעלי מקצוע פעילים', provActive, `${S.providers.filter(p => !p.approved).length} ממתינים לאישור`)}
+      ${kpi('מחזור עסקאות', ils(turnover), 'כולל מע״מ, נטו מהחזרים')}
+      ${kpi('עמלות שנצברו', ils(commTotal), `${ils(collected)} נגבו`)}
+      ${kpi('שיעור סגירה', pct(L.filter(l => ['completed','closed'].includes(l.status)).length / Math.max(1, L.length)), 'לידים שהגיעו לסיום')}
+      ${kpi('תלונות פתוחות', S.complaints.filter(c => c.status !== 'resolved').length)}
+      ${kpi('מחלוקות עמלה', L.filter(l => l.commission.status === 'disputed').length)}
+    </div>
+    <div class="grid g2">
+      <div class="card stack"><h2>דורש טיפול <span class="muted num">(${attention.length})</span></h2>
+        ${attention.length ? `<div>${attention.map(([t, txt, type, id]) => `<button class="item" style="width:100%;border-inline:0;border-top:0;background:none;text-align:start;cursor:pointer" data-act="open" data-type="${type}" data-id="${id}"><span class="pill ${t} plain" style="padding:4px">${icon(t === 'info' ? 'user' : 'alert', 14)}</span><span class="small grow">${txt}</span></button>`).join('')}</div>` : empty('check', 'הכל מטופל')}</div>
+      <div class="card stack"><h2>משפך עבודות</h2><div class="hbars">${funnel.map(([s, n]) => `<div class="hbar"><span>${STATUS[s].name}</span><div class="bar"><i style="width:${n / fmax * 100}%"></i></div><span class="num">${n}</span></div>`).join('')}</div></div>
+      <div class="card stack"><h2>עמלות לפי תחום</h2>${byCat.length ? `<div class="hbars">${byCat.map(([c, v]) => `<div class="hbar"><span>${c.name}</span><div class="bar"><i style="width:${v / cmax * 100}%"></i></div><span class="num">${ils(v)}</span></div>`).join('')}</div>` : empty('chart', 'עוד אין עמלות')}</div>
+    </div>
+  </div>`;
+};
+
+function filteredLeads() {
+  const f = U.lf, q = f.q.trim().toLowerCase();
+  return S.leads.filter(l =>
+    (!f.city || l.city === f.city) && (!f.cat || l.cat === f.cat) && (!f.status || l.status === f.status) &&
+    (!f.from || l.created >= new Date(f.from).getTime()) && (!f.to || l.created <= new Date(f.to).getTime() + DAY) &&
+    (!q || [l.code, l.customer.name, l.customer.phone, l.desc].join(' ').toLowerCase().includes(q))
+  ).sort((a, b) => b.created - a.created);
+}
+VIEWS.admin.leads = () => {
+  const f = U.lf, rows = filteredLeads();
+  return `<div class="stack">
+    <div class="section-h"><h1 style="font-size:26px">ניהול לידים</h1><span class="small muted num">${rows.length} מתוך ${S.leads.length}</span></div>
+    <div class="filters">
+      <input class="input" id="lf-q" data-lf="q" placeholder="חיפוש: מספר, שם, טלפון" value="${esc(f.q)}" style="grid-column:1/-1" >
+      <select class="input" id="lf-city" data-lf="city">${cityOptions(f.city, 'כל הערים')}</select>
+      <select class="input" id="lf-cat" data-lf="cat">${catOptions(f.cat, 'כל התחומים')}</select>
+      <select class="input" id="lf-status" data-lf="status"><option value="">כל הסטטוסים</option>${Object.entries(STATUS).map(([k, s]) => opt(k, s.name, k === f.status)).join('')}</select>
+      <input class="input" type="date" id="lf-from" data-lf="from" value="${esc(f.from)}" aria-label="מתאריך">
+      <input class="input" type="date" id="lf-to" data-lf="to" value="${esc(f.to)}" aria-label="עד תאריך">
+    </div>
+    ${Object.values(f).some(Boolean) ? `<button class="btn ghost sm" data-act="clear-lf" style="align-self:flex-start">ניקוי סינון</button>` : ''}
+    ${rows.length ? `<div class="tbl-wrap cards-wrap"><table class="tbl cards"><thead><tr><th>מספר</th><th>נפתח</th><th>תחום</th><th>עיר</th><th>לקוח</th><th>בעל מקצוע</th><th>שווי</th><th>סטטוס</th></tr></thead><tbody>
+      ${rows.map(l => { const p = l.assignedTo && prov(S, l.assignedTo); return `<tr class="click" data-act="open" data-type="lead" data-id="${l.id}" tabindex="0">
+        <td data-l=""><b class="ltr num">${l.code}</b>${l.urgency === 'now' ? ' ' + pill('דחוף', 'bad') : ''}</td><td data-l="נפתח" class="num">${fdate(l.created)}</td><td data-l="תחום">${CAT[l.cat].name}</td><td data-l="עיר">${esc(l.city)}</td>
+        <td data-l="לקוח">${esc(l.customer.name || '—')}</td><td data-l="בעל מקצוע">${p ? esc(p.business) : `<span class="muted">${l.offers.filter(o => o.status === 'pending').length ? l.offers.filter(o => o.status === 'pending').length + ' הצעות פתוחות' : '—'}</span>`}</td>
+        <td data-l="שווי" class="num">${l.quote ? ils(l.quote.amount) : '—'}</td><td data-l="סטטוס">${statusPill(l.status)}</td></tr>`; }).join('')}
+    </tbody></table></div>` : `<div class="card">${empty('search', 'אין לידים שתואמים לסינון', 'נסו להסיר חלק מהמסננים.')}</div>`}
+  </div>`;
+};
+
+function matchTable(l, allowAssign) {
+  const rows = evaluate(S, l);
+  const elig = rows.filter(r => !r.fails.length), not = rows.filter(r => r.fails.length && r.p.cats.includes(l.cat));
+  return `<div class="stack">
+    ${elig.length ? elig.map((r, i) => { const o = l.offers.find(o => o.pid === r.p.id); return `<div class="card flat stack" style="padding:12px">
+      <div class="row between"><div><b>${i + 1}. ${esc(r.p.business)}</b><div class="xs muted">${r.inCity ? 'משרת את העיר' : 'משרת את האזור'} · ${stars(r.p.rating)}</div></div><div style="text-align:center"><div class="num" style="font-family:var(--f-display);font-size:22px;font-weight:600">${Math.round(r.score * 100)}</div><div class="xs muted">ציון</div></div></div>
+      <div class="score">${Object.keys(WEIGHTS).map(k => `<span>${WEIGHT_NAMES[k]} <span class="muted">${pct(WEIGHTS[k])}</span></span><div class="bar"><i style="width:${r.parts[k] * 100}%"></i></div><span class="num">${(WEIGHTS[k] * r.parts[k] * 100).toFixed(1)}</span>`).join('')}</div>
+      <div class="row">${o ? pill({ pending: 'הבקשה אצלו', accepted: 'שובץ', rejected: 'דחה', closed: 'נסגר' }[o.status], o.status === 'accepted' ? 'ok' : o.status === 'rejected' ? 'bad' : 'info') : ''}
+      ${allowAssign && !l.assignedTo ? `<button class="btn sm" data-act="assign" data-id="${l.id}" data-pid="${r.p.id}">שיבוץ ידני</button>` : ''}</div></div>`; }).join('') : notice('bad', 'alert', 'אין בעל מקצוע שעומד בכל תנאי הסף. בדקו ספקים לא זמינים או שטרם אושרו ברשימה למטה.')}
+    ${not.length ? `<details><summary class="small muted" style="cursor:pointer">בעלי מקצוע בתחום שלא עמדו בתנאי הסף (${not.length})</summary><div style="margin-top:8px">${not.map(r => `<div class="item small"><span class="grow">${esc(r.p.business)}</span><span class="row" style="gap:4px">${r.fails.map(f => pill(f, 'bad')).join('')}</span></div>`).join('')}</div></details>` : ''}
+  </div>`;
+}
+
+SHEETS.lead = (id) => {
+  const l = lead(id);
+  if (l.id === S.demoLeadId && !S.adminSawDemo) { S.adminSawDemo = true; save(); setTimeout(renderFab, 0); }
+  const p = l.assignedTo && prov(S, l.assignedTo);
+  const c = commissionOf(S, l), pay = c.pay;
+  const miss = missingFields(l);
+  return { title: `<span class="ltr num">${l.code}</span> · ${CAT[l.cat].name}`, body: `<div class="stack">
+    <div class="row between">${statusPill(l.status)} ${l.demo ? SIM : ''}</div>
+    <div class="card stack"><h3>פרטי הבקשה</h3>
+      <div class="calc small"><span class="muted">לקוח</span><span>${esc(l.customer.name || '—')}</span><span class="muted">טלפון</span><span class="ltr num">${esc(l.customer.phone)}</span><span class="muted">עיר</span><span>${esc(l.city)} · ${REGIONS[CITY_REGION[l.city]]}</span><span class="muted">כתובת</span><span>${esc(l.customer.address || '—')}</span><span class="muted">דחיפות</span><span>${URGENCY[l.urgency].name}</span><span class="muted">הסכמה לשיתוף</span><span>${l.consent ? pill('ניתנה', 'ok') : pill('לא ניתנה', 'warn')}</span></div>
+      <p class="small">${esc(l.desc)}</p>${l.image ? `<img src="${l.image}" alt="תמונה מהלקוח" style="border-radius:10px;max-height:180px;object-fit:cover">` : ''}
+      ${miss.length ? notice('warn', 'alert', 'חסרים פרטי חובה: ' + esc(miss.join(', ')) + '. המערכת לא תשבץ את הליד עד להשלמה.') : ''}
+      ${!l.consent ? notice('warn', 'lock', 'אין הסכמת לקוח. המערכת לא תעביר את הליד לבעלי מקצוע.') : ''}
+    </div>
+    <div class="card stack"><div class="row between"><h3>התאמה</h3>${!p && l.consent && !miss.length && !['cancelled','closed'].includes(l.status) ? `<button class="btn ghost sm" data-act="rematch" data-id="${l.id}">הרצת התאמה מחדש</button>` : ''}</div>
+      ${p ? notice('ok', 'check', `שובץ ל<b>${esc(p.business)}</b> (${esc(p.name)}).`) : ''}
+      ${!miss.length && l.consent ? matchTable(l, !['cancelled','closed'].includes(l.status)) : '<p class="small muted">ההתאמה תרוץ אחרי השלמת הפרטים וקבלת הסכמה.</p>'}
+    </div>
+    ${l.quote ? `<div class="card stack"><h3>כספים</h3>
+      <div class="calc small num">
+        <span>הצעת מחיר (לפני מע״מ)</span><span>${ils2(l.quote.amount)}</span>
+        <span>לתשלום כולל מע״מ</span><span>${ils2(pay.due)}</span>
+        <span>התקבל</span><span>${ils2(pay.paid)}</span>
+        ${pay.refunded ? `<span>הוחזר</span><span>−${ils2(pay.refunded)}</span>` : ''}
+        <span>נטו כולל מע״מ</span><span>${ils2(pay.net)}</span>
+        <span>מע״מ (מוחרג מהעמלה)</span><span>−${ils2(c.vatPart)}</span>
+        <span><b>בסיס לעמלה</b></span><span><b>${ils2(c.base)}</b></span>
+        <span>שיעור · ${esc(c.source)}</span><span>${c.rate}%</span>
+        <span class="t">עמלה</span><span class="t">${ils2(c.amount)}</span>
+      </div>
+      <div class="row">${payPill(pay.state)} ${commPill(l.commission.status)}</div>
+      ${l.commission.status === 'disputed' ? notice('bad', 'flag', '<b>ערעור של בעל המקצוע:</b> ' + esc(l.commission.dispute)) + disputeTools(l) : ''}
+      ${l.payments.length ? `<div>${l.payments.map(x => `<div class="item small"><span class="grow">${x.type === 'refund' ? 'החזר' : 'תשלום'} · ${esc(x.method)} · ${fdate(x.at)}</span><span class="num">${x.type === 'refund' ? '−' : ''}${ils2(x.amount)}</span> ${SIM}</div>`).join('')}</div>` : ''}
+      ${['completed','closed','cancelled'].includes(l.status) && pay.net > 0 ? `<form id="refund-form" data-id="${l.id}" class="row"><input class="input grow num" id="rf-amt" inputmode="decimal" placeholder="סכום החזר כולל מע״מ" style="min-height:40px"><button class="btn ghost sm" type="submit">רישום החזר</button></form>` : ''}
+      ${l.commission.status === 'due' ? `<button class="btn okb" data-act="collect" data-id="${l.id}">סימון העמלה כנגבתה (מדומה)</button>` : ''}
+    </div>` : ''}
+    <div class="row">${!['cancelled','closed'].includes(l.status) ? `<button class="btn danger sm" data-act="admin-cancel" data-id="${l.id}">ביטול הליד</button>` : ''}</div>
+    <div class="card"><h3>היסטוריה</h3><ul class="timeline" style="margin-top:12px">${[...l.history].sort((a, b) => b.at - a.at).map(h => `<li><div class="small">${esc(h.text)}</div><div class="xs muted">${ftime(h.at)}</div></li>`).join('')}</ul></div>
+  </div>` };
+};
+function disputeTools(l) {
+  return `<form id="dispute-resolve" data-id="${l.id}" class="stack" style="background:var(--surface-2);padding:12px;border-radius:12px">
+    <div class="label">יישוב המחלוקת</div>
+    <div class="row"><label class="field grow"><span>שיעור עמלה מתוקן (%)</span><input class="input num" id="dr-rate" inputmode="decimal" placeholder="${commissionOf(S, l).rate}"></label></div>
+    <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:6px"><button class="btn sm" type="submit" name="m" value="adjust">עדכון שיעור</button><button class="btn ghost sm" type="button" data-act="dispute-keep" data-id="${l.id}">דחיית הערעור</button><button class="btn danger sm" type="button" data-act="dispute-waive" data-id="${l.id}">ביטול העמלה</button></div>
+    <p class="xs muted">בגרסת הייצור רק פעולת שרת מורשית תוכל לשנות רשומה כספית סופית.</p></form>`;
+}
+
+VIEWS.admin.providers = () => {
+  const f = U.pf, q = f.q.trim().toLowerCase();
+  const rows = S.providers.filter(p => (!f.cat || p.cats.includes(f.cat)) &&
+    (!f.state || (f.state === 'pending' && !p.approved) || (f.state === 'active' && p.approved && p.active) || (f.state === 'suspended' && !p.active) || (f.state === 'nolicense' && !p.licenseVerified)) &&
+    (!q || (p.name + p.business + p.cities.join(' ')).toLowerCase().includes(q)));
+  return `<div class="stack">
+    <div class="section-h"><h1 style="font-size:26px">בעלי מקצוע</h1><span class="small muted num">${rows.length} מתוך ${S.providers.length}</span></div>
+    <div class="filters" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+      <input class="input" id="pf-q" data-pf="q" placeholder="חיפוש שם, עסק או עיר" value="${esc(f.q)}">
+      <select class="input" id="pf-cat" data-pf="cat">${catOptions(f.cat, 'כל התחומים')}</select>
+      <select class="input" id="pf-state" data-pf="state">${[['', 'כל המצבים'], ['active', 'פעילים'], ['pending', 'ממתינים לאישור'], ['suspended', 'מושעים'], ['nolicense', 'רישיון לא אומת']].map(([v, n]) => opt(v, n, v === f.state)).join('')}</select>
+    </div>
+    <div class="tbl-wrap cards-wrap"><table class="tbl cards"><thead><tr><th>עסק</th><th>תחומים</th><th>אזורים</th><th>דירוג</th><th>היענות</th><th>מצב</th></tr></thead><tbody>
+    ${rows.map(p => `<tr class="click" data-act="open" data-type="provider" data-id="${p.id}" tabindex="0"><td data-l=""><b>${esc(p.business)}</b><div class="xs muted">${esc(p.name)}</div></td>
+      <td data-l="תחומים">${p.cats.map(c => CAT[c].name).join(', ')}</td><td data-l="אזורים">${p.regions.map(r => REGIONS[r]).join(', ')}</td>
+      <td data-l="דירוג" class="num">${p.rating}</td><td data-l="היענות" class="num">${pct(p.acceptRate)}</td>
+      <td data-l="מצב"><span class="row" style="gap:4px;justify-content:flex-end">${!p.approved ? pill('ממתין', 'warn') : !p.active ? pill('מושעה', 'bad') : pill('פעיל', 'ok')}${!p.licenseVerified ? pill('רישיון', 'warn') : ''}${!p.available ? pill('לא זמין', 'plain') : ''}</span></td></tr>`).join('')}
+    </tbody></table></div>
+  </div>`;
+};
+SHEETS.provider = (id) => {
+  const p = prov(S, id), e = earningsOf(id);
+  const needsLic = p.cats.filter(c => CAT[c].license);
+  return { title: esc(p.business), body: `<div class="stack">
+    <div class="row">${SIM} <span class="small muted">${esc(p.name)} · <span class="ltr num">${esc(p.phone)}</span> · הצטרף ${fdate(p.joined)}</span></div>
+    <div class="kpis">${kpi('עבודות', e.jobs.length)}${kpi('מחזור', ils(e.gross))}${kpi('עמלות', ils(e.comm))}${kpi('דירוג', p.rating)}</div>
+    <div class="card stack"><h3>סטטוס ואימות</h3>
+      <div class="row between"><span>אישור הצטרפות</span>${p.approved ? `<button class="btn ghost sm" data-act="pv" data-k="approved" data-id="${id}">ביטול אישור</button>` : `<button class="btn sm" data-act="pv" data-k="approved" data-id="${id}">אישור בעל המקצוע</button>`}</div>
+      <div class="row between"><span>חשבון פעיל</span>${p.active ? `<button class="btn danger sm" data-act="pv" data-k="active" data-id="${id}">השעיה</button>` : `<button class="btn okb sm" data-act="pv" data-k="active" data-id="${id}">הפעלה מחדש</button>`}</div>
+      <div class="row between"><span>רישיון${needsLic.length ? ` (${needsLic.map(c => CAT[c].license).join(', ')})` : ' – לא נדרש בתחומים שלו'}</span>${p.licenseVerified ? pill('אומת', 'ok') : `<button class="btn sm" data-act="pv" data-k="licenseVerified" data-id="${id}">סימון כמאומת</button>`}</div>
+      <div class="row between"><span>זמינות</span>${p.available ? pill('זמין', 'ok') : pill('לא זמין', 'plain')}</div>
+    </div>
+    <form class="card stack" id="agreement-form" data-id="${id}"><h3>הסכם עמלה</h3>
+      <p class="small muted">ריק = תעריף הקטגוריה. בפרויקטים מעל ${ils(LARGE_PROJECT_THRESHOLD)} חל תמיד תעריף פרויקט גדול.</p>
+      <div class="row"><input class="input grow num" id="ag-rate" inputmode="decimal" value="${p.agreementRate ?? ''}" placeholder="למשל 9"><button class="btn sm" type="submit">שמירה</button></div></form>
+    <div class="card"><h3>תחומים ואזורים</h3><p class="small">${p.cats.map(c => CAT[c].name).join(' · ')}</p><p class="small muted">${p.regions.map(r => REGIONS[r]).join(', ')}${p.cities.length ? ' · ' + p.cities.map(esc).join(', ') : ''}</p></div>
+    <div class="card"><h3>עבודות</h3>${e.jobs.length ? e.jobs.map(l => `<button class="item small" style="width:100%;background:none;border-inline:0;border-top:0;cursor:pointer;text-align:start" data-act="open" data-type="lead" data-id="${l.id}"><span class="ltr num">${l.code}</span><span class="grow">${CAT[l.cat].name} · ${esc(l.city)}</span>${statusPill(l.status)}</button>`).join('') : '<p class="small muted">אין עבודות עדיין.</p>'}</div>
+  </div>` };
+};
+
+VIEWS.admin.commissions = () => {
+  const rows = S.leads.filter(l => l.payments.length || l.commission.status !== 'none').sort((a, b) => b.created - a.created);
+  const sum = (st) => rows.filter(l => l.commission.status === st).reduce((a, l) => a + commissionOf(S, l).amount, 0);
+  return `<div class="stack">
+    <h1 style="font-size:26px">עמלות</h1>
+    <div class="kpis">${kpi('לגבייה', ils(sum('due')))}${kpi('נגבו', ils(sum('collected')))}${kpi('נצברות', ils(sum('accruing')), 'עבודות בביצוע')}${kpi('במחלוקת', ils(sum('disputed')))}</div>
+    ${notice('info', 'percent', `העמלה = (תשלומים − החזרים) ÷ ${1 + VAT} × שיעור. סדר הקדימות: פרויקט גדול → יישוב מחלוקת → הסכם אישי → תעריף קטגוריה.`)}
+    ${rows.length ? `<div class="tbl-wrap cards-wrap"><table class="tbl cards"><thead><tr><th>עבודה</th><th>בעל מקצוע</th><th>בסיס</th><th>שיעור</th><th>עמלה</th><th>תשלום</th><th>עמלה</th></tr></thead><tbody>
+      ${rows.map(l => { const c = commissionOf(S, l); return `<tr class="click" data-act="open" data-type="lead" data-id="${l.id}" tabindex="0"><td data-l=""><b class="ltr num">${l.code}</b> · ${CAT[l.cat].name}</td><td data-l="בעל מקצוע">${esc(prov(S, l.assignedTo).business)}</td>
+        <td data-l="בסיס (ללא מע״מ)" class="num">${ils2(c.base)}</td><td data-l="שיעור" class="num">${c.rate}%</td><td data-l="עמלה" class="num"><b>${ils2(c.amount)}</b></td><td data-l="תשלום">${payPill(c.pay.state)}</td><td data-l="סטטוס עמלה">${commPill(l.commission.status)}</td></tr>`; }).join('')}
+    </tbody></table></div>` : `<div class="card">${empty('percent', 'אין עמלות עדיין')}</div>`}
+  </div>`;
+};
+
+VIEWS.admin.more = () => `<div class="stack"><h1 style="font-size:26px">ניהול</h1><div class="card"><div class="menu-list">
+  ${Object.entries(ADMIN_MORE).map(([k, [n, ic]]) => `<button data-act="tab" data-tab="${k}"><span class="ic">${icon(ic, 20)}</span><span class="grow">${n}</span>${k === 'complaints' && badges().more ? `<span class="pill bad plain num">${badges().more}</span>` : ''}<span class="muted">‹</span></button>`).join('')}
+  </div></div>
+  <div class="card stack"><h3>נתוני הדגמה</h3><p class="small muted">הנתונים נשמרים רק בדפדפן הזה. איפוס מחזיר את ${S.providers.length} בעלי המקצוע ו־14 הלידים המקוריים.</p><button class="btn danger" data-act="reset">איפוס נתוני הדגמה</button></div></div>`;
+const backBtn = () => `<button class="btn ghost sm" data-act="tab" data-tab="more" style="align-self:flex-start">› חזרה</button>`;
+
+VIEWS.admin.customers = () => {
+  const map = {};
+  S.leads.forEach(l => { const k = l.customer.phone; (map[k] = map[k] || { name: l.customer.name, phone: k, city: l.city, leads: [], last: 0 }); map[k].leads.push(l); map[k].last = Math.max(map[k].last, l.created); if (l.customer.name) map[k].name = l.customer.name; });
+  const rows = Object.values(map).sort((a, b) => b.last - a.last);
+  return `<div class="stack">${backBtn()}<h1 style="font-size:26px">לקוחות</h1>
+    ${notice('info', 'lock', 'בגרסת הייצור הגישה לפרטי לקוחות תוגבל לתפקידים מורשים ותתועד.')}
+    <div class="tbl-wrap cards-wrap"><table class="tbl cards"><thead><tr><th>לקוח</th><th>טלפון</th><th>עיר</th><th>בקשות</th><th>שילם</th><th>אחרונה</th></tr></thead><tbody>
+    ${rows.map(c => `<tr class="click" data-act="cust-leads" data-phone="${esc(c.phone)}" tabindex="0"><td data-l=""><b>${esc(c.name || 'ללא שם')}</b></td><td data-l="טלפון" class="ltr num">${esc(c.phone)}</td><td data-l="עיר">${esc(c.city)}</td><td data-l="בקשות" class="num">${c.leads.length}</td><td data-l="שילם" class="num">${ils(c.leads.reduce((a, l) => a + payInfo(l).net, 0))}</td><td data-l="אחרונה" class="num">${fdate(c.last)}</td></tr>`).join('')}
+    </tbody></table></div></div>`;
+};
+
+VIEWS.admin.categories = () => `<div class="stack">${backBtn()}<h1 style="font-size:26px">קטגוריות ותעריפים</h1>
+  <form id="rates-form" class="stack">
+  <div class="tbl-wrap cards-wrap"><table class="tbl cards"><thead><tr><th>תחום</th><th>קבוצה</th><th>טווח</th><th>שיעור עמלה</th><th>רישיון</th><th>ספקים</th><th>לידים</th></tr></thead><tbody>
+  ${CATS.map(c => { const t = TIERS[c.tier]; return `<tr><td data-l=""><span class="row" style="gap:8px">${icon(c.icon, 18)}<b>${c.name}</b></span></td><td data-l="קבוצה">${t.name}</td><td data-l="טווח מותר" class="num">${t.min}–${t.max}%</td>
+    <td data-l="שיעור"><input class="input num" style="min-height:38px;width:90px;padding:6px 8px" id="rate-${c.id}" name="${c.id}" inputmode="decimal" value="${S.catRates[c.id]}" data-min="${t.min}" data-max="${t.max}"></td>
+    <td data-l="רישיון">${c.license ? pill('נדרש', 'info') : '<span class="muted">—</span>'}</td><td data-l="ספקים" class="num">${S.providers.filter(p => p.cats.includes(c.id) && p.approved).length}</td><td data-l="לידים" class="num">${S.leads.filter(l => l.cat === c.id).length}</td></tr>`; }).join('')}
+  <tr><td data-l=""><b>פרויקט גדול</b><div class="xs muted">מעל ${ils(LARGE_PROJECT_THRESHOLD)} לפני מע״מ</div></td><td data-l="קבוצה">${TIERS.large.name}</td><td data-l="טווח מותר" class="num">${TIERS.large.min}–${TIERS.large.max}%</td><td data-l="שיעור"><input class="input num" style="min-height:38px;width:90px;padding:6px 8px" id="rate-large" name="large" inputmode="decimal" value="${S.largeRate}" data-min="${TIERS.large.min}" data-max="${TIERS.large.max}"></td><td data-l=""></td><td data-l=""></td><td data-l=""></td></tr>
+  </tbody></table></div>
+  <button class="btn" type="submit" style="align-self:flex-start">שמירת תעריפים</button></form></div>`;
+
+VIEWS.admin.matching = () => {
+  const s = U.sim;
+  const fake = { customer: { name: 'בדיקה', phone: '050-0000000' }, cat: s.cat, city: s.city, urgency: s.urgency, desc: 'סימולציה', offers: [] };
+  return `<div class="stack">${backBtn()}<h1 style="font-size:26px">מנוע ההתאמה</h1>
+    <div class="grid g2">
+      <div class="card stack"><h3>תנאי סף (כולם חובה)</h3><ul class="small" style="margin:0;padding-inline-start:18px;display:grid;gap:4px">
+        <li>בעל המקצוע רשום בתחום המבוקש</li><li>העיר או האזור בתחום השירות שלו</li><li>מאושר ופעיל</li><li>רישיון מאומת בתחומים שמחייבים רישיון</li><li>מסומן כזמין</li></ul>
+        <h3>חסימות</h3><ul class="small" style="margin:0;padding-inline-start:18px;display:grid;gap:4px"><li>אין שיבוץ כשחסרים שם, טלפון תקין, תחום, עיר או תיאור</li><li>אין העברה לאף ספק בלי הסכמת הלקוח</li><li>הליד נשלח לעד ${MAX_OFFERS} ספקים, והפרטים המלאים נחשפים רק למי שמקבל</li></ul></div>
+      <div class="card stack"><h3>משקלות הדירוג</h3><div class="hbars">${Object.keys(WEIGHTS).map(k => `<div class="hbar"><span>${WEIGHT_NAMES[k]}</span><div class="bar"><i style="width:${WEIGHTS[k] / .3 * 100}%"></i></div><span class="num">${pct(WEIGHTS[k])}</span></div>`).join('')}</div>
+        <p class="xs muted">קרבה: עיר מפורשת 100, אזור 60 · זמינות: תור פנוי ביחס לדחיפות · איכות: דירוג 3–5 · היענות: שיעור קבלה · הוגנות: פחות לידים ב־30 יום = ציון גבוה יותר</p></div>
+    </div>
+    <div class="card stack"><h2>סימולטור</h2>
+      <div class="grid g3">
+        <select class="input" id="sim-cat" data-sim="cat">${catOptions(s.cat)}</select>
+        <select class="input" id="sim-city" data-sim="city">${cityOptions(s.city)}</select>
+        <select class="input" id="sim-urg" data-sim="urgency">${Object.entries(URGENCY).map(([k, u]) => opt(k, u.name, k === s.urgency)).join('')}</select>
+      </div>
+      ${s.cat && s.city ? matchTable(fake, false) : ''}
+    </div></div>`;
+};
+
+VIEWS.admin.complaints = () => {
+  const rows = [...S.complaints].sort((a, b) => b.at - a.at);
+  const ST = { open: ['פתוחה', 'bad'], in_review: ['בבדיקה', 'warn'], resolved: ['טופלה', 'ok'] };
+  return `<div class="stack">${backBtn()}<h1 style="font-size:26px">תלונות</h1>
+    ${rows.length ? rows.map(c => { const l = lead(c.leadId), p = l.assignedTo && prov(S, l.assignedTo); return `<div class="card stack">
+      <div class="row between"><div><b>${esc(c.type)}</b> · <span class="ltr num">${l.code}</span><div class="xs muted">${esc(l.customer.name)} נגד ${p ? esc(p.business) : '—'} · ${fdate(c.at)}</div></div>${pill(ST[c.status][0], ST[c.status][1])}</div>
+      <p class="small">${esc(c.text)}</p>${c.resolution ? notice('ok', 'check', esc(c.resolution)) : ''}
+      ${c.status !== 'resolved' ? `<form class="stack" id="cr-form" data-id="${c.id}"><input class="input" id="cr-${c.id}" placeholder="סיכום הטיפול"><div class="row">${c.status === 'open' ? `<button type="button" class="btn ghost sm" data-act="c-review" data-id="${c.id}">העברה לבדיקה</button>` : ''}<button class="btn sm" type="submit">סגירת התלונה</button><button type="button" class="btn ghost sm" data-act="open" data-type="lead" data-id="${l.id}">לליד</button></div></form>` : ''}
+    </div>`; }).join('') : `<div class="card">${empty('flag', 'אין תלונות')}</div>`}</div>`;
+};
+
+VIEWS.admin.reports = () => {
+  const d = U.rangeDays, L = S.leads.filter(l => within(l, d));
+  const agg = (keyFn, names) => {
+    const m = {};
+    L.forEach(l => { const k = keyFn(l); const r = m[k] = m[k] || { k, leads: 0, done: 0, turnover: 0, comm: 0 }; const c = commissionOf(S, l); r.leads++; if (['completed','closed'].includes(l.status)) r.done++; r.turnover += c.pay.net; r.comm += c.amount; });
+    return Object.values(m).sort((a, b) => b.leads - a.leads).map(r => ({ ...r, name: names(r.k) }));
+  };
+  const tbl = (rows, head) => rows.length ? `<div class="tbl-wrap cards-wrap"><table class="tbl cards"><thead><tr><th>${head}</th><th>לידים</th><th>הושלמו</th><th>המרה</th><th>מחזור</th><th>עמלות</th></tr></thead><tbody>${rows.map(r => `<tr><td data-l=""><b>${esc(r.name)}</b></td><td data-l="לידים" class="num">${r.leads}</td><td data-l="הושלמו" class="num">${r.done}</td><td data-l="המרה" class="num">${pct(r.done / r.leads)}</td><td data-l="מחזור" class="num">${ils(r.turnover)}</td><td data-l="עמלות" class="num">${ils(r.comm)}</td></tr>`).join('')}</tbody></table></div>` : empty('chart', 'אין נתונים בטווח הזה');
+  const top = S.providers.map(p => ({ p, e: earningsOf(p.id) })).filter(x => x.e.comm > 0).sort((a, b) => b.e.comm - a.e.comm).slice(0, 5);
+  return `<div class="stack">${backBtn()}<div class="section-h"><h1 style="font-size:26px">דוחות</h1>
+    <div class="chips">${[[7, '7 ימים'], [30, '30 יום'], [90, '90 יום'], [0, 'הכל']].map(([v, n]) => `<button class="chip" style="min-height:36px;padding:6px 12px" data-act="range" data-d="${v}" aria-pressed="${d === v}">${n}</button>`).join('')}</div></div>
+    <div class="kpis">${kpi('לידים', L.length)}${kpi('ערך עבודה ממוצע', ils(L.filter(l => l.quote).reduce((a, l) => a + l.quote.amount, 0) / Math.max(1, L.filter(l => l.quote).length)), 'לפני מע״מ')}${kpi('זמן לשיבוץ', L.filter(l => l.assignedTo).length ? '1.0 שע׳' : '—', SIM)}${kpi('עמלות', ils(L.reduce((a, l) => a + commissionOf(S, l).amount, 0)))}</div>
+    <div class="card stack"><h2>לפי תחום</h2>${tbl(agg(l => l.cat, k => CAT[k].name), 'תחום')}</div>
+    <div class="card stack"><h2>לפי אזור</h2>${tbl(agg(l => CITY_REGION[l.city], k => REGIONS[k]), 'אזור')}</div>
+    <div class="card stack"><h2>בעלי המקצוע המובילים</h2>${top.length ? top.map((x, i) => `<div class="item"><span class="avatar">${i + 1}</span><div class="grow"><b>${esc(x.p.business)}</b><div class="xs muted">${x.e.jobs.length} עבודות · ${stars(x.p.rating)}</div></div><div class="num" style="text-align:end"><b>${ils(x.e.comm)}</b><div class="xs muted">עמלות</div></div></div>`).join('') : empty('users', 'אין נתונים')}</div>
+  </div>`;
+};
+/* ============================================================
+   Demo walkthrough + event wiring
+   ============================================================ */
+function guideSteps() {
+  const l = S.demoLeadId && lead(S.demoLeadId);
+  const idx = l ? FLOW.indexOf(l.status) : -1;
+  const at = (s) => l && idx >= FLOW.indexOf(s);
+  const c = l && commissionOf(S, l);
+  return [
+    ['יצירת בקשת לקוח', 'ממלאים טופס בממשק הלקוח (יש כפתור "מלאו דוגמה").', !!l, 'g-request'],
+    ['התאמת בעל מקצוע', 'המנוע בוחר עד 3 ספקים לפי תנאי הסף והמשקלות.', l && l.offers.length > 0, 'g-match'],
+    ['קבלת הבקשה', 'עוברים לבעל מקצוע שקיבל את הבקשה ולוחצים "קבלת העבודה".', l && !!l.assignedTo, 'g-accept'],
+    ['שליחת הצעת מחיר', 'בעל המקצוע מזין סכום לפני מע״מ.', l && !!l.quote, 'g-quote'],
+    ['אישור העבודה', 'הלקוח מאשר את ההצעה בעמוד המעקב.', at('approved'), 'g-approve'],
+    ['השלמת העבודה', 'בעל המקצוע מתחיל ומסמן כהושלם.', at('completed'), 'g-complete'],
+    ['רישום תשלום מדומה', 'בעל המקצוע רושם תשלום מלא או חלקי.', l && l.payments.length > 0, 'g-pay'],
+    ['חישוב העמלה', c && c.amount ? `עמלה: ${ils2(c.amount)} (${c.rate}% מ־${ils2(c.base)})` : 'מחושבת אוטומטית מהתשלום, בלי מע״מ.', c && c.amount > 0, 'g-pay'],
+    ['צפייה בלוח המנהל', 'פותחים את הליד בממשק המנהל ורואים את כל החישוב.', l && S.adminSawDemo, 'g-admin']
+  ];
+}
+function renderFab() {
+  const steps = guideSteps(); const done = steps.filter(s => s[2]).length;
+  document.getElementById('fab').setAttribute('aria-label', `תרחיש הדגמה, ${done} מתוך 9 שלבים`);
+  document.getElementById('fab').innerHTML = `${icon('play', 16)} <span class="fab-t">תרחיש הדגמה</span> <span class="prog num">${done}/9</span>`;
+}
+SHEETS.guide = () => {
+  const steps = guideSteps(); const next = steps.findIndex(s => !s[2]);
+  return { title: 'תרחיש הדגמה מלא', body: `<div class="stack"><p class="small muted">9 שלבים מבקשה ועד עמלה. כל שלב מסומן אוטומטית כשמבצעים אותו, וכפתור "לשלב" לוקח אתכם למסך הנכון.</p>
+    <div>${steps.map(([t, d, ok, act], i) => `<div class="guide-step${ok ? ' done' : ''}${i === next ? ' next' : ''}"><span class="dot num">${ok ? '✓' : i + 1}</span><div class="grow"><b>${t}</b><div class="small muted">${d}</div></div>${i === next ? `<button class="btn sm" data-act="${act}">לשלב</button>` : ''}</div>`).join('')}</div>
+    ${next === -1 ? notice('ok', 'check', 'סיימתם את כל התרחיש. אפשר להתחיל שוב עם בקשה חדשה.') : ''}
+    <div class="row"><button class="btn ghost sm" data-act="g-restart">התחלת תרחיש חדש</button></div></div>` };
+};
+
+function demoLead() { return S.demoLeadId && lead(S.demoLeadId); }
+const GUIDE = {
+  'g-request': () => { closeSheet(); U.justCreated = null; if (!U.form.desc) sampleForm(); go('customer', 'request'); toast('מילאנו בשבילכם דוגמה. לחצו "שליחת הבקשה" למטה'); },
+  'g-match': () => { closeSheet(); const l = demoLead(); go('admin', 'leads'); openSheet('lead', l.id); },
+  'g-accept': () => { const l = demoLead(); const o = l.offers.find(o => o.status === 'pending'); if (o) S.proId = o.pid; closeSheet(); save(); go('pro', 'requests'); toast(`מחוברים כעת כ${prov(S, S.proId).business}`); },
+  'g-quote': () => { const l = demoLead(); S.proId = l.assignedTo; closeSheet(); save(); go('pro', 'jobs'); },
+  'g-approve': () => { const l = demoLead(); closeSheet(); U.trackCode = l.code; go('customer', 'track'); },
+  'g-complete': () => { const l = demoLead(); S.proId = l.assignedTo; closeSheet(); save(); go('pro', 'jobs'); },
+  'g-pay': () => { const l = demoLead(); S.proId = l.assignedTo; closeSheet(); save(); go('pro', 'jobs'); },
+  'g-admin': () => { const l = demoLead(); go('admin', 'leads'); openSheet('lead', l.id); },
+  'g-restart': () => { S.demoLeadId = null; S.adminSawDemo = false; U.justCreated = null; U.form = { cat: '', city: '', urgency: 'soon', desc: '', image: null, name: '', phone: '', email: '', address: '', consent: true }; save(); closeSheet(); go('customer', 'request'); }
+};
+
+function num(v) { const n = parseFloat(String(v).replace(/[,₪\s]/g, '')); return isFinite(n) ? n : NaN; }
+
+const ACT = {
+  home: () => go(U.role, TABS[U.role][0][0]),
+  tab: (el) => go(U.role, el.dataset.tab),
+  'switch-role': (el) => go(el.dataset.role, TABS[el.dataset.role][0][0]),
+  'close-sheet': closeSheet,
+  guide: () => openSheet('guide'),
+  open: (el) => openSheet(el.dataset.type === 'complaint' ? 'lead' : el.dataset.type, el.dataset.type === 'complaint' ? S.complaints.find(c => c.id === el.dataset.id).leadId : el.dataset.id),
+  'pick-cat': (el) => { U.form.cat = el.dataset.cat; U.justCreated = null; go('customer', 'request'); },
+  sample: () => { sampleForm(); render(); },
+  urgency: (el) => { U.form.urgency = el.dataset.u; render(); },
+  'rm-img': () => { U.form.image = null; render(); },
+  'new-request': () => { U.justCreated = null; render(); },
+  'track-lead': (el) => { U.trackCode = lead(el.dataset.id).code; go('customer', 'track'); },
+  'track-code': (el) => { U.trackCode = el.dataset.code; render(); },
+  'as-pro': (el) => { const l = lead(el.dataset.id); const o = l.offers.find(o => o.status === 'pending'); if (o) S.proId = o.pid; save(); go('pro', 'requests'); toast(`מחוברים כעת כ${prov(S, S.proId).business} ${'(הדגמה)'}`); },
+  'as-customer': (el) => { U.trackCode = lead(el.dataset.id).code; go('customer', 'track'); },
+  'give-consent': (el) => { const l = lead(el.dataset.id); l.consent = true; log(l, 'הלקוח אישר העברת פרטים'); const r = intake(S, l); refresh(); toast(r.ok ? `נשלח ל־${r.count} בעלי מקצוע` : 'נשמר. אין כרגע התאמה'); },
+  'approve-quote': (el) => { approveQuote(S, lead(el.dataset.id)); refresh(); toast('ההצעה אושרה. בעל המקצוע קיבל עדכון בממשק'); },
+  'decline-quote': (el) => askConfirm('לדחות את ההצעה?', 'הבקשה תחזור להתאמה ותישלח לבעלי מקצוע אחרים.', 'דחיית ההצעה', () => {
+    const l = lead(el.dataset.id); const pid = l.assignedTo; const o = l.offers.find(o => o.pid === pid); if (o) o.status = 'rejected';
+    l.assignedTo = null; l.quote = null; log(l, 'הלקוח דחה את הצעת המחיר'); runMatch(S, l); refresh(); toast('ההצעה נדחתה. מחפשים בעל מקצוע אחר'); }),
+  'rv-star': (el) => { U.rv = +el.dataset.n; document.querySelectorAll('#rv-stars .chip').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.n === U.rv))); },
+  complain: (el) => openSheet('complain', el.dataset.id),
+  'cust-cancel': (el) => askConfirm('לבטל את הבקשה?', 'בעלי המקצוע יקבלו הודעה בממשק שהבקשה בוטלה.', 'ביטול הבקשה', () => { const l = lead(el.dataset.id); l.offers.forEach(o => { if (o.status === 'pending') o.status = 'closed'; }); setStatus(S, l, 'cancelled'); log(l, 'בוטל ע״י הלקוח'); refresh(); toast('הבקשה בוטלה'); }),
+  'confirm-yes': () => { const fn = U.confirm.fn; closeSheet(); fn(); },
+
+  accept: (el) => { const l = lead(el.dataset.id); if (accept(S, l, S.proId)) { refresh(); toast('קיבלתם את העבודה. פרטי הלקוח זמינים בלשונית עבודות'); go('pro', 'jobs', false); } else { toast('העבודה כבר נלקחה ע״י בעל מקצוע אחר', true); refresh(); } },
+  reject: (el) => openSheet('reject', el.dataset.id),
+  'reject-yes': (el) => { reject(S, lead(el.dataset.id), S.proId, el.dataset.r); closeSheet(); refresh(); toast('הבקשה נדחתה והועברה הלאה'); },
+  status: (el) => { setStatus(S, lead(el.dataset.id), el.dataset.s); refresh(); toast(el.dataset.s === 'completed' ? 'העבודה סומנה כהושלמה. אפשר לרשום תשלום' : 'העבודה התחילה'); },
+  'pro-cancel': (el) => askConfirm('לבטל את העבודה?', 'ביטול פוגע בשיעור ההיענות שלכם, והלקוח יקבל עדכון.', 'ביטול העבודה', () => { const l = lead(el.dataset.id); const p = prov(S, l.assignedTo); p.acceptRate = clamp(p.acceptRate * 0.95); setStatus(S, l, 'cancelled'); log(l, 'בוטל ע״י בעל המקצוע'); refresh(); toast('העבודה בוטלה'); }),
+  dispute: (el) => openSheet('dispute', el.dataset.id),
+  pcat: (el) => { const p = me(), c = el.dataset.cat; p.cats = p.cats.includes(c) ? p.cats.filter(x => x !== c) : [...p.cats, c]; refresh(); },
+  preg: (el) => { const p = me(), r = el.dataset.r; p.regions = p.regions.includes(r) ? p.regions.filter(x => x !== r) : [...p.regions, r]; refresh(); },
+  'pcity-rm': (el) => { const p = me(); p.cities = p.cities.filter(x => x !== el.dataset.city); refresh(); },
+
+  rematch: (el) => { const l = lead(el.dataset.id); const r = intake(S, l); refresh(); toast(r.ok ? `נשלח ל־${r.count} בעלי מקצוע` : 'לא נמצאה התאמה', !r.ok); },
+  assign: (el) => { manualAssign(S, lead(el.dataset.id), el.dataset.pid); refresh(); toast('השיבוץ הידני בוצע'); },
+  collect: (el) => { const l = lead(el.dataset.id); l.commission.status = 'collected'; log(l, `עמלה של ${ils2(commissionOf(S, l).amount)} סומנה כנגבתה (מדומה)`); refresh(); toast('העמלה סומנה כנגבתה'); },
+  'dispute-keep': (el) => { const l = lead(el.dataset.id); l.commission.status = 'due'; log(l, 'הערעור על העמלה נדחה'); refresh(); toast('הערעור נדחה. העמלה חזרה לגבייה'); },
+  'dispute-waive': (el) => { const l = lead(el.dataset.id); l.commission.status = 'waived'; log(l, 'העמלה בוטלה ביישוב מחלוקת'); refresh(); toast('העמלה בוטלה'); },
+  'admin-cancel': (el) => askConfirm('לבטל את הליד?', 'אם התקבלו תשלומים, העמלה תחושב רק על מה ששולם בפועל.', 'ביטול', () => { const l = lead(el.dataset.id); l.offers.forEach(o => { if (o.status === 'pending') o.status = 'closed'; }); setStatus(S, l, 'cancelled'); log(l, 'בוטל ע״י מנהל'); refresh(); toast('הליד בוטל'); }),
+  pv: (el) => { const p = prov(S, el.dataset.id), k = el.dataset.k; p[k] = !p[k]; refresh(); toast('נשמר'); },
+  'clear-lf': () => { U.lf = { q: '', city: '', cat: '', status: '', from: '', to: '' }; render(); },
+  'cust-leads': (el) => { U.lf = { q: el.dataset.phone, city: '', cat: '', status: '', from: '', to: '' }; go('admin', 'leads'); },
+  'c-review': (el) => { S.complaints.find(c => c.id === el.dataset.id).status = 'in_review'; refresh(); },
+  range: (el) => { U.rangeDays = +el.dataset.d; render(); },
+  reset: () => askConfirm('לאפס את נתוני ההדגמה?', 'כל הבקשות, השינויים והתשלומים המדומים שיצרתם יימחקו מהדפדפן הזה.', 'איפוס', () => { resetDemo(); U.justCreated = null; go('admin', 'overview'); toast('נתוני ההדגמה אופסו'); }),
+  ...GUIDE
+};
+
+document.addEventListener('click', (ev) => {
+  const r = ev.target.closest('[data-role]');
+  if (r && r.closest('.roles')) { go(r.dataset.role, TABS[r.dataset.role][0][0]); return; }
+  const el = ev.target.closest('[data-act]');
+  if (!el) return;
+  if (el.tagName === 'SUMMARY') return;
+  const fn = ACT[el.dataset.act]; if (!fn) return;
+  ev.preventDefault();
+  fn(el);
+});
+document.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape' && U.sheet) closeSheet();
+  if (ev.key === 'Enter' && ev.target.matches('tr[data-act]')) ACT[ev.target.dataset.act](ev.target);
+});
+
+document.addEventListener('input', (ev) => {
+  const t = ev.target;
+  if (t.dataset.bind) { U.form[t.dataset.bind] = t.type === 'checkbox' ? t.checked : t.value; if (U.errors[t.dataset.bind]) { delete U.errors[t.dataset.bind]; t.classList.remove('err'); } }
+  if (t.dataset.quote) { U.quoteDraft[t.dataset.quote] = t.value; const n = num(t.value); const o = document.getElementById('q-total-' + t.dataset.quote); if (o) o.textContent = isFinite(n) && n > 0 ? `כולל מע״מ: ${ils2(n * (1 + VAT))}` : 'הלקוח יראה את הסכום כולל מע״מ'; }
+  if (t.dataset.pay) U.payDraft[t.dataset.pay] = t.value;
+  if (t.dataset.pbind) { me()[t.dataset.pbind] = t.value; save(); }
+  if (t.dataset.lf === 'q') { U.lf.q = t.value; const pos = t.selectionStart; render(); const n = document.getElementById('lf-q'); n.focus(); n.setSelectionRange(pos, pos); }
+  if (t.dataset.pf === 'q') { U.pf.q = t.value; const pos = t.selectionStart; render(); const n = document.getElementById('pf-q'); n.focus(); n.setSelectionRange(pos, pos); }
+});
+document.addEventListener('change', (ev) => {
+  const t = ev.target;
+  if (t.dataset.bind === 'consent') { U.form.consent = t.checked; render(); return; }
+  if (t.dataset.bind === 'cat') { U.form.cat = t.value; delete U.errors.cat; render(); return; }
+  if (t.dataset.bind === 'city') { U.form.city = t.value; delete U.errors.city; render(); return; }
+  if (t.dataset.lf && t.dataset.lf !== 'q') { U.lf[t.dataset.lf] = t.value; render(); return; }
+  if (t.dataset.pf && t.dataset.pf !== 'q') { U.pf[t.dataset.pf] = t.value; render(); return; }
+  if (t.dataset.sim) { U.sim[t.dataset.sim] = t.value; render(); return; }
+  if (t.id === 'pro-switch') { S.proId = t.value; save(); render(); toast(`מחוברים כעת כ${me().business}`); return; }
+  if (t.id === 'avail-toggle') { me().available = t.checked; refresh(); toast(t.checked ? 'אתם זמינים לבקשות חדשות' : 'הזמינות כובתה'); return; }
+  if (t.id === 'pf-addcity' && t.value) { const p = me(); if (!p.cities.includes(t.value)) p.cities.push(t.value); refresh(); return; }
+  if (t.id === 'f-img' && t.files[0]) {
+    const file = t.files[0];
+    if (!file.type.startsWith('image/')) { toast('אפשר לצרף רק קובץ תמונה', true); return; }
+    const rd = new FileReader();
+    rd.onload = () => { const img = new Image(); img.onload = () => {
+      const k = Math.min(1, 900 / Math.max(img.width, img.height)); const cv = document.createElement('canvas');
+      cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k); cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+      U.form.image = cv.toDataURL('image/jpeg', 0.72); render(); }; img.onerror = () => toast('לא הצלחנו לקרוא את התמונה. נסו קובץ JPG או PNG', true); img.src = rd.result; };
+    rd.readAsDataURL(file);
+  }
+});
+
+document.addEventListener('submit', (ev) => {
+  const f = ev.target; ev.preventDefault();
+  const id = f.dataset.id;
+  switch (f.id) {
+    case 'hero-search': {
+      U.form.cat = document.getElementById('hs-cat').value; U.form.city = document.getElementById('hs-city').value; U.justCreated = null; go('customer', 'request'); break;
+    }
+    case 'req-form': {
+      const F = U.form, e = {};
+      if (!F.cat) e.cat = 'בחרו תחום';
+      if (!F.city) e.city = 'בחרו עיר';
+      if (F.desc.trim().length < 8) e.desc = 'כתבו לפחות כמה מילים על העבודה';
+      if (!F.name.trim()) e.name = 'הזינו שם';
+      if (!validPhone(F.phone)) e.phone = 'מספר טלפון ישראלי, לדוגמה 052-1234567';
+      U.errors = e;
+      if (Object.keys(e).length) { render(); const first = document.querySelector('.input.err'); if (first) first.focus(); toast('יש שדות שצריך להשלים', true); return; }
+      U.submitting = true; render();
+      setTimeout(() => {
+        const l = { id: uid('l'), code: 'PN-' + (Math.max(...S.leads.map(x => +x.code.slice(3))) + 1), created: now(), demo: false,
+          customer: { name: F.name.trim(), phone: F.phone.trim(), email: F.email.trim(), address: F.address.trim() },
+          cat: F.cat, city: F.city, urgency: F.urgency, desc: F.desc.trim(), image: F.image, consent: F.consent,
+          status: 'matched', offers: [], assignedTo: null, quote: null, payments: [], commission: { status: 'none' }, review: null,
+          history: [{ at: now(), text: 'הבקשה נקלטה במערכת' }] };
+        S.leads.push(l); intake(S, l);
+        S.demoLeadId = l.id; S.adminSawDemo = false;
+        U.submitting = false; U.justCreated = l.id;
+        U.form = { cat: '', city: '', urgency: 'soon', desc: '', image: null, name: '', phone: '', email: '', address: '', consent: true };
+        refresh(); window.scrollTo(0, 0);
+      }, 700);
+      break;
+    }
+    case 'track-form': U.trackCode = document.getElementById('t-code').value; render(); break;
+    case 'fix-form': {
+      const l = lead(id); l.customer.name = document.getElementById('fx-name').value.trim(); l.customer.phone = document.getElementById('fx-phone').value.trim(); l.desc = document.getElementById('fx-desc').value.trim();
+      const r = intake(S, l); refresh(); toast(r.ok ? `הפרטים הושלמו. נשלח ל־${r.count} בעלי מקצוע` : r.reason === 'missing' ? 'עדיין חסרים: ' + r.miss.join(', ') : 'נשמר', !r.ok); break;
+    }
+    case 'review-form': {
+      const l = lead(id), p = prov(S, l.assignedTo); const txt = document.getElementById('rv-text').value.trim() || 'ללא פירוט';
+      l.review = { stars: U.rv || 5, text: txt, at: now() };
+      p.reviews.push({ who: maskName(l.customer.name), stars: l.review.stars, text: txt, at: now() });
+      p.rating = +(p.reviews.reduce((a, r) => a + r.stars, 0) / p.reviews.length).toFixed(1);
+      log(l, `הלקוח דירג ${l.review.stars} כוכבים`); U.rv = 5; refresh(); toast('תודה! חוות הדעת פורסמה'); break;
+    }
+    case 'complain-form': {
+      const txt = document.getElementById('cp-text').value.trim(); if (!txt) { toast('תארו בקצרה מה קרה', true); return; }
+      S.complaints.push({ id: uid('c'), leadId: id, from: 'customer', type: document.getElementById('cp-type').value, text: txt, status: 'open', at: now() });
+      log(lead(id), 'הלקוח פתח דיווח על בעיה'); closeSheet(); refresh(); toast('הדיווח התקבל. צוות PRO NETWORK יחזור אליכם'); break;
+    }
+    case 'quote-form': {
+      const n = num(document.getElementById('q-amt-' + id).value);
+      if (!(n > 0)) { toast('הזינו סכום גדול מאפס', true); return; }
+      submitQuote(S, lead(id), n, document.getElementById('q-note-' + id).value.trim()); delete U.quoteDraft[id]; refresh(); toast('הצעת המחיר נשלחה ללקוח'); break;
+    }
+    case 'pay-form': {
+      const n = num(document.getElementById('pay-amt-' + id).value);
+      if (!(n > 0)) { toast('הזינו סכום תשלום', true); return; }
+      addPayment(S, lead(id), 'payment', n, document.getElementById('pay-method-' + id).value); delete U.payDraft[id]; refresh();
+      const c = commissionOf(S, lead(id)); toast(`תשלום מדומה נרשם. עמלה: ${ils2(c.amount)}`); break;
+    }
+    case 'refund-form': {
+      const l = lead(id), n = num(document.getElementById('rf-amt').value);
+      if (!(n > 0) || n > payInfo(l).net + 0.01) { toast('סכום ההחזר חייב להיות גדול מאפס ולא יותר ממה ששולם', true); return; }
+      addPayment(S, l, 'refund', n, 'החזר ללקוח'); refresh(); toast('ההחזר נרשם והעמלה חושבה מחדש'); break;
+    }
+    case 'dispute-form': {
+      const txt = document.getElementById('dp-text').value.trim(); if (!txt) { toast('כתבו נימוק', true); return; }
+      const l = lead(id); l.commission.status = 'disputed'; l.commission.dispute = txt; l.commission.disputeAt = now(); log(l, 'בעל המקצוע ערער על העמלה'); closeSheet(); refresh(); toast('הערעור נשלח לבדיקה'); break;
+    }
+    case 'dispute-resolve': {
+      const l = lead(id), n = num(document.getElementById('dr-rate').value);
+      if (!(n >= 0 && n <= 20)) { toast('הזינו שיעור בין 0 ל־20', true); return; }
+      l.commission.rateOverride = n; l.commission.status = 'due'; log(l, `המחלוקת יושבה: שיעור עמלה עודכן ל־${n}%`); refresh(); toast('השיעור עודכן והעמלה חזרה לגבייה'); break;
+    }
+    case 'agreement-form': {
+      const v = document.getElementById('ag-rate').value.trim(); const p = prov(S, id);
+      if (v === '') p.agreementRate = null; else { const n = num(v); if (!(n >= 1 && n <= 20)) { toast('שיעור בין 1 ל־20, או ריק לתעריף קטגוריה', true); return; } p.agreementRate = n; }
+      refresh(); toast('הסכם העמלה נשמר'); break;
+    }
+    case 'rates-form': {
+      let bad = null;
+      f.querySelectorAll('input[name]').forEach(inp => { const n = num(inp.value); if (!(n >= +inp.dataset.min && n <= +inp.dataset.max)) bad = bad || inp; });
+      if (bad) { bad.classList.add('err'); bad.focus(); toast(`השיעור חייב להיות בטווח ${bad.dataset.min}–${bad.dataset.max}%`, true); return; }
+      f.querySelectorAll('input[name]').forEach(inp => { if (inp.name === 'large') S.largeRate = num(inp.value); else S.catRates[inp.name] = num(inp.value); });
+      refresh(); toast('התעריפים נשמרו'); break;
+    }
+    case 'cr-form': {
+      const c = S.complaints.find(x => x.id === id); const txt = document.getElementById('cr-' + id).value.trim();
+      if (!txt) { toast('כתבו סיכום טיפול לפני סגירה', true); return; }
+      c.status = 'resolved'; c.resolution = txt; refresh(); toast('התלונה נסגרה'); break;
+    }
+  }
+});
+
+window.addEventListener('hashchange', () => { fromHash(); render(); });
+window.addEventListener('resize', () => drawHeroMap());
+
+/* boot */
+S = load();
+fromHash();
+render();
+</script>
