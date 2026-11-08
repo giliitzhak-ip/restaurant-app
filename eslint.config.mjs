@@ -7,7 +7,14 @@ import typescriptConfig from 'eslint-config-next/typescript';
  */
 const config = [
   {
-    ignores: ['node_modules/**', '.next/**', 'legacy/**', 'coverage/**', 'next-env.d.ts'],
+    ignores: [
+      'node_modules/**',
+      '.next/**',
+      'legacy/**',
+      'coverage/**',
+      'simulator/dist/**',
+      'next-env.d.ts',
+    ],
   },
   ...coreWebVitals,
   ...typescriptConfig,

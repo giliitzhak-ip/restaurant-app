@@ -1,5 +1,5 @@
 import type { MatchWeights, MatchingSettings } from '@/lib/services/settings/schema';
-import { SETTINGS_DEFAULTS } from '@/lib/services/settings/schema';
+import { SETTINGS_DEFAULTS } from '@/lib/services/settings/defaults';
 import type { MatchCandidate, MatchJobContext, ScoreBreakdown, ScoredCandidate } from './types';
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));

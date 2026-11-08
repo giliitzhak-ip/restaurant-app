@@ -18,3 +18,5 @@ npm-debug.log*
 .vercel
 supabase/.temp
 supabase/.branches
+
+simulator/dist

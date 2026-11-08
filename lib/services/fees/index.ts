@@ -1,4 +1,5 @@
-import { SETTINGS_DEFAULTS, type PlatformFeeRules } from '@/lib/services/settings/schema';
+import { SETTINGS_DEFAULTS } from '@/lib/services/settings/defaults';
+import type { PlatformFeeRules } from '@/lib/services/settings/schema';
 
 export interface FeeBreakdown {
   /** What the customer agreed to pay the provider. */

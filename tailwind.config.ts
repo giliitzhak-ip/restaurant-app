@@ -9,6 +9,10 @@ const config: Config = {
     './features/**/*.{ts,tsx}',
     './lib/**/*.{ts,tsx}',
   ],
+  // The dark palette lives in a `.dark { … }` token block in globals.css, and
+  // the class is put on <html> at runtime rather than written in any component.
+  // Without this, Tailwind finds no `dark` literal to scan and drops the block.
+  safelist: ['dark'],
   theme: {
     container: {
       center: true,
