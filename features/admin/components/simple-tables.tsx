@@ -9,6 +9,7 @@ import { Rating } from '@/components/ui/rating';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Badge } from '@/components/ui/badge';
 import { DataTable, type Column } from './data-table';
+import { cn } from '@/lib/utils';
 import { useApi } from '@/hooks/use-api';
 import { patchJson } from '@/features/auth/lib/form';
 import { useT } from '@/components/providers/i18n-provider';
@@ -200,8 +201,16 @@ export function CommissionsAdmin() {
     {
       key: 'amount',
       header: 'סכום',
+      // dir="ltr": a leading minus lands on the wrong side of the figure when
+      // the paragraph direction is RTL.
       render: (row) => (
-        <span className={row.amount < 0 ? 'text-muted-foreground' : 'text-success'}>
+        <span
+          dir="ltr"
+          className={cn(
+            'inline-block',
+            row.amount < 0 ? 'text-muted-foreground' : 'text-success',
+          )}
+        >
           {row.amount < 0 ? '−' : '+'}
           <Price amount={Math.abs(Number(row.amount))} size="sm" />
         </span>

@@ -11,11 +11,12 @@ PostgreSQL דרך Supabase, עם `postgis` לחישובי מרחק ו-`pgcrypto`
 | `…000000_extensions_and_enums` | הרחבות, enums, `set_updated_at` |
 | `…000100_core_tables` | זהות, פרופילים, קטלוג, בעלי מקצוע |
 | `…000200_jobs_and_offers` | עבודות, הצעות, שיבוצים, צ׳אט |
-| `…000300_payments_reviews_admin` | תשלומים, דירוגים, תלונות, הגדרות |
+| `…000300_payments_reviews_admin` | דירוגים, תלונות, התראות, הגדרות |
 | `…000400_functions` | פונקציות דומיין, טריגרים, `find_nearby_providers` |
 | `…000500_rls` | Row Level Security |
 | `…000600_storage_and_realtime` | buckets, מדיניות אחסון, publication |
 | `…000700_reference_data` | קטלוג התחלתי + הגדרות פלטפורמה |
+| `…000800_balance_and_verification` | יתרת עמלות, ספר תנועות, אימות ביצוע |
 
 ---
 
@@ -30,7 +31,7 @@ PostgreSQL דרך Supabase, עם `postgis` לחישובי מרחק ו-`pgcrypto`
 | `job_urgency` | `now`, `today`, `tomorrow`, `scheduled` |
 | `offer_status` | `pending`, `accepted`, `rejected`, `expired`, `withdrawn` |
 | `payment_status` | `pending`, `authorized`, `captured`, `refunded`, `failed`, `cancelled` |
-| `transaction_type` | `authorization`, `capture`, `refund`, `payout`, `platform_fee` |
+| `balance_entry_type` | `topup`, `commission`, `commission_refund`, `adjustment` |
 | `dispute_status` | `open`, `under_review`, `resolved`, `rejected` |
 | `dispute_reason` | `price`, `not_performed`, `damage`, `no_show`, `payment_issue`, `other` |
 | `document_type` | `identity`, `professional_license`, `certificate`, `insurance`, `business_registration`, `other` |
@@ -38,6 +39,7 @@ PostgreSQL דרך Supabase, עם `postgis` לחישובי מרחק ו-`pgcrypto`
 | `notification_channel` | `in_app`, `push`, `sms`, `email`, `whatsapp` |
 | `notification_status` | `pending`, `sent`, `failed`, `read` |
 | `message_type` | `text`, `image`, `system` |
+| `media_stage` | `request`, `completion` |
 | `actor_type` | `customer`, `provider`, `admin`, `system` |
 | `media_kind` | `image`, `video` |
 
@@ -98,14 +100,48 @@ PostgreSQL דרך Supabase, עם `postgis` לחישובי מרחק ו-`pgcrypto`
 
 ### כסף
 
+GET SERVICE אינה מחזיקה את התשלום על העבודה — הוא עובר ישירות מהלקוח לבעל
+המקצוע. מה שנשמר כאן הוא רק העמלה והיתרה שממנה היא נגבית.
+
 | טבלה | תפקיד |
 | --- | --- |
-| `payments` | שורה אחת לעבודה: `amount`, `platform_fee`, `provider_payout`, `status`, `fee_rule_snapshot` |
-| `payment_transactions` | יומן פעולות מול ספק הסליקה |
-| `platform_fees` | רישום העמלה שנגבתה, עם השיעור והכלל |
+| `balance_entries` | ספר תנועות append-only: טעינה, עמלה, החזר עמלה, תיאום |
+| `provider_topups` | חיוב אשראי של בעל מקצוע עבור קרדיט; המקום היחיד שנוגע בסליקה |
+| `provider_profiles.balance` | **מטמון** של סכום הספר, לא עמודה שנכתבת ישירות |
+| `jobs.commission_amount` / `commission_charged_at` / `commission_refunded_at` | מה נגבה על העבודה, מתי, ואם הוחזר |
 
-אילוץ `payments_split_balances` אוכף ש-`platform_fee + provider_payout = amount`
-מעוגל לאגורה. פרטי כרטיס אשראי אינם נשמרים — רק מזהה חיצוני של הספק.
+מה שהמסד אוכף, ולא הקוד:
+
+- `apply_balance_entry` (BEFORE INSERT) נועל את שורת בעל המקצוע ב-`FOR UPDATE`,
+  מחשב את `balance_after` בעצמו — ערך שהקורא שולח נדרס — ומעדכן את היתרה.
+- אותו טריגר דוחה `commission` שתוריד את היתרה מתחת ל-`minimum_balance`
+  שב-`settings`. הנעילה היא מה שהופך את הבדיקה לחסינת מרוץ.
+- `forbid_balance_rewrite` דוחה `UPDATE` ו-`DELETE` על הספר (`restrict_violation`).
+  תיקון הוא שורה חדשה מסוג `adjustment`, עם `created_by`.
+- `idx_balance_entries_one_commission` / `…_one_refund`: חיוב אחד והחזר אחד
+  לכל עבודה.
+- `provider_topups.balance_entry_id` הוא מה שהופך webhook שנשלח פעמיים לפעולה
+  חסרת השפעה במקום לקרדיט חינם.
+
+פרטי כרטיס אשראי אינם נשמרים — רק מזהה חיצוני של הספק.
+
+### אימות ביצוע
+
+| עמודה | מה היא אומרת |
+| --- | --- |
+| `jobs.arrival_lat` / `arrival_lng` / `arrival_distance_m` | מאיפה בעל המקצוע סימן הגעה, ובכמה מטרים הוא פספס |
+| `jobs.arrival_verified_at` | נקבע רק אם המרחק בתוך `verification.arrival_radius_m` |
+| `jobs.customer_confirmed_at` / `customer_confirmed_by` / `customer_reported_price` | אישור הלקוח ומה שהוא אומר ששילם |
+| `job_images.stage` | `request` לתמונות הבקשה, `completion` לתמונות הסיום |
+
+המרחק נשמר גם כשהוא מחוץ לטווח: צ'ק-אין של 40 מטר וצ'ק-אין של 40 ק״מ הם שני
+סיפורים שונים, וההבדל נראה רק אם שניהם נרשמים.
+
+### דוחות פיקוח
+
+`provider_integrity_report(min_accepted)` ו-`repeat_customer_report(since)` הן
+פונקציות `security invoker` עם `grant execute` ל-`service_role` בלבד — כמו שאר
+שאילתות הניהול, שעוברות דרך `requireAdmin()` בשרת לפני שהן נשלחות.
 
 ### דירוגים, תלונות, התראות, ניהול
 
@@ -170,7 +206,9 @@ find_nearby_providers(
 
 **דירוגים:** `(provider_id, created_at desc)` ואינדקס חלקי על ביקורות גלויות.
 
-**כסף:** `payments.status`, לפי ספק ולפי לקוח, `payment_transactions(payment_id)`.
+**כסף:** `balance_entries(provider_id, created_at desc)`, `(type, created_at desc)`,
+ואינדקסים ייחודיים חלקיים על `job_id` לפי סוג. `provider_topups(gateway, external_id)`
+ייחודי, כדי שאותו אירוע מהספק לא ייזקף פעמיים.
 
 **התראות:** `(user_id, created_at desc)` ואינדקס חלקי על התראות שלא נקראו.
 
@@ -193,8 +231,8 @@ RLS מופעל **ומאולץ** (`force row level security`) בכל טבלה. ב
 | `job_offers` | לקוח העבודה, המציע, מנהל | מציע עם שיבוץ קיים ועבודה פתוחה |
 | `job_assignments` | המציע, לקוח העבודה, מנהל | **service role בלבד** (מנוע ההתאמה) |
 | `messages` | `can_chat_on_job()` — שני הצדדים בלבד | שולח = המשתמש, ורק בעבודה משויכת |
-| `payments` | לקוח, בעל המקצוע, מנהל | **service role בלבד** |
-| `payment_transactions`, `platform_fees` | מנהל בלבד | service role |
+| `balance_entries` | בעל המקצוע את שלו, ומנהל. **לא הלקוח** | **service role בלבד** |
+| `provider_topups` | בעל המקצוע את שלו, ומנהל | **service role בלבד** |
 | `reviews` | גלויות לכולם; מוסתרות למנהל ולכותב | לקוח על עבודה שהושלמה; **עדכון למנהל בלבד; אין מחיקה** |
 | `disputes` | משתתפים ומנהל | משתתפים פותחים; מנהל מטפל |
 | `notifications` | הנמען, מנהל | סימון כנקרא בלבד |

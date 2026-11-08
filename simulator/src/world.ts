@@ -41,6 +41,12 @@ export interface SimProvider {
   isVerified: boolean;
   /** Probability the provider bothers to quote. Pure simulation flavour. */
   quoteRate: number;
+  /**
+   * Prepaid credit, in ILS. The commission comes out of this when a customer
+   * picks the provider, so a provider at 0 is verified, available and still
+   * unable to take work — the state the balance panel exists to make visible.
+   */
+  balance: number;
 }
 
 export const PROVIDERS: SimProvider[] = [
@@ -63,6 +69,7 @@ export const PROVIDERS: SimProvider[] = [
     yearsExperience: 12,
     isVerified: true,
     quoteRate: 0.95,
+    balance: 820,
   },
   {
     id: 'p-shlomo',
@@ -83,6 +90,7 @@ export const PROVIDERS: SimProvider[] = [
     yearsExperience: 5,
     isVerified: true,
     quoteRate: 0.8,
+    balance: 410,
   },
   {
     id: 'p-pro',
@@ -103,6 +111,7 @@ export const PROVIDERS: SimProvider[] = [
     yearsExperience: 20,
     isVerified: true,
     quoteRate: 0.9,
+    balance: 1250,
   },
   {
     id: 'p-nir',
@@ -123,6 +132,7 @@ export const PROVIDERS: SimProvider[] = [
     yearsExperience: 9,
     isVerified: true,
     quoteRate: 0.85,
+    balance: 95,
   },
   {
     id: 'p-barak',
@@ -143,6 +153,7 @@ export const PROVIDERS: SimProvider[] = [
     yearsExperience: 15,
     isVerified: true,
     quoteRate: 0.9,
+    balance: 640,
   },
   {
     id: 'p-sparks',
@@ -163,6 +174,7 @@ export const PROVIDERS: SimProvider[] = [
     yearsExperience: 3,
     isVerified: true,
     quoteRate: 0.6,
+    balance: 300,
   },
   {
     id: 'p-top',
@@ -183,6 +195,7 @@ export const PROVIDERS: SimProvider[] = [
     yearsExperience: 11,
     isVerified: true,
     quoteRate: 0.88,
+    balance: 1500,
   },
   {
     id: 'p-clean',
@@ -203,6 +216,7 @@ export const PROVIDERS: SimProvider[] = [
     yearsExperience: 8,
     isVerified: true,
     quoteRate: 0.92,
+    balance: 220,
   },
   {
     id: 'p-lock',
@@ -223,6 +237,7 @@ export const PROVIDERS: SimProvider[] = [
     yearsExperience: 14,
     isVerified: true,
     quoteRate: 0.95,
+    balance: 180,
   },
   {
     id: 'p-move',
@@ -243,6 +258,7 @@ export const PROVIDERS: SimProvider[] = [
     yearsExperience: 7,
     isVerified: true,
     quoteRate: 0.7,
+    balance: 540,
   },
   {
     id: 'p-garden',
@@ -263,6 +279,7 @@ export const PROVIDERS: SimProvider[] = [
     yearsExperience: 4,
     isVerified: true,
     quoteRate: 0.75,
+    balance: 130,
   },
   {
     id: 'p-renov',
@@ -283,6 +300,7 @@ export const PROVIDERS: SimProvider[] = [
     yearsExperience: 18,
     isVerified: true,
     quoteRate: 0.65,
+    balance: 980,
   },
   {
     id: 'p-newbie',
@@ -305,6 +323,7 @@ export const PROVIDERS: SimProvider[] = [
     yearsExperience: 2,
     isVerified: true,
     quoteRate: 1,
+    balance: 100,
   },
   {
     id: 'p-flaky',
@@ -327,6 +346,9 @@ export const PROVIDERS: SimProvider[] = [
     yearsExperience: 6,
     isVerified: true,
     quoteRate: 1,
+    // Empty: nothing stops this provider from quoting, and everything stops
+    // the acceptance. This is the state the whole balance mechanism is for.
+    balance: 0,
   },
   {
     id: 'p-pending',
@@ -348,6 +370,7 @@ export const PROVIDERS: SimProvider[] = [
     // Not verified: discovery must never surface this provider, however close.
     isVerified: false,
     quoteRate: 1,
+    balance: 0,
   },
 ];
 

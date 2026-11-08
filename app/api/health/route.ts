@@ -9,13 +9,15 @@ import { getMapsAdapter } from '@/lib/services/maps';
  * Reports capability only; never a key, a URL or a secret.
  */
 export const GET = route(async () => {
-  const payments = getPaymentAdapter();
+  const topups = getPaymentAdapter();
   const maps = getMapsAdapter();
 
   return jsonOk({
     status: 'ok',
     supabase: { configured: isSupabaseConfigured(), serviceRole: hasServiceRole() },
-    payments: { provider: payments.name, live: payments.isLive },
+    // The gateway is only ever used for provider balance top-ups; a job's own
+    // payment goes straight from the customer to the provider.
+    topups: { provider: topups.name, live: topups.isLive },
     maps: { provider: maps.name, live: maps.isLive },
     notifications: { mode: env.notificationsMode },
     aiClassifier: { provider: env.aiClassifierProvider },

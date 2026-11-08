@@ -6,7 +6,9 @@ import {
   Check,
   CircleAlert,
   Crosshair,
+  ClipboardCheck,
   MapPin,
+  Navigation,
   RotateCcw,
   Sparkles,
   Terminal,
@@ -16,10 +18,21 @@ import {
 // ── Real application code — nothing below is re-implemented ────────────────
 import { calculateFee, customerPriceBreakdown, providerPriceBreakdown } from '@/lib/services/fees';
 import { canActorTransition, JOB_FLOW, TIMELINE_ORDER } from '@/lib/services/jobs/workflow';
+import { balanceStatus, refundDecision, suggestedTopup } from '@/lib/services/billing/balance';
+import {
+  checkArrival,
+  verificationState,
+  type VerificationState,
+} from '@/lib/services/jobs/verification';
 import { normaliseWeights } from '@/lib/services/matching/engine';
 import { KeywordJobClassifier } from '@/lib/services/ai/job-classifier';
 import { SETTINGS_DEFAULTS } from '@/lib/services/settings/defaults';
-import type { MatchWeights, PlatformFeeRules } from '@/lib/services/settings/schema';
+import type {
+  BillingSettings,
+  MatchWeights,
+  PlatformFeeRules,
+  VerificationSettings,
+} from '@/lib/services/settings/schema';
 import { FALLBACK_CATEGORIES, FALLBACK_SERVICES } from '@/lib/services/catalogue/fallback';
 import { estimateEtaMinutes, haversineKm, type LatLng } from '@/lib/utils/geo';
 import { formatDistance, formatEta, formatPercent, formatPrice } from '@/lib/utils/format';
@@ -353,6 +366,24 @@ function ScoreBreakdown({ entry, weights }: { entry: ScoredCandidate; weights: M
 
 type Stage = 'brief' | 'matching' | 'offers' | 'job' | 'review';
 
+/** One line of the provider's balance ledger, as the real table records it. */
+interface LedgerLine {
+  id: number;
+  type: 'topup' | 'commission' | 'commission_refund';
+  amount: number;
+  balanceAfter: number;
+  description: string;
+}
+
+interface ArrivalRecord {
+  distanceM: number;
+  toleranceM: number;
+  verified: boolean;
+  from: LatLng;
+}
+
+let ledgerCounter = 0;
+
 export function Simulator() {
   const [stage, setStage] = useState<Stage>('brief');
   const [log, setLog] = useState<LogEntry[]>([]);
@@ -370,6 +401,8 @@ export function Simulator() {
   // Settings the admin would own
   const [weights, setWeights] = useState<MatchWeights>(SETTINGS_DEFAULTS.match_weights);
   const [feeRules, setFeeRules] = useState<PlatformFeeRules>(SETTINGS_DEFAULTS.platform_fee_rules);
+  const billing: BillingSettings = SETTINGS_DEFAULTS.billing;
+  const verification: VerificationSettings = SETTINGS_DEFAULTS.verification;
   const [showSettings, setShowSettings] = useState(false);
 
   // Run state
@@ -381,8 +414,19 @@ export function Simulator() {
   const [status, setStatus] = useState<JobStatus>('requested');
   const [actor, setActor] = useState<ActorType>('provider');
   const [history, setHistory] = useState<Array<{ status: JobStatus; at: string }>>([]);
-  const [captured, setCaptured] = useState(false);
   const [rating, setRating] = useState(0);
+
+  // Billing and supervision
+  const [balances, setBalances] = useState<Record<string, number>>(() =>
+    Object.fromEntries(PROVIDERS.map((provider) => [provider.id, provider.balance])),
+  );
+  const [ledger, setLedger] = useState<LedgerLine[]>([]);
+  const [arrival, setArrival] = useState<ArrivalRecord | null>(null);
+  const [checkInFromAddress, setCheckInFromAddress] = useState(true);
+  const [completionPhotos, setCompletionPhotos] = useState(0);
+  const [confirmedAt, setConfirmedAt] = useState<string | null>(null);
+  const [completedAt, setCompletedAt] = useState<string | null>(null);
+  const [commissionRefunded, setCommissionRefunded] = useState(false);
 
   const categories = FALLBACK_CATEGORIES;
   const services = useMemo(
@@ -453,8 +497,13 @@ export function Simulator() {
     setJobId(id);
     setStatus('requested');
     setHistory([{ status: 'requested', at: new Date().toISOString() }]);
-    setCaptured(false);
     setRating(0);
+    setArrival(null);
+    setCompletionPhotos(0);
+    setConfirmedAt(null);
+    setCompletedAt(null);
+    setCommissionRefunded(false);
+    setLedger([]);
     setAcceptedProviderId(null);
     setAgreedPrice(null);
 
@@ -542,23 +591,92 @@ export function Simulator() {
     });
   }, [acceptedProviderId, agreedPrice, categorySlug, feeRules]);
 
+  /**
+   * One ledger movement: the entry, the balance it leaves behind, and the log
+   * line. Written as a single function because in the real system it is a
+   * single insert — the trigger derives the balance from it.
+   */
+  const postEntry = useCallback(
+    (providerId: string, type: LedgerLine['type'], amount: number, description: string) => {
+      const next = Math.round(((balances[providerId] ?? 0) + amount) * 100) / 100;
+      ledgerCounter += 1;
+      setLedger((lines) => [
+        ...lines,
+        { id: ledgerCounter, type, amount, balanceAfter: next, description },
+      ]);
+      setBalances((map) => ({ ...map, [providerId]: next }));
+      addLog(
+        'result',
+        `balance_entries ← ${type} ${formatPrice(amount)} · יתרה אחרי ${formatPrice(next)}`,
+      );
+      return next;
+    },
+    [addLog, balances],
+  );
+
+  /** A top-up, so a blocked provider can be unblocked inside the simulator. */
+  const topUp = useCallback(
+    (providerId: string, amount: number) => {
+      addLog('call', `POST /api/provider/balance/topup { amount: ${amount} }`);
+      postEntry(providerId, 'topup', amount, 'טעינת יתרה');
+    },
+    [addLog, postEntry],
+  );
+
+  const creditRefund = useCallback(
+    (providerId: string, amount: number, reason: string) => {
+      postEntry(providerId, 'commission_refund', amount, reason);
+      setCommissionRefunded(true);
+    },
+    [postEntry],
+  );
+
+  /**
+   * Accepting an offer is where GET SERVICE gets paid — out of the provider's
+   * prepaid balance, not out of the job's money. Try accepting מהיר ובזול's
+   * offer: he is cheap, close and verified, and the acceptance is refused
+   * because his balance is empty.
+   */
   const acceptOffer = useCallback(
     (offer: SimOffer) => {
       addLog('call', `POST /api/offers/${offer.providerId}/accept`);
       const split = calculateFee(offer.price, feeRules, { categorySlug, providerId: offer.providerId });
       addLog(
         'result',
-        `calculateFee(${offer.price}) → כלל «${split.rule.label}» ${formatPercent(split.rule.percentage)} · עמלה ${formatPrice(split.platformFee)} · נטו ${formatPrice(split.providerPayout)}`,
+        `calculateFee(${offer.price}) → כלל «${split.rule.label}» ${formatPercent(split.rule.percentage)} · עמלה ${formatPrice(split.platformFee)}`,
       );
-      addLog('call', 'PaymentAdapter.authorize() → התשלום נתפס, לא נגבה');
+
+      const current = balances[offer.providerId] ?? 0;
+      const status = balanceStatus(current, billing, split.platformFee);
+      addLog(
+        'call',
+        `balanceStatus(${current}, commission=${split.platformFee}) → ${status.state} · canAcceptWork=${status.canAcceptWork}`,
+      );
+
+      if (!status.canAcceptWork) {
+        addLog(
+          'deny',
+          `היתרה אינה מספיקה — חסרים ${formatPrice(status.shortfall)}. העבודה לא שובצה, ולקוח רואה רק «בעל המקצוע אינו זמין».`,
+        );
+        addLog('note', `הצעה מומלצת לטעינה: ${formatPrice(suggestedTopup(status.shortfall, billing))}`);
+        return;
+      }
+
+      postEntry(
+        offer.providerId,
+        'commission',
+        -split.platformFee,
+        `עמלה על קבלת העבודה (${split.rule.label})`,
+      );
+      addLog('note', 'אין PaymentAdapter כאן: את מחיר העבודה הלקוח ישלם ישירות לבעל המקצוע.');
 
       setAcceptedProviderId(offer.providerId);
       setAgreedPrice(offer.price);
       setStatus('provider_selected');
-      setHistory((current) => [...current, { status: 'provider_selected', at: new Date().toISOString() }]);
+      setHistory((current2) => [...current2, { status: 'provider_selected', at: new Date().toISOString() }]);
       setStage('job');
     },
-    [addLog, categorySlug, feeRules],
+    [addLog, balances, billing, categorySlug, feeRules, postEntry],
   );
 
   /* ── State machine ──────────────────────────────────────────────────── */
@@ -571,19 +689,106 @@ export function Simulator() {
       );
       if (!allowed) return;
 
-      if (next === 'completed') {
-        addLog('call', 'PaymentAdapter.capture() → התשלום נגבה');
-        if (breakdown) {
-          addLog('result', `platform_fees ← ${formatPrice(breakdown.platformFee)}`);
+      // Arrival is the one status that is checked rather than believed.
+      if (next === 'arrived' && jobLocation && acceptedProviderId) {
+        const provider = providerById(acceptedProviderId);
+        const from = checkInFromAddress
+          ? { lat: jobLocation.lat + 0.0012, lng: jobLocation.lng + 0.0008 }
+          : (provider?.home ?? jobLocation);
+
+        const result = checkArrival(jobLocation, from, verification);
+        addLog('call', `checkArrival(job, checkin, radius=${verification.arrival_radius_m}m)`);
+
+        if (result.ok) {
+          setArrival({
+            distanceM: result.distanceM,
+            toleranceM: result.toleranceM,
+            verified: result.verified,
+            from,
+          });
+          addLog(
+            result.verified ? 'result' : 'deny',
+            result.verified
+              ? `→ ${result.distanceM} מ' מהכתובת · ההגעה אומתה`
+              : `→ ${result.distanceM} מ' מהכתובת · מחוץ לטווח, הסטטוס נרשם אך ההגעה לא אומתה`,
+          );
         }
-        setCaptured(true);
+      }
+
+      if (next === 'completed') {
+        const at = new Date().toISOString();
+        setCompletedAt(at);
+        addLog('note', 'אין גבייה בסיום: העמלה נגבתה כבר בקבלת העבודה.');
+        addLog('call', `notify("confirmation_requested") → הלקוח מתבקש לאשר שהעבודה בוצעה`);
+      }
+
+      // A cancellation runs the real refund policy.
+      if (next === 'cancelled' && acceptedProviderId && breakdown) {
+        const decision = refundDecision({
+          cancelledBy: actor,
+          chargedAt: new Date(),
+          billing,
+        });
+        addLog(
+          'call',
+          `refundDecision({ cancelledBy: "${actor}" }) → refund=${decision.refund} · ${decision.code}`,
+        );
+        if (decision.refund) {
+          creditRefund(acceptedProviderId, breakdown.platformFee, decision.reason);
+        } else {
+          addLog('deny', `העמלה נשארת גבויה — ${decision.reason}`);
+        }
       }
 
       setStatus(next);
       setHistory((current) => [...current, { status: next, at: new Date().toISOString() }]);
       if (next === 'completed') setStage('review');
     },
-    [actor, addLog, breakdown, status],
+    [
+      actor,
+      acceptedProviderId,
+      addLog,
+      billing,
+      breakdown,
+      checkInFromAddress,
+      creditRefund,
+      jobLocation,
+      status,
+      verification,
+    ],
+  );
+
+  /**
+   * The customer's confirmation.
+   *
+   * Saying it did not happen is the interesting branch: the commission goes
+   * back even though nobody has established who is right, because the platform
+   * charged for an introduction that produced nothing.
+   */
+  const confirm = useCallback(
+    (happened: boolean) => {
+      if (!acceptedProviderId || !breakdown) return;
+      addLog('call', `POST /api/jobs/${jobId}/confirm { happened: ${happened} }`);
+
+      if (happened) {
+        setConfirmedAt(new Date().toISOString());
+        addLog('result', 'customer_confirmed_at נרשם · הדירוג והניסיון של בעל המקצוע מתעדכנים');
+        return;
+      }
+
+      const decision = refundDecision({
+        cancelledBy: 'customer',
+        chargedAt: new Date(),
+        neverHappened: true,
+        billing,
+      });
+      addLog('call', `refundDecision({ neverHappened: true }) → ${decision.code}`);
+      addLog('result', 'disputes ← not_performed · העבודה עוברת ל-disputed');
+      creditRefund(acceptedProviderId, breakdown.platformFee, decision.reason);
+      setStatus('disputed');
+      setHistory((current) => [...current, { status: 'disputed', at: new Date().toISOString() }]);
+    },
+    [acceptedProviderId, addLog, billing, breakdown, creditRefund, jobId],
   );
 
   const reset = useCallback(() => {
@@ -594,11 +799,18 @@ export function Simulator() {
     setAgreedPrice(null);
     setStatus('requested');
     setHistory([]);
-    setCaptured(false);
     setRating(0);
     setSuggestion(null);
     setFreeText('');
-    addLog('note', '── אופס ──');
+    setArrival(null);
+    setCompletionPhotos(0);
+    setConfirmedAt(null);
+    setCompletedAt(null);
+    setCommissionRefunded(false);
+    setLedger([]);
+    // Balances are deliberately NOT reset: credit a provider bought, or spent,
+    // survives the next job, which is the whole point of a balance.
+    addLog('note', '── אופס (היתרות נשמרות) ──');
   }, [addLog]);
 
   /* ── Derived ────────────────────────────────────────────────────────── */
@@ -625,6 +837,27 @@ export function Simulator() {
   }, [history, status]);
 
   const nextStatuses = JOB_FLOW[status] ?? [];
+
+  /** The accepted provider's balance, read through the real rules. */
+  const acceptedBalance = useMemo(
+    () => balanceStatus(acceptedProviderId ? (balances[acceptedProviderId] ?? 0) : 0, billing),
+    [acceptedProviderId, balances, billing],
+  );
+
+  /** What the evidence adds up to, from the application's own function. */
+  const evidence: VerificationState = useMemo(
+    () =>
+      verificationState(
+        {
+          arrivalVerifiedAt: arrival?.verified ? new Date().toISOString() : null,
+          completionPhotos,
+          customerConfirmedAt: confirmedAt,
+          completedAt,
+        },
+        verification,
+      ),
+    [arrival, completedAt, completionPhotos, confirmedAt, verification],
+  );
 
   return (
     <div className="min-h-dvh bg-brand-surface" dir="rtl" lang="he">
@@ -982,7 +1215,7 @@ export function Simulator() {
                       <PriceBreakdown
                         rows={[{ label: t.payment.jobPrice, amount: customerPriceBreakdown(breakdown).jobPrice }]}
                         total={{ label: t.payment.total, amount: customerPriceBreakdown(breakdown).total }}
-                        note={captured ? t.payment.captured : t.payment.authorized}
+                        note={t.payment.payProviderDirectly}
                       />
                     </div>
                     <div>
@@ -998,16 +1231,209 @@ export function Simulator() {
                           },
                         ]}
                         total={{ label: t.provider.netPayout, amount: providerPriceBreakdown(breakdown).net }}
-                        note={`כלל «${breakdown.rule.label}» · ${formatPercent(breakdown.effectiveRate)} בפועל`}
+                        note={
+                          commissionRefunded
+                            ? 'העמלה הוחזרה ליתרה.'
+                            : `כלל «${breakdown.rule.label}» · ${formatPercent(breakdown.effectiveRate)} · נגבה מהיתרה בעת הקבלה`
+                        }
                       />
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
+              {/* ── Balance and verification ──────────────────────────── */}
               <Card>
                 <CardHeader>
-                  <CardTitle>6 · מכונת המצבים</CardTitle>
+                  <CardTitle>6 · יתרה ואימות ביצוע</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="rounded-xl border bg-card p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs text-muted-foreground">
+                          היתרה של {acceptedProvider.businessName}
+                        </p>
+                        <p className="text-2xl font-bold">
+                          <Price amount={balances[acceptedProvider.id] ?? 0} />
+                        </p>
+                      </div>
+                      <Badge
+                        variant={
+                          acceptedBalance.state === 'ok'
+                            ? 'success'
+                            : acceptedBalance.state === 'low'
+                              ? 'warning'
+                              : 'destructive'
+                        }
+                      >
+                        {acceptedBalance.state === 'ok'
+                          ? t.provider.balanceOk
+                          : acceptedBalance.state === 'low'
+                            ? t.provider.balanceLow
+                            : t.provider.balanceBlocked}
+                      </Badge>
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">{t.provider.balanceHint}</p>
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {billing.topup_presets.map((preset) => (
+                        <Button
+                          key={preset}
+                          size="sm"
+                          variant="outline"
+                          onClick={() => topUp(acceptedProvider.id, preset)}
+                        >
+                          <span className="num">+₪{preset}</span>
+                        </Button>
+                      ))}
+                    </div>
+
+                    {ledger.length > 0 ? (
+                      <ul className="mt-3 space-y-1 text-xs">
+                        {ledger.map((line) => (
+                          <li key={line.id} className="flex items-baseline justify-between gap-2">
+                            <span className="truncate text-muted-foreground">{line.description}</span>
+                            {/*
+                              dir="ltr" on the figures: a leading sign and an
+                              arrow both land on the wrong side of the number
+                              when the paragraph direction is RTL.
+                            */}
+                            <span dir="ltr" className="num shrink-0 font-medium">
+                              <span className={line.amount < 0 ? 'text-muted-foreground' : 'text-success'}>
+                                {line.amount < 0 ? '−' : '+'}
+                                {formatPrice(Math.abs(line.amount))}
+                              </span>
+                              <span className="text-muted-foreground">
+                                {' '}
+                                → {formatPrice(line.balanceAfter)}
+                              </span>
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+
+                  {/* Arrival check-in */}
+                  <div className="rounded-xl border bg-card p-4">
+                    <p className="mb-2 flex items-center gap-2 text-sm font-medium">
+                      <Navigation className="size-4" aria-hidden />
+                      מאיפה בעל המקצוע מסמן «הגעתי»?
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { value: true, label: 'מהכתובת עצמה' },
+                        { value: false, label: 'מהבית שלו' },
+                      ].map((option) => (
+                        <button
+                          key={String(option.value)}
+                          type="button"
+                          role="radio"
+                          aria-checked={checkInFromAddress === option.value}
+                          onClick={() => setCheckInFromAddress(option.value)}
+                          className={cn(
+                            'rounded-lg border p-2 text-xs font-medium transition-colors',
+                            checkInFromAddress === option.value
+                              ? 'border-accent bg-accent/5 text-accent'
+                              : 'hover:bg-secondary',
+                          )}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      בחר, ואז העבר את הסטטוס ל־«הגיע» במכונת המצבים שלמטה. השרת משווה את
+                      הקואורדינטות לכתובת העבודה — זה מה שהופך «הגעתי» מהצהרה לבדיקה.
+                    </p>
+
+                    {arrival ? (
+                      <p
+                        className={cn(
+                          'mt-2 text-xs font-medium',
+                          arrival.verified ? 'text-success' : 'text-destructive',
+                        )}
+                      >
+                        {arrival.distanceM} מ&apos; מהכתובת (סבילות {arrival.toleranceM} מ&apos;) —{' '}
+                        {arrival.verified ? 'אומת' : 'לא אומת'}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  {/* Completion evidence and the customer's confirmation */}
+                  {status === 'completed' || status === 'disputed' ? (
+                    <div className="rounded-xl border bg-card p-4">
+                      <p className="mb-2 flex items-center gap-2 text-sm font-medium">
+                        <ClipboardCheck className="size-4" aria-hidden />
+                        מה יש לנו על העבודה הזו?
+                      </p>
+                      <ul className="space-y-1 text-xs">
+                        <li className={arrival?.verified ? 'text-success' : 'text-muted-foreground'}>
+                          {arrival?.verified ? '✓' : '○'} אימות הגעה
+                        </li>
+                        <li className={completionPhotos > 0 ? 'text-success' : 'text-muted-foreground'}>
+                          {completionPhotos > 0 ? '✓' : '○'} תמונות בסיום ({completionPhotos})
+                        </li>
+                        <li className={confirmedAt ? 'text-success' : 'text-muted-foreground'}>
+                          {confirmedAt ? '✓' : '○'} אישור הלקוח
+                        </li>
+                      </ul>
+
+                      <p className="mt-2 text-xs">
+                        רמת אימות:{' '}
+                        <Badge
+                          variant={
+                            evidence.level === 'verified'
+                              ? 'success'
+                              : evidence.level === 'partial'
+                                ? 'warning'
+                                : 'outline'
+                          }
+                        >
+                          {evidence.level === 'verified'
+                            ? 'מאומת'
+                            : evidence.level === 'partial'
+                              ? 'חלקי'
+                              : 'ללא אימות'}
+                        </Badge>
+                        {evidence.suspectedNoShow ? (
+                          <Badge variant="destructive" className="ms-1">
+                            חשד שלא בוצעה
+                          </Badge>
+                        ) : null}
+                      </p>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button size="sm" variant="outline" onClick={() => setCompletionPhotos((n) => n + 1)}>
+                          צרף תמונת סיום
+                        </Button>
+                        {!confirmedAt && status !== 'disputed' ? (
+                          <>
+                            <Button size="sm" variant="accent" onClick={() => confirm(true)}>
+                              הלקוח מאשר: בוצעה
+                            </Button>
+                            <Button size="sm" variant="destructive" onClick={() => confirm(false)}>
+                              הלקוח: לא בוצעה
+                            </Button>
+                          </>
+                        ) : null}
+                      </div>
+
+                      {status === 'disputed' ? (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          העבודה ב-disputed והעמלה הוחזרה — בעל המקצוע לא משלם על עבודה שלא
+                          יצאה לפועל, בלי קשר למי צודק בבירור.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>7 · מכונת המצבים</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
@@ -1076,7 +1502,7 @@ export function Simulator() {
           {stage === 'review' && acceptedProvider ? (
             <Card>
               <CardHeader>
-                <CardTitle>7 · דירוג</CardTitle>
+                <CardTitle>8 · דירוג</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-sm text-muted-foreground">

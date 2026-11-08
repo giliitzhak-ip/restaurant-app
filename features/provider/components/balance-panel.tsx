@@ -230,9 +230,12 @@ export function BalancePanel() {
                           {entry.description ?? ''}
                         </span>
                       </td>
+                      {/* dir="ltr": a leading minus lands on the wrong side of
+                          the figure when the paragraph direction is RTL. */}
                       <td
+                        dir="ltr"
                         className={cn(
-                          'num p-2 font-semibold',
+                          'num p-2 text-end font-semibold',
                           entry.amount < 0 ? 'text-muted-foreground' : 'text-success',
                         )}
                       >
