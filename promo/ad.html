@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>Get Service – פרסומת</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14112e; --bg2:#231d5a; --accent:#ff6b35; --accent2:#ffb347;
+    --green:#22c55e; --blue:#3b82f6; --ink:#1b1838; --muted:#6b6890; --card:#ffffff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:1080px;height:1920px;overflow:hidden;background:var(--bg);font-family:'Heebo',sans-serif;color:#fff}
+  #stage{position:relative;width:1080px;height:1920px;overflow:hidden;
+    background:radial-gradient(1200px 1200px at 50% 30%, var(--bg2), var(--bg) 70%)}
+  .scene{position:absolute;inset:0;opacity:0}
+  .center{position:absolute;left:0;right:0;text-align:center}
+
+  /* generic keyframes */
+  @keyframes show{from{opacity:0}to{opacity:1}}
+  @keyframes hide{from{opacity:1}to{opacity:0}}
+  @keyframes up{from{opacity:0;transform:translateY(80px)}to{opacity:1;transform:none}}
+  @keyframes pop{0%{opacity:0;transform:scale(.3)}70%{opacity:1;transform:scale(1.08)}100%{opacity:1;transform:scale(1)}}
+  @keyframes slideR{from{opacity:0;transform:translateX(-120px)}to{opacity:1;transform:none}}
+  @keyframes slideL{from{opacity:0;transform:translateX(120px)}to{opacity:1;transform:none}}
+  @keyframes out{from{opacity:1}to{opacity:0;transform:scale(.92)}}
+  @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+  @keyframes wave{0%,100%{transform:rotate(-14deg)}50%{transform:rotate(18deg)}}
+  @keyframes ring{0%,100%{transform:rotate(0)}15%{transform:rotate(-16deg)}30%{transform:rotate(13deg)}45%{transform:rotate(-9deg)}60%{transform:rotate(6deg)}75%{transform:rotate(-3deg)}}
+  @keyframes drop{0%{opacity:0;transform:translateY(-500px)}60%{opacity:1;transform:translateY(30px)}80%{transform:translateY(-12px)}100%{opacity:1;transform:none}}
+  @keyframes tap{0%{opacity:0;transform:scale(.4)}30%{opacity:.85;transform:scale(1)}100%{opacity:0;transform:scale(1.9)}}
+  @keyframes scan{0%{top:8%}50%{top:86%}100%{top:8%}}
+  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+  @keyframes ping{0%{opacity:.8;transform:scale(1)}100%{opacity:0;transform:scale(1.35)}}
+  @keyframes bgshift{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+  @keyframes flash{0%{opacity:0}30%{opacity:1}100%{opacity:0}}
+  @keyframes dots{0%{content:''}}
+
+  /* floating background blobs (whole video) */
+  .blob{position:absolute;border-radius:50%;filter:blur(90px);opacity:.45}
+  .b1{width:700px;height:700px;background:#ff6b35;left:-250px;top:1300px}
+  .b2{width:600px;height:600px;background:#6d5dfc;right:-220px;top:-120px}
+  .orbit{position:absolute;left:50%;top:50%;width:0;height:0;animation:bgshift 22s linear both}
+
+  /* ---------- Scene 1 : hook ---------- */
+  #s1{animation:show .3s 0s both, hide .35s 3.0s forwards}
+  .s1-emoji{position:absolute;left:0;right:0;top:470px;text-align:center;font-size:300px;line-height:1}
+  .s1-emoji span{display:inline-block;transform-origin:70% 90%;animation:pop .5s .1s both, wave .5s .6s 5 ease-in-out}
+  .clock{position:absolute;left:50%;top:880px;width:230px;height:230px;margin-left:-115px;border-radius:50%;
+    border:12px solid #fff;opacity:0;animation:pop .45s .9s both}
+  .clock i{position:absolute;left:50%;top:50%;width:10px;height:88px;margin-left:-5px;margin-top:-88px;background:var(--accent);
+    border-radius:6px;transform-origin:50% 100%;animation:spin .6s .9s 4 linear}
+  .clock b{position:absolute;left:50%;top:50%;width:12px;height:60px;margin-left:-6px;margin-top:-60px;background:#fff;border-radius:6px;
+    transform-origin:50% 100%;transform:rotate(90deg)}
+  .s1-t1{top:1210px;font-size:96px;font-weight:900;animation:up .5s .25s both}
+  .s1-t2{top:1350px;font-size:76px;font-weight:500;color:#cfcaf5;animation:up .5s 1.2s both}
+  .s1-t2 em{font-style:normal;color:var(--accent2)}
+
+  .flash{position:absolute;inset:0;background:#fff;opacity:0;animation:flash .5s 3.05s both}
+
+  /* ---------- Scene 2 : logo ---------- */
+  #s2{animation:show .2s 3.2s both, hide .4s 5.75s forwards}
+  .bell{position:absolute;left:50%;top:560px;width:360px;margin-left:-180px;animation:drop .8s 3.25s both}
+  .bell svg{width:360px;height:360px;transform-origin:50% 20%;animation:ring 1s 4.0s both}
+  .word{top:1000px;font-size:150px;font-weight:900;letter-spacing:-3px;direction:ltr;animation:up .55s 3.85s both}
+  .word span{color:var(--accent)}
+  .tag{top:1200px;font-size:70px;font-weight:500;color:#e6e2ff;animation:up .55s 4.4s both}
+  .tag b{color:var(--accent2);font-weight:800}
+
+  /* ---------- Scene 3 : phone ordering ---------- */
+  #s3{animation:show .4s 5.9s both, hide .4s 11.8s forwards}
+  .cap{position:absolute;left:60px;right:60px;top:150px;text-align:center}
+  .cap .n{display:inline-flex;align-items:center;justify-content:center;width:110px;height:110px;border-radius:50%;
+    background:var(--accent);font-size:64px;font-weight:900;margin-bottom:22px}
+  .cap h2{font-size:86px;font-weight:900;line-height:1.1}
+  .capA{animation:up .5s 6.0s both, out .3s 7.55s forwards}
+  .capB{animation:up .5s 7.75s both}
+  .capC{animation:up .5s 12.1s both, out .3s 15.9s forwards}
+
+  .phone{position:absolute;left:50%;top:520px;width:720px;height:1330px;margin-left:-360px;border-radius:90px;
+    background:#0b0a1a;padding:26px;box-shadow:0 60px 120px rgba(0,0,0,.55), 0 0 0 4px #3a3570 inset;
+    animation:up .7s 6.1s both}
+  .screen{position:relative;width:100%;height:100%;border-radius:68px;overflow:hidden;background:#f6f5fb;color:var(--ink)}
+  .notch{position:absolute;top:18px;left:50%;width:170px;height:44px;margin-left:-85px;border-radius:30px;background:#0b0a1a;z-index:5}
+
+  /* QR view */
+  .qr{position:absolute;inset:0;background:#1b1838;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    animation:hide .35s 7.6s forwards}
+  .qrbox{position:relative;width:380px;height:380px;background:#fff;border-radius:28px;padding:26px}
+  .qrbox svg{width:100%;height:100%}
+  .scanline{position:absolute;left:4%;right:4%;height:8px;border-radius:4px;background:var(--accent);box-shadow:0 0 30px 8px rgba(255,107,53,.7);
+    top:8%;animation:scan 1.1s 6.5s 1 ease-in-out both}
+  .qr p{color:#fff;font-size:42px;font-weight:700;margin-top:50px}
+  .qr .ok{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:200px;opacity:0;
+    background:rgba(34,197,94,.9);border-radius:28px;animation:pop .35s 7.25s both}
+
+  /* menu view */
+  .menu{position:absolute;inset:0;padding:96px 34px 0;opacity:0;animation:show .35s 7.55s both}
+  .mhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:26px}
+  .mhead h3{font-size:46px;font-weight:900}
+  .mhead .tbl{background:var(--ink);color:#fff;border-radius:40px;padding:8px 26px;font-size:30px;font-weight:700}
+  .cats{display:flex;gap:14px;margin-bottom:26px}
+  .cats span{border-radius:30px;padding:8px 22px;font-size:26px;font-weight:700;background:#e8e6f3;color:var(--muted)}
+  .cats span.on{background:var(--accent);color:#fff}
+  .item{position:relative;display:flex;align-items:center;gap:22px;background:#fff;border-radius:30px;padding:26px 22px;margin-bottom:22px;
+    box-shadow:0 8px 24px rgba(27,24,56,.08);opacity:0}
+  .item.i1{animation:slideL .4s 7.75s both}
+  .item.i2{animation:slideL .4s 7.9s both}
+  .item.i3{animation:slideL .4s 8.05s both}
+  .item.i5{animation:slideL .4s 8.2s both}
+  .item.i4{animation:slideL .4s 8.35s both}
+  .item .ic{width:96px;height:96px;border-radius:24px;background:#fff1ea;display:flex;align-items:center;justify-content:center;font-size:66px;flex:none}
+  .item .tx{flex:1;min-width:0;white-space:nowrap}
+  .item .tx b{display:block;font-size:34px;font-weight:800}
+  .item .tx small{font-size:24px;color:var(--muted)}
+  .item .pr{font-size:32px;font-weight:800;margin-left:6px;margin-right:14px;white-space:nowrap}
+  .plus{position:relative;width:74px;height:74px;border-radius:50%;background:var(--ink);color:#fff;font-size:50px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;flex:none}
+  .plus .chk{position:absolute;inset:0;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:40px;opacity:0}
+  .i1 .chk{animation:pop .3s 8.75s both}
+  .i2 .chk{animation:pop .3s 9.45s both}
+  .i4 .chk{animation:pop .3s 10.15s both}
+
+  .finger{position:absolute;left:50%;top:50%;margin:-60px 0 0 -60px;width:120px;height:120px;border-radius:50%;background:rgba(255,107,53,.55);border:6px solid #fff;opacity:0;z-index:9;pointer-events:none}
+  .f1{animation:tap .55s 8.55s both}
+  .f2{animation:tap .55s 9.25s both}
+  .f3{animation:tap .55s 9.95s both}
+  .f4{animation:tap .55s 10.75s both}
+
+  .cart{position:absolute;overflow:visible;left:34px;right:34px;bottom:44px;height:130px;border-radius:40px;background:var(--accent);color:#fff;
+    display:flex;align-items:center;justify-content:space-between;padding:0 40px;font-size:40px;font-weight:800;white-space:nowrap;
+    box-shadow:0 18px 40px rgba(255,107,53,.45);opacity:0;animation:up .4s 8.8s both}
+  .cart .cnt{position:relative;width:70px;height:70px;border-radius:50%;background:#fff;color:var(--accent);font-size:38px;font-weight:900}
+  .cart .cnt span,.cart .sum span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0}
+  .cart .sum{position:relative;width:200px;height:60px}
+  .cart .sum span{justify-content:flex-end}
+  .c1{animation:show .01s 8.8s both, hide .01s 9.5s forwards}
+  .c2{animation:show .01s 9.5s both, hide .01s 10.2s forwards}
+  .c3{animation:show .01s 10.2s both}
+
+  .sent{position:absolute;inset:0;background:var(--green);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    opacity:0;animation:show .3s 11.0s both;z-index:8}
+  .sent .big{width:240px;height:240px;border-radius:50%;background:#fff;color:var(--green);font-size:150px;font-weight:900;
+    display:flex;align-items:center;justify-content:center;animation:pop .5s 11.1s both}
+  .sent h4{font-size:60px;font-weight:900;margin-top:50px;animation:up .4s 11.25s both}
+  .sent p{font-size:36px;margin-top:12px;opacity:.9;animation:up .4s 11.35s both}
+
+  /* ---------- Scene 4 : restaurant dashboard ---------- */
+  #s4{animation:show .4s 12.0s both, hide .4s 15.9s forwards}
+  .tablet{position:absolute;left:60px;right:60px;top:620px;height:1000px;border-radius:60px;background:#0b0a1a;padding:24px;
+    box-shadow:0 60px 120px rgba(0,0,0,.55), 0 0 0 4px #3a3570 inset;animation:up .6s 12.15s both}
+  .tscreen{width:100%;height:100%;border-radius:40px;background:#f6f5fb;color:var(--ink);padding:44px;overflow:hidden;position:relative}
+  .thead{display:flex;justify-content:space-between;align-items:center;margin-bottom:34px}
+  .thead h3{font-size:44px;font-weight:900}
+  .thead .live{display:flex;align-items:center;gap:12px;font-size:28px;font-weight:700;color:var(--green)}
+  .thead .live i{width:18px;height:18px;border-radius:50%;background:var(--green);display:block}
+  .stats{display:flex;gap:20px;margin-bottom:34px}
+  .stat{flex:1;background:#fff;border-radius:26px;padding:22px;box-shadow:0 8px 24px rgba(27,24,56,.07)}
+  .stat small{display:block;font-size:26px;color:var(--muted);font-weight:700}
+  .stat b{position:relative;display:block;height:64px;font-size:56px;font-weight:900}
+  .stat b span{position:absolute;inset:0;opacity:0}
+  .n0{animation:show .01s 12s both, hide .01s 12.7s forwards}
+  .n1{animation:show .01s 12.7s both}
+  .ord{position:relative;background:#fff;border-radius:34px;padding:34px;box-shadow:0 14px 40px rgba(27,24,56,.12);
+    border-right:14px solid var(--accent);opacity:0;animation:slideR .5s 12.65s both}
+  .ord .ringx{position:absolute;inset:-4px;border-radius:38px;border:6px solid var(--accent);opacity:0;animation:ping .8s 12.9s 2 both}
+  .ord .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
+  .ord .top h4{font-size:52px;font-weight:900}
+  .chip{position:relative;width:230px;height:70px}
+  .chip span{position:absolute;inset:0;border-radius:40px;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:800;color:#fff;opacity:0}
+  .st1{background:var(--accent);animation:show .01s 12.65s both, hide .2s 13.9s forwards}
+  .st2{background:var(--blue);animation:pop .35s 13.9s both, hide .2s 15.1s forwards}
+  .st3{background:var(--green);animation:pop .35s 15.1s both}
+  .ord ul{list-style:none;font-size:36px;line-height:1.75;font-weight:500}
+  .ord ul li{display:flex;justify-content:space-between}
+  .ord ul li b{font-weight:800}
+  .ord .tot{display:flex;justify-content:space-between;border-top:3px dashed #e3e0f0;margin-top:16px;padding-top:18px;font-size:38px;font-weight:900}
+  .ord .time{font-size:28px;color:var(--muted);font-weight:700}
+  .ghost{background:#fff;border-radius:34px;height:150px;margin-top:24px;opacity:.55;box-shadow:0 8px 24px rgba(27,24,56,.06);
+    border-right:14px solid #d6d3e8;animation:up .5s 12.4s both}
+
+  /* ---------- Scene 5 : benefits ---------- */
+  #s5{animation:show .35s 16.0s both, hide .4s 18.6s forwards}
+  .notif{position:absolute;left:70px;right:70px;top:300px;background:#fff;color:var(--ink);border-radius:44px;padding:36px 40px;
+    display:flex;gap:30px;align-items:center;box-shadow:0 40px 90px rgba(0,0,0,.45);animation:drop .7s 16.05s both}
+  .notif .ap{width:120px;height:120px;border-radius:30px;background:var(--accent);display:flex;align-items:center;justify-content:center;flex:none}
+  .notif .ap svg{width:86px;height:86px}
+  .notif b{display:block;font-size:44px;font-weight:900}
+  .notif small{font-size:32px;color:var(--muted)}
+  .bens{position:absolute;left:90px;right:90px;top:760px}
+  .ben{display:flex;align-items:center;gap:36px;background:rgba(255,255,255,.08);border:3px solid rgba(255,255,255,.14);border-radius:40px;
+    padding:36px 44px;margin-bottom:36px;font-size:66px;font-weight:900;opacity:0}
+  .ben i{font-style:normal;width:130px;height:130px;border-radius:34px;display:flex;align-items:center;justify-content:center;font-size:76px;flex:none}
+  .ben:nth-child(1){animation:slideL .45s 16.6s both}
+  .ben:nth-child(2){animation:slideL .45s 17.0s both}
+  .ben:nth-child(3){animation:slideL .45s 17.4s both}
+  .ben:nth-child(1) i{background:var(--accent)}
+  .ben:nth-child(2) i{background:var(--green)}
+  .ben:nth-child(3) i{background:#6d5dfc}
+
+  /* ---------- Scene 6 : CTA ---------- */
+  #s6{animation:show .4s 18.7s both}
+  .cta-bell{position:absolute;left:50%;top:430px;width:300px;margin-left:-150px;animation:pop .6s 18.8s both}
+  .cta-bell svg{width:300px;height:300px;transform-origin:50% 20%;animation:ring 1s 19.3s both}
+  .cta-word{top:790px;font-size:150px;font-weight:900;letter-spacing:-3px;direction:ltr;animation:up .5s 19.1s both}
+  .cta-word span{color:var(--accent)}
+  .cta-tag{top:990px;font-size:74px;font-weight:800;animation:up .5s 19.5s both}
+  .cta-sub{top:1100px;font-size:46px;font-weight:500;color:#cfcaf5;animation:up .5s 19.75s both}
+  .btn{position:absolute;left:50%;top:1330px;width:700px;margin-left:-350px;height:170px;border-radius:90px;
+    background:linear-gradient(90deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;
+    font-size:68px;font-weight:900;box-shadow:0 30px 70px rgba(255,107,53,.5);animation:pop .55s 20.1s both, pulse .9s 20.7s 2 ease-in-out}
+  .cta-foot{top:1600px;font-size:40px;color:#a9a3d8;font-weight:500;animation:show .5s 20.5s both}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="orbit"><div class="blob b1"></div><div class="blob b2"></div></div>
+
+  <!-- SVG symbol: service bell -->
+  <svg width="0" height="0" style="position:absolute">
+    <defs>
+      <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffb347"/><stop offset="1" stop-color="#ff6b35"/>
+      </linearGradient>
+      <symbol id="bell" viewBox="0 0 200 200">
+        <circle cx="100" cy="38" r="12" fill="url(#g1)"/>
+        <rect x="94" y="44" width="12" height="18" rx="4" fill="url(#g1)"/>
+        <path d="M30 140 A70 70 0 0 1 170 140 Z" fill="url(#g1)"/>
+        <path d="M58 112 A48 48 0 0 1 92 80" stroke="#fff" stroke-opacity=".55" stroke-width="9" fill="none" stroke-linecap="round"/>
+        <rect x="16" y="146" width="168" height="20" rx="10" fill="#fff"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <!-- Scene 1 -->
+  <section class="scene" id="s1">
+    <div class="s1-emoji"><span>🙋‍♂️</span></div>
+    <div class="clock"><b></b><i></i></div>
+    <h1 class="center s1-t1">מנופפים למלצר?</h1>
+    <p class="center s1-t2">ושוב <em>מחכים...</em> ומחכים...</p>
+  </section>
+  <div class="flash"></div>
+
+  <!-- Scene 2 -->
+  <section class="scene" id="s2">
+    <div class="bell"><svg><use href="#bell"/></svg></div>
+    <h1 class="center word">Get <span>Service</span></h1>
+    <p class="center tag">השירות <b>מגיע אליכם</b> לשולחן</p>
+  </section>
+
+  <!-- Scene 3 -->
+  <section class="scene" id="s3">
+    <div class="cap capA"><div class="n">1</div><h2>סורקים את הקוד בשולחן</h2></div>
+    <div class="cap capB"><div class="n">2</div><h2>מזמינים ישר מהנייד</h2></div>
+
+    <div class="phone"><div class="screen">
+      <div class="notch"></div>
+
+      <div class="menu">
+        <div class="mhead"><h3>התפריט שלנו</h3><span class="tbl">שולחן 7</span></div>
+        <div class="cats"><span class="on">הכל</span><span>ראשונות</span><span>עיקריות</span><span>קינוחים</span></div>
+        <div class="item i1"><div class="ic">🥙</div><div class="tx"><b>חומוס</b><small>חומוס ביתי עם שמן זית</small></div><span class="pr">32 ₪</span><div class="plus">+<div class="chk">✓</div><div class="finger f1"></div></div></div>
+        <div class="item i2"><div class="ic">🥩</div><div class="tx"><b>אנטריקוט</b><small>סטייק 300 גרם</small></div><span class="pr">145 ₪</span><div class="plus">+<div class="chk">✓</div><div class="finger f2"></div></div></div>
+        <div class="item i3"><div class="ic">🍝</div><div class="tx"><b>פסטה 4 גבינות</b><small>ספגטי ברוטב גבינות</small></div><span class="pr">72 ₪</span><div class="plus">+</div></div>
+        <div class="item i5"><div class="ic">🥗</div><div class="tx"><b>סלט בית</b><small>עגבניות, מלפפון, בצל</small></div><span class="pr">38 ₪</span><div class="plus">+</div></div>
+        <div class="item i4"><div class="ic">🍰</div><div class="tx"><b>טירמיסו</b><small>קלאסי איטלקי</small></div><span class="pr">42 ₪</span><div class="plus">+<div class="chk">✓</div><div class="finger f3"></div></div></div>
+
+        <div class="cart">
+          <div class="cnt"><span class="c1">1</span><span class="c2">2</span><span class="c3">3</span></div>
+          <div style="position:relative;margin-right:-60px">שליחת הזמנה<div class="finger f4"></div></div>
+          <div class="sum"><span class="c1">32 ₪</span><span class="c2">177 ₪</span><span class="c3">219 ₪</span></div>
+        </div>
+      </div>
+
+      <div class="qr">
+        <div class="qrbox">
+          <svg viewBox="0 0 29 29" shape-rendering="crispEdges" id="qrsvg"></svg>
+          <div class="scanline"></div>
+          <div class="ok">✓</div>
+        </div>
+        <p>שולחן 7 · סרקו להזמנה</p>
+      </div>
+
+
+      <div class="sent"><div class="big">✓</div><h4>ההזמנה נשלחה!</h4><p>המטבח כבר קיבל אותה</p></div>
+    </div></div>
+  </section>
+
+  <!-- Scene 4 -->
+  <section class="scene" id="s4">
+    <div class="cap capC"><div class="n">3</div><h2>המטבח מקבל מיד<br>ואתם רואים כל שלב</h2></div>
+    <div class="tablet"><div class="tscreen">
+      <div class="thead"><h3>🛎️ לוח הזמנות</h3><span class="live"><i></i>בזמן אמת</span></div>
+      <div class="stats">
+        <div class="stat"><small>חדשות</small><b><span class="n0">0</span><span class="n1">1</span></b></div>
+        <div class="stat"><small>בהכנה</small><b><span style="opacity:1">2</span></b></div>
+        <div class="stat"><small>שולחנות פעילים</small><b><span class="n0">5</span><span class="n1">6</span></b></div>
+      </div>
+      <div class="ord">
+        <div class="ringx"></div>
+        <div class="top"><h4>שולחן 7</h4>
+          <div class="chip"><span class="st1">● חדשה</span><span class="st2">👨‍🍳 בהכנה</span><span class="st3">✓ מוכנה</span></div>
+        </div>
+        <ul>
+          <li><span>חומוס</span><b>× 1</b></li>
+          <li><span>סטייק אנטריקוט</span><b>× 1</b></li>
+          <li><span>טירמיסו</span><b>× 1</b></li>
+        </ul>
+        <div class="tot"><span>סה״כ 219 ₪</span><span class="time">לפני רגע</span></div>
+      </div>
+      <div class="ghost"></div>
+    </div></div>
+  </section>
+
+  <!-- Scene 5 -->
+  <section class="scene" id="s5">
+    <div class="notif">
+      <div class="ap"><svg viewBox="0 0 200 200"><path d="M30 140 A70 70 0 0 1 170 140 Z" fill="#fff"/><circle cx="100" cy="42" r="13" fill="#fff"/><rect x="16" y="148" width="168" height="18" rx="9" fill="#fff"/></svg></div>
+      <div><b>ההזמנה שלכם מוכנה! 🍽️</b><small>Get Service · שולחן 7</small></div>
+    </div>
+    <div class="bens">
+      <div class="ben"><i>⚡</i>בלי לחכות</div>
+      <div class="ben"><i>✓</i>בלי טעויות</div>
+      <div class="ben"><i>📈</i>יותר הזמנות</div>
+    </div>
+  </section>
+
+  <!-- Scene 6 -->
+  <section class="scene" id="s6">
+    <div class="cta-bell"><svg><use href="#bell"/></svg></div>
+    <h1 class="center cta-word">Get <span>Service</span></h1>
+    <p class="center cta-tag">שירות בלחיצה אחת</p>
+    <p class="center cta-sub">למסעדות, בתי קפה וברים</p>
+    <div class="btn">הצטרפו עכשיו</div>
+    <p class="center cta-foot">הזמנות מהשולחן · ניהול בזמן אמת</p>
+  </section>
+</div>
+
+<script>
+// Deterministic pseudo-QR pattern (decorative)
+(function(){
+  const s = document.getElementById('qrsvg'); let r = 7, out = '';
+  const finder = (x,y)=>`<rect x="${x}" y="${y}" width="7" height="7" fill="#1b1838"/><rect x="${x+1}" y="${y+1}" width="5" height="5" fill="#fff"/><rect x="${x+2}" y="${y+2}" width="3" height="3" fill="#1b1838"/>`;
+  const inFinder=(x,y)=>(x<8&&y<8)||(x>20&&y<8)||(x<8&&y>20);
+  for(let y=0;y<29;y++)for(let x=0;x<29;x++){
+    if(inFinder(x,y)) continue;
+    r = (r*1103515245+12345) & 0x7fffffff;
+    if((r>>8)%2) out += `<rect x="${x}" y="${y}" width="1" height="1" fill="#1b1838"/>`;
+  }
+  s.innerHTML = out + finder(0,0) + finder(22,0) + finder(0,22);
+})();
+
+// Timeline control: ?t=seconds freezes at a time; otherwise plays live in a loop.
+window.DURATION = 22;
+window.seek = function(t){
+  document.getAnimations().forEach(a => { a.pause(); a.currentTime = t*1000; });
+};
+const qs = new URLSearchParams(location.search);
+if (qs.has('t')) { seek(parseFloat(qs.get('t'))); }
+else if (!qs.has('render')) {
+  setInterval(()=>{ document.getAnimations().forEach(a=>{ a.currentTime = 0; a.play(); }); }, DURATION*1000);
+}
+</script>
+</body>
+</html>
