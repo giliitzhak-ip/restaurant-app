@@ -1,1 +1,245 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14112e">
+<title>Get Service · הזמנה מהשולחן</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#f6f5fb;--ink:#1b1838;--muted:#6b6890;--line:#e8e6f3;--accent:#ff6b35;--accent2:#ffb347;--green:#22c55e;--blue:#3b82f6;--dark:#14112e;--card:#fff}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:'Heebo',system-ui,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;padding-bottom:120px}
+  button{font-family:inherit;cursor:pointer;border:0}
+  header{background:var(--dark);color:#fff;padding:18px 18px 22px;position:sticky;top:0;z-index:5}
+  .brand{display:flex;align-items:center;justify-content:space-between}
+  .logo{font-weight:900;font-size:22px;direction:ltr}
+  .logo span{color:var(--accent)}
+  .tbl{background:rgba(255,255,255,.12);border-radius:30px;padding:5px 14px;font-weight:700;font-size:15px}
+  header h1{font-size:26px;font-weight:900;margin-top:12px}
+  .cats{display:flex;gap:8px;overflow-x:auto;padding:14px 16px;background:var(--bg);position:sticky;top:112px;z-index:4;scrollbar-width:none}
+  .cats::-webkit-scrollbar{display:none}
+  .cats button{white-space:nowrap;border-radius:30px;padding:8px 16px;font-size:15px;font-weight:700;background:var(--line);color:var(--muted)}
+  .cats button.on{background:var(--accent);color:#fff}
+  main{padding:0 16px}
+  h2.cat{font-size:20px;font-weight:900;margin:18px 4px 10px}
+  .item{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:20px;padding:14px;margin-bottom:12px;box-shadow:0 4px 16px rgba(27,24,56,.06)}
+  .item .tx{flex:1;min-width:0}
+  .item b{display:block;font-size:17px;font-weight:800}
+  .item small{display:block;color:var(--muted);font-size:14px;margin-top:2px}
+  .item .pr{font-weight:800;margin-top:6px;font-size:15px}
+  .qty{display:flex;align-items:center;gap:10px}
+  .qty button{width:38px;height:38px;border-radius:50%;background:var(--ink);color:#fff;font-size:22px;font-weight:700;line-height:1}
+  .qty button.minus{background:var(--line);color:var(--ink)}
+  .qty span{min-width:18px;text-align:center;font-weight:800;font-size:17px}
+  .cartbar{position:fixed;left:12px;right:12px;bottom:max(14px,env(safe-area-inset-bottom));height:64px;border-radius:22px;background:var(--accent);color:#fff;
+    display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:18px;font-weight:800;box-shadow:0 12px 30px rgba(255,107,53,.4);transform:translateY(140%);transition:transform .25s}
+  .cartbar.show{transform:none}
+  .cartbar .cnt{background:#fff;color:var(--accent);width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+  /* sheet */
+  .veil{position:fixed;inset:0;background:rgba(20,17,46,.55);opacity:0;pointer-events:none;transition:opacity .2s;z-index:10}
+  .veil.show{opacity:1;pointer-events:auto}
+  .sheet{position:fixed;left:0;right:0;bottom:0;max-height:88vh;overflow:auto;background:#fff;border-radius:26px 26px 0 0;padding:22px 18px calc(22px + env(safe-area-inset-bottom));
+    transform:translateY(105%);transition:transform .25s;z-index:11}
+  .sheet.show{transform:none}
+  .sheet h3{font-size:22px;font-weight:900;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+  .sheet h3 button{background:var(--line);width:34px;height:34px;border-radius:50%;font-size:18px}
+  .line{border-bottom:1px solid var(--line);padding:12px 0}
+  .line .row{display:flex;align-items:center;gap:10px}
+  .line .row b{flex:1;font-size:16px}
+  .line input{width:100%;margin-top:8px;border:1px solid var(--line);border-radius:12px;padding:9px 12px;font-family:inherit;font-size:14px;background:var(--bg)}
+  textarea{width:100%;border:1px solid var(--line);border-radius:14px;padding:12px;font-family:inherit;font-size:15px;margin-top:14px;min-height:70px;background:var(--bg)}
+  .total{display:flex;justify-content:space-between;font-size:20px;font-weight:900;margin:16px 0}
+  .primary{width:100%;height:58px;border-radius:18px;background:var(--accent);color:#fff;font-size:19px;font-weight:800}
+  .primary:disabled{opacity:.6}
+  .ghostbtn{width:100%;height:52px;border-radius:16px;background:var(--line);color:var(--ink);font-size:17px;font-weight:700;margin-top:10px}
+  /* tracker */
+  #track{display:none;padding:22px 16px}
+  .tcard{background:#fff;border-radius:24px;padding:24px 20px;box-shadow:0 6px 24px rgba(27,24,56,.08);text-align:center}
+  .big{width:96px;height:96px;border-radius:50%;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-size:48px;color:#fff;background:var(--accent)}
+  .tcard h2{font-size:26px;font-weight:900}
+  .tcard p{color:var(--muted);margin-top:6px}
+  .steps{display:flex;justify-content:space-between;margin:26px 0 8px;position:relative}
+  .steps:before{content:'';position:absolute;top:17px;left:12%;right:12%;height:4px;background:var(--line);border-radius:2px}
+  .step{position:relative;flex:1;font-size:13px;font-weight:700;color:var(--muted)}
+  .step i{display:flex;width:38px;height:38px;margin:0 auto 6px;border-radius:50%;background:var(--line);align-items:center;justify-content:center;font-style:normal;font-size:16px}
+  .step.done{color:var(--ink)} .step.done i{background:var(--green);color:#fff}
+  .step.cur i{background:var(--accent);color:#fff;animation:pulse 1.2s infinite}
+  @keyframes pulse{50%{transform:scale(1.12)}}
+  .sum{text-align:right;margin-top:18px;border-top:1px dashed var(--line);padding-top:12px;font-size:15px}
+  .sum div{display:flex;justify-content:space-between;padding:3px 0}
+  .msg{padding:40px 20px;text-align:center;color:var(--muted)}
+  .toast{position:fixed;top:16px;left:50%;transform:translate(-50%,-150%);background:var(--ink);color:#fff;padding:12px 18px;border-radius:14px;font-weight:700;z-index:20;transition:transform .25s;max-width:90%}
+  .toast.show{transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="logo">🛎️ Get <span>Service</span></div><div class="tbl" id="tblLabel"></div></div>
+  <h1 id="title">התפריט שלנו</h1>
+</header>
 
+<div id="menuView">
+  <nav class="cats" id="cats"></nav>
+  <main id="menu"><div class="msg">טוען תפריט…</div></main>
+  <button class="cartbar" id="cartbar"><span class="cnt" id="cartCnt">0</span><span>לצפייה בהזמנה</span><span id="cartSum">0 ₪</span></button>
+</div>
+
+<section id="track"></section>
+
+<div class="veil" id="veil"></div>
+<div class="sheet" id="sheet"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money = n => (Math.round(n*100)/100).toLocaleString('he-IL') + ' ₪';
+const table = parseInt(new URLSearchParams(location.search).get('table'), 10);
+const STORE = 'gs_order_' + table;
+let menu = [], cart = {}, notes = {}, pollTimer = null;
+
+function toast(t){ const el=$('#toast'); el.textContent=t; el.classList.add('show'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),2600); }
+function lsGet(k){ try{return localStorage.getItem(k)}catch{return null} }
+function lsSet(k,v){ try{ v==null?localStorage.removeItem(k):localStorage.setItem(k,v) }catch{} }
+
+async function api(path, opts){
+  const r = await fetch(path, opts && { method: opts.method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(opts.body) });
+  const data = await r.json().catch(()=>({}));
+  if(!r.ok) throw Object.assign(new Error(data.error||'error'), {status:r.status, data});
+  return data;
+}
+
+// ---------- Menu ----------
+async function loadMenu(){
+  try { menu = await api('/api/menu'); }
+  catch { $('#menu').innerHTML = '<div class="msg">לא הצלחנו לטעון את התפריט. נסו לרענן.</div>'; return; }
+  const ORDER = ['מנות ראשונות','מנות עיקריות','תוספות','קינוחים','שתייה'];
+  const rank = c => { const i = ORDER.indexOf(c); return i < 0 ? ORDER.length - 1 : i; }; // unknown categories go before drinks
+  const cats = [...new Set(menu.map(m=>m.category))].sort((a,b)=>rank(a)-rank(b));
+  $('#cats').innerHTML = cats.map((c,i)=>`<button data-cat="${esc(c)}" class="${i?'':'on'}">${esc(c)}</button>`).join('');
+  $('#menu').innerHTML = cats.map(c=>`<h2 class="cat" id="cat-${esc(c)}">${esc(c)}</h2>` +
+    menu.filter(m=>m.category===c).map(m=>`
+      <div class="item">
+        <div class="tx"><b>${esc(m.name)}</b>${m.description?`<small>${esc(m.description)}</small>`:''}<div class="pr">${money(m.price)}</div></div>
+        <div class="qty" data-id="${m.id}"></div>
+      </div>`).join('')).join('') || '<div class="msg">התפריט ריק כרגע</div>';
+  renderQty();
+}
+function renderQty(){
+  document.querySelectorAll('.qty').forEach(el=>{
+    const id=+el.dataset.id, q=cart[id]||0;
+    el.innerHTML = q ? `<button class="minus" data-d="-1">−</button><span>${q}</span><button data-d="1">+</button>` : `<button data-d="1">+</button>`;
+  });
+  const ids=Object.keys(cart), count=ids.reduce((a,id)=>a+cart[id],0);
+  $('#cartCnt').textContent=count; $('#cartSum').textContent=money(total());
+  $('#cartbar').classList.toggle('show', count>0);
+}
+function total(){ return Object.keys(cart).reduce((a,id)=>{ const m=menu.find(x=>x.id==id); return a+(m?m.price*cart[id]:0); },0); }
+function change(id,d){ const q=(cart[id]||0)+d; if(q<=0){ delete cart[id]; delete notes[id]; } else cart[id]=Math.min(q,50); renderQty(); }
+
+$('#menu').addEventListener('click', e=>{ const b=e.target.closest('.qty button'); if(b) change(+b.parentElement.dataset.id, +b.dataset.d); });
+$('#cats').addEventListener('click', e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  document.querySelectorAll('#cats button').forEach(x=>x.classList.toggle('on',x===b));
+  const h=document.getElementById('cat-'+b.dataset.cat); if(h) window.scrollTo({top:h.offsetTop-170,behavior:'smooth'});
+});
+
+// ---------- Cart sheet ----------
+function openSheet(){ renderSheet(); $('#veil').classList.add('show'); $('#sheet').classList.add('show'); }
+function closeSheet(){ $('#veil').classList.remove('show'); $('#sheet').classList.remove('show'); }
+function renderSheet(){
+  const ids=Object.keys(cart);
+  if(!ids.length){ closeSheet(); return; }
+  const generalNote = $('#generalNote') ? $('#generalNote').value : '';
+  $('#sheet').innerHTML = `<h3>ההזמנה שלי · שולחן ${table}<button id="closeSheet">✕</button></h3>` +
+    ids.map(id=>{ const m=menu.find(x=>x.id==id); return `
+      <div class="line"><div class="row"><b>${esc(m.name)}</b><span>${money(m.price*cart[id])}</span>
+        <div class="qty" data-id="${id}"><button class="minus" data-d="-1">−</button><span>${cart[id]}</span><button data-d="1">+</button></div></div>
+        <input data-note="${id}" maxlength="200" placeholder="בקשה מיוחדת (למשל: בלי בצל)" value="${esc(notes[id]||'')}"></div>`; }).join('') +
+    `<textarea id="generalNote" maxlength="500" placeholder="הערה כללית להזמנה">${esc(generalNote)}</textarea>
+     <div class="total"><span>סה״כ</span><span>${money(total())}</span></div>
+     <button class="primary" id="sendBtn">שליחת הזמנה</button>`;
+}
+$('#cartbar').onclick = openSheet;
+$('#veil').onclick = closeSheet;
+$('#sheet').addEventListener('click', e=>{
+  if(e.target.id==='closeSheet') return closeSheet();
+  if(e.target.id==='sendBtn') return sendOrder();
+  const b=e.target.closest('.qty button'); if(b){ change(+b.parentElement.dataset.id, +b.dataset.d); renderSheet(); }
+});
+$('#sheet').addEventListener('input', e=>{ if(e.target.dataset.note) notes[e.target.dataset.note]=e.target.value; });
+
+async function sendOrder(){
+  const btn=$('#sendBtn'); btn.disabled=true; btn.textContent='שולח…';
+  try{
+    const res = await api('/api/orders',{method:'POST', body:{
+      table_number: table,
+      notes: $('#generalNote').value.trim(),
+      items: Object.keys(cart).map(id=>({menu_item_id:+id, quantity:cart[id], special_request:(notes[id]||'').trim()}))
+    }});
+    cart={}; notes={}; closeSheet(); renderQty();
+    lsSet(STORE, res.order_id);
+    showTracker(res.order_id);
+  }catch(err){
+    btn.disabled=false; btn.textContent='שליחת הזמנה';
+    if(err.status===409){ toast('אחת המנות אזלה מהמלאי, הסרנו אותה מההזמנה'); delete cart[err.data.menu_item_id]; await loadMenu(); renderSheet(); }
+    else toast('השליחה נכשלה, נסו שוב');
+  }
+}
+
+// ---------- Order tracker ----------
+const STEPS = [['new','התקבלה','📝'],['preparing','בהכנה','👨‍🍳'],['ready','מוכנה','🍽️'],['served','הוגשה','✓']];
+const HEAD = {
+  new:['📝','ההזמנה התקבלה!','המטבח יתחיל בהכנה בעוד רגע'],
+  seen:['👀','המטבח ראה את ההזמנה','עוד רגע מתחילים להכין'],
+  preparing:['👨‍🍳','ההזמנה בהכנה','השפים כבר עובדים עליה'],
+  ready:['🍽️','ההזמנה מוכנה!','היא בדרך אליכם לשולחן'],
+  served:['✓','בתיאבון!','ההזמנה הוגשה'],
+  cancelled:['✕','ההזמנה בוטלה','לפרטים פנו לצוות המסעדה'],
+};
+function showTracker(id){
+  $('#menuView').style.display='none'; $('#track').style.display='block'; $('#title').textContent='מעקב הזמנה';
+  window.scrollTo(0,0); poll(id);
+}
+function backToMenu(){
+  clearTimeout(pollTimer); lsSet(STORE,null);
+  $('#track').style.display='none'; $('#menuView').style.display='block'; $('#title').textContent='התפריט שלנו';
+}
+let lastStatus=null;
+async function poll(id){
+  clearTimeout(pollTimer);
+  let o;
+  try{ o = await api('/api/orders/'+id); }
+  catch(err){ if(err.status===404){ backToMenu(); return; } pollTimer=setTimeout(()=>poll(id),5000); return; }
+  const st = o.status==='seen' ? 'preparing' : o.status;
+  const idx = STEPS.findIndex(s=>s[0]===st);
+  const [ic,h,p] = HEAD[o.status] || HEAD.new;
+  if(lastStatus && lastStatus!==o.status && o.status==='ready'){ navigator.vibrate && navigator.vibrate([200,100,200]); toast('ההזמנה שלכם מוכנה! 🍽️'); }
+  lastStatus=o.status;
+  const bg = o.status==='cancelled' ? '#ef4444' : (o.status==='ready'||o.status==='served') ? 'var(--green)' : 'var(--accent)';
+  $('#track').innerHTML = `<div class="tcard">
+    <div class="big" style="background:${bg}">${ic}</div><h2>${h}</h2><p>${p}</p>
+    ${o.status==='cancelled'?'':`<div class="steps">${STEPS.map((s,i)=>`<div class="step ${i<idx||o.status==='served'?'done':i===idx?'cur':''}"><i>${i<idx||o.status==='served'?'✓':s[2]}</i>${s[1]}</div>`).join('')}</div>`}
+    <div class="sum">${o.items.map(it=>`<div><span>${esc(it.name)} × ${it.quantity}${it.special_request?` <small style="color:var(--muted)">(${esc(it.special_request)})</small>`:''}</span><span>${money(it.price*it.quantity)}</span></div>`).join('')}
+      <div style="font-weight:900;border-top:1px solid var(--line);margin-top:6px;padding-top:8px"><span>סה״כ</span><span>${money(o.items.reduce((a,it)=>a+it.price*it.quantity,0))}</span></div></div>
+    <p style="margin-top:10px;font-size:13px">הזמנה #${o.id} · שולחן ${o.table_number}</p>
+  </div>
+  <button class="ghostbtn" id="again">${o.status==='served'||o.status==='cancelled'?'הזמנה חדשה':'להזמין עוד משהו'}</button>`;
+  $('#again').onclick = backToMenu;
+  if(o.status!=='served' && o.status!=='cancelled') pollTimer=setTimeout(()=>poll(id),4000);
+}
+
+// ---------- Init ----------
+if(!(table>0)){
+  $('#tblLabel').style.display='none';
+  $('#menuView').innerHTML='<div class="msg"><b style="font-size:20px;color:var(--ink)">לא זיהינו את השולחן</b><br><br>סרקו את הברקוד שעל השולחן כדי להזמין.</div>';
+} else {
+  $('#tblLabel').textContent='שולחן '+table;
+  loadMenu();
+  const saved = lsGet(STORE);
+  if(saved) showTracker(saved);
+}
+</script>
+</body>
+</html>

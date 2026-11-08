@@ -1,1 +1,280 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get Service · לוח מסעדה</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<script src="/vendor/qrcode.js"></script>
+<style>
+  :root{--bg:#f6f5fb;--ink:#1b1838;--muted:#6b6890;--line:#e8e6f3;--accent:#ff6b35;--green:#22c55e;--blue:#3b82f6;--red:#ef4444;--dark:#14112e;--card:#fff}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Heebo',system-ui,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh}
+  button,input,select{font-family:inherit}
+  button{cursor:pointer;border:0}
+  header{background:var(--dark);color:#fff;padding:14px 24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap;position:sticky;top:0;z-index:5}
+  .logo{font-weight:900;font-size:22px;direction:ltr}
+  .logo span{color:var(--accent)}
+  nav{display:flex;gap:6px;flex:1;flex-wrap:wrap}
+  nav button{background:transparent;color:#c9c4f0;padding:8px 16px;border-radius:12px;font-weight:700;font-size:15px}
+  nav button.on{background:rgba(255,255,255,.12);color:#fff}
+  .live{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--green)}
+  .live i{width:10px;height:10px;border-radius:50%;background:var(--green)}
+  .live.off{color:var(--red)} .live.off i{background:var(--red)}
+  .sound{background:rgba(255,255,255,.12);color:#fff;padding:8px 14px;border-radius:12px;font-weight:700;font-size:14px}
+  .sound.on{background:var(--accent)}
+  main{padding:22px 24px;max-width:1400px;margin:0 auto}
+  .tab{display:none} .tab.on{display:block}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+  .stat{background:#fff;border-radius:18px;padding:16px 18px;box-shadow:0 4px 16px rgba(27,24,56,.06);border-top:5px solid var(--line)}
+  .stat small{display:block;color:var(--muted);font-weight:700;font-size:14px}
+  .stat b{font-size:34px;font-weight:900}
+  .board{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start}
+  .col h3{font-size:17px;font-weight:900;margin:0 4px 10px;display:flex;gap:8px;align-items:center}
+  .col h3 .c{background:var(--line);border-radius:20px;padding:0 10px;font-size:14px}
+  .ord{background:#fff;border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:0 6px 20px rgba(27,24,56,.08);border-right:8px solid var(--accent)}
+  .ord.preparing{border-right-color:var(--blue)} .ord.ready{border-right-color:var(--green)}
+  .ord.fresh{animation:flash 1.2s 3}
+  @keyframes flash{50%{box-shadow:0 0 0 5px rgba(255,107,53,.5)}}
+  .ord .top{display:flex;justify-content:space-between;align-items:baseline}
+  .ord h4{font-size:22px;font-weight:900}
+  .ord .age{color:var(--muted);font-size:13px;font-weight:700}
+  .ord .age.late{color:var(--red)}
+  .ord ul{list-style:none;margin:10px 0;font-size:16px}
+  .ord li{padding:3px 0;border-bottom:1px dashed var(--line)}
+  .ord li b{font-weight:800}
+  .ord li small{display:block;color:var(--accent);font-weight:700;font-size:13px}
+  .ord .note{background:#fff7ed;border-radius:10px;padding:7px 10px;font-size:14px;margin-bottom:10px}
+  .ord .acts{display:flex;gap:8px}
+  .ord .acts button{flex:1;height:42px;border-radius:12px;font-weight:800;font-size:15px;color:#fff;background:var(--ink)}
+  .ord .acts .x{flex:0 0 42px;background:var(--line);color:var(--muted)}
+  .empty{color:var(--muted);text-align:center;padding:26px 10px;border:2px dashed var(--line);border-radius:18px;font-size:14px}
+  /* menu admin */
+  .card{background:#fff;border-radius:18px;padding:18px;box-shadow:0 4px 16px rgba(27,24,56,.06);margin-bottom:16px}
+  .form{display:grid;grid-template-columns:2fr 3fr 1fr 1.5fr auto;gap:10px}
+  .form input,.form select{height:44px;border:1px solid var(--line);border-radius:12px;padding:0 12px;font-size:15px;background:var(--bg);min-width:0}
+  .btn{height:44px;border-radius:12px;padding:0 18px;font-weight:800;color:#fff;background:var(--accent)}
+  .btn.sec{background:var(--line);color:var(--ink)}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:right;font-size:13px;color:var(--muted);padding:8px;border-bottom:2px solid var(--line)}
+  td{padding:10px 8px;border-bottom:1px solid var(--line);font-size:15px}
+  tr.off td{opacity:.45}
+  td .mini{background:var(--line);border-radius:10px;padding:6px 10px;font-weight:700;font-size:13px;margin-left:4px}
+  td .mini.del{color:var(--red)}
+  .tog{width:46px;height:26px;border-radius:20px;background:var(--line);position:relative}
+  .tog:after{content:'';position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+  .tog.on{background:var(--green)} .tog.on:after{right:23px}
+  .qrs{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+  .qrc{background:#fff;border-radius:18px;padding:16px;text-align:center;box-shadow:0 4px 16px rgba(27,24,56,.06);break-inside:avoid}
+  .qrc img{width:100%;image-rendering:pixelated}
+  .qrc b{display:block;font-size:22px;font-weight:900}
+  .qrc small{color:var(--muted)}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translate(-50%,150%);background:var(--ink);color:#fff;padding:12px 20px;border-radius:14px;font-weight:700;transition:transform .25s;z-index:30}
+  .toast.show{transform:translate(-50%,0)}
+  @media (max-width:900px){ .board{grid-template-columns:1fr} .stats{grid-template-columns:repeat(2,1fr)} .form{grid-template-columns:1fr 1fr} }
+  @media print{ header,.noprint{display:none!important} main{padding:0} .qrc{box-shadow:none;border:1px solid #ccc} }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">🛎️ Get <span>Service</span></div>
+  <nav id="nav">
+    <button data-tab="orders" class="on">הזמנות</button>
+    <button data-tab="menu">תפריט</button>
+    <button data-tab="history">היסטוריה</button>
+    <button data-tab="qr">ברקודים לשולחנות</button>
+  </nav>
+  <button class="sound" id="soundBtn">🔕 הפעלת צליל</button>
+  <div class="live" id="live"><i></i>בזמן אמת</div>
+</header>
 
+<main>
+  <section class="tab on" id="tab-orders">
+    <div class="stats">
+      <div class="stat" style="border-top-color:var(--accent)"><small>הזמנות חדשות</small><b id="sNew">0</b></div>
+      <div class="stat" style="border-top-color:var(--blue)"><small>בהכנה</small><b id="sPrep">0</b></div>
+      <div class="stat" style="border-top-color:var(--green)"><small>מוכנות להגשה</small><b id="sReady">0</b></div>
+      <div class="stat"><small>שולחנות פעילים</small><b id="sTables">0</b></div>
+    </div>
+    <div class="board">
+      <div class="col"><h3>🆕 חדשות <span class="c" id="cNew">0</span></h3><div id="colNew"></div></div>
+      <div class="col"><h3>👨‍🍳 בהכנה <span class="c" id="cPrep">0</span></h3><div id="colPrep"></div></div>
+      <div class="col"><h3>🍽️ מוכנות <span class="c" id="cReady">0</span></h3><div id="colReady"></div></div>
+    </div>
+  </section>
+
+  <section class="tab" id="tab-menu">
+    <div class="card">
+      <form class="form" id="itemForm">
+        <input name="name" placeholder="שם המנה" required maxlength="80">
+        <input name="description" placeholder="תיאור (לא חובה)" maxlength="200">
+        <input name="price" type="number" min="0" step="0.5" placeholder="מחיר ₪" required>
+        <input name="category" placeholder="קטגוריה" list="catList" required maxlength="40">
+        <div style="display:flex;gap:8px"><button class="btn" id="saveBtn">הוספה</button><button type="button" class="btn sec" id="cancelEdit" style="display:none">ביטול</button></div>
+      </form>
+      <datalist id="catList"></datalist>
+    </div>
+    <div class="card"><table><thead><tr><th>מנה</th><th>קטגוריה</th><th>מחיר</th><th>זמין</th><th></th></tr></thead><tbody id="menuRows"></tbody></table></div>
+  </section>
+
+  <section class="tab" id="tab-history">
+    <div class="card"><table><thead><tr><th>#</th><th>שולחן</th><th>מנות</th><th>הוגש</th></tr></thead><tbody id="histRows"></tbody></table></div>
+  </section>
+
+  <section class="tab" id="tab-qr">
+    <div class="card noprint" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <span>מספר שולחנות:</span>
+      <input type="number" id="qrCount" value="12" min="1" max="200" style="width:90px;height:44px;border:1px solid var(--line);border-radius:12px;padding:0 12px">
+      <span>כתובת בסיס:</span>
+      <input id="qrBase" style="flex:1;min-width:220px;height:44px;border:1px solid var(--line);border-radius:12px;padding:0 12px;direction:ltr">
+      <button class="btn" id="qrMake">יצירה</button>
+      <button class="btn sec" onclick="print()">🖨️ הדפסה</button>
+    </div>
+    <div class="qrs" id="qrs"></div>
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money = n => (Math.round(n*100)/100).toLocaleString('he-IL') + ' ₪';
+const utc = s => new Date(String(s).replace(' ','T')+'Z');
+function toast(t){ const el=$('#toast'); el.textContent=t; el.classList.add('show'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),2500); }
+async function api(path, method, body){
+  const r = await fetch(path, method ? {method, headers:{'Content-Type':'application/json'}, body: body && JSON.stringify(body)} : undefined);
+  const d = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(d.error||'error');
+  return d;
+}
+
+// ---------- tabs ----------
+$('#nav').addEventListener('click', e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.id==='tab-'+b.dataset.tab));
+  if(b.dataset.tab==='menu') loadMenu();
+  if(b.dataset.tab==='history') loadHistory();
+  if(b.dataset.tab==='qr') makeQRs();
+});
+
+// ---------- sound ----------
+let audio=null;
+$('#soundBtn').onclick = ()=>{
+  if(audio){ audio.close(); audio=null; } else { audio=new (window.AudioContext||window.webkitAudioContext)(); ding(); }
+  $('#soundBtn').classList.toggle('on',!!audio); $('#soundBtn').textContent = audio ? '🔔 צליל פעיל' : '🔕 הפעלת צליל';
+};
+function ding(){
+  if(!audio) return;
+  [[1568,0],[2093,.16]].forEach(([f,t])=>{
+    const o=audio.createOscillator(), g=audio.createGain(); o.frequency.value=f; o.type='sine';
+    g.gain.setValueAtTime(.0001,audio.currentTime+t); g.gain.exponentialRampToValueAtTime(.4,audio.currentTime+t+.01);
+    g.gain.exponentialRampToValueAtTime(.0001,audio.currentTime+t+1.2);
+    o.connect(g).connect(audio.destination); o.start(audio.currentTime+t); o.stop(audio.currentTime+t+1.3);
+  });
+}
+
+// ---------- orders board ----------
+const NEXT = { new:['preparing','התחלת הכנה'], seen:['preparing','התחלת הכנה'], preparing:['ready','מוכנה ✓'], ready:['served','הוגשה'] };
+let known = null, timer = null;
+async function loadOrders(){
+  clearTimeout(timer);
+  try{
+    const [orders, st] = await Promise.all([api('/api/orders'), api('/api/stats')]);
+    $('#live').classList.remove('off');
+    const ids = new Set(orders.map(o=>o.id));
+    const fresh = known ? orders.filter(o=>!known.has(o.id)) : [];
+    if(fresh.length){ ding(); toast(fresh.length===1 ? `הזמנה חדשה משולחן ${fresh[0].table_number}` : `${fresh.length} הזמנות חדשות`); }
+    known = ids;
+    const freshIds = new Set(fresh.map(o=>o.id));
+    const groups = { colNew: orders.filter(o=>o.status==='new'||o.status==='seen'),
+                     colPrep: orders.filter(o=>o.status==='preparing'),
+                     colReady: orders.filter(o=>o.status==='ready') };
+    for(const [col,list] of Object.entries(groups)){
+      document.getElementById(col).innerHTML = list.length ? list.map(o=>card(o, freshIds.has(o.id))).join('') : '<div class="empty">אין הזמנות כאן</div>';
+    }
+    $('#cNew').textContent=groups.colNew.length; $('#cPrep').textContent=groups.colPrep.length; $('#cReady').textContent=groups.colReady.length;
+    $('#sNew').textContent=st.new; $('#sPrep').textContent=st.preparing; $('#sReady').textContent=st.ready; $('#sTables').textContent=st.active_tables;
+    document.title = (st.new ? `(${st.new}) ` : '') + 'Get Service · לוח מסעדה';
+  }catch{ $('#live').classList.add('off'); }
+  timer = setTimeout(loadOrders, 3000);
+}
+function card(o, fresh){
+  const mins = Math.max(0, Math.floor((Date.now()-utc(o.created_at))/60000));
+  const total = o.items.reduce((a,it)=>a+it.price*it.quantity,0);
+  const nx = NEXT[o.status];
+  const cls = o.status==='seen' ? 'new' : o.status;
+  return `<div class="ord ${cls} ${fresh?'fresh':''}">
+    <div class="top"><h4>שולחן ${esc(o.table_number)}</h4><span class="age ${mins>=20?'late':''}">#${o.id} · ${mins? `לפני ${mins} דק׳` : 'עכשיו'}</span></div>
+    <ul>${o.items.map(it=>`<li><b>${it.quantity} ×</b> ${esc(it.name)}${it.special_request?`<small>⚠ ${esc(it.special_request)}</small>`:''}</li>`).join('')}</ul>
+    ${o.notes?`<div class="note">📝 ${esc(o.notes)}</div>`:''}
+    <div class="acts">${nx?`<button data-id="${o.id}" data-st="${nx[0]}">${nx[1]}</button>`:''}<button class="x" title="ביטול הזמנה" data-id="${o.id}" data-st="cancelled">✕</button></div>
+    <div style="margin-top:8px;font-size:13px;color:var(--muted);font-weight:700">סה״כ ${money(total)}</div>
+  </div>`;
+}
+$('#tab-orders').addEventListener('click', async e=>{
+  const b=e.target.closest('button[data-st]'); if(!b) return;
+  if(b.dataset.st==='cancelled' && !confirm('לבטל את ההזמנה?')) return;
+  b.disabled=true;
+  try{ await api(`/api/orders/${b.dataset.id}/status`,'PATCH',{status:b.dataset.st}); }
+  catch{ toast('העדכון נכשל'); }
+  loadOrders();
+});
+
+// ---------- menu admin ----------
+let menuItems=[], editing=null;
+async function loadMenu(){
+  menuItems = await api('/api/menu/all');
+  $('#catList').innerHTML = [...new Set(menuItems.map(m=>m.category))].map(c=>`<option value="${esc(c)}">`).join('');
+  $('#menuRows').innerHTML = menuItems.map(m=>`<tr class="${m.available?'':'off'}">
+    <td><b>${esc(m.name)}</b><br><small style="color:var(--muted)">${esc(m.description)}</small></td>
+    <td>${esc(m.category)}</td><td>${money(m.price)}</td>
+    <td><button class="tog ${m.available?'on':''}" data-avail="${m.id}" title="זמין / אזל"></button></td>
+    <td style="white-space:nowrap"><button class="mini" data-edit="${m.id}">עריכה</button><button class="mini del" data-del="${m.id}">מחיקה</button></td></tr>`).join('');
+}
+$('#menuRows').addEventListener('click', async e=>{
+  const t=e.target;
+  if(t.dataset.avail){ const m=menuItems.find(x=>x.id==t.dataset.avail); await api(`/api/menu/${m.id}/available`,'PATCH',{available:!m.available}); loadMenu(); }
+  if(t.dataset.del){ const m=menuItems.find(x=>x.id==t.dataset.del); if(confirm(`למחוק את "${m.name}"? (כדי להסתיר זמנית עדיף לסמן "לא זמין")`)){ try{ await api('/api/menu/'+m.id,'DELETE'); }catch{ toast('המחיקה נכשלה'); } loadMenu(); } }
+  if(t.dataset.edit){
+    const m=menuItems.find(x=>x.id==t.dataset.edit), f=$('#itemForm'); editing=m.id;
+    f.name.value=m.name; f.description.value=m.description; f.price.value=m.price; f.category.value=m.category;
+    $('#saveBtn').textContent='שמירה'; $('#cancelEdit').style.display=''; f.name.focus();
+  }
+});
+function resetForm(){ editing=null; $('#itemForm').reset(); $('#saveBtn').textContent='הוספה'; $('#cancelEdit').style.display='none'; }
+$('#cancelEdit').onclick=resetForm;
+$('#itemForm').addEventListener('submit', async e=>{
+  e.preventDefault(); const f=e.target;
+  const body={name:f.name.value.trim(), description:f.description.value.trim(), price:f.price.value, category:f.category.value.trim()};
+  try{ editing ? await api('/api/menu/'+editing,'PUT',body) : await api('/api/menu','POST',body); toast(editing?'המנה עודכנה':'המנה נוספה'); resetForm(); loadMenu(); }
+  catch{ toast('השמירה נכשלה'); }
+});
+
+// ---------- history ----------
+async function loadHistory(){
+  const rows = await api('/api/orders/history');
+  $('#histRows').innerHTML = rows.length ? rows.map(r=>`<tr><td>${r.id}</td><td>${esc(r.table_number)}</td><td>${esc(r.items_summary||'')}</td>
+    <td>${utc(r.updated_at).toLocaleString('he-IL',{dateStyle:'short',timeStyle:'short'})}</td></tr>`).join('')
+    : '<tr><td colspan="4" class="empty">עדיין אין הזמנות שהוגשו</td></tr>';
+}
+
+// ---------- QR codes ----------
+$('#qrBase').value = location.origin + '/customer.html';
+function makeQRs(){
+  const n=Math.min(200,Math.max(1,parseInt($('#qrCount').value,10)||1)), base=$('#qrBase').value.trim();
+  if(typeof qrcode==='undefined'){ $('#qrs').innerHTML='<div class="empty">לא ניתן לטעון את מחולל הברקודים (נדרש חיבור לאינטרנט)</div>'; return; }
+  let html='';
+  for(let i=1;i<=n;i++){
+    const url = base + (base.includes('?')?'&':'?') + 'table=' + i;
+    const q=qrcode(0,'M'); q.addData(url); q.make();
+    html += `<div class="qrc"><img src="${q.createDataURL(8,2)}" alt="QR שולחן ${i}"><b>שולחן ${i}</b><small>סרקו להזמנה · Get Service</small></div>`;
+  }
+  $('#qrs').innerHTML=html;
+}
+$('#qrMake').onclick=makeQRs;
+
+loadOrders();
+</script>
+</body>
+</html>

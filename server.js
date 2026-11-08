@@ -119,7 +119,7 @@ function handleApi(req, res, method, urlPath) {
       var name = body.name, description = body.description, price = body.price, category = body.category;
       if (!name || !price || !category) return json(res, { error: 'missing fields' }, 400);
       var r = db.prepare('INSERT INTO menu_items (name,description,price,category) VALUES (?,?,?,?)').run(name, description || '', parseFloat(price), category);
-      json(res, { success: true, id: r.lastInsertRowid }, 201);
+      json(res, { success: true, id: Number(r.lastInsertRowid) }, 201);
     });
     return;
   }
@@ -178,15 +178,42 @@ function handleApi(req, res, method, urlPath) {
   // ── Create order ──
   if (method === 'POST' && urlPath === '/api/orders') {
     readBody(req).then(function(body) {
-      var table_number = body.table_number, items = body.items, notes = body.notes;
-      if (!table_number || !items || !items.length) return json(res, { error: 'missing fields' }, 400);
-      var r = db.prepare('INSERT INTO orders (table_number,notes) VALUES (?,?)').run(table_number, notes || '');
-      var orderId = r.lastInsertRowid;
+      var table_number = parseInt(body.table_number, 10), items = body.items, notes = body.notes;
+      if (!(table_number > 0) || !Array.isArray(items) || !items.length) return json(res, { error: 'missing fields' }, 400);
+      var getMenu = db.prepare('SELECT id, available FROM menu_items WHERE id=?');
+      var clean = [];
+      for (var i = 0; i < items.length; i++) {
+        var it = items[i] || {};
+        var qty = parseInt(it.quantity, 10);
+        var mi = getMenu.get(parseInt(it.menu_item_id, 10) || 0);
+        if (!mi) return json(res, { error: 'unknown menu item' }, 400);
+        if (!mi.available) return json(res, { error: 'item not available', menu_item_id: mi.id }, 409);
+        if (!(qty >= 1 && qty <= 50)) return json(res, { error: 'invalid quantity' }, 400);
+        clean.push({ id: mi.id, qty: qty, req: String(it.special_request || '').slice(0, 200) });
+      }
       var insItem = db.prepare('INSERT INTO order_items (order_id,menu_item_id,quantity,special_request) VALUES (?,?,?,?)');
-      items.forEach(function(it) { insItem.run(orderId, it.menu_item_id, it.quantity, it.special_request || ''); });
-      json(res, { success: true, order_id: orderId }, 201);
+      db.exec('BEGIN');
+      try {
+        var r = db.prepare('INSERT INTO orders (table_number,notes) VALUES (?,?)').run(table_number, String(notes || '').slice(0, 500));
+        var orderId = Number(r.lastInsertRowid);
+        clean.forEach(function(c) { insItem.run(orderId, c.id, c.qty, c.req); });
+        db.exec('COMMIT');
+        json(res, { success: true, order_id: orderId }, 201);
+      } catch (e) {
+        db.exec('ROLLBACK');
+        json(res, { error: 'failed to save order' }, 500);
+      }
     });
     return;
+  }
+
+  // ── Single order (customer status tracking) ──
+  var orderIdMatch = urlPath.match(/^\/api\/orders\/(\d+)$/);
+  if (method === 'GET' && orderIdMatch) {
+    var order = db.prepare('SELECT * FROM orders WHERE id=?').get(orderIdMatch[1]);
+    if (!order) return json(res, { error: 'Not found' }, 404);
+    order.items = db.prepare("SELECT oi.quantity,oi.special_request,mi.id,mi.name,mi.price FROM order_items oi JOIN menu_items mi ON oi.menu_item_id=mi.id WHERE oi.order_id=?").all(order.id);
+    return json(res, order);
   }
 
   // ── Update order status ──
