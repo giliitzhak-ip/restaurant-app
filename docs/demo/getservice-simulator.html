@@ -488,6 +488,46 @@ body {
 .split{display:flex;align-items:center;gap:0;height:30px;border-radius:8px;overflow:hidden;margin:10px 0}
 .split span{display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;height:100%;color:#04101f}
 
+/* ── The press ───────────────────────────────────────────────────────────
+   Mirrors .gs-press in the app's globals.css, because a simulator that does
+   not answer the finger is not simulating the thing that was built. One
+   composited transform, not a ripple: a ripple needs a pseudo-element
+   positioned from the pointer, and that is what stutters on a mid-range
+   phone. Under reduced motion the transform is set to none rather than
+   merely shortened — a 0.01ms transition still JUMPS to the smaller size,
+   which is the jolt the preference exists to prevent. */
+.gs-press { transition: transform 140ms cubic-bezier(.22,.61,.36,1),
+            background-color 140ms ease, border-color 140ms ease;
+            -webkit-tap-highlight-color: transparent; }
+.gs-press:active:not(:disabled) { transform: scale(.965); }
+.gs-press-tile:active:not(:disabled) { transform: scale(.98); }
+@media (prefers-reduced-motion: reduce) {
+  .gs-press:active:not(:disabled),
+  .gs-press-tile:active:not(:disabled) { transform: none; }
+}
+
+/* ── The browse grid, as /services renders it ───────────────────────────── */
+.sv-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 18px; }
+.sv-tile { display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; min-height: 108px; padding: 14px 8px; border-radius: 16px;
+  border: 1px solid var(--line); background: var(--surface-1);
+  font-family: inherit; cursor: pointer; }
+.sv-tile[aria-expanded="true"] { border-color: var(--brand); background: rgba(59,130,246,.10); }
+.sv-ico { display: flex; align-items: center; justify-content: center; width: 42px; height: 42px;
+  border-radius: 999px; background: var(--surface-3); color: var(--brand-bright); }
+.sv-tile[aria-expanded="true"] .sv-ico { background: rgba(59,130,246,.25); }
+.sv-name { font-size: 14px; font-weight: 600; color: var(--p-ink); text-align: center; line-height: 1.2; }
+.sv-count { font-size: 11px; color: var(--p-ink-3); }
+.sv-panel { margin-top: 12px; border: 1px solid var(--line); border-radius: 16px;
+  background: var(--surface-1); padding: 14px; }
+.sv-row { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; min-height: 46px; padding: 9px 12px; margin-top: 7px; text-align: start;
+  border: 1px solid var(--line-strong); border-radius: 12px; background: var(--bg);
+  font-family: inherit; cursor: pointer; }
+.sv-row:hover { border-color: var(--brand); }
+.sv-row .n { font-size: 14px; font-weight: 500; color: var(--p-ink); min-width: 0; }
+.sv-row .p { font-size: 12.5px; color: var(--p-ink-2); flex: none; }
+
 </style>
 
 <div class="wrap">
@@ -503,10 +543,11 @@ body {
       </p>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="ctl" id="btn-customer" aria-pressed="true">צד הלקוח</button>
-      <button class="ctl" id="btn-onboarding" aria-pressed="false">טופס ההרשמה</button>
-      <button class="ctl" id="btn-provider" aria-pressed="false">צד בעל המקצוע</button>
-      <button class="ctl" id="btn-review" aria-pressed="false">
+      <button class="ctl gs-press" id="btn-customer" aria-pressed="true">צד הלקוח</button>
+      <button class="ctl gs-press" id="btn-services" aria-pressed="false">מה אפשר להזמין</button>
+      <button class="ctl gs-press" id="btn-onboarding" aria-pressed="false">טופס ההרשמה</button>
+      <button class="ctl gs-press" id="btn-provider" aria-pressed="false">צד בעל המקצוע</button>
+      <button class="ctl gs-press" id="btn-review" aria-pressed="false">
         האישור שלך<span id="review-dot" hidden> ●</span>
       </button>
     </div>
@@ -552,8 +593,8 @@ body {
       </div>
 
       <div class="devicefoot">
-        <button class="ctl" id="btn-restart">התחל מחדש</button>
-        <button class="ctl" id="btn-back">חזרה צעד</button>
+        <button class="ctl gs-press" id="btn-restart">התחל מחדש</button>
+        <button class="ctl gs-press" id="btn-back">חזרה צעד</button>
       </div>
     </div>
 
@@ -585,10 +626,10 @@ body {
     <div class="ops-head">
       <h2>מאחורי הקלעים — המערכת עצמה</h2>
       <div class="ops-tabs">
-        <button class="ctl" id="ops-life" aria-pressed="true">מסלול העבודה</button>
-        <button class="ctl" id="ops-tower" aria-pressed="false">מגדל בקרה</button>
-        <button class="ctl" id="ops-lab" aria-pressed="false">מעבדת התאמה</button>
-        <button class="ctl" id="ops-money" aria-pressed="false">עמלה ותשלום</button>
+        <button class="ctl gs-press" id="ops-life" aria-pressed="true">מסלול העבודה</button>
+        <button class="ctl gs-press" id="ops-tower" aria-pressed="false">מגדל בקרה</button>
+        <button class="ctl gs-press" id="ops-lab" aria-pressed="false">מעבדת התאמה</button>
+        <button class="ctl gs-press" id="ops-money" aria-pressed="false">עמלה ותשלום</button>
       </div>
     </div>
     <div class="ops-body" id="ops-body"></div>
@@ -2321,7 +2362,9 @@ const initial = () => ({
   /* The reviewer's in-progress form, keyed by proposal id. */
   reviewForm: {},
   /* Stars the customer picked for the finished job, 0 = not yet. */
-  reviewStars: 0
+  reviewStars: 0,
+  /* Which trade is expanded on the browse screen, null = none. */
+  browseOpen: null
 });
 let S = initial();
 const history = [];
@@ -2502,7 +2545,7 @@ function screenHome() {
     </div>
 
     <div style="margin-top:26px">
-      <button class="gs-btn" id="sim-go" ${S.desc.trim().length < 3 ? 'disabled' : ''}>מצא לי מקצוען</button>
+      <button class="gs-btn gs-press" id="sim-go" ${S.desc.trim().length < 3 ? 'disabled' : ''}>מצא לי מקצוען</button>
       <p style="margin:10px 0 0;text-align:center;font-size:13px;color:var(--p-ink-3)">
         ${S.desc.trim().length < 3 ? 'כתבו כמה מילים על התקלה כדי להמשיך' : 'לא תחויבו עד שתאשרו את המקצוען והמחיר.'}
       </p>
@@ -2564,7 +2607,7 @@ function screenRequest() {
     </div>
 
     <div style="margin-top:20px">
-      <button class="gs-btn" id="sim-submit">מצא לי מקצוען</button>
+      <button class="gs-btn gs-press" id="sim-submit">מצא לי מקצוען</button>
       <p style="margin:10px 0 0;text-align:center;font-size:13px;color:var(--p-ink-3)">
         לא תחויבו עד שתאשרו את המקצוען והמחיר.
       </p>
@@ -2591,7 +2634,7 @@ function screenSearching() {
       <p style="margin:12px 0 0;font-size:13.5px;color:var(--p-ink-3)">
         סבב ${ltr(S.wave)} — רדיוס ${ltr(radius + ' km')}
       </p>
-      <button class="gs-btn quiet" id="sim-cancel" style="margin-top:16px">ביטול החיפוש</button>
+      <button class="gs-btn quiet gs-press" id="sim-cancel" style="margin-top:16px">ביטול החיפוש</button>
     </div>
     <p style="margin:18px 0 0;font-size:12.5px;color:var(--p-ink-3);text-align:center">
       ההצעות יצאו במקביל לכל הכשירים. <b style="color:var(--p-ink-2)">הראשון שמאשר לוקח.</b>
@@ -2602,7 +2645,7 @@ function screenSearching() {
       ופה היא מקוצרת לשתיים.
     </p>
     <div style="margin-top:14px">
-      <button class="gs-btn quiet" id="sim-accept">לא רוצים לחכות? דלגו קדימה</button>
+      <button class="gs-btn quiet gs-press" id="sim-accept">לא רוצים לחכות? דלגו קדימה</button>
     </div>`;
 }
 
@@ -2634,7 +2677,7 @@ function screenMatch() {
           ${p.biz ? `<p style="margin:0;font-size:14px;color:var(--p-ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.biz)}</p>` : ''}
           <div style="margin-top:4px">${stars(p.rating, p.reviews)}</div>
         </div>
-        <button class="gs-btn quiet" id="sim-details" style="width:auto;min-height:40px;padding:0 10px;font-size:13px;font-weight:600;color:var(--brand-bright)">פרטים ›</button>
+        <button class="gs-btn quiet gs-press" id="sim-details" style="width:auto;min-height:40px;padding:0 10px;font-size:13px;font-weight:600;color:var(--brand-bright)">פרטים ›</button>
       </div>
 
       <dl style="margin:18px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -2653,9 +2696,9 @@ function screenMatch() {
       </p>
 
       <div style="margin-top:18px;display:grid;gap:10px">
-        <button class="gs-btn" id="sim-confirm">הזמן עכשיו</button>
-        <button class="gs-btn sec" id="sim-reject">לא זה — חפשו אחר</button>
-        <button class="gs-btn quiet" id="sim-cancel">ביטול הבקשה</button>
+        <button class="gs-btn gs-press" id="sim-confirm">הזמן עכשיו</button>
+        <button class="gs-btn sec gs-press" id="sim-reject">לא זה — חפשו אחר</button>
+        <button class="gs-btn quiet gs-press" id="sim-cancel">ביטול הבקשה</button>
         ${S.rejections > 0 ? `<p style="margin:0;text-align:center;font-size:12.5px;color:var(--p-ink-3)">
           דחית ${ltr(S.rejections)} מתוך ${ltr(3)} התאמות בבקשה הזו</p>` : ''}
       </div>
@@ -2703,8 +2746,8 @@ function screenTracking() {
       </div>
 
       <div style="margin-top:16px;display:grid;gap:10px">
-        <button class="gs-btn sec">התקשר למקצוען</button>
-        <button class="gs-btn quiet" id="sim-cancel">ביטול ההזמנה</button>
+        <button class="gs-btn sec gs-press">התקשר למקצוען</button>
+        <button class="gs-btn quiet gs-press" id="sim-cancel">ביטול ההזמנה</button>
       </div>
     </div>
 
@@ -2802,8 +2845,8 @@ function screenDone() {
         </p>
       </div>
       <div style="margin-top:16px;display:grid;gap:10px">
-        <button class="gs-btn ok" id="sim-confirm-done">העבודה בוצעה — אישור</button>
-        <button class="gs-btn quiet" id="sim-dispute">משהו לא בסדר</button>
+        <button class="gs-btn ok gs-press" id="sim-confirm-done">העבודה בוצעה — אישור</button>
+        <button class="gs-btn quiet gs-press" id="sim-dispute">משהו לא בסדר</button>
       </div>
     </div>
     <div class="gs-card" style="margin-top:14px">
@@ -2829,7 +2872,7 @@ function screenPay() {
         </p>
       </div>
       <div style="margin-top:16px">
-        <button class="gs-btn" id="sim-pay">שלמו ${money(priceFor(p).amount)}</button>
+        <button class="gs-btn gs-press" id="sim-pay">שלמו ${money(priceFor(p).amount)}</button>
       </div>
       <p style="margin:10px 0 0;font-size:12px;color:var(--warn-bright);line-height:1.5">
         ⚠︎ כאן לא עובר כסף. ספק התשלומים במערכת הוא <code style="font-family:var(--mono);font-size:11px">mock</code>
@@ -2853,7 +2896,7 @@ function screenReviewJob() {
         </div>
       </div>
       <div style="margin-top:16px">
-        <button class="gs-btn" id="sim-review" ${chosen ? '' : 'disabled style="opacity:.45"'}>שליחת הביקורת</button>
+        <button class="gs-btn gs-press" id="sim-review" ${chosen ? '' : 'disabled style="opacity:.45"'}>שליחת הביקורת</button>
       </div>
       <p style="margin:10px 0 0;font-size:12px;color:var(--p-ink-3);line-height:1.5">
         רק מי שהעבודה שלו הושלמה יכול לדרג — <code style="font-family:var(--mono);font-size:11px">can_review()</code>
@@ -2873,7 +2916,7 @@ function screenReviewed() {
         ${ltr(S.reviewStars)} כוכבים ל${esc(p.name)}. העבודה במצב
         <code style="font-family:var(--mono);font-size:11.5px">REVIEWED</code> — סוף המסלול.
       </p>
-      <button class="gs-btn" id="sim-restart" style="margin-top:18px">בקשה חדשה</button>
+      <button class="gs-btn gs-press" id="sim-restart" style="margin-top:18px">בקשה חדשה</button>
     </div>`;
 }
 
@@ -2887,8 +2930,94 @@ function screenDisputed() {
         התשלום מוקפא עד שמנהל יכריע — ורק מנהל יכול להוציא אותה ממצב זה,
         לפי <code style="font-family:var(--mono);font-size:11.5px">job_transitions</code>.
       </p>
-      <button class="gs-btn" id="sim-restart" style="margin-top:18px">בקשה חדשה</button>
+      <button class="gs-btn gs-press" id="sim-restart" style="margin-top:18px">בקשה חדשה</button>
     </div>`;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   "מה אפשר להזמין" — the browse grid.
+
+   The screen the app gained at /services, rendered here from the same
+   CATALOG the rest of this page uses: the real seven trades and their 62
+   services, with the guide prices from `services.base_price_ils`.
+
+   It is a SEPARATE screen from the home flow for the same reason it is in
+   the app: the home screen deliberately has no category grid, because
+   asking customers to classify their own problem is asking them to do the
+   job the system exists to do. But "what do you actually do?" is a fair
+   question to ask a marketplace, and it had no answer anywhere.
+
+   Tapping a trade opens its services in place — browsing is a question and
+   should not cost you the grid. Tapping a service starts a request with
+   that service's name, which is exactly what the real tile does.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/** lucide-style glyphs, inline so the page stays one file. */
+const TRADE_ICON = {
+  plumbing: '<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>',
+  electrical: '<path d="M13 2 4.5 13.5H11l-1 8.5L19.5 10H13z"/>',
+  air_conditioning: '<rect x="2" y="3" width="20" height="9" rx="2"/><path d="M6 16a2 2 0 1 0 4 0v-4M14 16a2 2 0 1 0 4 0v-4"/>',
+  gardening: '<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.5 19 2c1 2 2 4.2 2 8 0 5.5-4.8 10-10 10z"/><path d="M2 21c0-3 1.9-5.4 5.1-6C9.5 14.5 12 13 13 12"/>',
+  pest_control: '<path d="M8 2l1.9 3.1M16 2l-1.9 3.1"/><path d="M9 7h6a4 4 0 0 1 4 4v3a7 7 0 0 1-14 0v-3a4 4 0 0 1 4-4z"/><path d="M3 11h3M18 11h3M3 17h3M18 17h3M12 10v10"/>',
+  // A key, bow down and teeth up. The first attempt put the circle top-left
+  // with a straight tail, which at 21px reads as a magnifying glass.
+  locksmith: '<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>',
+  cleaning: '<path d="M12 2.5l1.7 5.3a2 2 0 0 0 1.3 1.3L20.5 11l-5.3 1.7a2 2 0 0 0-1.3 1.3L12 19.5l-1.7-5.3a2 2 0 0 0-1.3-1.3L3.5 11l5.3-1.7a2 2 0 0 0 1.3-1.3z"/><path d="M19 3v4M21 5h-4M5 17v3M6.5 18.5h-3"/>',
+};
+
+function tradeIcon(slug) {
+  const d = TRADE_ICON[slug] || '<path d="M14.7 6.3a4 4 0 0 1-5 5L4 17v3h3l5.7-5.7a4 4 0 0 1 5-5z"/>';
+  return '<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" ' +
+    'stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
+}
+
+function screenServices() {
+  const total = CATALOG.reduce((n, c) => n + c.services.length, 0);
+  const open = CATALOG.find((c) => c.slug === S.browseOpen) || null;
+
+  const tiles = CATALOG.map((c) => {
+    const isOpen = open && open.slug === c.slug;
+    return `
+      <button class="sv-tile gs-press gs-press-tile" data-trade="${esc(c.slug)}"
+              aria-expanded="${isOpen ? 'true' : 'false'}">
+        <span class="sv-ico">${tradeIcon(c.slug)}</span>
+        <span class="sv-name">${esc(c.name)}</span>
+        <span class="sv-count">${ltr(c.services.length)} שירותים</span>
+      </button>`;
+  }).join('');
+
+  // Guide prices sit at index 1 of each service tuple: [name, base, min, max, …].
+  const panel = !open ? '' : `
+    <div class="sv-panel">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+        <h2 style="margin:0;font-size:17px;font-weight:700">${esc(open.name)}</h2>
+        <span style="font-size:12.5px;color:var(--p-ink-3)">${
+          ltr('₪' + Math.min(...open.services.map((x) => x[1])) +
+              '–₪' + Math.max(...open.services.map((x) => x[1])))
+        }</span>
+      </div>
+      ${open.services.slice().sort((a, b) => a[1] - b[1]).map((svc) => `
+        <button class="sv-row gs-press" data-service="${esc(svc[0])}">
+          <span class="n">${esc(svc[0])}</span>
+          <span class="p">${money(svc[1])} <span style="color:var(--p-ink-3)">›</span></span>
+        </button>`).join('')}
+      <p style="margin:11px 0 0;font-size:12px;color:var(--p-ink-3);line-height:1.5">
+        בחירה בשירות פותחת בקשה חדשה עם התיאור הזה — ואפשר לערוך אותו לפני השליחה.
+      </p>
+    </div>`;
+
+  return `
+    <div class="gs-head">${logo()}<span class="gs-badge">הקטלוג</span></div>
+    <h1 style="margin:14px 0 0;font-size:26px;font-weight:900;line-height:1.15">מה אפשר להזמין</h1>
+    <p style="margin:7px 0 0;font-size:14px;color:var(--p-ink-2)">
+      ${ltr(CATALOG.length)} תחומים, ${ltr(total)} שירותים — בעלי מקצוע מאומתים בכל הארץ.
+    </p>
+    <div class="sv-grid">${tiles}</div>
+    ${panel}
+    <p style="margin:16px 0 0;font-size:12px;color:var(--p-ink-3);line-height:1.6;text-align:center">
+      המחירים הם הערכה לפי הקטלוג. המחיר הסופי הוא של בעל המקצוע שיאשר את העבודה.
+    </p>`;
 }
 
 function screenCancelled() {
@@ -2899,7 +3028,7 @@ function screenCancelled() {
       <p style="margin:10px 0 0;font-size:14px;color:var(--p-ink-2);line-height:1.5">
         לא חויבת. אפשר לפתוח בקשה חדשה בכל רגע.
       </p>
-      <button class="gs-btn" id="sim-restart" style="margin-top:18px">בקשה חדשה</button>
+      <button class="gs-btn gs-press" id="sim-restart" style="margin-top:18px">בקשה חדשה</button>
     </div>`;
 }
 
@@ -2914,7 +3043,7 @@ function screenExhausted() {
       <p style="margin:12px 0 0;font-size:12.5px;color:var(--p-ink-3);line-height:1.55">
         זו התשובה הכנה. עדיף מלהציע מישהו שלא באמת יכול להגיע.
       </p>
-      <button class="gs-btn" id="sim-restart" style="margin-top:18px">בקשה חדשה</button>
+      <button class="gs-btn gs-press" id="sim-restart" style="margin-top:18px">בקשה חדשה</button>
     </div>`;
 }
 
@@ -2937,9 +3066,9 @@ function screenProvider() {
     </button>
 
     <div style="margin-top:10px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-      <button class="gs-btn sec" data-until="2h" style="font-size:13.5px;padding:0 6px">לשעתיים</button>
-      <button class="gs-btn sec" data-until="18:00" style="font-size:13.5px;padding:0 6px">עד ${ltr('18:00')}</button>
-      <button class="gs-btn sec" data-until="off" style="font-size:13.5px;padding:0 6px">לא היום</button>
+      <button class="gs-btn sec gs-press" data-until="2h" style="font-size:13.5px;padding:0 6px">לשעתיים</button>
+      <button class="gs-btn sec gs-press" data-until="18:00" style="font-size:13.5px;padding:0 6px">עד ${ltr('18:00')}</button>
+      <button class="gs-btn sec gs-press" data-until="off" style="font-size:13.5px;padding:0 6px">לא היום</button>
     </div>
 
     <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:12px">
@@ -2978,8 +3107,8 @@ function screenProvider() {
           </div>`).join('')}
       </dl>
       <div style="margin-top:14px;display:grid;grid-template-columns:2fr 1fr;gap:10px">
-        <button class="gs-btn ok" style="min-height:50px">קבל עבודה</button>
-        <button class="gs-btn sec" style="min-height:50px">דחה</button>
+        <button class="gs-btn ok gs-press" style="min-height:50px">קבל עבודה</button>
+        <button class="gs-btn sec gs-press" style="min-height:50px">דחה</button>
       </div>
     </div>` : `
     <div class="gs-card" style="margin-top:26px;text-align:center">
@@ -3019,7 +3148,7 @@ function screenOnboarding() {
         <p style="margin:14px 0 0;font-size:12.5px;color:var(--p-ink-3);line-height:1.55">
           זה שלב מכוון: אנחנו מאמתים בעלי מקצוע לפני שהם מקבלים גישה ללקוחות.
         </p>
-        <button class="gs-btn" id="sim-onb-reset" style="margin-top:18px">מלא שוב מההתחלה</button>
+        <button class="gs-btn gs-press" id="sim-onb-reset" style="margin-top:18px">מלא שוב מההתחלה</button>
       </div>`;
   }
 
@@ -3127,9 +3256,9 @@ function screenOnboarding() {
                 value="${esc(S.onbPropPrice)}" placeholder="320">
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:8px">
-              <button class="gs-btn sec" id="onb-prop-send" style="width:auto;padding:0 18px"
+              <button class="gs-btn sec gs-press" id="onb-prop-send" style="width:auto;padding:0 18px"
                 ${S.onbPropName.trim().length < 2 ? 'disabled' : ''}>שלח לאישור</button>
-              <button class="gs-btn quiet" id="onb-prop-cancel" style="width:auto;padding:0 14px">ביטול</button>
+              <button class="gs-btn quiet gs-press" id="onb-prop-cancel" style="width:auto;padding:0 14px">ביטול</button>
             </div>
           </div>`}
 
@@ -3214,7 +3343,7 @@ function screenOnboarding() {
         ${S.onbLocated
           ? `<p style="margin:0;display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ok-bright)"><span aria-hidden="true">📍</span> מרכז אזור העבודה נקבע</p>`
           : `<p style="margin:0;font-size:14px;color:var(--p-ink-2)">עדיין לא נקבע מרכז לאזור העבודה.</p>`}
-        <button class="gs-btn sec" id="sim-onb-locate" style="margin-top:12px;width:auto;padding:0 16px">
+        <button class="gs-btn sec gs-press" id="sim-onb-locate" style="margin-top:12px;width:auto;padding:0 16px">
           השתמש במיקום הנוכחי שלי
         </button>
       </div>
@@ -3272,7 +3401,7 @@ function screenOnboarding() {
                        <label style="display:block;font-size:12.5px;color:var(--p-ink-3);margin-bottom:6px" for="doc-exp-${kind}">בתוקף עד (אופציונלי)</label>
                        <input id="doc-exp-${kind}" data-doc-exp="${kind}" class="gs-input ltr" type="date" value="${esc(expiry || '')}">
                      </div>
-                     <button class="gs-btn sec" data-doc-upload="${kind}" style="border-style:dashed">
+                     <button class="gs-btn sec gs-press" data-doc-upload="${kind}" style="border-style:dashed">
                        <span aria-hidden="true">↑</span> בחרו קובץ להעלאה
                      </button>
                      <p style="margin:0;font-size:12px;color:var(--p-ink-3);line-height:1.45">
@@ -3286,7 +3415,7 @@ function screenOnboarding() {
     </div>`}
 
     <div style="margin-top:18px;display:grid;gap:10px">
-      <button class="gs-btn" id="sim-onb-save" ${ready ? '' : 'disabled'}>שמור והמשך</button>
+      <button class="gs-btn gs-press" id="sim-onb-save" ${ready ? '' : 'disabled'}>שמור והמשך</button>
       <p id="onb-gate" ${ready ? 'hidden' : ''} style="margin:0;text-align:center;font-size:14px;color:var(--p-ink-3)">${
         !cat ? 'בחרו תחום כדי להמשיך' : chosen.length === 0 ? 'הזינו מחיר לפחות לשירות אחד' : 'קבעו את מרכז אזור העבודה'
       }</p>
@@ -3343,7 +3472,7 @@ function screenReview() {
                     </span>
                   </div>
                   ${state === 'PENDING' ? `
-                    <button class="gs-btn ok" data-doc-approve="${kind}" style="margin-top:10px;min-height:44px;font-size:14px">
+                    <button class="gs-btn ok gs-press" data-doc-approve="${kind}" style="margin-top:10px;min-height:44px;font-size:14px">
                       אשר מסמך
                     </button>` : ''}
                 </div>`;
@@ -3453,13 +3582,13 @@ function screenReview() {
           </div>
 
           <div style="margin-top:14px;display:grid;gap:8px">
-            <button class="gs-btn" data-rv-approve="${prop.id}" ${ready ? '' : 'disabled'}>
+            <button class="gs-btn gs-press" data-rv-approve="${prop.id}" ${ready ? '' : 'disabled'}>
               ${creating ? 'צור תחום ואשר' : 'אשר והוסף לקטלוג'}
             </button>
             <input data-rv-reason="${prop.id}" class="gs-input"
               value="${esc(form.reason)}" placeholder="סיבת דחייה"
               aria-label="סיבת דחייה עבור ${esc(prop.name)}">
-            <button class="gs-btn sec" data-rv-reject="${prop.id}"
+            <button class="gs-btn sec gs-press" data-rv-reject="${prop.id}"
               ${form.reason.trim().length < 3 ? 'disabled' : ''}
               style="background:var(--bad);color:#fff;border:0">דחה</button>
           </div>
@@ -3826,7 +3955,8 @@ function render() {
   if (searchTimer) { clearTimeout(searchTimer); searchTimer = null; }
   const vp = document.getElementById('viewport');
   let html = '';
-  if (S.side === 'review') html = screenReview();
+  if (S.side === 'services') html = screenServices();
+  else if (S.side === 'review') html = screenReview();
   else if (S.side === 'onboarding') html = screenOnboarding();
   else if (S.side === 'provider') html = screenProvider();
   else if (S.step === 'home') html = screenHome();
@@ -3856,6 +3986,7 @@ function render() {
   lastScreenKey = key;
 
   document.getElementById('btn-customer').setAttribute('aria-pressed', String(S.side === 'customer'));
+  document.getElementById('btn-services').setAttribute('aria-pressed', String(S.side === 'services'));
   document.getElementById('btn-onboarding').setAttribute('aria-pressed', String(S.side === 'onboarding'));
   document.getElementById('btn-provider').setAttribute('aria-pressed', String(S.side === 'provider'));
   document.getElementById('btn-review').setAttribute('aria-pressed', String(S.side === 'review'));
@@ -4147,6 +4278,25 @@ document.getElementById('viewport').addEventListener('click', (ev) => {
     render();
     return;
   }
+  if (t.dataset.trade) {
+    push();
+    S.browseOpen = S.browseOpen === t.dataset.trade ? null : t.dataset.trade;
+    render(); return;
+  }
+  if (t.dataset.service) {
+    /*
+     * Exactly what the real tile does: the service's NAME becomes the
+     * description, and the same classifier the typed flow uses routes it.
+     * One code path to be right about rather than two — and the catalogue
+     * now guarantees every name routes back to its own service (0038).
+     */
+    push();
+    S.side = 'customer';
+    S.desc = t.dataset.service;
+    S.timing = 'NOW';
+    S.step = 'request';
+    render(); return;
+  }
   if (t.dataset.star) {
     // Picking a star is not a state change worth an undo step of its own —
     // it is filling in the form that `sim-review` then submits.
@@ -4291,6 +4441,9 @@ document.addEventListener('keydown', (ev) => {
 document.getElementById('btn-customer').addEventListener('click', () => {
   push(); S.side = 'customer'; render();
 });
+document.getElementById('btn-services').addEventListener('click', () => {
+  push(); S.side = 'services'; render();
+});
 document.getElementById('btn-onboarding').addEventListener('click', () => {
   push(); S.side = 'onboarding'; render();
 });
@@ -4378,7 +4531,7 @@ render();
              אין מכאן מעבר חוקי. זה סוף הדרך של העבודה הזו.
            </p>`}
       <div class="trail">${trail}
-        <button class="ctl" id="life-reset" style="margin-inline-start:8px">התחל מחדש</button>
+        <button class="ctl gs-press" id="life-reset" style="margin-inline-start:8px">התחל מחדש</button>
       </div>`;
   }
   
@@ -4451,7 +4604,7 @@ render();
           <p style="font-size:12px;color:${Math.abs(sum - 1) > 0.005 ? 'var(--warn-bright)' : 'var(--p-ink-3)'};margin:10px 0 0">
             סכום המשקלים: <span class="ltr">${n2(sum)}</span>
             ${Math.abs(sum - 1) > 0.005 ? ' — לא 1.00, אז הציונים אינם על אותו סולם' : ''}
-            <button class="ctl" id="lab-reset" style="margin-inline-start:8px">החזר לברירת המחדל</button>
+            <button class="ctl gs-press" id="lab-reset" style="margin-inline-start:8px">החזר לברירת המחדל</button>
           </p>
         </div>
         <div>
