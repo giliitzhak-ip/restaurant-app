@@ -3,11 +3,12 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, JobStatus, NearbyProviderRow } from '@/types/database';
 import { broadcastJob, discoverProviders } from '@/lib/services/matching/discovery';
 import { canActorTransition } from '@/lib/services/jobs/workflow';
-import { capturePaymentForJob, createPaymentForJob } from '@/lib/services/payments/flow';
+import { chargeCommission, refundCommission } from '@/lib/services/billing/ledger';
+import { checkArrival, verificationState } from '@/lib/services/jobs/verification';
 import { calculateFee } from '@/lib/services/fees';
 import { MockPaymentAdapter, setPaymentAdapter } from '@/lib/services/payments';
 import { SETTINGS_DEFAULTS } from '@/lib/services/settings/schema';
-import { asClient, FakeSupabase } from './helpers/fake-supabase';
+import { asClient, balanceEntryTrigger, FakeSupabase } from './helpers/fake-supabase';
 
 const JOB = {
   id: 'job-1',
@@ -92,18 +93,31 @@ function nearby(radiusKm: number): NearbyProviderRow[] {
 function newClient(radiusResponder = nearby) {
   const fake = new FakeSupabase(
     {
-      jobs: [{ ...JOB, status: 'requested', title: 'נזילה במטבח', search_radius_km: 5 }],
+      jobs: [
+        {
+          ...JOB,
+          status: 'requested',
+          title: 'נזילה במטבח',
+          reference: 'GS-LIFE01',
+          search_radius_km: 5,
+        },
+      ],
       job_assignments: [],
       job_offers: [],
       favorites: [],
-      payments: [],
-      payment_transactions: [],
-      platform_fees: [],
+      provider_profiles: [
+        { id: 'p-near', business_name: 'א.ב. אינסטלציה', balance: 500 },
+        { id: 'p-mid', business_name: 'שלמה שרברבות', balance: 500 },
+        { id: 'p-far', business_name: 'פרו אינסטלציה', balance: 500 },
+      ],
+      balance_entries: [],
+      job_images: [],
       reviews: [],
     },
     {
       find_nearby_providers: (args) => radiusResponder(Number(args.radius_km)),
     },
+    { balance_entries: balanceEntryTrigger() },
   );
   return { fake, db: asClient<SupabaseClient<Database>>(fake) };
 }
@@ -142,56 +156,103 @@ describe('full job lifecycle', () => {
     });
     await db.from('jobs').update({ status: 'offers_received' }).eq('id', JOB.id);
 
-    /* 4. The customer accepts: payment is authorised for the offered amount. */
-    const { breakdown } = await createPaymentForJob(db, {
-      jobId: JOB.id,
-      customerId: JOB.customer_id,
-      providerId: 'p-near',
-      amount: 600,
-      description: 'נזילה במטבח',
-    });
-
-    expect(breakdown.amount).toBe(600);
-    expect(breakdown.platformFee).toBe(90); // 15% tier
-    expect(breakdown.providerPayout).toBe(510);
-
+    /* 4. The customer accepts. This is where GET SERVICE gets paid — out of
+          the provider's prepaid balance, not out of the job's money. */
     await db
       .from('jobs')
       .update({
         status: 'provider_selected',
         assigned_provider_id: 'p-near',
         accepted_offer_id: 'offer-1',
-        final_price: breakdown.amount,
-        platform_fee: breakdown.platformFee,
-        provider_payout: breakdown.providerPayout,
       })
       .eq('id', JOB.id);
+
+    const { breakdown } = await chargeCommission(db, {
+      jobId: JOB.id,
+      providerId: 'p-near',
+      amount: 600,
+      jobReference: 'GS-LIFE01',
+    });
+
+    expect(breakdown.amount).toBe(600);
+    expect(breakdown.platformFee).toBe(90); // 15% tier
+    expect(breakdown.providerPayout).toBe(510);
+    // The commission left the balance at acceptance, before any work.
+    expect(fake.table('provider_profiles')[0].balance).toBe(410);
+
     await db.from('job_offers').update({ status: 'accepted' }).eq('id', 'offer-1');
 
-    /* 5. The provider walks the job forward — each hop must be legal. */
+    /* 5. The provider walks the job forward — each hop must be legal, and the
+          arrival is checked against the job's own coordinates. */
     const progression: JobStatus[] = ['provider_on_the_way', 'arrived', 'in_progress'];
     let current: JobStatus = 'provider_selected';
 
     for (const nextStatus of progression) {
       expect(canActorTransition(current, nextStatus, 'provider')).toBe(true);
-      await db.from('jobs').update({ status: nextStatus }).eq('id', JOB.id);
+
+      if (nextStatus === 'arrived') {
+        const arrival = checkArrival(
+          { lat: JOB.lat, lng: JOB.lng },
+          { lat: JOB.lat + 0.001, lng: JOB.lng },
+        );
+        expect(arrival.ok && arrival.verified).toBe(true);
+        await db
+          .from('jobs')
+          .update({
+            status: nextStatus,
+            arrival_lat: JOB.lat + 0.001,
+            arrival_lng: JOB.lng,
+            arrival_distance_m: arrival.ok ? arrival.distanceM : null,
+            arrival_verified_at: new Date().toISOString(),
+          })
+          .eq('id', JOB.id);
+      } else {
+        await db.from('jobs').update({ status: nextStatus }).eq('id', JOB.id);
+      }
       current = nextStatus;
     }
     expect(fake.table('jobs')[0].status).toBe('in_progress');
 
-    /* 6. Completion captures the held funds and books the commission. */
+    /* 6. Completion moves no money: the commission was already taken and the
+          customer pays the provider directly. What it collects is evidence. */
     expect(canActorTransition(current, 'completed', 'provider')).toBe(true);
-    const captured = await capturePaymentForJob(db, JOB.id);
+    const completedAt = new Date().toISOString();
     await db
       .from('jobs')
-      .update({ status: 'completed', completed_at: new Date().toISOString() })
+      .update({ status: 'completed', completed_at: completedAt })
+      .eq('id', JOB.id);
+    await db.from('job_images').insert({
+      job_id: JOB.id,
+      storage_path: 'job-media/job-1/after.jpg',
+      kind: 'image',
+      stage: 'completion',
+      sort_order: 0,
+    });
+
+    // The balance did not move again at completion.
+    expect(fake.table('provider_profiles')[0].balance).toBe(410);
+
+    /* 7. The customer confirms it happened. */
+    await db
+      .from('jobs')
+      .update({
+        customer_confirmed_at: new Date().toISOString(),
+        customer_confirmed_by: JOB.customer_id,
+        customer_reported_price: 600,
+      })
       .eq('id', JOB.id);
 
-    expect(captured?.payment.status).toBe('captured');
-    expect(fake.table('platform_fees')).toHaveLength(1);
-    expect(fake.table('platform_fees')[0].amount).toBe(90);
+    const confirmedJob = fake.table('jobs')[0];
+    expect(
+      verificationState({
+        arrivalVerifiedAt: confirmedJob.arrival_verified_at as string | null,
+        completionPhotos: fake.table('job_images').length,
+        customerConfirmedAt: confirmedJob.customer_confirmed_at as string | null,
+        completedAt: completedAt,
+      }).level,
+    ).toBe('verified');
 
-    /* 7. The customer reviews the completed job. */
+    /* 8. The customer reviews the completed job. */
     await db.from('reviews').insert({
       job_id: JOB.id,
       customer_id: JOB.customer_id,
@@ -203,12 +264,17 @@ describe('full job lifecycle', () => {
     expect(fake.table('reviews')).toHaveLength(1);
     expect(fake.table('jobs')[0].status).toBe('completed');
 
-    /* The money adds up: what the customer paid equals fee + payout. */
-    const payment = fake.table('payments')[0];
-    expect(Number(payment.platform_fee) + Number(payment.provider_payout)).toBeCloseTo(
-      Number(payment.amount),
-      2,
-    );
+    /* The money adds up: what the customer paid the provider equals the
+       commission plus what the provider kept. */
+    const finalJob = fake.table('jobs')[0];
+    expect(
+      Number(finalJob.commission_amount) + Number(finalJob.provider_payout),
+    ).toBeCloseTo(Number(finalJob.final_price), 2);
+
+    /* One commission charge, no refund, nothing else. */
+    const ledger = fake.table('balance_entries');
+    expect(ledger).toHaveLength(1);
+    expect(ledger[0].type).toBe('commission');
   });
 
   it('widens the search radius until enough providers are found', async () => {
@@ -240,23 +306,43 @@ describe('full job lifecycle', () => {
     expect(notified).toEqual([]);
   });
 
-  it('records the fee rule that was in force with the payment', async () => {
+  it('records the fee rule that was in force with the charge', async () => {
     const { fake, db } = newClient();
 
-    await createPaymentForJob(db, {
-      jobId: JOB.id,
-      customerId: JOB.customer_id,
-      providerId: 'p-near',
-      amount: 1500,
-      description: 'job',
-    });
+    await chargeCommission(db, { jobId: JOB.id, providerId: 'p-near', amount: 1500 });
 
-    const snapshot = fake.table('payments')[0].fee_rule_snapshot as {
+    const snapshot = fake.table('balance_entries')[0].rule_snapshot as {
       rule: { source: string; percentage: number };
     };
     expect(snapshot.rule.source).toBe('tier');
     expect(snapshot.rule.percentage).toBe(0.1);
     // And it matches what the pure calculator says for the same amount.
     expect(calculateFee(1500, SETTINGS_DEFAULTS.platform_fee_rules).platformFee).toBe(150);
+  });
+
+  it('gives the commission back when the customer cancels an accepted job', async () => {
+    const { fake, db } = newClient();
+
+    await chargeCommission(db, { jobId: JOB.id, providerId: 'p-near', amount: 600 });
+    expect(fake.table('provider_profiles')[0].balance).toBe(410);
+
+    const job = fake.table('jobs')[0];
+    const refund = await refundCommission(db, {
+      job: {
+        id: JOB.id,
+        reference: 'GS-LIFE01',
+        assigned_provider_id: 'p-near',
+        commission_amount: job.commission_amount as number,
+        commission_charged_at: job.commission_charged_at as string,
+        commission_refunded_at: null,
+      },
+      cancelledBy: 'customer',
+      reasonNote: 'הסתדר לבד',
+    });
+
+    expect(refund.decision.refund).toBe(true);
+    // Back where it started: the platform charged for an introduction that
+    // produced nothing, so it keeps nothing.
+    expect(fake.table('provider_profiles')[0].balance).toBe(500);
   });
 });

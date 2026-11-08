@@ -1,9 +1,4 @@
-import type {
-  JobStatus,
-  JobUrgency,
-  OfferStatus,
-  PaymentStatus,
-} from '@/types/database';
+import type { JobStatus, JobUrgency, MediaStage, OfferStatus } from '@/types/database';
 
 export interface JobDetailPayload {
   job: {
@@ -21,8 +16,20 @@ export interface JobDetailPayload {
     budget_min: number | null;
     budget_max: number | null;
     final_price: number | null;
-    platform_fee: number | null;
-    provider_payout: number | null;
+    /**
+     * Commission columns. Present for the provider and for an admin; the API
+     * strips them from a customer's own job, because what GET SERVICE charges
+     * is between GET SERVICE and the provider.
+     */
+    platform_fee?: number | null;
+    provider_payout?: number | null;
+    commission_amount?: number | null;
+    commission_charged_at?: string | null;
+    commission_refunded_at?: string | null;
+    arrival_distance_m: number | null;
+    arrival_verified_at: string | null;
+    customer_confirmed_at: string | null;
+    customer_reported_price: number | null;
     created_at: string;
     completed_at: string | null;
     cancelled_at: string | null;
@@ -46,7 +53,13 @@ export interface JobDetailPayload {
       rating_count: number;
       completed_jobs: number;
     } | null;
-    job_images: Array<{ id: string; storage_path: string; kind: 'image' | 'video'; sort_order: number }>;
+    job_images: Array<{
+      id: string;
+      storage_path: string;
+      kind: 'image' | 'video';
+      stage: MediaStage;
+      sort_order: number;
+    }>;
     job_status_history: Array<{
       id: string;
       from_status: JobStatus | null;
@@ -75,15 +88,6 @@ export interface JobDetailPayload {
       status: string;
     } | null;
   }>;
-  payment: {
-    id: string;
-    amount: number;
-    platform_fee: number;
-    provider_payout: number;
-    status: PaymentStatus;
-    currency: string;
-    captured_at: string | null;
-  } | null;
   review: {
     id: string;
     rating: number;

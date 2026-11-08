@@ -44,12 +44,23 @@ export function ProviderJobDetail({ jobId, providerId }: { jobId: string; provid
 
   useRealtime<Record<string, unknown>>({ table: 'jobs', filter: `id=eq.${jobId}`, onChange: reload });
 
+  /**
+   * Marking arrival sends the device's position with it.
+   *
+   * The server compares it with the job's address, so "הגעתי" becomes something
+   * checkable instead of a claim. Without permission the server decides whether
+   * to accept the status at all — the client does not quietly skip it.
+   */
   const advance = useCallback(
     async (status: string) => {
       setBusy(true);
       setActionError(null);
       try {
-        await postJson(`/api/jobs/${jobId}/status`, { status });
+        const position = status === 'arrived' ? await currentPosition() : null;
+        await postJson(`/api/jobs/${jobId}/status`, {
+          status,
+          ...(position ? { lat: position.lat, lng: position.lng } : {}),
+        });
         await reload();
       } catch (advanceError) {
         setActionError(advanceError instanceof Error ? advanceError.message : t.errors.generic);
@@ -76,7 +87,7 @@ export function ProviderJobDetail({ jobId, providerId }: { jobId: string; provid
   if (loading && !data) return <LoadingState />;
   if (error || !data) return <ErrorState description={error ?? undefined} onRetry={reload} />;
 
-  const { job, offers, payment } = data;
+  const { job, offers } = data;
   const myOffer = offers.find((offer) => offer.provider?.id === providerId);
   const isMine = job.assigned_provider_id === providerId;
   const next = isMine ? NEXT_ACTION[job.status] : undefined;
@@ -232,20 +243,58 @@ export function ProviderJobDetail({ jobId, providerId }: { jobId: string; provid
             </CardContent>
           </Card>
 
-          {payment ? (
+          {/*
+            Two different facts, so two different lines: what to collect from
+            the customer, and the commission that already left the balance.
+          */}
+          {job.final_price !== null ? (
             <PriceBreakdown
               rows={[
-                { label: t.provider.grossPrice, amount: Number(payment.amount) },
+                { label: t.provider.grossPrice, amount: Number(job.final_price) },
                 {
                   label: t.provider.platformFee,
-                  amount: Number(payment.platform_fee),
+                  amount: Number(job.commission_amount ?? 0),
                   negative: true,
                   muted: true,
                 },
               ]}
-              total={{ label: t.provider.netPayout, amount: Number(payment.provider_payout) }}
-              note={payment.status === 'captured' ? t.payment.captured : t.payment.authorized}
+              total={{
+                label: t.provider.netPayout,
+                amount: Number(job.final_price) - Number(job.commission_amount ?? 0),
+              }}
+              note={
+                job.commission_refunded_at
+                  ? 'העמלה הוחזרה ליתרה שלך.'
+                  : job.commission_charged_at
+                    ? 'העמלה נגבתה מהיתרה בעת קבלת העבודה. את מחיר העבודה אתה גובה ישירות מהלקוח.'
+                    : t.payment.payProviderDirectly
+              }
             />
+          ) : null}
+
+          {/* Verification state, in the provider's own interest to complete */}
+          {isMine && job.commission_charged_at ? (
+            <div className="rounded-xl border bg-card p-3 text-xs">
+              <p className="mb-1.5 font-medium">אימות העבודה</p>
+              <ul className="space-y-1 text-muted-foreground">
+                <li className={job.arrival_verified_at ? 'text-success' : undefined}>
+                  {job.arrival_verified_at
+                    ? `${t.provider.arrivalVerified} (${Math.round(Number(job.arrival_distance_m ?? 0))} מ' מהכתובת)`
+                    : t.provider.arrivalUnverified}
+                </li>
+                <li className={job.customer_confirmed_at ? 'text-success' : undefined}>
+                  {job.customer_confirmed_at
+                    ? t.provider.customerConfirmed
+                    : t.provider.awaitingConfirmation}
+                </li>
+              </ul>
+              {!job.arrival_verified_at && job.status !== 'completed' ? (
+                <p className="mt-2">
+                  סימון &quot;הגעתי&quot; מהכתובת עצמה הוא מה שמאמת את ההגעה, וזה מה שמגן עליך
+                  אם הלקוח יטען אחר כך שלא באת.
+                </p>
+              ) : null}
+            </div>
           ) : null}
 
           <div className="flex flex-wrap gap-2">
@@ -309,4 +358,23 @@ export function ProviderJobDetail({ jobId, providerId }: { jobId: string; provid
       />
     </div>
   );
+}
+
+/**
+ * One reading of the device position, or null if it cannot be had.
+ *
+ * Never throws: a refused permission is not an error to show, it is simply a
+ * check-in without coordinates, which the server then rules on.
+ */
+async function currentPosition(): Promise<{ lat: number; lng: number } | null> {
+  if (typeof navigator === 'undefined' || !navigator.geolocation) return null;
+
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (position) =>
+        resolve({ lat: position.coords.latitude, lng: position.coords.longitude }),
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 30_000 },
+    );
+  });
 }

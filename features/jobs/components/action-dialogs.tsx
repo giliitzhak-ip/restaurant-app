@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Field, Select, Textarea } from '@/components/ui/input';
+import { Field, Input, Select, Textarea } from '@/components/ui/input';
 import { Sheet } from '@/components/ui/sheet';
 import { postJson } from '@/features/auth/lib/form';
 import { useT } from '@/components/providers/i18n-provider';
@@ -140,6 +140,145 @@ export function DisputeDialog({ jobId, open, onClose, onDone }: DialogProps) {
             maxLength={2000}
           />
         </Field>
+      </div>
+    </Sheet>
+  );
+}
+
+/**
+ * The customer's confirmation that the work happened.
+ *
+ * Two outcomes, and the second one matters most: saying it did not happen
+ * returns the commission to the provider and opens a dispute, rather than
+ * leaving a charged booking with nothing behind it. So the "לא בוצעה" path is
+ * presented as plainly as the "כן" one — a confirmation screen that only
+ * offers approval collects approvals, not information.
+ */
+export function ConfirmJobDialog({
+  jobId,
+  agreedPrice,
+  open,
+  onClose,
+  onDone,
+}: DialogProps & { agreedPrice: number | null }) {
+  const t = useT();
+  const [happened, setHappened] = useState<boolean | null>(null);
+  const [reportedPrice, setReportedPrice] = useState(agreedPrice ? String(agreedPrice) : '');
+  const [note, setNote] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function submit() {
+    if (happened === null) {
+      setError('בחר אם העבודה בוצעה');
+      return;
+    }
+    if (!happened && note.trim().length < 10) {
+      setError('כתוב בקצרה מה קרה — זה מה שהבדיקה מתבססת עליו');
+      return;
+    }
+
+    const parsedPrice = reportedPrice.trim() === '' ? null : Number(reportedPrice);
+    if (parsedPrice !== null && (!Number.isFinite(parsedPrice) || parsedPrice <= 0)) {
+      setError('סכום לא תקין');
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      await postJson(`/api/jobs/${jobId}/confirm`, {
+        happened,
+        reportedPrice: happened ? parsedPrice : null,
+        note: note.trim() || undefined,
+      });
+      onDone();
+      onClose();
+    } catch (confirmError) {
+      setError(confirmError instanceof Error ? confirmError.message : t.errors.generic);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title="לאשר שהעבודה בוצעה?"
+      description="האישור שלך הוא מה שמאפשר לנו לדעת שהעבודה אכן קרתה."
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose} className="flex-1">
+            {t.common.back}
+          </Button>
+          <Button
+            variant={happened === false ? 'destructive' : 'accent'}
+            onClick={submit}
+            loading={submitting}
+            className="flex-1"
+          >
+            {t.common.send}
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            type="button"
+            variant={happened === true ? 'accent' : 'outline'}
+            onClick={() => setHappened(true)}
+          >
+            כן, בוצעה
+          </Button>
+          <Button
+            type="button"
+            variant={happened === false ? 'destructive' : 'outline'}
+            onClick={() => setHappened(false)}
+          >
+            לא בוצעה
+          </Button>
+        </div>
+
+        {happened === true ? (
+          <Field
+            label="כמה שילמת בפועל?"
+            htmlFor="reportedPrice"
+            hint="לא חייב. עוזר לנו לזהות פערים בין מה שסוכם למה שנגבה."
+          >
+            <Input
+              id="reportedPrice"
+              type="number"
+              inputMode="decimal"
+              min={1}
+              value={reportedPrice}
+              onChange={(event) => setReportedPrice(event.target.value)}
+            />
+          </Field>
+        ) : null}
+
+        <Field
+          label={happened === false ? 'מה קרה?' : 'הערה (לא חייב)'}
+          htmlFor="confirmNote"
+          error={error ?? undefined}
+          required={happened === false}
+        >
+          <Textarea
+            id="confirmNote"
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            rows={3}
+            maxLength={1000}
+          />
+        </Field>
+
+        {happened === false ? (
+          <p className="text-xs text-muted-foreground">
+            הדיווח נרשם ונפתחת בדיקה. העמלה שנגבתה מבעל המקצוע תוחזר לו בינתיים — כדי שהוא
+            לא ישלם על עבודה שלא יצאה לפועל, בלי קשר למי צודק.
+          </p>
+        ) : null}
       </div>
     </Sheet>
   );

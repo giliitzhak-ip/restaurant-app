@@ -27,7 +27,7 @@ export default async function ProviderLayout({ children }: { children: React.Rea
     { href: '/provider', label: t.nav.home, icon: Home },
     { href: '/provider/jobs', label: t.nav.jobs, icon: Briefcase },
     { href: '/provider/messages', label: t.nav.messages, icon: MessageSquare },
-    { href: '/provider/earnings', label: t.nav.earnings, icon: Wallet },
+    { href: '/provider/balance', label: t.nav.balance, icon: Wallet },
     { href: '/provider/profile', label: t.nav.profile, icon: User },
   ];
 

@@ -66,7 +66,7 @@ export class IsraeliPaymentAdapter implements PaymentAdapter {
       description: input.description,
       reference: input.paymentId,
       success_url: input.returnUrl,
-      metadata: { job_id: input.jobId, ...input.metadata },
+      metadata: { ...(input.jobId ? { job_id: input.jobId } : {}), ...input.metadata },
     });
 
     if (!ok) {

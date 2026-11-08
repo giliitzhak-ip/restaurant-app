@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { isWithinQuietHours } from '@/lib/services/notifications';
-import { renderTemplate } from '@/lib/services/notifications/templates';
+import { renderTemplate, templates } from '@/lib/services/notifications/templates';
+import type { NotificationEvent } from '@/lib/services/notifications/types';
 
 describe('quiet hours', () => {
   const at = (hours: number, minutes = 0) => {
@@ -33,22 +34,9 @@ describe('quiet hours', () => {
 
 describe('notification templates', () => {
   it('renders every event with a title and a body', () => {
-    const events = [
-      'job_created',
-      'new_job_for_provider',
-      'new_offer',
-      'offer_accepted',
-      'provider_on_the_way',
-      'provider_arrived',
-      'job_completed',
-      'payment_completed',
-      'new_message',
-      'new_review',
-      'provider_verified',
-      'provider_rejected',
-      'job_cancelled',
-      'dispute_opened',
-    ] as const;
+    // Enumerated from the map rather than listed here, so a new event cannot
+    // be added without copy that renders.
+    const events = Object.keys(templates) as NotificationEvent[];
 
     for (const event of events) {
       const rendered = renderTemplate(event, {
@@ -56,6 +44,11 @@ describe('notification templates', () => {
         providerName: 'א.ב. אינסטלציה',
         customerName: 'נועה',
         price: '₪350',
+        commission: '₪90',
+        balance: '₪410',
+        shortfall: '₪100',
+        reason: 'הלקוח ביטל',
+        eta: '25 דק׳',
         rating: 5,
       });
       expect(rendered.title.length).toBeGreaterThan(0);

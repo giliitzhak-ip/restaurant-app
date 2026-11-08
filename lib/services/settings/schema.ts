@@ -83,6 +83,32 @@ export const antiFraudSettingsSchema = z.object({
   flag_new_account_days: z.number().int().min(0).default(3),
 });
 
+export const billingSettingsSchema = z.object({
+  /** A provider may accept work while their balance is at or above this. */
+  minimum_balance: z.number().default(0),
+  /** Below this, the provider is warned that work will stop. */
+  low_balance_threshold: z.number().min(0).default(150),
+  refund_on_customer_cancellation: z.boolean().default(true),
+  refund_on_provider_cancellation: z.boolean().default(false),
+  /** How long after the charge a refund may still be posted automatically. */
+  refund_window_hours: z.number().int().positive().default(48),
+  topup_presets: z.array(z.number().positive()).min(1).default([100, 250, 500, 1000]),
+});
+
+export const verificationSettingsSchema = z.object({
+  /** How close the provider's check-in must be to the job address, in metres. */
+  arrival_radius_m: z.number().int().positive().default(300),
+  require_arrival_checkin: z.boolean().default(true),
+  require_completion_photo: z.boolean().default(false),
+  require_customer_confirmation: z.boolean().default(true),
+  /** A completed job nobody confirms is treated as confirmed after this long. */
+  auto_confirm_after_hours: z.number().int().positive().default(48),
+  /** Gap between the agreed price and what the customer reports that gets flagged. */
+  flag_price_gap_percent: z.number().min(0).max(1).default(0.25),
+});
+
+export type BillingSettings = z.infer<typeof billingSettingsSchema>;
+export type VerificationSettings = z.infer<typeof verificationSettingsSchema>;
 export type PlatformFeeRules = z.infer<typeof platformFeeRulesSchema>;
 export type MatchWeights = z.infer<typeof matchWeightsSchema>;
 export type MatchingSettings = z.infer<typeof matchingSettingsSchema>;
@@ -101,6 +127,8 @@ export const SETTINGS_SCHEMAS = {
   reviews: reviewSettingsSchema,
   notifications: notificationSettingsSchema,
   anti_fraud: antiFraudSettingsSchema,
+  billing: billingSettingsSchema,
+  verification: verificationSettingsSchema,
 } as const;
 
 export type SettingKey = keyof typeof SETTINGS_SCHEMAS;

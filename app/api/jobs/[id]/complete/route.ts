@@ -5,7 +5,8 @@ import { ApiError } from '@/lib/api/errors';
 import { requireSession, requireServiceClient } from '@/lib/api/guards';
 import { completeJobSchema } from '@/lib/validation/jobs';
 import { canActorTransition } from '@/lib/services/jobs/workflow';
-import { capturePaymentForJob } from '@/lib/services/payments/flow';
+import { verificationState } from '@/lib/services/jobs/verification';
+import { getSetting } from '@/lib/services/settings';
 import { notify } from '@/lib/services/notifications';
 import { formatPrice } from '@/lib/utils/format';
 import type { ActorType } from '@/types/database';
@@ -13,8 +14,15 @@ import type { ActorType } from '@/types/database';
 /**
  * POST /api/jobs/:id/complete
  *
- * Marks the work done and captures the held payment in the same request, so a
- * job can never end up completed-but-unpaid or paid-but-unfinished.
+ * Marks the work done. No money moves here — the commission was taken when the
+ * offer was accepted, and the customer pays the provider directly for the work
+ * itself. What this route does instead is collect evidence and ask the customer
+ * to confirm, which is what later justifies keeping the commission or giving it
+ * back.
+ *
+ * `finalPrice` is recorded for the record and for the price-gap check; it can
+ * only be lower than the agreed price, so a provider cannot restate the job as
+ * larger after the fact.
  */
 export const POST = route(async (request: NextRequest, { params }: RouteParams<{ id: string }>) => {
   const { id } = await params;
@@ -24,7 +32,10 @@ export const POST = route(async (request: NextRequest, { params }: RouteParams<{
 
   const { data: job } = await supabase
     .from('jobs')
-    .select('id, title, status, customer_id, assigned_provider_id, final_price')
+    .select(
+      `id, title, status, customer_id, assigned_provider_id, final_price, commission_amount,
+       arrival_verified_at`,
+    )
     .eq('id', id)
     .maybeSingle();
 
@@ -40,26 +51,26 @@ export const POST = route(async (request: NextRequest, { params }: RouteParams<{
     throw ApiError.unprocessable('לא ניתן לסמן את העבודה כהושלמה במצב הנוכחי');
   }
 
+  const verification = await getSetting('verification');
+
+  if (verification.require_completion_photo && actor === 'provider' && input.evidence.length === 0) {
+    throw ApiError.badRequest('צרף תמונה אחת לפחות מסיום העבודה');
+  }
+
   // A final price may only reduce the agreed amount — never raise it.
   const agreed = job.final_price === null ? undefined : Number(job.final_price);
   if (input.finalPrice !== undefined && agreed !== undefined && input.finalPrice > agreed) {
-    throw ApiError.badRequest('לא ניתן לחייב מעבר למחיר שסוכם');
+    throw ApiError.badRequest('לא ניתן לעדכן מחיר גבוה מהמחיר שסוכם');
   }
 
-  const capture = await capturePaymentForJob(admin, id, input.finalPrice);
+  const completedAt = new Date().toISOString();
 
   const { data: updated, error } = await admin
     .from('jobs')
     .update({
       status: 'completed',
-      completed_at: new Date().toISOString(),
-      ...(capture
-        ? {
-            final_price: capture.breakdown.amount,
-            platform_fee: capture.breakdown.platformFee,
-            provider_payout: capture.breakdown.providerPayout,
-          }
-        : {}),
+      completed_at: completedAt,
+      ...(input.finalPrice !== undefined ? { final_price: input.finalPrice } : {}),
     })
     .eq('id', id)
     .eq('status', job.status)
@@ -67,6 +78,28 @@ export const POST = route(async (request: NextRequest, { params }: RouteParams<{
     .single();
 
   if (error || !updated) throw ApiError.conflict('סיום העבודה נכשל. רענן ונסה שוב.');
+
+  if (input.evidence.length > 0) {
+    await admin.from('job_images').insert(
+      input.evidence.map((file, index) => ({
+        job_id: id,
+        storage_path: file.storagePath,
+        kind: file.kind,
+        stage: 'completion' as const,
+        sort_order: index,
+      })),
+    );
+  }
+
+  const state = verificationState(
+    {
+      arrivalVerifiedAt: job.arrival_verified_at,
+      completionPhotos: input.evidence.length,
+      customerConfirmedAt: null,
+      completedAt,
+    },
+    verification,
+  );
 
   const { data: customer } = await admin
     .from('users')
@@ -80,30 +113,22 @@ export const POST = route(async (request: NextRequest, { params }: RouteParams<{
       recipient: { userId: customer.id, email: customer.email, phone: customer.phone },
       jobId: id,
       url: `/app/jobs/${id}?review=1`,
-      template: { jobTitle: job.title, price: formatPrice(capture?.breakdown.amount ?? null) },
+      template: {
+        jobTitle: job.title,
+        price: formatPrice(input.finalPrice ?? agreed ?? null),
+      },
       client: admin,
     });
-  }
 
-  if (job.assigned_provider_id) {
-    const { data: provider } = await admin
-      .from('provider_profiles')
-      .select('user_id, users:users!provider_profiles_user_id_fkey (email, phone)')
-      .eq('id', job.assigned_provider_id)
-      .maybeSingle();
-
-    if (provider) {
-      const contact = provider.users as { email: string | null; phone: string | null } | null;
+    // Confirmation is a separate, explicit ask. Bundling it into the
+    // completion notice is how it gets ignored.
+    if (verification.require_customer_confirmation) {
       await notify({
-        event: 'payment_completed',
-        recipient: {
-          userId: provider.user_id,
-          email: contact?.email ?? null,
-          phone: contact?.phone ?? null,
-        },
+        event: 'confirmation_requested',
+        recipient: { userId: customer.id, email: customer.email, phone: customer.phone },
         jobId: id,
-        url: `/provider/earnings`,
-        template: { price: formatPrice(capture?.breakdown.providerPayout ?? null) },
+        url: `/app/jobs/${id}?confirm=1`,
+        template: { jobTitle: job.title, providerName: session.fullName },
         client: admin,
       });
     }
@@ -111,13 +136,18 @@ export const POST = route(async (request: NextRequest, { params }: RouteParams<{
 
   return jsonOk({
     job: updated,
-    payment: capture
-      ? {
-          amount: capture.breakdown.amount,
-          platformFee: capture.breakdown.platformFee,
-          providerPayout: capture.breakdown.providerPayout,
-          status: capture.payment.status,
-        }
-      : null,
+    // What the provider owes and what they collect are two different things,
+    // and the response says both so the app never has to guess.
+    settlement: {
+      collectFromCustomer: input.finalPrice ?? agreed ?? null,
+      commissionAlreadyPaid: job.commission_amount === null ? null : Number(job.commission_amount),
+      note: 'את התשלום על העבודה אתה גובה ישירות מהלקוח. העמלה נגבתה מהיתרה בעת קבלת העבודה.',
+    },
+    verification: {
+      level: state.level,
+      missing: state.missing,
+      awaitingCustomerConfirmation: verification.require_customer_confirmation,
+      autoConfirmAfterHours: verification.auto_confirm_after_hours,
+    },
   });
 });

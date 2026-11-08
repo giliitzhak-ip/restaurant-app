@@ -91,13 +91,47 @@ begin
   end if;
   raise notice 'PASS: every status change is recorded by a trigger';
 
-  -- ── 5. The payment split must balance ─────────────────────────────────────
+  -- ── 5. The balance ledger ─────────────────────────────────────────────────
+  -- A commission may never take a provider under the floor. This is the rule
+  -- that turns enforcement into access control, and it lives in a trigger so
+  -- that no code path — not even a service-role write — can hand out work on
+  -- credit.
+  update public.settings
+     set value = jsonb_set(value, '{minimum_balance}', '0'::jsonb)
+   where key = 'billing';
+
   begin
-    insert into public.payments (job_id, customer_id, provider_id, amount, platform_fee, provider_payout)
-    values (v_job, 'aaaaaaaa-0000-4000-8000-000000000001', v_provider, 600, 100, 100);
-    raise exception 'FAIL: an unbalanced payment split was accepted';
+    insert into public.balance_entries (provider_id, type, amount, balance_after)
+    values (v_provider, 'commission', -100, 0);
+    raise exception 'FAIL: a commission was charged against an empty balance';
   exception
-    when check_violation then raise notice 'PASS: fee + payout must equal the amount';
+    when check_violation then raise notice 'PASS: a commission cannot overdraw the balance';
+  end;
+
+  -- A top-up credits the balance, and the trigger — not the caller — decides
+  -- what `balance_after` is.
+  insert into public.balance_entries (provider_id, type, amount, balance_after)
+  values (v_provider, 'topup', 500, 999999);
+
+  select balance::text into v_actual from public.provider_profiles where id = v_provider;
+  if v_actual <> '500.00' then
+    raise exception 'FAIL: a top-up did not credit the balance (balance=%)', v_actual;
+  end if;
+
+  select balance_after::text into v_actual
+    from public.balance_entries
+   where provider_id = v_provider and type = 'topup';
+  if v_actual <> '500.00' then
+    raise exception 'FAIL: the caller''s balance_after was trusted (stored=%)', v_actual;
+  end if;
+  raise notice 'PASS: the ledger trigger owns the balance, not the caller';
+
+  -- The ledger is append-only: a correction is a new entry, never an edit.
+  begin
+    update public.balance_entries set amount = 9999 where provider_id = v_provider;
+    raise exception 'FAIL: a ledger entry was rewritten';
+  exception
+    when restrict_violation then raise notice 'PASS: the ledger is append-only';
   end;
 
   insert into public.job_assignments (job_id, provider_id, match_score)
@@ -110,8 +144,28 @@ begin
   update public.jobs set status = 'in_progress' where id = v_job;
   update public.jobs set status = 'completed', completed_at = now() where id = v_job;
 
-  insert into public.payments (job_id, customer_id, provider_id, amount, platform_fee, provider_payout, status)
-  values (v_job, 'aaaaaaaa-0000-4000-8000-000000000001', v_provider, 600, 90, 510, 'captured');
+  -- The commission is charged at acceptance, out of the credit just bought.
+  insert into public.balance_entries (provider_id, type, amount, balance_after, job_id)
+  values (v_provider, 'commission', -90, 0, v_job);
+
+  select balance::text into v_actual from public.provider_profiles where id = v_provider;
+  if v_actual <> '410.00' then
+    raise exception 'FAIL: the commission did not come out of the balance (balance=%)', v_actual;
+  end if;
+
+  update public.jobs
+     set commission_amount = 90, commission_charged_at = now(),
+         final_price = 600, platform_fee = 90, provider_payout = 510
+   where id = v_job;
+
+  -- One charge per job, enforced by a unique index rather than by the caller.
+  begin
+    insert into public.balance_entries (provider_id, type, amount, balance_after, job_id)
+    values (v_provider, 'commission', -90, 0, v_job);
+    raise exception 'FAIL: the same job was charged a commission twice';
+  exception
+    when unique_violation then raise notice 'PASS: a job can only be charged once';
+  end;
 
   insert into public.reviews (job_id, customer_id, provider_id, rating, comment)
   values (v_job, 'aaaaaaaa-0000-4000-8000-000000000001', v_provider, 5, 'בדיקה');
@@ -176,21 +230,28 @@ begin
   if (select count(*) from public.jobs j where j.id = v_job) <> 1 then
     raise exception 'FAIL: a customer cannot see their own job';
   end if;
-  if (select count(*) from public.payments p where p.job_id = v_job) <> 1 then
-    raise exception 'FAIL: a customer cannot see their own payment';
+  -- A customer has no business reading the platform's commission ledger: what
+  -- GET SERVICE charges is between GET SERVICE and the provider.
+  if (select count(*) from public.balance_entries) <> 0 then
+    raise exception 'FAIL: a customer can read the commission ledger';
   end if;
 
   set local "request.jwt.claim.sub" = 'aaaaaaaa-0000-4000-8000-000000000002';
   if (select count(*) from public.jobs j where j.id = v_job) <> 1 then
     raise exception 'FAIL: the assigned provider cannot see the job';
   end if;
+  if (select count(*) from public.balance_entries) <> 2 then
+    raise exception
+      'FAIL: a provider cannot read their own ledger (rows=%)',
+      (select count(*) from public.balance_entries);
+  end if;
 
   set local "request.jwt.claim.sub" = 'aaaaaaaa-0000-4000-8000-000000000003';
   if (select count(*) from public.jobs j where j.id = v_job) <> 0 then
     raise exception 'FAIL: an unrelated user can see somebody else’s job';
   end if;
-  if (select count(*) from public.payments) <> 0 then
-    raise exception 'FAIL: an unrelated user can see payments';
+  if (select count(*) from public.balance_entries) <> 0 then
+    raise exception 'FAIL: an unrelated user can see the commission ledger';
   end if;
   if (select count(*) from public.provider_documents) <> 0 then
     raise exception 'FAIL: an unrelated user can see verification documents';

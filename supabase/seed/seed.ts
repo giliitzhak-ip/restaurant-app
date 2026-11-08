@@ -275,7 +275,7 @@ async function main() {
 
   let offerCount = 0;
   let reviewCount = 0;
-  let paymentCount = 0;
+  let commissionCount = 0;
 
   const verifiedProviders = providerIds.slice(0, 17);
 
@@ -309,7 +309,7 @@ async function main() {
         created_at: createdAt,
         broadcast_at: createdAt,
       })
-      .select('id, title')
+      .select('id, title, reference, lat, lng')
       .single();
 
     if (!job) continue;
@@ -397,6 +397,25 @@ async function main() {
         final_price: accepted.price,
         platform_fee: fee,
         provider_payout: payout,
+        commission_amount: fee,
+        commission_charged_at: createdAt,
+        ...(status === 'completed'
+          ? {
+              // A seeded completed job carries the evidence a real one would:
+              // a verified check-in and the customer's confirmation.
+              arrival_lat: job.lat,
+              arrival_lng: job.lng,
+              arrival_distance_m: 40 + (i % 5) * 25,
+              arrival_verified_at: new Date(
+                Date.parse(createdAt) + 90 * 60 * 1000,
+              ).toISOString(),
+              customer_confirmed_at: new Date(
+                Date.parse(createdAt) + 4 * 60 * 60 * 1000,
+              ).toISOString(),
+              customer_confirmed_by: customerId,
+              customer_reported_price: accepted.price,
+            }
+          : {}),
         ...(status === 'completed'
           ? { completed_at: new Date(Date.parse(createdAt) + 3 * 60 * 60 * 1000).toISOString() }
           : {}),
@@ -410,38 +429,39 @@ async function main() {
       })
       .eq('id', job.id);
 
-    if (status !== 'cancelled') {
-      const { data: payment } = await supabase
-        .from('payments')
-        .insert({
-          job_id: job.id,
-          customer_id: customerId,
-          provider_id: accepted.providerId,
-          amount: accepted.price,
-          platform_fee: fee,
-          provider_payout: payout,
-          status: status === 'completed' ? 'captured' : 'authorized',
-          provider_name: 'mock',
-          external_id: `mock_auth_seed_${i}`,
-          fee_rule_snapshot: { rate, source: 'seed' },
-          authorized_at: createdAt,
-          captured_at: status === 'completed' ? new Date().toISOString() : null,
-        })
-        .select('id')
-        .single();
+    // The commission comes out of the provider's prepaid balance, which the
+    // ledger trigger maintains. A cancelled job gets its charge back, exactly
+    // as the cancel route would have done.
+    const { data: commissionEntry } = await supabase
+      .from('balance_entries')
+      .insert({
+        provider_id: accepted.providerId,
+        type: 'commission',
+        amount: -fee,
+        balance_after: 0,
+        job_id: job.id,
+        description: `עמלה על עבודה ${job.reference}`,
+        rule_snapshot: { rate, source: 'seed' },
+      })
+      .select('id')
+      .single();
 
-      if (payment) {
-        paymentCount += 1;
-        if (status === 'completed') {
-          await supabase.from('platform_fees').insert({
-            payment_id: payment.id,
-            job_id: job.id,
-            amount: fee,
-            rate,
-            rule_label: accepted.price >= 1000 ? '₪1,000 ומעלה' : 'עד ₪999',
-          });
-        }
-      }
+    if (commissionEntry) commissionCount += 1;
+
+    if (status === 'cancelled') {
+      await supabase.from('balance_entries').insert({
+        provider_id: accepted.providerId,
+        type: 'commission_refund',
+        amount: fee,
+        balance_after: 0,
+        job_id: job.id,
+        description: 'העבודה בוטלה על ידי הלקוח — החזר עמלה',
+        rule_snapshot: { code: 'customer_cancelled', source: 'seed' },
+      });
+      await supabase
+        .from('jobs')
+        .update({ commission_refunded_at: new Date().toISOString() })
+        .eq('id', job.id);
     }
 
     // Chat on every assigned job, so the inbox is not empty.
@@ -497,7 +517,7 @@ async function main() {
 
   console.log(`  ✓ ${statusPlan.length} עבודות`);
   console.log(`  ✓ ${offerCount} הצעות מחיר`);
-  console.log(`  ✓ ${paymentCount} עסקאות`);
+  console.log(`  ✓ ${commissionCount} חיובי עמלה`);
   console.log(`  ✓ ${reviewCount} דירוגים`);
 
   // A couple of open disputes so the admin queue is not empty.

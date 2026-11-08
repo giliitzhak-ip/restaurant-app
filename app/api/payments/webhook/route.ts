@@ -3,6 +3,7 @@ import { route } from '@/lib/api/handler';
 import { jsonOk } from '@/lib/api/response';
 import { ApiError } from '@/lib/api/errors';
 import { getPaymentAdapter } from '@/lib/services/payments';
+import { findTopup, settleTopup } from '@/lib/services/billing/topup';
 import { getServiceSupabase } from '@/lib/supabase/server';
 import type { PaymentStatus } from '@/types/database';
 
@@ -21,9 +22,14 @@ const STATUS_BY_EVENT: Record<string, PaymentStatus> = {
 /**
  * POST /api/payments/webhook
  *
- * Asynchronous status updates from the payment provider. The adapter verifies
- * the signature; an unverified payload is rejected outright rather than
- * trusted, because this endpoint is necessarily public.
+ * Asynchronous status updates for provider top-ups — the only charges GET
+ * SERVICE makes. A job's own payment never reaches a gateway, so nothing here
+ * can touch a job.
+ *
+ * The adapter verifies the signature; an unverified payload is rejected
+ * outright rather than trusted, because this endpoint is necessarily public.
+ * Crediting is idempotent in `settleTopup`, which is what makes a replayed
+ * delivery harmless rather than free money.
  */
 export const POST = route(async (request: NextRequest) => {
   const rawBody = await request.text();
@@ -43,27 +49,24 @@ export const POST = route(async (request: NextRequest) => {
   const status = STATUS_BY_EVENT[event.type];
   if (!status) return jsonOk({ ignored: event.type });
 
-  const query = supabase.from('payments').update({
-    status,
-    ...(status === 'captured' ? { captured_at: new Date().toISOString() } : {}),
-    ...(status === 'refunded' ? { refunded_at: new Date().toISOString() } : {}),
+  const topup = await findTopup(supabase, {
+    paymentId: event.paymentId,
+    externalId: event.externalId,
   });
+  if (!topup) return jsonOk({ ignored: 'unknown_topup' });
 
-  const { data, error } = event.paymentId
-    ? await query.eq('id', event.paymentId).select('id').maybeSingle()
-    : await query.eq('external_id', event.externalId ?? '').select('id').maybeSingle();
+  if (status === 'authorized' || status === 'captured') {
+    const settled = await settleTopup(supabase, topup.id);
+    return jsonOk({ topup: settled.id, status: settled.status });
+  }
 
-  if (error) throw ApiError.badRequest('עדכון התשלום נכשל', error.message);
-  if (!data) return jsonOk({ ignored: 'unknown_payment' });
+  await supabase
+    .from('provider_topups')
+    .update({
+      status,
+      ...(status === 'failed' ? { failure_reason: `webhook: ${event.type}` } : {}),
+    })
+    .eq('id', topup.id);
 
-  await supabase.from('payment_transactions').insert({
-    payment_id: data.id,
-    type: status === 'refunded' ? 'refund' : status === 'captured' ? 'capture' : 'authorization',
-    amount: 0,
-    status,
-    external_id: event.externalId,
-    raw_response: { webhook: event.type } as never,
-  });
-
-  return jsonOk({ updated: data.id, status });
+  return jsonOk({ topup: topup.id, status });
 });

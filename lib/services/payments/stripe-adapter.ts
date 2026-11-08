@@ -62,7 +62,6 @@ export class StripePaymentAdapter implements PaymentAdapter {
         currency: input.currency.toLowerCase(),
         capture_method: 'manual',
         description: input.description,
-        'metadata[job_id]': input.jobId,
         'metadata[payment_id]': input.paymentId,
         ...(input.customerEmail ? { receipt_email: input.customerEmail } : {}),
       },

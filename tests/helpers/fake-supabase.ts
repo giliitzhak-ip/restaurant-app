@@ -28,6 +28,7 @@ class FakeQuery implements PromiseLike<Result<unknown>> {
   constructor(
     private readonly table: string,
     private readonly store: Map<string, Row[]>,
+    private readonly hooks: Record<string, InsertHook> = {},
   ) {}
 
   private rows(): Row[] {
@@ -140,11 +141,17 @@ class FakeQuery implements PromiseLike<Result<unknown>> {
 
     switch (this.operation) {
       case 'insert': {
-        affected = this.payload.map((values) => ({
-          id: values.id ?? `${this.table}-${rows.length + affected.length + 1}`,
-          created_at: new Date().toISOString(),
-          ...values,
-        }));
+        const hook = this.hooks[this.table];
+        affected = this.payload.map((values, index) => {
+          const row = {
+            id: values.id ?? `${this.table}-${rows.length + index + 1}`,
+            created_at: new Date().toISOString(),
+            ...values,
+          };
+          // Stands in for a BEFORE INSERT trigger: it may rewrite the row or
+          // throw, exactly as the database one does.
+          return hook ? hook(row, this.store) : row;
+        });
         this.store.set(this.table, [...rows, ...affected]);
         break;
       }
@@ -233,12 +240,25 @@ class FakeQuery implements PromiseLike<Result<unknown>> {
     try {
       return Promise.resolve(this.execute()).then(onfulfilled, onrejected);
     } catch (error) {
-      return Promise.reject(error).then(onfulfilled, onrejected);
+      // postgrest reports a failed statement in the envelope rather than by
+      // rejecting, and a trigger that refuses an insert is no different.
+      const message = error instanceof Error ? error.message : String(error);
+      return Promise.resolve({
+        data: null,
+        error: { message, code: 'P0001' },
+      } as Result<unknown>).then(onfulfilled, onrejected);
     }
   }
 }
 
 type RpcHandler = (args: Record<string, unknown>) => unknown;
+
+/**
+ * Stands in for a BEFORE INSERT trigger. Returning a row inserts that row
+ * instead of the one given; throwing rejects the insert, which is how the
+ * balance floor is enforced in the real database.
+ */
+export type InsertHook = (row: Row, store: Map<string, Row[]>) => Row;
 
 export class FakeSupabase {
   readonly store = new Map<string, Row[]>();
@@ -247,6 +267,7 @@ export class FakeSupabase {
   constructor(
     seed: Record<string, Row[]> = {},
     private readonly rpcHandlers: Record<string, RpcHandler> = {},
+    private readonly insertHooks: Record<string, InsertHook> = {},
   ) {
     for (const [table, rows] of Object.entries(seed)) {
       this.store.set(table, rows.map((row) => ({ ...row })));
@@ -254,7 +275,7 @@ export class FakeSupabase {
   }
 
   from(table: string) {
-    return new FakeQuery(table, this.store);
+    return new FakeQuery(table, this.store, this.insertHooks);
   }
 
   async rpc(name: string, args: Record<string, unknown> = {}) {
@@ -267,6 +288,33 @@ export class FakeSupabase {
   table(name: string): Row[] {
     return this.store.get(name) ?? [];
   }
+}
+
+/**
+ * Emulates `apply_balance_entry`: stamps `balance_after`, keeps
+ * `provider_profiles.balance` in step, and refuses a commission that would take
+ * the balance under the floor.
+ *
+ * Written here rather than in a test so that every test exercising the ledger
+ * sees the same behaviour the database gives. `supabase/tests/rls-verification.sql`
+ * is what checks the real trigger; this only mirrors it.
+ */
+export function balanceEntryTrigger(minimumBalance = 0): InsertHook {
+  return (row, store) => {
+    const providers = store.get('provider_profiles') ?? [];
+    const provider = providers.find((candidate) => candidate.id === row.provider_id);
+    if (!provider) throw new Error(`provider ${String(row.provider_id)} not found`);
+
+    const balanceAfter =
+      Math.round((Number(provider.balance ?? 0) + Number(row.amount)) * 100) / 100;
+
+    if (row.type === 'commission' && balanceAfter < minimumBalance) {
+      throw new Error('insufficient balance');
+    }
+
+    provider.balance = balanceAfter;
+    return { ...row, balance_after: balanceAfter };
+  };
 }
 
 /** Cast helper: the services expect a typed SupabaseClient. */

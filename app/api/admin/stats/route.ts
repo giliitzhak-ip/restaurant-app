@@ -36,13 +36,18 @@ export const GET = route(async () => {
     admin.from('provider_profiles').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
   ]);
 
-  const { data: captured } = await admin
-    .from('payments')
-    .select('amount, platform_fee')
-    .eq('status', 'captured');
+  // GMV is what customers paid providers, which the platform observes but
+  // never holds; revenue is the commission it actually took, net of refunds.
+  const [{ data: charged }, { data: ledger }] = await Promise.all([
+    admin.from('jobs').select('final_price').not('commission_charged_at', 'is', null),
+    admin.from('balance_entries').select('type, amount').in('type', ['commission', 'commission_refund']),
+  ]);
 
-  const gmv = (captured ?? []).reduce((sum, row) => sum + Number(row.amount), 0);
-  const revenue = (captured ?? []).reduce((sum, row) => sum + Number(row.platform_fee), 0);
+  const gmv = (charged ?? []).reduce((sum, row) => sum + Number(row.final_price ?? 0), 0);
+  const revenue = (ledger ?? []).reduce(
+    (sum, row) => sum + (row.type === 'commission' ? Math.abs(Number(row.amount)) : -Number(row.amount)),
+    0,
+  );
 
   const { data: ratings } = await admin
     .from('provider_profiles')

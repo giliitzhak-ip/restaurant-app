@@ -12,7 +12,7 @@ const DETAIL_SELECT = `
   assigned_provider:provider_profiles (
     id, business_name, owner_name, avatar_url, phone, rating_avg, rating_count, completed_jobs
   ),
-  job_images (id, storage_path, kind, sort_order),
+  job_images (id, storage_path, kind, stage, sort_order),
   job_status_history (id, from_status, to_status, actor_type, note, created_at)
 `;
 
@@ -25,7 +25,7 @@ const DETAIL_SELECT = `
  */
 export const GET = route(async (_request: NextRequest, { params }: RouteParams<{ id: string }>) => {
   const { id } = await params;
-  const { supabase } = await requireSession();
+  const { session, supabase } = await requireSession();
 
   const { data: job, error } = await supabase
     .from('jobs')
@@ -47,17 +47,39 @@ export const GET = route(async (_request: NextRequest, { params }: RouteParams<{
     .eq('job_id', id)
     .order('created_at', { ascending: false });
 
-  const { data: payment } = await supabase
-    .from('payments')
-    .select('id, amount, platform_fee, provider_payout, status, currency, captured_at')
-    .eq('job_id', id)
-    .maybeSingle();
-
   const { data: review } = await supabase
     .from('reviews')
     .select('id, rating, comment, created_at, is_hidden')
     .eq('job_id', id)
     .maybeSingle();
 
-  return jsonOk({ job, offers: offers ?? [], payment, review });
+  // What GET SERVICE charges the provider is between GET SERVICE and the
+  // provider. RLS lets the customer read their own job row, commission columns
+  // included, so the columns are removed here rather than relied on being
+  // ignored by the client.
+  const isCustomer = (job as { customer_id: string }).customer_id === session.userId;
+  const visibleJob =
+    isCustomer && session.role !== 'admin' ? withoutCommissionColumns(job) : job;
+
+  return jsonOk({ job: visibleJob, offers: offers ?? [], review });
 });
+
+type CommissionColumns = {
+  commission_amount?: unknown;
+  commission_charged_at?: unknown;
+  commission_refunded_at?: unknown;
+  platform_fee?: unknown;
+  provider_payout?: unknown;
+};
+
+function withoutCommissionColumns<T extends CommissionColumns>(job: T) {
+  const {
+    commission_amount: _commissionAmount,
+    commission_charged_at: _chargedAt,
+    commission_refunded_at: _refundedAt,
+    platform_fee: _platformFee,
+    provider_payout: _providerPayout,
+    ...rest
+  } = job;
+  return rest;
+}

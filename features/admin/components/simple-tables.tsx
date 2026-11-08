@@ -13,7 +13,7 @@ import { useApi } from '@/hooks/use-api';
 import { patchJson } from '@/features/auth/lib/form';
 import { useT } from '@/components/providers/i18n-provider';
 import { formatDate } from '@/lib/utils/format';
-import type { DisputeStatus, JobStatus, PaymentStatus } from '@/types/database';
+import type { BalanceEntryType, DisputeStatus, JobStatus } from '@/types/database';
 
 /* ── Jobs ─────────────────────────────────────────────────────────────────── */
 
@@ -119,69 +119,125 @@ export function JobsAdmin() {
   );
 }
 
-/* ── Payments ─────────────────────────────────────────────────────────────── */
+/* ── Commissions ──────────────────────────────────────────────────────────── */
 
-interface AdminPaymentRow {
+interface AdminLedgerRow {
   id: string;
+  type: BalanceEntryType;
   amount: number;
-  platform_fee: number;
-  provider_payout: number;
-  status: PaymentStatus;
-  provider_name: string;
+  balance_after: number;
+  description: string | null;
   external_id: string | null;
   created_at: string;
-  captured_at: string | null;
-  job: { id: string; reference: string; title: string } | null;
+  job: {
+    id: string;
+    reference: string;
+    title: string;
+    status: JobStatus;
+    customer_confirmed_at: string | null;
+    arrival_verified_at: string | null;
+  } | null;
   provider: { id: string; business_name: string } | null;
 }
 
-export function PaymentsAdmin() {
+const LEDGER_LABEL: Record<BalanceEntryType, string> = {
+  topup: 'טעינה',
+  commission: 'עמלה',
+  commission_refund: 'החזר עמלה',
+  adjustment: 'תיאום',
+};
+
+/**
+ * The balance ledger — the platform's entire revenue, and its only liability.
+ *
+ * `outstandingCredit` is the number that is easy to misread: credit providers
+ * have bought and not yet spent is money owed in services, not earned, so it is
+ * labelled apart from the commission totals rather than summed with them.
+ */
+export function CommissionsAdmin() {
   const t = useT();
   const { data, loading, error, reload } = useApi<{
-    payments: AdminPaymentRow[];
-    totals: { gross: number; fees: number; payouts: number };
-  }>('/api/admin/payments?pageSize=50');
+    entries: AdminLedgerRow[];
+    totals: {
+      commissions: number;
+      refunds: number;
+      topups: number;
+      adjustments: number;
+      net: number;
+      outstandingCredit: number;
+    };
+  }>('/api/admin/commissions?pageSize=50');
 
-  const columns: Column<AdminPaymentRow>[] = [
+  const columns: Column<AdminLedgerRow>[] = [
+    {
+      key: 'type',
+      header: 'פעולה',
+      render: (row) => (
+        <div className="min-w-0">
+          <p className="font-medium">{LEDGER_LABEL[row.type]}</p>
+          <p className="truncate text-xs text-muted-foreground">{row.description ?? ''}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'provider',
+      header: t.job.provider,
+      render: (row) => row.provider?.business_name ?? '—',
+    },
     {
       key: 'job',
       header: t.admin.jobs,
+      render: (row) =>
+        row.job ? (
+          <div className="min-w-0">
+            <p className="truncate">{row.job.title}</p>
+            <p className="num truncate text-xs text-muted-foreground">{row.job.reference}</p>
+          </div>
+        ) : (
+          '—'
+        ),
+    },
+    {
+      key: 'amount',
+      header: 'סכום',
       render: (row) => (
-        <div className="min-w-0">
-          <p className="truncate font-medium">{row.job?.title ?? '—'}</p>
-          <p className="num truncate text-xs text-muted-foreground">{row.job?.reference ?? ''}</p>
-        </div>
+        <span className={row.amount < 0 ? 'text-muted-foreground' : 'text-success'}>
+          {row.amount < 0 ? '−' : '+'}
+          <Price amount={Math.abs(Number(row.amount))} size="sm" />
+        </span>
       ),
     },
-    { key: 'provider', header: t.job.provider, render: (row) => row.provider?.business_name ?? '—' },
-    { key: 'amount', header: 'סכום', render: (row) => <Price amount={Number(row.amount)} size="sm" /> },
     {
-      key: 'fee',
-      header: t.provider.platformFee,
-      render: (row) => <Price amount={Number(row.platform_fee)} size="sm" />,
+      key: 'balance',
+      header: 'יתרה אחרי',
+      render: (row) => <Price amount={Number(row.balance_after)} size="sm" />,
     },
     {
-      key: 'payout',
-      header: t.provider.netPayout,
-      render: (row) => <Price amount={Number(row.provider_payout)} size="sm" />,
-    },
-    {
-      key: 'status',
-      header: t.common.status,
-      render: (row) => (
-        <div className="flex flex-col gap-1">
-          <StatusBadge kind="payment" status={row.status} />
-          <span className="text-[11px] text-muted-foreground">{row.provider_name}</span>
-        </div>
-      ),
+      key: 'verification',
+      header: 'אימות',
+      render: (row) =>
+        row.job ? (
+          <div className="flex flex-wrap gap-1">
+            {row.job.arrival_verified_at ? (
+              <Badge variant="success">הגעה</Badge>
+            ) : (
+              <Badge variant="outline">ללא הגעה</Badge>
+            )}
+            {row.job.customer_confirmed_at ? (
+              <Badge variant="success">אישור לקוח</Badge>
+            ) : (
+              <Badge variant="outline">ללא אישור</Badge>
+            )}
+          </div>
+        ) : (
+          '—'
+        ),
     },
     {
       key: 'date',
       header: 'תאריך',
       render: (row) => (
-        <span className="text-xs text-muted-foreground">
-          {formatDate(row.captured_at ?? row.created_at)}
-        </span>
+        <span className="text-xs text-muted-foreground">{formatDate(row.created_at)}</span>
       ),
     },
   ];
@@ -189,11 +245,12 @@ export function PaymentsAdmin() {
   return (
     <div className="space-y-4">
       {data?.totals ? (
-        <dl className="grid grid-cols-3 gap-3">
+        <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
-            { label: 'מחזור', amount: data.totals.gross },
-            { label: t.admin.kpi.revenue, amount: data.totals.fees },
-            { label: 'תשלומים לבעלי מקצוע', amount: data.totals.payouts },
+            { label: 'עמלות שנגבו', amount: data.totals.commissions },
+            { label: 'החזרי עמלה', amount: data.totals.refunds },
+            { label: t.admin.kpi.revenue, amount: data.totals.net },
+            { label: 'יתרות שלא נוצלו', amount: data.totals.outstandingCredit },
           ].map((entry) => (
             <div key={entry.label} className="rounded-xl border bg-card p-4">
               <dd className="text-lg font-bold">
@@ -205,10 +262,15 @@ export function PaymentsAdmin() {
         </dl>
       ) : null}
 
+      <p className="text-xs text-muted-foreground">
+        &quot;יתרות שלא נוצלו&quot; הן התחייבות ולא הכנסה: בעלי מקצוע שילמו עליהן מראש ועוד
+        לא קיבלו תמורה.
+      </p>
+
       <DataTable
-        caption={t.admin.payments}
+        caption={t.admin.commissions}
         columns={columns}
-        rows={data?.payments ?? []}
+        rows={data?.entries ?? []}
         rowKey={(row) => row.id}
         loading={loading}
         error={error}

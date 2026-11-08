@@ -1,9 +1,13 @@
 export type PaymentProviderName = 'mock' | 'stripe' | 'israeli';
 
 export interface AuthorizeInput {
-  /** Our payment row id — used as the idempotency key. */
+  /** Our own row id for this charge — used as the idempotency key. */
   paymentId: string;
-  jobId: string;
+  /**
+   * Only set when a charge belongs to a job. Provider top-ups have no job:
+   * GET SERVICE charges the provider for credit, never the customer for work.
+   */
+  jobId?: string | null;
   amount: number;
   currency: string;
   customerEmail?: string | null;

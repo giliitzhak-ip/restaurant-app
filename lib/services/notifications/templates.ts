@@ -6,6 +6,9 @@ export interface TemplateInput {
   providerName?: string;
   customerName?: string;
   price?: string;
+  commission?: string;
+  balance?: string;
+  shortfall?: string;
   eta?: string;
   rating?: number;
   reason?: string;
@@ -46,9 +49,37 @@ export const templates: Record<NotificationEvent, Template> = {
     title: 'העבודה הושלמה',
     body: `"${jobTitle ?? 'העבודה'}" סומנה כהושלמה. נשמח שתדרג את השירות.`,
   }),
-  payment_completed: ({ price }) => ({
-    title: 'התשלום הושלם',
-    body: `התשלום${price ? ` על סך ${price}` : ''} הושלם בהצלחה.`,
+  confirmation_requested: ({ jobTitle, providerName }) => ({
+    title: 'לאשר שהעבודה בוצעה?',
+    body: `${providerName ?? 'בעל המקצוע'} סימן ש"${jobTitle ?? 'העבודה'}" הושלמה. אישור קצר שלך עוזר לנו לדעת שהכול קרה כמו שצריך.`,
+  }),
+  job_confirmed: ({ jobTitle, customerName }) => ({
+    title: 'הלקוח אישר את העבודה',
+    body: `${customerName ?? 'הלקוח'} אישר שהעבודה "${jobTitle ?? ''}" בוצעה. הדירוג והניסיון שלך עודכנו.`,
+  }),
+  commission_charged: ({ commission, jobTitle, balance }) => ({
+    title: 'נגבתה עמלה',
+    body: `עמלה${commission ? ` של ${commission}` : ''} נגבתה מהיתרה עבור "${jobTitle ?? 'העבודה'}"${balance ? `. יתרה נוכחית: ${balance}` : ''}. את התשלום על העבודה עצמה אתה גובה ישירות מהלקוח.`,
+  }),
+  commission_refunded: ({ commission, reason }) => ({
+    title: 'העמלה הוחזרה ליתרה',
+    body: `${commission ?? 'העמלה'} הוחזרה ליתרה שלך${reason ? ` — ${reason}` : ''}.`,
+  }),
+  balance_low: ({ balance }) => ({
+    title: 'היתרה מתקרבת לסוף',
+    body: `היתרה שלך${balance ? ` היא ${balance}` : ''}. כשהיא מתרוקנת לא נוכל להעביר אליך עבודות חדשות.`,
+  }),
+  balance_blocked: ({ shortfall }) => ({
+    title: 'העברת עבודות הופסקה',
+    body: `אין יתרה לגביית עמלה, ולכן לא נשלחות אליך עבודות חדשות${shortfall ? `. נדרשת טעינה של ${shortfall}` : ''}.`,
+  }),
+  topup_completed: ({ balance }) => ({
+    title: 'היתרה נטענה',
+    body: `הטעינה הושלמה${balance ? `. יתרה נוכחית: ${balance}` : ''}. אתה שוב מקבל עבודות.`,
+  }),
+  job_lost_no_balance: ({ jobTitle, commission }) => ({
+    title: 'עבודה אבדה בגלל יתרה',
+    body: `לקוח בחר בך ל"${jobTitle ?? 'עבודה'}" אבל לא היה אפשר לגבות את העמלה${commission ? ` (${commission})` : ''}. טען יתרה כדי לא לפספס עבודות נוספות.`,
   }),
   new_message: ({ customerName, providerName }) => ({
     title: 'הודעה חדשה',

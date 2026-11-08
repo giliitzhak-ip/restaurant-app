@@ -78,6 +78,26 @@ export const listJobsSchema = z.object({
 export const jobStatusActionSchema = z.object({
   status: z.enum(['provider_on_the_way', 'arrived', 'in_progress', 'completed']),
   note: z.string().trim().max(500).optional(),
+  /**
+   * Where the provider actually is. Required for `arrived` when the settings
+   * ask for a check-in: the point of the status is that it is verifiable, and a
+   * self-declared arrival verifies nothing.
+   */
+  lat: latitudeSchema.optional(),
+  lng: longitudeSchema.optional(),
+});
+
+export const completionEvidenceSchema = z.object({
+  storagePath: z.string().trim().min(1).max(500),
+  kind: z.enum(['image', 'video']).default('image'),
+});
+
+/** The customer's own account of what happened, after the work is marked done. */
+export const confirmJobSchema = z.object({
+  happened: z.boolean(),
+  /** What the customer says they actually paid, when they care to say. */
+  reportedPrice: priceSchema.nullable().optional(),
+  note: z.string().trim().max(1000).optional(),
 });
 
 export const cancelJobSchema = z.object({
@@ -87,6 +107,8 @@ export const cancelJobSchema = z.object({
 export const completeJobSchema = z.object({
   finalPrice: priceSchema.optional(),
   note: z.string().trim().max(500).optional(),
+  /** Photos taken at completion, uploaded to the private job-media bucket. */
+  evidence: z.array(completionEvidenceSchema).max(8, 'אפשר לצרף עד 8 קבצים').default([]),
 });
 
 export const createOfferSchema = z.object({

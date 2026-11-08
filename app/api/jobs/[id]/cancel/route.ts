@@ -6,16 +6,23 @@ import { requireSession, requireServiceClient } from '@/lib/api/guards';
 import { cancelJobSchema } from '@/lib/validation/jobs';
 import { canActorTransition, cancellationFee } from '@/lib/services/jobs/workflow';
 import { getSetting } from '@/lib/services/settings';
-import { refundPaymentForJob } from '@/lib/services/payments/flow';
+import { refundCommission } from '@/lib/services/billing/ledger';
 import { notify } from '@/lib/services/notifications';
+import { formatPrice } from '@/lib/utils/format';
 import type { ActorType } from '@/types/database';
 
 /**
  * POST /api/jobs/:id/cancel
  *
- * Either side may cancel while the job is live. The reason is recorded, any
- * authorisation is released, and the cancellation fee is computed server-side
- * from the admin-configured policy.
+ * Either side may cancel while the job is live. The reason is recorded and the
+ * cancellation fee is computed server-side from the admin-configured policy.
+ *
+ * The commission is the interesting part. It was charged when the offer was
+ * accepted, before any work, so a cancellation has to be able to reverse it or
+ * the platform is charging for bookings that never happened. The policy —
+ * refund when the customer walked away, keep the charge when the provider did —
+ * lives in `refundDecision`, and the asymmetry is deliberate: it is what makes
+ * charging at acceptance fair rather than merely early.
  */
 export const POST = route(async (request: NextRequest, { params }: RouteParams<{ id: string }>) => {
   const { id } = await params;
@@ -25,7 +32,10 @@ export const POST = route(async (request: NextRequest, { params }: RouteParams<{
 
   const { data: job } = await supabase
     .from('jobs')
-    .select('id, title, status, customer_id, assigned_provider_id, final_price, updated_at')
+    .select(
+      `id, reference, title, status, customer_id, assigned_provider_id, final_price, updated_at,
+       commission_amount, commission_charged_at, commission_refunded_at`,
+    )
     .eq('id', id)
     .maybeSingle();
 
@@ -72,9 +82,46 @@ export const POST = route(async (request: NextRequest, { params }: RouteParams<{
     .eq('job_id', id)
     .eq('status', 'pending');
 
-  // Release the hold. A cancellation fee, when one applies, is settled
-  // separately — the authorisation itself is never partially captured here.
-  await refundPaymentForJob(admin, id, `cancelled_by_${actor}: ${input.reason}`);
+  const refund = await refundCommission(admin, {
+    job: {
+      id: job.id,
+      reference: job.reference,
+      assigned_provider_id: job.assigned_provider_id,
+      commission_amount: job.commission_amount,
+      commission_charged_at: job.commission_charged_at,
+      commission_refunded_at: job.commission_refunded_at,
+    },
+    cancelledBy: actor,
+    actorUserId: session.userId,
+    reasonNote: input.reason,
+  });
+
+  if (refund.entry && job.assigned_provider_id) {
+    const { data: provider } = await admin
+      .from('provider_profiles')
+      .select('user_id, users:users!provider_profiles_user_id_fkey (email, phone)')
+      .eq('id', job.assigned_provider_id)
+      .maybeSingle();
+
+    if (provider) {
+      const providerContact = provider.users as { email: string | null; phone: string | null } | null;
+      await notify({
+        event: 'commission_refunded',
+        recipient: {
+          userId: provider.user_id,
+          email: providerContact?.email ?? null,
+          phone: providerContact?.phone ?? null,
+        },
+        jobId: id,
+        url: '/provider/balance',
+        template: {
+          commission: formatPrice(Number(job.commission_amount ?? 0)),
+          reason: refund.decision.reason,
+        },
+        client: admin,
+      });
+    }
+  }
 
   const otherPartyId =
     actor === 'customer'
@@ -109,5 +156,14 @@ export const POST = route(async (request: NextRequest, { params }: RouteParams<{
     }
   }
 
-  return jsonOk({ job: updated, cancellationFee: fee });
+  return jsonOk({
+    job: updated,
+    cancellationFee: fee,
+    // Only the provider's own client renders this; the customer has no stake in
+    // the commission and is never shown it.
+    commission:
+      actor === 'provider' || actor === 'admin'
+        ? { refunded: refund.decision.refund, reason: refund.decision.reason }
+        : undefined,
+  });
 });

@@ -2,7 +2,16 @@
 
 import { useCallback, useState } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, MapPin, MessageSquare, Phone, Radar, Star, XCircle } from 'lucide-react';
+import {
+  AlertTriangle,
+  ClipboardCheck,
+  MapPin,
+  MessageSquare,
+  Phone,
+  Radar,
+  Star,
+  XCircle,
+} from 'lucide-react';
 import type { JobDetailPayload } from '@/features/jobs/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +24,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Rating } from '@/components/ui/rating';
 import { JobTimeline } from './job-timeline';
 import { ReviewForm } from './review-form';
-import { CancelJobDialog, DisputeDialog } from './action-dialogs';
+import { CancelJobDialog, ConfirmJobDialog, DisputeDialog } from './action-dialogs';
 import { useApi } from '@/hooks/use-api';
 import { useRealtime } from '@/hooks/use-realtime';
 import { useT } from '@/components/providers/i18n-provider';
@@ -45,6 +54,7 @@ export function CustomerJobDetail({ jobId }: { jobId: string }) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [disputeOpen, setDisputeOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [providerLocation, setProviderLocation] = useState<ProviderLocation | null>(null);
 
   useRealtime<Record<string, unknown>>({
@@ -88,7 +98,7 @@ export function CustomerJobDetail({ jobId }: { jobId: string }) {
   if (loading && !data) return <LoadingState />;
   if (error || !data) return <ErrorState description={error ?? undefined} onRetry={reload} />;
 
-  const { job, offers, payment, review } = data;
+  const { job, offers, review } = data;
   const pendingOffers = offers.filter((offer) => offer.status === 'pending');
   const acceptedOffer = offers.find((offer) => offer.status === 'accepted');
   const showMap = ['provider_selected', 'provider_on_the_way', 'arrived', 'in_progress'].includes(
@@ -297,24 +307,43 @@ export function CustomerJobDetail({ jobId }: { jobId: string }) {
         </section>
       ) : null}
 
-      {/* Payment */}
-      {payment ? (
+      {/* What the customer owes, and to whom */}
+      {acceptedOffer ? (
         <section aria-labelledby="payment">
           <h2 id="payment" className="mb-3 text-lg font-semibold">
             {t.payment.title}
           </h2>
           <PriceBreakdown
-            rows={[{ label: t.payment.jobPrice, amount: Number(payment.amount) }]}
-            total={{ label: t.payment.total, amount: Number(payment.amount) }}
-            note={
-              payment.status === 'captured'
-                ? t.payment.captured
-                : payment.status === 'authorized'
-                  ? t.payment.authorized
-                  : t.payment.breakdownNotice
-            }
+            rows={[{ label: t.payment.jobPrice, amount: Number(acceptedOffer.price) }]}
+            total={{ label: t.payment.total, amount: Number(acceptedOffer.price) }}
+            note={t.payment.payProviderDirectly}
           />
         </section>
+      ) : null}
+
+      {/* Confirmation — the one thing only the customer can supply */}
+      {job.status === 'completed' && !job.customer_confirmed_at ? (
+        <Card className="border-accent/40 bg-accent/5">
+          <CardContent className="space-y-3 pt-5">
+            <div className="flex items-start gap-3">
+              <ClipboardCheck className="size-5 shrink-0 text-accent" aria-hidden />
+              <div>
+                <p className="font-semibold">{t.job.confirmTitle}</p>
+                <p className="text-sm text-muted-foreground">{t.job.confirmBody}</p>
+              </div>
+            </div>
+            <Button variant="accent" onClick={() => setConfirmOpen(true)} className="w-full">
+              {t.job.confirmCta}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {job.customer_confirmed_at ? (
+        <p className="flex items-center gap-2 text-xs text-success">
+          <ClipboardCheck className="size-4" aria-hidden />
+          {t.job.confirmed} · {formatDateTime(job.customer_confirmed_at)}
+        </p>
       ) : null}
 
       {/* Review */}
@@ -385,6 +414,14 @@ export function CustomerJobDetail({ jobId }: { jobId: string }) {
         onClose={() => setCancelOpen(false)}
         onDone={reload}
       />
+      <ConfirmJobDialog
+        jobId={job.id}
+        agreedPrice={job.final_price === null ? null : Number(job.final_price)}
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onDone={reload}
+      />
+
       <DisputeDialog
         jobId={job.id}
         open={disputeOpen}

@@ -30,7 +30,8 @@ export type PaymentStatus =
   | 'refunded'
   | 'failed'
   | 'cancelled';
-export type TransactionType = 'authorization' | 'capture' | 'refund' | 'payout' | 'platform_fee';
+export type BalanceEntryType = 'topup' | 'commission' | 'commission_refund' | 'adjustment';
+export type MediaStage = 'request' | 'completion';
 export type DisputeStatus = 'open' | 'under_review' | 'resolved' | 'rejected';
 export type DisputeReason =
   | 'price'
@@ -160,6 +161,9 @@ export type ProviderProfileRow = Timestamps & {
   onboarding_completed: boolean;
   terms_accepted_at: string | null;
   verified_at: string | null;
+  /** Prepaid credit in ILS. Written only by the balance_entries trigger. */
+  balance: number;
+  low_balance_notified_at: string | null;
 };
 
 export type ProviderCategoryRow = {
@@ -253,6 +257,18 @@ export type JobRow = Timestamps & {
   cancellation_reason: string | null;
   cancelled_at: string | null;
   completed_at: string | null;
+  /** Taken from the provider's balance when the offer was accepted. */
+  commission_amount: number | null;
+  commission_charged_at: string | null;
+  commission_refunded_at: string | null;
+  arrival_lat: number | null;
+  arrival_lng: number | null;
+  /** Metres from the job address, recorded whether or not it counted as verified. */
+  arrival_distance_m: number | null;
+  arrival_verified_at: string | null;
+  customer_confirmed_at: string | null;
+  customer_reported_price: number | null;
+  customer_confirmed_by: string | null;
 };
 
 export type JobImageRow = {
@@ -260,6 +276,7 @@ export type JobImageRow = {
   job_id: string;
   storage_path: string;
   kind: MediaKind;
+  stage: MediaStage;
   sort_order: number;
   created_at: string;
 };
@@ -321,45 +338,32 @@ export type FavoriteRow = {
   created_at: string;
 };
 
-export type PaymentRow = Timestamps & {
+export type BalanceEntryRow = {
   id: string;
-  job_id: string;
-  customer_id: string;
+  provider_id: string;
+  type: BalanceEntryType;
+  /** Signed: positive adds credit, negative consumes it. */
+  amount: number;
+  balance_after: number;
+  job_id: string | null;
+  description: string | null;
+  external_id: string | null;
+  rule_snapshot: Json;
+  created_by: string | null;
+  created_at: string;
+};
+
+export type ProviderTopupRow = Timestamps & {
+  id: string;
   provider_id: string;
   amount: number;
-  platform_fee: number;
-  provider_payout: number;
   currency: string;
   status: PaymentStatus;
-  provider_name: string;
+  gateway: string;
   external_id: string | null;
-  fee_rule_snapshot: Json;
-  authorized_at: string | null;
-  captured_at: string | null;
-  refunded_at: string | null;
   failure_reason: string | null;
-};
-
-export type PaymentTransactionRow = {
-  id: string;
-  payment_id: string;
-  type: TransactionType;
-  amount: number;
-  currency: string;
-  status: PaymentStatus;
-  external_id: string | null;
-  raw_response: Json;
-  created_at: string;
-};
-
-export type PlatformFeeRow = {
-  id: string;
-  payment_id: string;
-  job_id: string;
-  amount: number;
-  rate: number;
-  rule_label: string | null;
-  created_at: string;
+  balance_entry_id: string | null;
+  captured_at: string | null;
 };
 
 export type ReviewRow = Timestamps & {
@@ -430,6 +434,30 @@ export type AdminActionRow = {
 };
 
 /** Row shape returned by the `find_nearby_providers` SQL function. */
+/** One row of `provider_integrity_report` — the admin panel's leakage read. */
+export type ProviderIntegrityRow = {
+  provider_id: string;
+  business_name: string;
+  accepted: number;
+  completed: number;
+  customer_confirmed: number;
+  arrival_verified: number;
+  cancelled_after_accept: number;
+  commission_charged: number;
+  commission_refunded: number;
+  completion_rate: number;
+  confirmation_rate: number;
+};
+
+/** One row of `repeat_customer_report`. */
+export type RepeatCustomerRow = {
+  provider_id: string;
+  business_name: string;
+  customers: number;
+  repeat_customers: number;
+  repeat_rate: number;
+};
+
 export type NearbyProviderRow = {
   provider_id: string;
   user_id: string;
@@ -570,26 +598,21 @@ export interface Database {
           Rel<'favorites_provider_id_fkey', 'provider_id', 'provider_profiles'>,
         ]
       >;
-      payments: TableOf<
-        PaymentRow,
-        'job_id' | 'customer_id' | 'provider_id' | 'amount',
+      balance_entries: TableOf<
+        BalanceEntryRow,
+        'provider_id' | 'type' | 'amount' | 'balance_after',
         [
-          Rel<'payments_job_id_fkey', 'job_id', 'jobs', 'id', true>,
-          Rel<'payments_customer_id_fkey', 'customer_id', 'users'>,
-          Rel<'payments_provider_id_fkey', 'provider_id', 'provider_profiles'>,
+          Rel<'balance_entries_provider_id_fkey', 'provider_id', 'provider_profiles'>,
+          Rel<'balance_entries_job_id_fkey', 'job_id', 'jobs'>,
+          Rel<'balance_entries_created_by_fkey', 'created_by', 'users'>,
         ]
       >;
-      payment_transactions: TableOf<
-        PaymentTransactionRow,
-        'payment_id' | 'type' | 'amount',
-        [Rel<'payment_transactions_payment_id_fkey', 'payment_id', 'payments'>]
-      >;
-      platform_fees: TableOf<
-        PlatformFeeRow,
-        'payment_id' | 'job_id' | 'amount' | 'rate',
+      provider_topups: TableOf<
+        ProviderTopupRow,
+        'provider_id' | 'amount' | 'gateway',
         [
-          Rel<'platform_fees_payment_id_fkey', 'payment_id', 'payments'>,
-          Rel<'platform_fees_job_id_fkey', 'job_id', 'jobs'>,
+          Rel<'provider_topups_provider_id_fkey', 'provider_id', 'provider_profiles'>,
+          Rel<'provider_topups_balance_entry_id_fkey', 'balance_entry_id', 'balance_entries'>,
         ]
       >;
       reviews: TableOf<
@@ -642,6 +665,14 @@ export interface Database {
         };
         Returns: NearbyProviderRow[];
       };
+      provider_integrity_report: {
+        Args: { min_accepted?: number };
+        Returns: ProviderIntegrityRow[];
+      };
+      repeat_customer_report: {
+        Args: { since?: string };
+        Returns: RepeatCustomerRow[];
+      };
     };
     Enums: {
       user_role: UserRole;
@@ -651,7 +682,7 @@ export interface Database {
       job_urgency: JobUrgency;
       offer_status: OfferStatus;
       payment_status: PaymentStatus;
-      transaction_type: TransactionType;
+      balance_entry_type: BalanceEntryType;
       dispute_status: DisputeStatus;
       dispute_reason: DisputeReason;
       document_type: DocumentType;
@@ -661,6 +692,7 @@ export interface Database {
       message_type: MessageType;
       actor_type: ActorType;
       media_kind: MediaKind;
+      media_stage: MediaStage;
     };
     CompositeTypes: Record<string, never>;
   };
