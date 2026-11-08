@@ -245,5 +245,6 @@ http.createServer(function(req, res) {
   console.log('\n🍽️  שרת המסעדה פועל!\n');
   console.log('   📺  ממשק מסעדה  →  http://localhost:' + PORT + '/restaurant.html');
   console.log('   📱  ממשק לקוח   →  http://localhost:' + PORT + '/customer.html?table=5');
+  console.log('   🎬  סימולטור הדגמה →  http://localhost:' + PORT + '/demo.html');
   console.log('\n   (החלף ?table=5 במספר השולחן)\n');
 });

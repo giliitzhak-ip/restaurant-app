@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get Service · סימולטור הדגמה</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#14112e;--bg2:#231d5a;--panel:rgba(255,255,255,.06);--line:rgba(255,255,255,.12);--txt:#fff;--muted:#a9a3d8;
+        --accent:#ff6b35;--accent2:#ffb347;--green:#22c55e;--blue:#3b82f6;--red:#ef4444}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:'Heebo',system-ui,sans-serif;color:var(--txt);background:radial-gradient(1400px 900px at 50% 0%,var(--bg2),var(--bg) 70%) fixed;min-height:100vh}
+  button,select,input{font-family:inherit}
+  button{cursor:pointer;border:0}
+  header{display:flex;align-items:center;gap:16px;padding:14px 22px;flex-wrap:wrap}
+  .logo{font-weight:900;font-size:24px;direction:ltr}
+  .logo span{color:var(--accent)}
+  .badge{background:var(--accent);color:#fff;border-radius:20px;padding:3px 12px;font-size:13px;font-weight:800}
+  header p{color:var(--muted);font-size:14px;flex:1;min-width:200px}
+  .wrap{display:grid;grid-template-columns:300px 360px 1fr;gap:22px;padding:4px 22px 22px;align-items:start}
+  /* control panel */
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:18px;position:sticky;top:12px}
+  .panel h3{font-size:15px;color:var(--muted);font-weight:800;margin:14px 0 8px}
+  .panel h3:first-child{margin-top:0}
+  .big{width:100%;height:54px;border-radius:16px;background:linear-gradient(90deg,var(--accent),var(--accent2));color:#fff;font-size:18px;font-weight:900;box-shadow:0 10px 26px rgba(255,107,53,.35)}
+  .big.stop{background:var(--red);box-shadow:none}
+  .row{display:flex;gap:8px;margin-top:8px}
+  .sec{flex:1;height:42px;border-radius:12px;background:var(--line);color:#fff;font-weight:700;font-size:14px}
+  .sec:hover{background:rgba(255,255,255,.18)}
+  .opt{display:flex;align-items:center;justify-content:space-between;padding:8px 0;font-size:15px;font-weight:600}
+  .tog{width:46px;height:26px;border-radius:20px;background:var(--line);position:relative;flex:none}
+  .tog:after{content:'';position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s}
+  .tog.on{background:var(--green)} .tog.on:after{right:23px}
+  .speed{display:flex;gap:6px}
+  .speed button{flex:1;height:36px;border-radius:10px;background:var(--line);color:#fff;font-weight:800;font-size:14px}
+  .speed button.on{background:#fff;color:var(--bg)}
+  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .kpi{background:rgba(0,0,0,.18);border-radius:14px;padding:10px 12px}
+  .kpi small{display:block;color:var(--muted);font-size:12px;font-weight:700}
+  .kpi b{font-size:22px;font-weight:900}
+  .log{height:190px;overflow:auto;font-size:13px;line-height:1.55;background:rgba(0,0,0,.18);border-radius:14px;padding:10px 12px}
+  .log div{border-bottom:1px solid rgba(255,255,255,.05);padding:2px 0}
+  .log time{color:var(--muted);margin-left:6px;font-variant-numeric:tabular-nums}
+  .hint{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5}
+  /* device frames */
+  .dev h2{font-size:16px;font-weight:800;color:var(--muted);margin:0 6px 10px;display:flex;justify-content:space-between;align-items:center}
+  .dev h2 select{background:var(--line);color:#fff;border:0;border-radius:10px;padding:4px 8px;font-weight:700}
+  .dev h2 select option{color:#000}
+  .phone{width:360px;height:760px;border-radius:54px;background:#0b0a1a;padding:40px 14px 16px;box-shadow:0 40px 90px rgba(0,0,0,.5),0 0 0 3px #3a3570 inset;position:relative}
+  .phone:before{content:'';position:absolute;top:14px;left:50%;width:90px;height:14px;margin-left:-45px;border-radius:10px;background:#25213f;z-index:2}
+  .phone iframe{width:100%;height:100%;border:0;border-radius:18px 18px 40px 40px;background:#f6f5fb}
+  .tablet{border-radius:34px;background:#0b0a1a;padding:14px;box-shadow:0 40px 90px rgba(0,0,0,.5),0 0 0 3px #3a3570 inset}
+  .tscreen{position:relative;width:100%;height:740px;border-radius:22px;overflow:hidden;background:#f6f5fb}
+  .tscreen iframe{position:absolute;top:0;right:0;border:0;transform-origin:top right}
+  /* spotlight caption */
+  .caption{position:fixed;bottom:22px;left:50%;transform:translate(-50%,160%);background:#fff;color:#1b1838;border-radius:18px;padding:14px 22px;
+    font-size:18px;font-weight:800;box-shadow:0 20px 50px rgba(0,0,0,.4);transition:transform .3s;z-index:20;max-width:92vw;text-align:center}
+  .caption.show{transform:translate(-50%,0)}
+  .caption small{display:block;font-size:14px;color:#6b6890;font-weight:600;margin-top:2px}
+  @media (max-width:1250px){ .wrap{grid-template-columns:300px 1fr} .devR{grid-column:1/-1} .panel{position:static} }
+  @media (max-width:720px){ .wrap{grid-template-columns:1fr;padding:4px 12px 22px} .devP{display:flex;flex-direction:column;align-items:center} .phone{width:min(360px,100%)} }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">🛎️ Get <span>Service</span></div>
+  <span class="badge">מצב הדגמה</span>
+  <p>מימין: הטלפון של הלקוח · משמאל: המסך במטבח. אפשר להזמין בעצמכם מהטלפון, או להפעיל לקוחות וירטואליים.</p>
+</header>
+
+<div class="wrap">
+  <aside class="panel">
+    <h3>סימולציה</h3>
+    <button class="big" id="runBtn">▶ הפעלת לקוחות וירטואליים</button>
+    <div class="row">
+      <button class="sec" id="oneBtn">➕ הזמנה אחת עכשיו</button>
+      <button class="sec" id="tourBtn">🎬 סיור מודרך</button>
+    </div>
+
+    <h3>הגדרות</h3>
+    <div class="opt">מטבח אוטומטי <button class="tog on" id="autoKitchen" aria-label="מטבח אוטומטי"></button></div>
+    <div class="opt">ארוחת ערב עמוסה 🔥 <button class="tog" id="rush" aria-label="עומס"></button></div>
+    <div class="opt" style="display:block">מהירות
+      <div class="speed" id="speed" style="margin-top:6px"><button data-s="1">×1</button><button data-s="2" class="on">×2</button><button data-s="4">×4</button></div>
+    </div>
+
+    <h3>מה קרה עד עכשיו</h3>
+    <div class="kpis">
+      <div class="kpi"><small>הזמנות</small><b id="kOrders">0</b></div>
+      <div class="kpi"><small>הכנסות</small><b id="kRevenue">0 ₪</b></div>
+      <div class="kpi"><small>זמן ממוצע עד "מוכנה"*</small><b id="kAvg">—</b></div>
+      <div class="kpi"><small>הליכות מלצר שנחסכו</small><b id="kTrips">0</b></div>
+    </div>
+
+    <h3>יומן אירועים</h3>
+    <div class="log" id="log"></div>
+    <div class="row"><button class="sec" id="clearBtn">🧹 ניקוי הלוח</button></div>
+    <p class="hint">* זמן מדומה: כל שנייה בהדגמה (במהירות ×1) מייצגת דקה במסעדה.<br>הסימולטור עובד מול השרת האמיתי. אל תפעילו אותו על מסעדה שכבר עובדת עם לקוחות אמיתיים: "ניקוי הלוח" מבטל את כל ההזמנות הפעילות.</p>
+  </aside>
+
+  <section class="dev devP">
+    <h2>📱 הלקוח
+      <select id="tableSel"></select>
+    </h2>
+    <div class="phone"><iframe id="custFrame" title="מסך לקוח"></iframe></div>
+  </section>
+
+  <section class="dev devR">
+    <h2>📺 המטבח / הקופה</h2>
+    <div class="tablet"><div class="tscreen" id="tscreen"><iframe id="restFrame" src="/restaurant.html" title="מסך מסעדה"></iframe></div></div>
+  </section>
+</div>
+
+<div class="caption" id="caption"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const money = n => Math.round(n).toLocaleString('he-IL') + ' ₪';
+const rnd = (a,b) => a + Math.floor(Math.random()*(b-a+1));
+const pick = arr => arr[Math.floor(Math.random()*arr.length)];
+async function api(path, method, body){
+  const r = await fetch(path, method ? {method, headers:{'Content-Type':'application/json'}, body: body && JSON.stringify(body)} : undefined);
+  const d = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(d.error||'error');
+  return d;
+}
+
+// ---------- state ----------
+let speed = 2, running = false, menu = [], customerTimer = null, kitchenTimer = null;
+const mine = new Map();        // orders we've seen: id -> {created, readyAt, total}
+let stats = { orders:0, revenue:0, readyTimes:[] };
+const SPECIAL = ['בלי בצל','רוטב בצד','בלי גלוטן','מידת עשייה M','חריף בבקשה','בלי קרח','לחלוק לשניים'];
+const NOTES = ['יום הולדת 🎂','אנחנו ממהרים','אלרגיה לאגוזים','להביא הכל ביחד'];
+
+function log(html){
+  const t = new Date().toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const el = document.createElement('div'); el.innerHTML = `<time>${t}</time>${html}`;
+  $('#log').prepend(el); while($('#log').children.length>80) $('#log').lastChild.remove();
+}
+function kpis(){
+  $('#kOrders').textContent = stats.orders;
+  $('#kRevenue').textContent = money(stats.revenue);
+  const rt = stats.readyTimes; // one simulated second at ×1 stands for one minute in a real restaurant
+  $('#kAvg').textContent = rt.length ? Math.round(rt.reduce((a,b)=>a+b,0)/rt.length)+' דק׳' : '—';
+  $('#kTrips').textContent = stats.orders * 2;   // taking the order + bringing the check
+}
+
+// ---------- frames ----------
+for(let i=1;i<=12;i++) $('#tableSel').insertAdjacentHTML('beforeend', `<option value="${i}" ${i===7?'selected':''}>שולחן ${i}</option>`);
+function loadCustomer(){ $('#custFrame').src = '/customer.html?table=' + $('#tableSel').value + '&demo=' + Date.now(); }
+$('#tableSel').onchange = loadCustomer; loadCustomer();
+function fitTablet(){
+  const box = $('#tscreen'), f = $('#restFrame'), W = 1180;
+  const s = Math.min(1, box.clientWidth / W);
+  f.style.width = W+'px'; f.style.height = (box.clientHeight / s)+'px'; f.style.transform = `scale(${s})`;
+}
+new ResizeObserver(fitTablet).observe($('#tscreen')); fitTablet();
+
+// ---------- virtual customers ----------
+async function placeRandomOrder(table){
+  if(!menu.length) menu = await api('/api/menu');
+  if(!menu.length){ log('⚠️ התפריט ריק – הוסיפו מנות במסך המסעדה'); return; }
+  const n = rnd(1, $('#rush').classList.contains('on') ? 5 : 3);
+  const chosen = new Map();
+  // a realistic meal: mostly mains, some starters, drinks & desserts
+  for(let i=0;i<n;i++){ const m = pick(menu); chosen.set(m.id, Math.min(4,(chosen.get(m.id)||0) + rnd(1,2))); }
+  const items = [...chosen].map(([id,q])=>({menu_item_id:id, quantity:q, special_request: Math.random()<.25 ? pick(SPECIAL) : ''}));
+  table = table || rnd(1,12);
+  try{
+    const r = await api('/api/orders','POST',{table_number:table, items, notes: Math.random()<.15 ? pick(NOTES) : ''});
+    const total = items.reduce((a,it)=>a+menu.find(m=>m.id===it.menu_item_id).price*it.quantity,0);
+    mine.set(r.order_id, {created:Date.now(), total, status:'new', table});
+    stats.orders++; stats.revenue += total; kpis();
+    log(`🧾 שולחן ${table} הזמין ${items.length} מנות · ${money(total)}`);
+  }catch(e){ menu = []; log('⚠️ ההזמנה נכשלה: ' + e.message); }
+}
+function scheduleCustomer(){
+  clearTimeout(customerTimer);
+  if(!running) return;
+  const base = $('#rush').classList.contains('on') ? 5000 : 11000;
+  customerTimer = setTimeout(async()=>{ await placeRandomOrder(); scheduleCustomer(); }, (base + Math.random()*base) / speed);
+}
+
+// ---------- auto kitchen ----------
+// simulated durations (seconds at ×1): new → preparing → ready → served
+const STAGE = { new:['preparing',7], seen:['preparing',7], preparing:['ready',16], ready:['served',9] };
+const LABEL = { preparing:'👨‍🍳 התחילו להכין', ready:'🍽️ מוכנה', served:'✅ הוגשה' };
+const since = new Map();       // order id -> {status, t}
+let firstTick = true;          // orders that existed before the demo opened are not counted
+async function kitchenTick(){
+  try{
+    const orders = await api('/api/orders');
+    const now = Date.now();
+    for(const o of orders){
+      const s = since.get(o.id);
+      if(!s || s.status !== o.status){
+        since.set(o.id, {status:o.status, t:now});
+        // track orders the user placed by hand from the phone, too
+        if(!mine.has(o.id) && !firstTick){
+          const total = o.items.reduce((a,it)=>a+it.price*it.quantity,0);
+          mine.set(o.id,{created:now,total,table:o.table_number}); stats.orders++; stats.revenue+=total; kpis();
+          log(`📱 הזמנה חדשה משולחן ${o.table_number} · ${money(total)}`);
+          if(tourOn) caption('הזמנה חדשה נכנסה למטבח! 🔔','בלי מלצר, בלי פתק, בלי טעויות');
+        }
+        continue;
+      }
+      if(!$('#autoKitchen').classList.contains('on')) continue;
+      const st = STAGE[o.status]; if(!st) continue;
+      if((now - s.t) * speed >= st[1]*1000){
+        await api(`/api/orders/${o.id}/status`,'PATCH',{status:st[0]});
+        since.set(o.id,{status:st[0], t:now});
+        log(`${LABEL[st[0]]} · שולחן ${o.table_number}`);
+        const m = mine.get(o.id);
+        if(st[0]==='ready' && m){ stats.readyTimes.push((now - m.created)/1000*speed); kpis(); }
+      }
+    }
+    firstTick = false;
+  }catch{}
+  kitchenTimer = setTimeout(kitchenTick, 1000);
+}
+
+// ---------- controls ----------
+$('#runBtn').onclick = ()=>{
+  running = !running;
+  $('#runBtn').classList.toggle('stop', running);
+  $('#runBtn').textContent = running ? '⏸ עצירת הסימולציה' : '▶ הפעלת לקוחות וירטואליים';
+  log(running ? '▶ הסימולציה התחילה' : '⏸ הסימולציה נעצרה');
+  if(running){ placeRandomOrder(); scheduleCustomer(); } else clearTimeout(customerTimer);
+};
+$('#oneBtn').onclick = ()=>placeRandomOrder();
+document.querySelectorAll('.tog').forEach(t=>t.onclick=()=>{ t.classList.toggle('on'); if(t.id==='rush') scheduleCustomer(); });
+$('#speed').onclick = e=>{ const b=e.target.closest('button'); if(!b) return; speed=+b.dataset.s;
+  document.querySelectorAll('#speed button').forEach(x=>x.classList.toggle('on',x===b)); scheduleCustomer(); };
+$('#clearBtn').onclick = async()=>{
+  if(!confirm('לבטל את כל ההזמנות הפעילות ולאפס את ההדגמה?')) return;
+  const orders = await api('/api/orders');
+  await Promise.all(orders.map(o=>api(`/api/orders/${o.id}/status`,'PATCH',{status:'cancelled'})));
+  stats = {orders:0,revenue:0,readyTimes:[]}; mine.clear(); since.clear(); kpis();
+  $('#log').innerHTML=''; log(`🧹 הלוח נוקה (${orders.length} הזמנות בוטלו)`);
+  loadCustomer();
+};
+
+// ---------- guided tour ----------
+// Drives the real customer screen inside the phone frame (same origin), tap by tap.
+async function orderFromPhone(){
+  try{
+    const w = $('#custFrame').contentWindow, d = w.document;
+    // scroll only inside the phone (scrollIntoView would also scroll this page)
+    const tap = async el => { const r=el.getBoundingClientRect(); if(r.top<80||r.bottom>w.innerHeight-90) w.scrollTo({top:w.scrollY+r.top-w.innerHeight/2,behavior:'smooth'}); await wait(650); el.click(); await wait(500); };
+    const back = d.getElementById('again'); if(back){ await tap(back); }
+    const items = [...d.querySelectorAll('.item')]; if(!items.length) return false;
+    const picks = [items[0], items[Math.floor(items.length/2)], items[items.length-1]];
+    for(const it of picks) await tap(it.querySelector('.qty button:last-child'));
+    await tap(d.getElementById('cartbar')); await wait(700);
+    const note = d.querySelector('input[data-note]');
+    if(note){ note.value='בלי בצל'; note.dispatchEvent(new w.Event('input',{bubbles:true})); await wait(600); }
+    await tap(d.getElementById('sendBtn'));
+    return true;
+  }catch{ return false; }
+}
+let tourOn = false;
+function caption(t, sub){ const c=$('#caption'); c.innerHTML = t + (sub?`<small>${sub}</small>`:''); c.classList.add('show'); clearTimeout(c._t); c._t=setTimeout(()=>c.classList.remove('show'), 5200); }
+const wait = ms => new Promise(r=>setTimeout(r,ms));
+$('#tourBtn').onclick = async()=>{
+  if(tourOn) return; tourOn = true; $('#tourBtn').disabled = true;
+  const auto = $('#autoKitchen');
+  caption('1. הלקוח סורק את הברקוד בשולחן 7','התפריט נפתח ישר בטלפון, בלי להוריד אפליקציה');
+  $('#tableSel').value = 7; loadCustomer(); await wait(5500);
+  caption('2. הוא בוחר מנות ושולח','בלי לחכות למלצר. נסו גם בעצמכם!');
+  if(!(await orderFromPhone())) await placeRandomOrder(7);
+  await wait(3000);
+  caption('3. ההזמנה קופצת מיד במטבח','עם צליל, מספר שולחן ובקשות מיוחדות');
+  auto.classList.add('on'); await wait(5500);
+  caption('4. המטבח מעדכן סטטוס, והלקוח רואה כל שלב','"בהכנה" ← "מוכנה" ← "הוגשה"'); await wait(6000);
+  caption('5. עכשיו ערב עמוס 🔥','לקוחות מכל השולחנות מזמינים במקביל');
+  $('#rush').classList.add('on'); if(!running) $('#runBtn').click(); await wait(6000);
+  caption('Get Service · שירות בלחיצה אחת','פחות המתנה, פחות טעויות, יותר הזמנות');
+  await wait(5500); tourOn = false; $('#tourBtn').disabled = false;
+};
+
+kpis(); log('👋 ברוכים הבאים להדגמה'); kitchenTick();
+</script>
+</body>
+</html>
