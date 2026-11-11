@@ -1,0 +1,11 @@
+{
+  "name": "SMART MABAT AI Marketing",
+  "short_name": "מבט חכם",
+  "start_url": "/",
+  "display": "standalone",
+  "dir": "rtl",
+  "lang": "he",
+  "background_color": "#03060c",
+  "theme_color": "#03060c",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
