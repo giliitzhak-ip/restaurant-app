@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+/* Heebo — Hebrew + Latin subsets, self-hosted (no external requests) */
+@font-face { font-family: "Heebo"; font-weight: 400; font-display: swap; src: url("/fonts/heebo-hebrew-400-normal.woff2") format("woff2"); unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F; }
+@font-face { font-family: "Heebo"; font-weight: 400; font-display: swap; src: url("/fonts/heebo-latin-400-normal.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Heebo"; font-weight: 500; font-display: swap; src: url("/fonts/heebo-hebrew-500-normal.woff2") format("woff2"); unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F; }
+@font-face { font-family: "Heebo"; font-weight: 500; font-display: swap; src: url("/fonts/heebo-latin-500-normal.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Heebo"; font-weight: 700; font-display: swap; src: url("/fonts/heebo-hebrew-700-normal.woff2") format("woff2"); unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F; }
+@font-face { font-family: "Heebo"; font-weight: 700; font-display: swap; src: url("/fonts/heebo-latin-700-normal.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
+@theme {
+  --font-sans: "Heebo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --color-ink-950: #03060c;
+  --color-ink-900: #070d19;
+  --color-ink-850: #0a1222;
+  --color-ink-800: #0d1830;
+  --color-ink-700: #15233f;
+  --color-ink-600: #1f3054;
+  --color-line: #1b2a48;
+  --color-mute: #8a9bb8;
+  --color-soft: #c7d2e5;
+  --color-tech: #1e90ff;
+  --color-tech-400: #4aa8ff;
+  --color-tech-glow: #5fb4ff;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: var(--color-ink-950);
+  color: #fff;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background-image:
+    radial-gradient(1200px 600px at 100% -10%, rgb(30 144 255 / 0.12), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgb(30 144 255 / 0.06), transparent 60%);
+  background-attachment: fixed;
+  min-height: 100dvh;
+}
+
+@utility card {
+  @apply rounded-2xl border border-line bg-ink-900/80 p-4 backdrop-blur-sm sm:p-5;
+}
+@utility btn {
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-medium transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
+}
+@utility btn-primary {
+  @apply btn bg-tech text-white shadow-[0_0_24px_-6px_var(--color-tech)] hover:bg-tech-400;
+}
+@utility btn-ghost {
+  @apply btn border border-line bg-ink-850 text-soft hover:border-tech/50 hover:text-white;
+}
+@utility btn-danger {
+  @apply btn border border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/20;
+}
+@utility input {
+  @apply min-h-11 w-full rounded-xl border border-line bg-ink-850 px-3 py-2 text-base text-white placeholder:text-mute/60 focus:border-tech focus:ring-2 focus:ring-tech/30 focus:outline-none;
+}
+@utility label {
+  @apply mb-1.5 block text-sm font-medium text-soft;
+}
+@utility hint {
+  @apply mt-1 text-xs text-mute;
+}
+@utility h1 {
+  @apply text-2xl font-bold tracking-tight;
+}
+@utility h2 {
+  @apply text-lg font-bold;
+}
+
+/* iOS: avoid zoom on focus (inputs ≥16px), honor safe areas */
+.safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+}
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
